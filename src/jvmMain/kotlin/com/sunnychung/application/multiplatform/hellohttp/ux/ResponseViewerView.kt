@@ -55,7 +55,7 @@ fun ResponseViewerView(response: UserResponse) {
                 ResponseTab.Body -> if (response.body != null) {
                     CodeEditorView(
                         isReadOnly = true,
-                        text = response.body,
+                        text = response.body!!.decodeToString(),
                         modifier = Modifier.fillMaxSize().padding(8.dp),
                     )
                 } else {
@@ -63,7 +63,7 @@ fun ResponseViewerView(response: UserResponse) {
                 }
 
                 ResponseTab.Header -> if (response.headers != null) {
-                    KeyValueTableView(keyValues = response.headers, modifier = Modifier.fillMaxSize().padding(8.dp))
+                    KeyValueTableView(keyValues = response.headers!!, modifier = Modifier.fillMaxSize().padding(8.dp))
                 } else {
                     ResponseEmptyView(type = "header", modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
@@ -79,43 +79,43 @@ private enum class ResponseTab {
     Body, Header, Raw
 }
 
-@Composable
-@Preview
-fun ResponseViewerViewPreview() {
-    ResponseViewerView(
-        UserResponse(
-//        KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond), // TODO
-            startAt = KInstant.now() + KDuration.of(-2346, KFixedTimeUnit.MilliSecond),
-            endAt = KInstant.now(),
-            isCommunicating = false,
-            statusCode = 200,
-            statusText = "OK",
-            responseSizeInBytes = 1234,
-            body = "{\"OK\"}",
-            headers = listOf("Content-Type" to "application/json", "Date" to KZonedInstant.nowAtLocalZoneOffset().format(KDateTimeFormat.ISO8601_DATETIME.pattern)),
-            rawExchange = RawExchange(listOf(RawExchange.Exchange(KInstant.now() + KDuration.of(-1, KFixedTimeUnit.MilliSecond), RawExchange.Direction.Outgoing, "Start"), RawExchange.Exchange(KInstant.now(), RawExchange.Direction.Incoming, "End")))
-        )
-    )
-}
+//@Composable
+//@Preview
+//fun ResponseViewerViewPreview() {
+//    ResponseViewerView(
+//        UserResponse(
+////        KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond), // TODO
+//            startAt = KInstant.now() + KDuration.of(-2346, KFixedTimeUnit.MilliSecond),
+//            endAt = KInstant.now(),
+//            isCommunicating = false,
+//            statusCode = 200,
+//            statusText = "OK",
+//            responseSizeInBytes = 1234,
+//            body = "{\"OK\"}",
+//            headers = listOf("Content-Type" to "application/json", "Date" to KZonedInstant.nowAtLocalZoneOffset().format(KDateTimeFormat.ISO8601_DATETIME.pattern)),
+//            rawExchange = RawExchange(listOf(RawExchange.Exchange(KInstant.now() + KDuration.of(-1, KFixedTimeUnit.MilliSecond), RawExchange.Direction.Outgoing, "Start"), RawExchange.Exchange(KInstant.now(), RawExchange.Direction.Incoming, "End")))
+//        )
+//    )
+//}
 
-@Composable
-@Preview
-fun ResponseViewerViewPreview_EmptyBody() {
-    ResponseViewerView(
-        UserResponse(
-//        KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond), // TODO
-            startAt = KInstant.now() + KDuration.of(-2346, KFixedTimeUnit.MilliSecond),
-            endAt = KInstant.now(),
-            isCommunicating = false,
-            statusCode = 200,
-            statusText = "OK",
-            responseSizeInBytes = 1234,
-            body = null,
-            headers = listOf("Content-Type" to "application/json"),
-            rawExchange = RawExchange(listOf())
-        )
-    )
-}
+//@Composable
+//@Preview
+//fun ResponseViewerViewPreview_EmptyBody() {
+//    ResponseViewerView(
+//        UserResponse(
+////        KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond), // TODO
+//            startAt = KInstant.now() + KDuration.of(-2346, KFixedTimeUnit.MilliSecond),
+//            endAt = KInstant.now(),
+//            isCommunicating = false,
+//            statusCode = 200,
+//            statusText = "OK",
+//            responseSizeInBytes = 1234,
+//            body = null,
+//            headers = listOf("Content-Type" to "application/json"),
+//            rawExchange = RawExchange(listOf())
+//        )
+//    )
+//}
 
 @Composable
 fun DataLabel(
@@ -136,7 +136,8 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse) {
     val colors = LocalColor.current
     val (text, backgroundColor) = if (response.isCommunicating) {
         Pair("Communicating", colors.pendingResponseBackground)
-    } else when (response.statusCode!!) {
+    } else when (response.statusCode) {
+        null -> return
         in 100..399 -> Pair("${response.statusCode} ${response.statusText}", colors.successfulResponseBackground)
         else -> Pair("${response.statusCode} ${response.statusText}", colors.errorResponseBackground)
     }

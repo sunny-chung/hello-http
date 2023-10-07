@@ -1,6 +1,14 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
+import okhttp3.FormBody
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 data class UserRequest(
     val name: String,
@@ -58,11 +66,33 @@ enum class FieldValueType {
 }
 
 interface UserRequestBody {
-
+    fun toOkHttpBody(mediaType: MediaType): RequestBody
 }
 
-class StringBody(val value: String) : UserRequestBody
+class StringBody(val value: String) : UserRequestBody {
+    override fun toOkHttpBody(mediaType: MediaType): RequestBody = value.toRequestBody(mediaType)
+}
 
-class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody
+class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
+    override fun toOkHttpBody(mediaType: MediaType): RequestBody {
+        val builder = FormBody.Builder()
+        value.forEach { builder.add(it.key, it.value) }
+        return builder.build()
+    }
+}
 
-class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody
+class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
+    override fun toOkHttpBody(mediaType: MediaType): RequestBody {
+        val b = MultipartBody.Builder()
+        value.forEach {
+            when (it.valueType) {
+                FieldValueType.String -> b.addFormDataPart(it.key, it.value)
+                FieldValueType.File -> {
+                    val f = File(it.value)
+                    b.addFormDataPart(name = it.key, filename = f.name, body = f.asRequestBody("application/octet-stream".toMediaType()))
+                }
+            }
+        }
+        return b.build()
+    }
+}

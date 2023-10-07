@@ -27,6 +27,8 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(kotlin("reflect"))
 
+                implementation("co.touchlab:kermit:1.0.0")
+
                 implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1")
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
                 implementation("com.squareup.okhttp3:okhttp:4.11.0-patch-1")

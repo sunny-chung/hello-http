@@ -188,7 +188,7 @@ fun test() {
 //
 //}
 
-class InspectOutputStream(val stream: OutputStream, val channel: Channel<ByteArray>) : FilterOutputStream(stream) {
+private class InspectOutputStream(val stream: OutputStream, val channel: Channel<ByteArray>) : FilterOutputStream(stream) {
     var ignoringRecursiveCall = 0
 
     override fun write(b: Int) {
@@ -231,7 +231,7 @@ class InspectOutputStream(val stream: OutputStream, val channel: Channel<ByteArr
     }
 }
 
-class InspectInputStream(val stream: InputStream, val channel: Channel<ByteArray>) : FilterInputStream(stream) {
+private class InspectInputStream(val stream: InputStream, val channel: Channel<ByteArray>) : FilterInputStream(stream) {
     override fun read(): Int {
         synchronized(this) {
             println("InspectInputStream read 1")

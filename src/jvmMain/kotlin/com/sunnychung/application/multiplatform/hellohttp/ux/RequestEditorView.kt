@@ -27,14 +27,39 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
+import okhttp3.Headers
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
 
 @Composable
-fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest) {
+fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request) -> Unit) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
     var selectedExample by remember { mutableStateOf(request.examples.first()) }
     var selectedRequestTab by remember { mutableStateOf(RequestTab.values().first()) }
+
+    fun sendRequest() {
+        var b = Request.Builder()
+            .url(request.url.toHttpUrl()
+                .newBuilder()
+                .run {
+                    var b = this
+                    selectedExample.queryParameters.forEach { b = b.addQueryParameter(it.key, it.value) }
+                    b
+                }
+                .build())
+            .method(
+                method = request.method,
+                body = selectedExample.body?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
+            )
+        selectedExample.headers.filter { it.isEnabled }.forEach { b = b.addHeader(it.key, it.value) }
+        val request = b.build()
+        onClickSend(request)
+    }
 
     Column(modifier = modifier) {
         Row(
@@ -90,7 +115,7 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest) {
                     text = "Send",
                     fontSize = fonts.buttonFontSize,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).clickable { /* TODO */ }
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).clickable { sendRequest() }
                 )
                 AppImageButton(resource = "down-small.svg", size = 24.dp, onClick = { /* TODO */}, modifier = Modifier.padding(end = 4.dp))
             }

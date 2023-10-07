@@ -1,7 +1,10 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,8 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,6 +37,8 @@ private val TIMESTAMP_COLUMN_WIDTH_DP = 120.dp
 @Composable
 fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) {
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
+//    val scrollState = rememberLazyListState()
+    val scrollState = rememberScrollState()
 
     Box(modifier = modifier) {
         Box(
@@ -44,9 +55,11 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                 .background(LocalColor.current.line)
         )
 
-        LazyColumn {
-            items(items = exchange.exchanges) {
-                Row(modifier = Modifier.height(IntrinsicSize.Max).padding(horizontal = 6.dp, vertical = 2.dp)) {
+//        LazyColumn(state = scrollState) {
+//            items(items = exchange.exchanges) {
+        Column(modifier = Modifier.verticalScroll(scrollState)) {
+            synchronized(exchange.exchanges) { exchange.exchanges.forEach {
+                Row(modifier = Modifier.height(IntrinsicSize.Min).padding(horizontal = 6.dp, vertical = 2.dp)) {
                     TimestampColumn(
                         time = it.instant,
                         modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP).fillMaxHeight().padding(end = 1.dp)
@@ -55,14 +68,20 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                         text = when (it.direction) {
                             RawExchange.Direction.Outgoing -> "> "
                             RawExchange.Direction.Incoming -> "< "
+                            else -> "= "
                         },
                         fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(start = 4.dp)
+                        modifier = Modifier.padding(start = 4.dp).fillMaxHeight()
                     )
-                    AppText(text = it.detail, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
+                    AppText(text = it.detail, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f).fillMaxHeight())
                 }
-            }
+            }}
         }
+
+        VerticalScrollbar(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            adapter = rememberScrollbarAdapter(scrollState),
+        )
     }
 }
 

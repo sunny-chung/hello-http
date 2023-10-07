@@ -3,7 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
 data class RawExchange(
-    val exchanges: List<Exchange>,
+    val exchanges: MutableList<Exchange>,
 ) {
     data class Exchange(
         val instant: KInstant,
@@ -12,6 +12,6 @@ data class RawExchange(
     )
 
     enum class Direction {
-        Outgoing, Incoming
+        Outgoing, Incoming, Unspecified
     }
 }

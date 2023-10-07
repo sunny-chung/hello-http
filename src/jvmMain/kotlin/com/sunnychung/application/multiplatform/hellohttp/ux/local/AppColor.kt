@@ -34,6 +34,9 @@ data class AppColor(
     val pendingResponseBackground: Color,
     val successfulResponseBackground: Color,
     val errorResponseBackground: Color,
+
+    val scrollBarUnhover: Color,
+    val scrollBarHover: Color,
 )
 
 val LocalColor = compositionLocalOf { darkColorScheme() }
@@ -67,4 +70,6 @@ fun darkColorScheme(): AppColor = AppColor(
     successfulResponseBackground = Color(red = 0.1f, green = 0.6f, blue = 0.1f),
     errorResponseBackground = Color(red = 1f, green = 0.2f, blue = 0.2f),
 
+    scrollBarUnhover = Color(red = 0.7f, green = 0.7f, blue = 0.7f).copy(alpha = 0.25f),
+    scrollBarHover = Color(red = 0.7f, green = 0.7f, blue = 0.7f).copy(alpha = 0.50f),
 )

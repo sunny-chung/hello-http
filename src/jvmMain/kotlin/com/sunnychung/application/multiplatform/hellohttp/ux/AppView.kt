@@ -1,7 +1,9 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.defaultScrollbarStyle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,12 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -29,21 +33,32 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 
 @Composable
 @Preview
 fun AppView() {
     CompositionLocalProvider(LocalColor provides darkColorScheme()) {
         val colors = LocalColor.current
-        Box(modifier = Modifier.background(colors.background).fillMaxSize()) {
-            AppContentView()
+        CompositionLocalProvider(LocalScrollbarStyle provides defaultScrollbarStyle().copy(
+            unhoverColor = colors.scrollBarUnhover,
+            hoverColor = colors.scrollBarHover,
+        )) {
+            Box(modifier = Modifier.background(colors.background).fillMaxSize()) {
+                AppContentView()
+            }
         }
     }
 }
 
 @Composable
 fun AppContentView() {
+    val networkManager = AppContext.NetworkManager
+
     var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
+    var activeCallId by remember { mutableStateOf<String?>(null) }
+    var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value
+    val response = activeCallId?.let { networkManager.getCallData(it) }?.response
 
     Row {
         Column(modifier = Modifier.width(150.dp)) {
@@ -67,7 +82,11 @@ fun AppContentView() {
             UserRequestExample(name = "Example 1", contentType = ContentType.Multipart, headers = listOf(UserKeyValuePair("a1", "b1", FieldValueType.String, false)), queryParameters = emptyList(), body = MultipartBody(
                 listOf(UserKeyValuePair("a2", "b2", FieldValueType.File, false), UserKeyValuePair("a3", "b3", FieldValueType.File, true))
             )),
-        )))
-        ResponseViewerViewPreview()
+        )),
+            onClickSend = {
+                activeCallId = networkManager.sendRequest(it).id
+            }
+            )
+        ResponseViewerView(response = response ?: UserResponse())
     }
 }
