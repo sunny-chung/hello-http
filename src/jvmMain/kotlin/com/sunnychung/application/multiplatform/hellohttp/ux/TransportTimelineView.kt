@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.text.selection.DisableSelection
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -50,28 +52,40 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                 .background(LocalColor.current.line)
         )
 
+        SelectionContainer {
 //        LazyColumn(state = scrollState) {
 //            items(items = exchange.exchanges) {
-        Column(modifier = Modifier.verticalScroll(scrollState)) {
-            synchronized(exchange.exchanges) { exchange.exchanges.forEach {
-                Row(modifier = Modifier.height(IntrinsicSize.Min).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                    TimestampColumn(
-                        createTime = it.instant,
-                        lastUpdateTime = it.lastUpdateInstant,
-                        modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP).fillMaxHeight().padding(end = 1.dp)
-                    )
-                    AppText(
-                        text = when (it.direction) {
-                            RawExchange.Direction.Outgoing -> "> "
-                            RawExchange.Direction.Incoming -> "< "
-                            else -> "= "
-                        },
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(start = 4.dp).fillMaxHeight()
-                    )
-                    AppText(text = it.detail ?: it.payload?.decodeToString() ?: it.payloadBuilder!!.toByteArray().decodeToString(), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f).fillMaxHeight())
+            Column(modifier = Modifier.verticalScroll(scrollState)) {
+                synchronized(exchange.exchanges) {
+                    exchange.exchanges.forEach {
+                        Row(modifier = Modifier.height(IntrinsicSize.Min).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            DisableSelection {
+                                TimestampColumn(
+                                    createTime = it.instant,
+                                    lastUpdateTime = it.lastUpdateInstant,
+                                    modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP).fillMaxHeight()
+                                        .padding(end = 1.dp)
+                                )
+                                AppText(
+                                    text = when (it.direction) {
+                                        RawExchange.Direction.Outgoing -> "> "
+                                        RawExchange.Direction.Incoming -> "< "
+                                        else -> "= "
+                                    },
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(start = 4.dp).fillMaxHeight()
+                                )
+                            }
+                            AppText(
+                                text = it.detail ?: it.payload?.decodeToString() ?: it.payloadBuilder!!.toByteArray()
+                                    .decodeToString(),
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
+                        }
+                    }
                 }
-            }}
+            }
         }
 
         VerticalScrollbar(
