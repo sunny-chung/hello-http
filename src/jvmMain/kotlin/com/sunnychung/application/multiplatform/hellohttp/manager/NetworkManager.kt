@@ -89,7 +89,7 @@ class NetworkManager {
                 keepAliveDuration = 30,
                 timeUnit = TimeUnit.SECONDS
             ))
-            .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
+//            .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
             .eventListener(object : EventListener() {
                 override fun callEnd(call: Call) {
                     logNetworkEvent(call, "Call ended")
@@ -267,7 +267,7 @@ class NetworkManager {
             .launchIn(CoroutineScope(Dispatchers.IO))
 
         data.incomingBytes
-            .onEach { data.response.rawExchange.exchanges += RawExchange.Exchange(it.first, RawExchange.Direction.Incoming, it.second.decodeToString()); log.d { it.second.decodeToString() } }
+            .onEach { data.response.rawExchange.exchanges += RawExchange.Exchange(it.first, RawExchange.Direction.Incoming, it.second.decodeToString()); log.d { it.second.contentToString() } }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
         CoroutineScope(Dispatchers.IO).launch {
