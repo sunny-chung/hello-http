@@ -33,14 +33,17 @@ import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.SocketSourceSinkTransformer
+import okhttp3.internal.headersContentLength
 import okio.Sink
 import okio.Source
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.reflect.full.memberFunctions
@@ -67,13 +70,14 @@ class NetworkManager {
         val events: Flow<NetworkEvent>,
         val outgoingBytes: Flow<Pair<KInstant, ByteArray>>,
         val incomingBytes: Flow<Pair<KInstant, ByteArray>>,
-        val response: UserResponse
+        val optionalResponseSize: AtomicInteger,
+        val response: UserResponse,
     )
 
     private val eventChannel = Channel<NetworkEvent>()
     private val callData = ConcurrentHashMap<String, CallData>()
 
-    fun buildHttpClient(callId: String, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>): OkHttpClient {
+    fun buildHttpClient(callId: String, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>, responseSize: AtomicInteger): OkHttpClient {
 
         fun logNetworkEvent(call: Call, event: String) {
             val instant = KInstant.now()
@@ -187,7 +191,7 @@ class NetworkManager {
                 }
 
                 override fun responseHeadersEnd(call: Call, response: Response) {
-
+                    responseSize.set(response.headersContentLength().toInt())
                 }
 
                 override fun responseHeadersStart(call: Call) {
@@ -227,6 +231,7 @@ class NetworkManager {
     fun sendRequest(request: Request): CallData {
         val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
+        val optionalResponseSize = AtomicInteger()
 
         val callId = uuidString()
 
@@ -234,6 +239,7 @@ class NetworkManager {
             callId = callId,
             outgoingBytesChannel = outgoingBytesChannel,
             incomingBytesChannel = incomingBytesChannel,
+            responseSize = optionalResponseSize
         )
 
         val call = NetworkCall(
@@ -254,20 +260,70 @@ class NetworkManager {
             incomingBytes = incomingBytesChannel.receiveAsFlow()
                 .flowOn(Dispatchers.IO)
                 .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
-            response = UserResponse()
+            optionalResponseSize = optionalResponseSize,
+            response = UserResponse(),
         )
         callData[call.id] = data
 
         data.events
-            .onEach { data.response.rawExchange.exchanges += RawExchange.Exchange(it.instant, RawExchange.Direction.Unspecified, it.event) }
+            .onEach {
+                synchronized(data.response.rawExchange.exchanges) {
+                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                    if (lastExchange?.payloadBuilder != null && lastExchange.payload == null) {
+                        lastExchange.payload = lastExchange.payloadBuilder!!.toByteArray()
+                        lastExchange.payloadBuilder = null
+                    }
+                    data.response.rawExchange.exchanges += RawExchange.Exchange(
+                        instant = it.instant,
+                        direction = RawExchange.Direction.Unspecified,
+                        detail = it.event
+                    )
+                }
+            }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
         data.outgoingBytes
-            .onEach { data.response.rawExchange.exchanges += RawExchange.Exchange(it.first, RawExchange.Direction.Outgoing, it.second.decodeToString()); log.d { it.second.decodeToString() } }
+            .onEach {
+                synchronized(data.response.rawExchange.exchanges) {
+                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
+                        data.response.rawExchange.exchanges += RawExchange.Exchange(
+                            instant = it.first,
+                            direction = RawExchange.Direction.Outgoing,
+                            detail = null,
+                            payloadBuilder = ByteArrayOutputStream(maxOf(request.body?.contentLength()?.toInt() ?: 0, it.second.size + 1 * 1024 * 1024))
+                        ).apply {
+                            payloadBuilder!!.write(it.second)
+                        }
+                    } else {
+                        lastExchange.payloadBuilder!!.write(it.second)
+                        lastExchange.lastUpdateInstant = it.first
+                    }
+                    log.v { it.second.decodeToString() }
+                }
+            }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
         data.incomingBytes
-            .onEach { data.response.rawExchange.exchanges += RawExchange.Exchange(it.first, RawExchange.Direction.Incoming, it.second.decodeToString()); log.d { it.second.contentToString() } }
+            .onEach {
+                synchronized(data.response.rawExchange.exchanges) {
+                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
+                        data.response.rawExchange.exchanges += RawExchange.Exchange(
+                            instant = it.first,
+                            direction = RawExchange.Direction.Incoming,
+                            detail = null,
+                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.second.size + 1 * 1024 * 1024))
+                        ).apply {
+                            payloadBuilder!!.write(it.second)
+                        }
+                    } else {
+                        lastExchange.payloadBuilder!!.write(it.second)
+                        lastExchange.lastUpdateInstant = it.first
+                    }
+                    log.v { it.second.decodeToString() }
+                }
+            }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
         CoroutineScope(Dispatchers.IO).launch {
