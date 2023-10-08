@@ -34,7 +34,7 @@ kotlin {
                 implementation("com.squareup.okhttp3:okhttp:4.11.0-patch-1")
 //                implementation("com.github.sunny-chung:okhttp:patch~4.11.0-SNAPSHOT")
 
-                implementation("io.github.sunny-chung:kdatetime-multiplatform:0.4.0-SNAPSHOT")
+                implementation("io.github.sunny-chung:kdatetime-multiplatform:0.4.0")
             }
         }
         val jvmTest by getting

@@ -162,9 +162,8 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse) {
     val startAt = response.startAt ?: return
     val endAt = response.endAt ?: return
     val duration = endAt - startAt
-//    val text = if (duration >= KDuration.of(10, KFixedTimeUnit.Second)) // TODO
-    val text = if (duration.toTimeUnitValue(KFixedTimeUnit.Second) >= 10) {
-        "${duration.toMilliseconds() / 1000.0} s"
+    val text = if (duration >= KDuration.of(10, KFixedTimeUnit.Second)) {
+        "${"%.1f".format(duration.toMilliseconds() / 1000.0)} s"
     } else {
         "${duration.toMilliseconds()} ms"
     }
@@ -174,10 +173,10 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse) {
 @Composable
 fun ResponseSizeLabel(modifier: Modifier = Modifier, response: UserResponse) {
     val size = response.responseSizeInBytes ?: return
-    val text = if (size >= 1024L * 1024L) {
-        "${"%.3f".format(size / 1024.0 / 1024.0)} MB"
-    } else if (size >= 1024L) {
-        "${"%.3f".format(size / 1024.0)} KB"
+    val text = if (size >= 10 * 1024L * 1024L) {
+        "${"%.1f".format(size / 1024.0 / 1024.0)} MB"
+    } else if (size >= 10 * 1024L) {
+        "${"%.1f".format(size / 1024.0)} KB"
     } else {
         "${size} B"
     }
