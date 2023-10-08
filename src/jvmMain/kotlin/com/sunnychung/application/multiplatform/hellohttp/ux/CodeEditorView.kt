@@ -9,11 +9,12 @@ import androidx.compose.ui.text.font.FontFamily
 fun CodeEditorView(
     modifier: Modifier = Modifier,
     isReadOnly: Boolean = false,
-    text: String
+    text: String,
+    onTextChange: ((String) -> Unit)? = null,
     ) {
     AppTextField(
         value = text,
-        onValueChange = { /* TODO */ },
+        onValueChange = { onTextChange?.invoke(it) },
         readOnly = isReadOnly,
         textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
         modifier = modifier

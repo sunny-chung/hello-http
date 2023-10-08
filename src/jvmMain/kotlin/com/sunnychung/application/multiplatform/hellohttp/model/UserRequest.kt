@@ -11,12 +11,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 data class UserRequest(
-    val name: String,
-    val protocol: Protocol,
-    val method: String,
-    val url: String,
+    var name: String,
+    var protocol: Protocol,
+    var method: String,
+    var url: String,
 
-    val examples: List<UserRequestExample>,
+    var examples: List<UserRequestExample>,
 ) {
     init {
         if (method != method.trim().uppercase()) {
@@ -30,11 +30,11 @@ enum class Protocol {
 }
 
 data class UserRequestExample(
-    val name: String,
-    val contentType: ContentType,
-    val headers: List<UserKeyValuePair>,
-    val queryParameters: List<UserKeyValuePair>,
-    val body: UserRequestBody?,
+    var name: String,
+    var contentType: ContentType,
+    var headers: MutableList<UserKeyValuePair>,
+    var queryParameters: MutableList<UserKeyValuePair>,
+    var body: UserRequestBody?,
 )
 
 //enum class ContentType {
@@ -73,7 +73,7 @@ class StringBody(val value: String) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody = value.toRequestBody(mediaType)
 }
 
-class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
+class FormUrlEncodedBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val builder = FormBody.Builder()
         value.forEach { builder.add(it.key, it.value) }
@@ -81,7 +81,7 @@ class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
     }
 }
 
-class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
+class MultipartBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val b = MultipartBody.Builder()
         value.forEach {

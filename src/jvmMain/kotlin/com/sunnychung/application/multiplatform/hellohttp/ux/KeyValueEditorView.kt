@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,17 +23,26 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import java.io.File
 
 @Composable
-fun KeyValueEditorView(modifier: Modifier = Modifier, keyValues: List<UserKeyValuePair>, isSupportFileValue: Boolean = false) {
+fun KeyValueEditorView(
+    modifier: Modifier = Modifier,
+    keyValues: List<UserKeyValuePair>,
+    isSupportFileValue: Boolean = false,
+    onItemChange: (index: Int, item: UserKeyValuePair) -> Unit,
+    onItemAddLast: (item: UserKeyValuePair) -> Unit,
+    onItemDelete: (index: Int) -> Unit,
+) {
     val colors = LocalColor.current
 
     var isShowFileDialog by remember { mutableStateOf(false) }
-    var fileDialogRequest by remember { mutableStateOf<UserKeyValuePair?>(null) }
-    var chosenFiles by remember { mutableStateOf<List<File>>(emptyList()) }
+    var fileDialogRequest by remember { mutableStateOf<Int?>(null) }
+//    var chosenFiles by remember { mutableStateOf<List<File>>(emptyList()) }
 
     if (isShowFileDialog) {
         FileDialog {
             println("File Dialog result = $it")
-            chosenFiles = it
+//            chosenFiles = it
+            val index = fileDialogRequest!!
+            onItemChange(index, keyValues[index].copy(value = it.firstOrNull()?.absolutePath ?: ""))
             isShowFileDialog = false
         }
     }
@@ -43,12 +53,12 @@ fun KeyValueEditorView(modifier: Modifier = Modifier, keyValues: List<UserKeyVal
             AppTextButton(text = "Switch to Raw Input", onClick = { /* TODO */ })
         }
         LazyColumn {
-            items(items = keyValues) {
+            itemsIndexed(items = keyValues) { index, it ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppTextFieldWithPlaceholder(
                         placeholder = { AppText(text = "Key", color = colors.placeholder) },
                         value = it.key,
-                        onValueChange = { /* TODO */ },
+                        onValueChange = { v -> onItemChange(index, it.copy(key = v)) },
                         hasIndicatorLine = true,
                         modifier = Modifier.weight(0.4f)
                     )
@@ -56,18 +66,30 @@ fun KeyValueEditorView(modifier: Modifier = Modifier, keyValues: List<UserKeyVal
                         AppTextFieldWithPlaceholder(
                             placeholder = { AppText(text = "Value", color = colors.placeholder) },
                             value = it.value,
-                            onValueChange = { /* TODO */ },
+                            onValueChange = { v -> onItemChange(index, it.copy(value = v)) },
                             hasIndicatorLine = true,
                             modifier = Modifier.weight(0.6f)
                         )
                     } else {
-                        AppTextButton(text = "Choose a File", onClick = { fileDialogRequest = it; isShowFileDialog = true }, modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder))
+                        AppTextButton(text = "Choose a File", onClick = { fileDialogRequest = index; isShowFileDialog = true }, modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder))
                     }
                     if (isSupportFileValue) {
-                        DropDownView(items = ValueType.values().toList(), isShowLabel = false, onClickItem = { /* TODO */ true }, modifier = Modifier.padding(horizontal = 4.dp))
+                        DropDownView(
+                            items = ValueType.values().toList(),
+                            isShowLabel = false,
+                            onClickItem = { v ->
+                                val valueType = when (v) {
+                                    ValueType.Text -> FieldValueType.String
+                                    ValueType.File -> FieldValueType.File
+                                }
+                                onItemChange(index, it.copy(valueType = valueType))
+                                true
+                            },
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
                     }
-                    AppCheckbox(checked = it.isEnabled, onCheckedChange = { /* TODO */ }, size = 16.dp, modifier = Modifier.padding(horizontal = 4.dp))
-                    AppDeleteButton(onClickDelete = { /* TODO */ }, modifier = Modifier.padding(horizontal = 4.dp))
+                    AppCheckbox(checked = it.isEnabled, onCheckedChange = { v -> onItemChange(index, it.copy(isEnabled = v)) }, size = 16.dp, modifier = Modifier.padding(horizontal = 4.dp))
+                    AppDeleteButton(onClickDelete = { onItemDelete(index) }, modifier = Modifier.padding(horizontal = 4.dp))
                 }
             }
             item {
@@ -75,14 +97,36 @@ fun KeyValueEditorView(modifier: Modifier = Modifier, keyValues: List<UserKeyVal
                     AppTextFieldWithPlaceholder(
                         placeholder = { AppText(text = "Key", color = colors.placeholder) },
                         value = "",
-                        onValueChange = { /* TODO */ },
+                        onValueChange = { v ->
+                            if (v.isNotEmpty()) {
+                                onItemAddLast(
+                                    UserKeyValuePair(
+                                        key = v,
+                                        value = "",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                )
+                            }
+                        },
                         hasIndicatorLine = true,
                         modifier = Modifier.weight(0.4f)
                     )
                     AppTextFieldWithPlaceholder(
                         placeholder = { AppText(text = "Value", color = colors.placeholder) },
                         value = "",
-                        onValueChange = { /* TODO */ },
+                        onValueChange = { v ->
+                            if (v.isNotEmpty()) {
+                                onItemAddLast(
+                                    UserKeyValuePair(
+                                        key = "",
+                                        value = v,
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                )
+                            }
+                        },
                         hasIndicatorLine = true,
                         modifier = Modifier.weight(0.6f)
                     )

@@ -78,9 +78,9 @@ fun AppContentView() {
             }
         }
         RequestEditorView(modifier = Modifier.width(300.dp), UserRequest("Example", Protocol.Http, "POST", "https://www.google.com/", examples = listOf(
-            UserRequestExample(name = "Base", contentType = ContentType.Json, headers = listOf(UserKeyValuePair("a", "b", FieldValueType.String, true)), queryParameters = emptyList(), body = StringBody("{\n  \"abc\": \"d\"\n}\n")),
-            UserRequestExample(name = "Example 1", contentType = ContentType.Multipart, headers = listOf(UserKeyValuePair("a1", "b1", FieldValueType.String, false)), queryParameters = emptyList(), body = MultipartBody(
-                listOf(UserKeyValuePair("a2", "b2", FieldValueType.File, false), UserKeyValuePair("a3", "b3", FieldValueType.File, true))
+            UserRequestExample(name = "Base", contentType = ContentType.Json, headers = mutableListOf(UserKeyValuePair("a", "b", FieldValueType.String, true)), queryParameters = mutableListOf(), body = StringBody("{\n  \"abc\": \"d\"\n}\n")),
+            UserRequestExample(name = "Example 1", contentType = ContentType.Multipart, headers = mutableListOf(UserKeyValuePair("a1", "b1", FieldValueType.String, false)), queryParameters = mutableListOf(), body = MultipartBody(
+                mutableListOf(UserKeyValuePair("a2", "b2", FieldValueType.File, false), UserKeyValuePair("a3", "b3", FieldValueType.File, true))
             )),
         )),
             onClickSend = {

@@ -93,7 +93,7 @@ class NetworkManager {
                 keepAliveDuration = 30,
                 timeUnit = TimeUnit.SECONDS
             ))
-//            .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
+            .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
             .eventListener(object : EventListener() {
                 override fun callEnd(call: Call) {
                     logNetworkEvent(call, "Call ended")
