@@ -79,43 +79,56 @@ private enum class ResponseTab {
     Body, Header, Raw
 }
 
-//@Composable
-//@Preview
-//fun ResponseViewerViewPreview() {
-//    ResponseViewerView(
-//        UserResponse(
-////        KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond), // TODO
-//            startAt = KInstant.now() + KDuration.of(-2346, KFixedTimeUnit.MilliSecond),
-//            endAt = KInstant.now(),
-//            isCommunicating = false,
-//            statusCode = 200,
-//            statusText = "OK",
-//            responseSizeInBytes = 1234,
-//            body = "{\"OK\"}",
-//            headers = listOf("Content-Type" to "application/json", "Date" to KZonedInstant.nowAtLocalZoneOffset().format(KDateTimeFormat.ISO8601_DATETIME.pattern)),
-//            rawExchange = RawExchange(listOf(RawExchange.Exchange(KInstant.now() + KDuration.of(-1, KFixedTimeUnit.MilliSecond), RawExchange.Direction.Outgoing, "Start"), RawExchange.Exchange(KInstant.now(), RawExchange.Direction.Incoming, "End")))
-//        )
-//    )
-//}
+@Composable
+@Preview
+fun ResponseViewerViewPreview() {
+    ResponseViewerView(
+        UserResponse().apply {
+            startAt = KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond)
+            endAt = KInstant.now()
+            isCommunicating = false
+            statusCode = 200
+            statusText = "OK"
+            responseSizeInBytes = 1234
+            body = "{\"OK\"}".toByteArray()
+            headers = listOf(
+                "Content-Type" to "application/json",
+                "Date" to KZonedInstant.nowAtLocalZoneOffset().format(KDateTimeFormat.ISO8601_DATETIME.pattern)
+            )
+            rawExchange = RawExchange(
+                mutableListOf(
+                    RawExchange.Exchange(
+                        instant = KInstant.now() + KDuration.of(-1, KFixedTimeUnit.MilliSecond),
+                        direction = RawExchange.Direction.Outgoing,
+                        detail = "Start"
+                    ), RawExchange.Exchange(
+                        instant = KInstant.now(),
+                        direction = RawExchange.Direction.Incoming,
+                        detail = "End"
+                    )
+                )
+            )
+        }
+    )
+}
 
-//@Composable
-//@Preview
-//fun ResponseViewerViewPreview_EmptyBody() {
-//    ResponseViewerView(
-//        UserResponse(
-////        KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond), // TODO
-//            startAt = KInstant.now() + KDuration.of(-2346, KFixedTimeUnit.MilliSecond),
-//            endAt = KInstant.now(),
-//            isCommunicating = false,
-//            statusCode = 200,
-//            statusText = "OK",
-//            responseSizeInBytes = 1234,
-//            body = null,
-//            headers = listOf("Content-Type" to "application/json"),
-//            rawExchange = RawExchange(listOf())
-//        )
-//    )
-//}
+@Composable
+@Preview
+fun ResponseViewerViewPreview_EmptyBody() {
+    ResponseViewerView(
+        UserResponse().apply {
+            startAt = KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond)
+            endAt = KInstant.now()
+            isCommunicating = false
+            statusCode = 200
+            statusText = "OK"
+            responseSizeInBytes = 1234
+            body = null
+            headers = listOf("Content-Type" to "application/json")
+            rawExchange = RawExchange(mutableListOf())
+        }
+    )
+}
 
 @Composable
 fun DataLabel(
