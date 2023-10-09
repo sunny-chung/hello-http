@@ -43,7 +43,7 @@ data class UserRequestExample(
 
 enum class ContentType(override val displayText: String, val headerValue: String?) : DropDownable {
     Json(displayText = "JSON", headerValue = "application/json"),
-    Multipart(displayText = "Multipart Form", headerValue = "multipart/form-data; boundary=<generated>"),
+    Multipart(displayText = "Multipart Form", headerValue = "multipart/form-data"), // "multipart/form-data; boundary=<generated>"
     FormUrlEncoded(displayText = "Form URL-Encoded", headerValue = "application/x-www-form-urlencoded"),
     Raw(displayText = "Raw", headerValue = null),
     None(displayText = "None", headerValue = null),
