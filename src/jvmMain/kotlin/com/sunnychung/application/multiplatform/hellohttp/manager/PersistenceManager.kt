@@ -2,6 +2,8 @@ package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.DocumentIdentifier
+import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
+import com.sunnychung.application.multiplatform.hellohttp.document.ProjectCollection
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -54,7 +56,11 @@ class PersistenceManager {
         }
     }
 
-
+    suspend fun initialize() {
+        AppContext.ProjectCollectionRepository.readOrCreate(ProjectAndEnvironmentsDI()) {
+            ProjectCollection(id = ProjectAndEnvironmentsDI(), projects = mutableListOf())
+        }
+    }
 
 
 }

@@ -17,24 +17,6 @@ enum class PersistenceDocumentType {
 
 @Serializable
 @Persisted
-class ProjectAndEnvironmentsDI : DocumentIdentifier(type = PersistenceDocumentType.ProjectAndEnvironments) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        return true
-    }
-
-    override fun hashCode(): Int {
-        return javaClass.hashCode()
-    }
-
-    override fun toString(): String {
-        return "ProjectAndEnvironmentsDI()"
-    }
-}
-
-@Serializable
-@Persisted
 class ResponsesDI(val subprojectId: String) : DocumentIdentifier(type = PersistenceDocumentType.Responses) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -35,13 +35,15 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
     init {
         timerFlow //.takeWhile { updates.isNotEmpty() }
             .onEach {
-                if (updates.isNotEmpty()) log.d { "Request updates: ${updates.size}" }
-                val submittedUpdates = mutableSetOf<ID>()
-                while (updates.isNotEmpty()) {
-                    val it = updates.poll()
-                    if (submittedUpdates.contains(it)) continue
-                    CoroutineScope(Dispatchers.IO).launch { update(it) }
-                    submittedUpdates.add(it)
+                if (updates.isNotEmpty()) {
+                    log.d { "Request updates: ${updates.size}" }
+                    val submittedUpdates = mutableSetOf<ID>()
+                    while (updates.isNotEmpty()) {
+                        val it = updates.poll()
+                        if (submittedUpdates.contains(it)) continue
+                        CoroutineScope(Dispatchers.IO).launch { update(it) }
+                        submittedUpdates.add(it)
+                    }
                 }
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
@@ -75,14 +77,32 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
 
     suspend fun read(identifier: ID): T? {
         return withLock(identifier) {
+            readWithoutLock(identifier)
+        }
+    }
+
+    private suspend fun readWithoutLock(identifier: ID): T? {
+        return with(persistenceManager) {
+            val cache = documentCaches[identifier]
+            if (cache != null) return cache as T
+            val persisted: T = readFile(relativeFilePath(id = identifier), serializer) ?: return null
+            documentCaches[identifier] = persisted
+            buildIndex(persisted)
+            persisted
+        }
+    }
+
+    suspend fun readOrCreate(identifier: ID, documentSupplier: () -> T): T {
+        return withLock(identifier) {
+            val record = readWithoutLock(identifier)
+            if (record != null) return@withLock record
             with(persistenceManager) {
-                val cache = documentCaches[identifier]
-                if (cache != null) return@withLock cache as T
-                val persisted: T =
-                    readFile(relativeFilePath(id = identifier), serializer) ?: return@withLock null
-                documentCaches[identifier] = persisted
-                buildIndex(persisted)
-                persisted
+                val document = documentSupplier()
+                val identifier = document.id
+                documentCaches[identifier] = document
+                buildIndex(document)
+                writeToFile(relativeFilePath(id = identifier), serializer, document)
+                document
             }
         }
     }

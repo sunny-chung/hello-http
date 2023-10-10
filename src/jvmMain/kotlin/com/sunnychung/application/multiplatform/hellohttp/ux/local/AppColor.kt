@@ -10,6 +10,7 @@ data class AppColor(
     val backgroundContextMenu: Color,
     val backgroundInputField: Color,
     val backgroundButton: Color,
+    val backgroundDialogOverlay: Color,
 
     val primary: Color,
     val bright: Color,
@@ -48,6 +49,7 @@ fun darkColorScheme(): AppColor = AppColor(
     backgroundContextMenu = Color(red = 0.3f, green = 0.3f, blue = 0.3f),
     backgroundInputField = Color.Black,
     backgroundButton = Color(red = 0f, green = 0f, blue = 0.6f),
+    backgroundDialogOverlay = Color.Black.copy(alpha = 0.6f),
 
     primary = Color(red = 0.8f, green = 0.8f, blue = 1.0f),
     bright = Color.White,

@@ -3,12 +3,16 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.defaultScrollbarStyle
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -17,9 +21,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
@@ -42,8 +49,41 @@ fun AppView() {
             unhoverColor = colors.scrollBarUnhover,
             hoverColor = colors.scrollBarHover,
         )) {
+            val dialogViewModel = AppContext.DialogViewModel
+            val dialogUpdate = dialogViewModel.stateUpdateFlow.collectAsState(null).value // needed for updating UI by flow
             Box(modifier = Modifier.background(colors.background).fillMaxSize()) {
                 AppContentView()
+
+                dialogViewModel.state?.let { dialog ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(colors.backgroundDialogOverlay)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {
+                                dialogViewModel.updateState(null)
+                            }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .border(1.dp, color = colors.highlight)
+                            .background(colors.background)
+                            .padding(40.dp)
+                            .align(
+                                Alignment.Center
+                            )
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {
+                                // no-op
+                            }
+                    ) {
+                        dialog.content()
+                    }
+                }
             }
         }
     }
@@ -56,6 +96,10 @@ fun AppContentView() {
     val networkManager = AppContext.NetworkManager
     val persistenceManager = AppContext.PersistenceManager
     val requestCollectionRepository = AppContext.RequestCollectionRepository
+    val projectCollectionRepository = AppContext.ProjectCollectionRepository
+    val projectCollection = remember {
+        runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
+    }
 
     var selectedSubproject by remember { mutableStateOf<Subproject?>(if (IS_DEV) Subproject(id = "dev", name = "DEV only") else null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
@@ -68,10 +112,18 @@ fun AppContentView() {
 //            ProjectAndEnvironmentViewPreview()
 
             ProjectAndEnvironmentViewV2(
-                projects = emptyList(),
+                projects = projectCollection.projects,
                 environments = emptyList(),
 //                projects = listOf(Project(id = "p1", name = "Project A", listOf(Subproject("a1", "Subproject A1", listOf()), Subproject("a2", "Subproject A2", listOf()))), Project(id = "p2", name = "Project B", listOf()), Project(id = "p3", name = "Project C", listOf())),
 //                environments = listOf(Environment(name = "Environment A"), Environment(name = "Environment B"), Environment(name = "Environment C")),
+                onAddProject = {
+                    projectCollection.projects += it
+                    projectCollectionRepository.notifyUpdated(projectCollection.id)
+                },
+                onAddSubproject = { project, newSubproject ->
+                    project.subprojects += newSubproject
+                    projectCollectionRepository.notifyUpdated(projectCollection.id)
+                },
                 onSelectEnvironment = {},
                 onSelectSubproject = { selectedSubproject = it },
                 modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
