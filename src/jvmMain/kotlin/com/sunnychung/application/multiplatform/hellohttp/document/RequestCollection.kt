@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 @DocumentRoot
 @Persisted
 @Serializable
-data class RequestCollection(override val id: RequestsDI, val requests: List<UserRequest>) : Document<RequestsDI>
+data class RequestCollection(override val id: RequestsDI, val requests: MutableList<UserRequest>) : Document<RequestsDI>
 
 @Persisted
 @Serializable

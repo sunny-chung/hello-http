@@ -1,7 +1,9 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,8 +25,9 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun RequestListView(requests: List<UserRequest>) {
+fun RequestListView(requests: List<UserRequest>, onSelectRequest: (UserRequest) -> Unit) {
     val colors = LocalColor.current
 
     var searchText by remember { mutableStateOf("") }
@@ -43,7 +46,10 @@ fun RequestListView(requests: List<UserRequest>) {
 
         LazyColumn {
             items(items = requests) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.combinedClickable(onClick = { onSelectRequest(it) })
+                ) {
                     val (text, color) = when (it.protocol) {
                         Protocol.Http -> Pair(
                             it.method, when (it.method) {
@@ -76,12 +82,15 @@ fun RequestListView(requests: List<UserRequest>) {
 @Composable
 @Preview
 fun RequestListViewPreview() {
-    RequestListView(requests = listOf(
-        UserRequest(name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
-        UserRequest(name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
-        UserRequest(name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
-        UserRequest(name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
-        UserRequest(name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
-        UserRequest(name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
-    ))
+    RequestListView(
+        requests = listOf(
+            UserRequest(name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
+            UserRequest(name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
+            UserRequest(name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
+            UserRequest(name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
+            UserRequest(name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
+            UserRequest(name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
+        ),
+        onSelectRequest = {}
+    )
 }

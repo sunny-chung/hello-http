@@ -57,8 +57,8 @@ class PersistenceManager {
     }
 
     suspend fun initialize() {
-        AppContext.ProjectCollectionRepository.readOrCreate(ProjectAndEnvironmentsDI()) {
-            ProjectCollection(id = ProjectAndEnvironmentsDI(), projects = mutableListOf())
+        AppContext.ProjectCollectionRepository.readOrCreate(ProjectAndEnvironmentsDI()) { id ->
+            ProjectCollection(id = id, projects = mutableListOf())
         }
     }
 

@@ -92,12 +92,12 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
-    suspend fun readOrCreate(identifier: ID, documentSupplier: () -> T): T {
+    suspend fun readOrCreate(identifier: ID, documentSupplier: (ID) -> T): T {
         return withLock(identifier) {
             val record = readWithoutLock(identifier)
             if (record != null) return@withLock record
             with(persistenceManager) {
-                val document = documentSupplier()
+                val document = documentSupplier(identifier)
                 val identifier = document.id
                 documentCaches[identifier] = document
                 buildIndex(document)

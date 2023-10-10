@@ -38,6 +38,9 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @Composable
@@ -102,20 +105,32 @@ fun AppContentView() {
     }
 
     var selectedSubproject by remember { mutableStateOf<Subproject?>(if (IS_DEV) Subproject(id = "dev", name = "DEV only") else null) }
+    var requests by remember { mutableStateOf(mutableListOf<UserRequest>()) }
+    var request by remember {
+        mutableStateOf(
+            runBlocking { // FIXME
+                requestCollectionRepository.read(RequestsDI(subprojectId = selectedSubproject!!.id))?.requests?.firstOrNull()
+                    ?: UserRequest()
+            }
+        )
+    }
     var activeCallId by remember { mutableStateOf<String?>(null) }
     var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value
     val response = activeCallId?.let { networkManager.getCallData(it) }?.response
 
+    fun loadRequestsForSubproject(subproject: Subproject) {
+        CoroutineScope(Dispatchers.IO).launch {
+            requests = requestCollectionRepository.readOrCreate(RequestsDI(subprojectId = subproject.id)) { id ->
+                RequestCollection(id = id, requests = mutableListOf())
+            }.requests
+        }
+    }
+
     Row {
         Column(modifier = Modifier.width(150.dp)) {
-//        ProjectAndEnvironmentView()
-//            ProjectAndEnvironmentViewPreview()
-
             ProjectAndEnvironmentViewV2(
                 projects = projectCollection.projects,
                 environments = emptyList(),
-//                projects = listOf(Project(id = "p1", name = "Project A", listOf(Subproject("a1", "Subproject A1", listOf()), Subproject("a2", "Subproject A2", listOf()))), Project(id = "p2", name = "Project B", listOf()), Project(id = "p3", name = "Project C", listOf())),
-//                environments = listOf(Environment(name = "Environment A"), Environment(name = "Environment B"), Environment(name = "Environment C")),
                 onAddProject = {
                     projectCollection.projects += it
                     projectCollectionRepository.notifyUpdated(projectCollection.id)
@@ -125,25 +140,15 @@ fun AppContentView() {
                     projectCollectionRepository.notifyUpdated(projectCollection.id)
                 },
                 onSelectEnvironment = {},
-                onSelectSubproject = { selectedSubproject = it },
+                onSelectSubproject = {
+                    selectedSubproject = it
+                    loadRequestsForSubproject(it)
+                },
                 modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
             )
 
             if (selectedSubproject != null) {
-                RequestListViewPreview()
-            }
-        }
-        val request = remember {
-//            UserRequest("Example", Protocol.Http, "POST", "https://www.google.com/", examples = listOf(
-//                UserRequestExample(name = "Base", contentType = ContentType.Json, headers = mutableListOf(UserKeyValuePair("a", "b", FieldValueType.String, true)), queryParameters = mutableListOf(), body = StringBody("{\n  \"abc\": \"d\"\n}\n")),
-//                UserRequestExample(name = "Example 1", contentType = ContentType.Multipart, headers = mutableListOf(UserKeyValuePair("a1", "b1", FieldValueType.String, false)), queryParameters = mutableListOf(), body = MultipartBody(
-//                    mutableListOf(UserKeyValuePair("a2", "b2", FieldValueType.File, false), UserKeyValuePair("a3", "b3", FieldValueType.File, true))
-//                )),
-//            ))
-            runBlocking { // FIXME
-                requestCollectionRepository.read(RequestsDI(subprojectId = selectedSubproject!!.id))?.requests?.firstOrNull() ?: UserRequest().apply {
-                    requestCollectionRepository.create(RequestCollection(RequestsDI(subprojectId = selectedSubproject!!.id), listOf(this)))
-                }
+                RequestListView(requests = requests, onSelectRequest = { request = it })
             }
         }
         RequestEditorView(
