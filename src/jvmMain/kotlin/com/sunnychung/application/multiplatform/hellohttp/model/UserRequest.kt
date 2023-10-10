@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.FormBody
 import okhttp3.MediaType
@@ -81,12 +82,14 @@ sealed interface UserRequestBody {
 
 @Persisted
 @Serializable
+@SerialName("StringBody")
 class StringBody(val value: String) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody = value.toRequestBody(mediaType)
 }
 
 @Persisted
 @Serializable
+@SerialName("FormUrlEncodedBody")
 class FormUrlEncodedBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val builder = FormBody.Builder()
@@ -97,6 +100,7 @@ class FormUrlEncodedBody(val value: MutableList<UserKeyValuePair>) : UserRequest
 
 @Persisted
 @Serializable
+@SerialName("MultipartBody")
 class MultipartBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val b = MultipartBody.Builder()

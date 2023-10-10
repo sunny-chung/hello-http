@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.error.MalformedInputError
 import com.sunnychung.application.multiplatform.hellohttp.error.UnsupportedFileSchemaVersionError
+import com.sunnychung.application.multiplatform.hellohttp.util.copyStartFromIndex
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okio.Buffer
@@ -69,7 +70,7 @@ class FileManager {
             throw UnsupportedFileSchemaVersionError()
         }
         return when (version) {
-            1 -> allBytes.copyOfRange(++cursor, allBytes.size)
+            1 -> allBytes.copyStartFromIndex(++cursor)
             else -> throw UnsupportedFileSchemaVersionError()
         }
     }
