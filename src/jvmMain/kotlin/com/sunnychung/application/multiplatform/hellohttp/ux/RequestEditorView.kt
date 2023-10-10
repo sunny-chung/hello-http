@@ -29,12 +29,14 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 
 @Composable
-fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request) -> Unit) {
+fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request) -> Unit, onRequestModified: () -> Unit) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
@@ -50,7 +52,7 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                 .newBuilder()
                 .run {
                     var b = this
-                    selectedExample.queryParameters.forEach { b = b.addQueryParameter(it.key, it.value) }
+                    selectedExample.queryParameters.filter { it.isEnabled }.forEach { b = b.addQueryParameter(it.key, it.value) }
                     b
                 }
                 .build())
@@ -63,30 +65,33 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
         onClickSend(request)
     }
 
-    fun onRequestModified() {
-        /* TODO */
-    }
-
     @Composable
-    fun RequestKeyValueEditorView(modifier: Modifier, data: MutableList<UserKeyValuePair>?, isSupportFileValue: Boolean) {
+    fun RequestKeyValueEditorView(modifier: Modifier, initial: MutableList<UserKeyValuePair>?, setter: (MutableList<UserKeyValuePair>) -> Unit, isSupportFileValue: Boolean) {
         val keyValues = remember { mutableStateListOf<UserKeyValuePair>().apply {
-            data?.let { addAll(it) }
+            initial?.let { addAll(it) }
         } }
+        val data = initial ?: mutableListOf()
         KeyValueEditorView(
             keyValues = keyValues,
             isSupportFileValue = isSupportFileValue,
             onItemChange = { index, item ->
-                data?.set(index, item)
+                log.d { "onItemChange" }
+                setter(data)
+                data.set(index, item)
                 keyValues[index] = item
                 onRequestModified()
             },
             onItemAddLast = { item ->
-                data?.add(item)
+                log.d { "onItemAddLast" }
+                setter(data)
+                data.add(item)
                 keyValues += item
                 onRequestModified()
             },
             onItemDelete = { index ->
-                data?.removeAt(index)
+                log.d { "onItemDelete" }
+                setter(data)
+                data.removeAt(index)
                 keyValues.removeAt(index)
                 onRequestModified()
             },
@@ -123,7 +128,7 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                         Protocol.Graphql -> Pair("GQL", colors.graphqlRequest)
                     }
                     AppText(
-                        text = text ?: "--",
+                        text = text.emptyToNull() ?: "--",
                         color = color,
                         isFitContent = true,
                         textAlign = TextAlign.Center,
@@ -188,28 +193,31 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
         )
         when (selectedRequestTab) {
             RequestTab.Body -> {
-                var requestContentType by remember { mutableStateOf(selectedExample.contentType) }
+                var selectedContentType by remember { mutableStateOf(selectedExample.contentType) }
                 var requestBody by remember { mutableStateOf(selectedExample.body) }
                 Row(modifier = Modifier.padding(8.dp)) {
                     AppText("Content Type: ")
                     DropDownView(
                         items = ContentType.values().toList(),
-                        selectedItem = requestContentType,
+                        selectedItem = selectedContentType,
                         onClickItem = {
-                            selectedExample.contentType = it
-                            requestContentType = it
+                            selectedContentType = it
+                            if (it == ContentType.None) {
+                                selectedExample.contentType = selectedContentType
+                            }
                             true
                         }
                     )
                 }
                 val remainModifier = Modifier.weight(1f).fillMaxWidth()
-                when (requestContentType) {
+                when (selectedContentType) {
                     ContentType.Json, ContentType.Raw ->
                         CodeEditorView(
                             modifier = remainModifier,
                             isReadOnly = false,
                             text = (requestBody as? StringBody)?.value ?: "",
                             onTextChange = {
+                                selectedExample.contentType = selectedContentType
                                 selectedExample.body = StringBody(it)
                                 requestBody = selectedExample.body
                                 onRequestModified()
@@ -218,14 +226,25 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
 
                     ContentType.FormUrlEncoded ->
                         RequestKeyValueEditorView(
-                            data = (requestBody as? FormUrlEncodedBody)?.value,
+                            initial = (requestBody as? FormUrlEncodedBody)?.value,
+                            setter = {
+                                request
+                                selectedExample.contentType = selectedContentType
+                                selectedExample.body = FormUrlEncodedBody(it)
+                                requestBody = selectedExample.body
+                            },
                             isSupportFileValue = false,
                             modifier = remainModifier,
                         )
 
                     ContentType.Multipart ->
                         RequestKeyValueEditorView(
-                            data = (requestBody as? MultipartBody)?.value,
+                            initial = (requestBody as? MultipartBody)?.value,
+                            setter = {
+                                selectedExample.contentType = selectedContentType
+                                selectedExample.body = MultipartBody(it)
+                                requestBody = selectedExample.body
+                            },
                             isSupportFileValue = true,
                             modifier = remainModifier,
                         )
@@ -236,14 +255,16 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
 
             RequestTab.Header ->
                 RequestKeyValueEditorView(
-                    data = selectedExample.headers,
+                    initial = selectedExample.headers,
+                    setter = { selectedExample.headers = it },
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
             RequestTab.Query ->
                 RequestKeyValueEditorView(
-                    data = selectedExample.queryParameters,
+                    initial = selectedExample.queryParameters,
+                    setter = { selectedExample.queryParameters = it },
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )

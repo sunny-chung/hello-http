@@ -151,7 +151,7 @@ private enum class ExpandedSection {
 @Preview
 fun ProjectAndEnvironmentViewPreview() {
     ProjectAndEnvironmentView(
-        projects = listOf(Project(id = "p1", name = "Project A", listOf(Subproject("a1", "Subproject A1", listOf()), Subproject("a2", "Subproject A2", listOf()))), Project(id = "p2", name = "Project B", listOf()), Project(id = "p3", name = "Project C", listOf())),
+        projects = listOf(Project(id = "p1", name = "Project A", listOf(Subproject("a1", "Subproject A1"), Subproject("a2", "Subproject A2"))), Project(id = "p2", name = "Project B", listOf()), Project(id = "p3", name = "Project C", listOf())),
         environments = listOf(Environment(name = "Environment A"), Environment(name = "Environment B"), Environment(name = "Environment C")),
     )
 }
@@ -160,7 +160,7 @@ fun ProjectAndEnvironmentViewPreview() {
 @Preview
 fun ProjectAndEnvironmentViewV2Preview() {
     ProjectAndEnvironmentViewV2(
-        projects = listOf(Project(id = "p1", name = "Project A", listOf(Subproject("a1", "Subproject A1", listOf()), Subproject("a2", "Subproject A2", listOf()))), Project(id = "p2", name = "Project B", listOf()), Project(id = "p3", name = "Project C", listOf())),
+        projects = listOf(Project(id = "p1", name = "Project A", listOf(Subproject("a1", "Subproject A1"), Subproject("a2", "Subproject A2"))), Project(id = "p2", name = "Project B", listOf()), Project(id = "p3", name = "Project C", listOf())),
         environments = listOf(Environment(name = "Environment A"), Environment(name = "Environment B"), Environment(name = "Environment C")),
         onSelectEnvironment = {},
         onSelectSubproject = {},

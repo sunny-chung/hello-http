@@ -3,6 +3,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     kotlin("multiplatform")
     id("org.jetbrains.compose")
+    kotlin("plugin.serialization")
 }
 
 group = "com.sunnychung.application"
@@ -26,8 +27,10 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(kotlin("reflect"))
+                implementation(kotlin("stdlib"))
 
                 implementation("co.touchlab:kermit:1.0.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.0")
 
                 implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1")
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
@@ -35,6 +38,8 @@ kotlin {
 //                implementation("com.github.sunny-chung:okhttp:patch~4.11.0-SNAPSHOT")
 
                 implementation("io.github.sunny-chung:kdatetime-multiplatform:0.4.0")
+
+                implementation("net.harawata:appdirs:1.2.2")
             }
         }
         val jvmTest by getting

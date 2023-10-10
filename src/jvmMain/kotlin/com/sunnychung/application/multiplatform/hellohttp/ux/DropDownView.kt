@@ -25,6 +25,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 @Composable
 fun <T: DropDownable> DropDownView(
     modifier: Modifier = Modifier,
+    isEnabled: Boolean = true,
     iconSize: Dp = 16.dp,
     items: List<T>,
     contentView: @Composable ((T?) -> Unit) = { AppText(text = it?.displayText ?: "--") },
@@ -67,7 +68,11 @@ fun <T: DropDownable> DropDownView(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.clickable { isShowContextMenu = !isShowContextMenu }
+        modifier = modifier.clickable {
+            if (isEnabled) {
+                isShowContextMenu = !isShowContextMenu
+            }
+        }
     ) {
         if (isShowLabel) {
             contentView(selectedItem)

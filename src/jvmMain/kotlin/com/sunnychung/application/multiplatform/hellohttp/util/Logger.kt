@@ -13,7 +13,7 @@ val log = Logger.apply {
 
 class JvmLogger : LogWriter() {
     override fun log(severity: Severity, message: String, tag: String, throwable: Throwable?) {
-        val str = "[${KDateTimeFormat.FULL.format(KZonedInstant.nowAtLocalZoneOffset())}] ${severity.name.uppercase()} ($tag) -- $message"
+        val str = "[${KDateTimeFormat.FULL.format(KZonedInstant.nowAtLocalZoneOffset())}] ${severity.name.uppercase()} [${Thread.currentThread().name}] ($tag) -- $message"
         if (severity == Severity.Error) {
             System.err.println(str)
         } else {

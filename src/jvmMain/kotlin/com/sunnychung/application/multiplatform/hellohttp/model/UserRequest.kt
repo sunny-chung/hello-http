@@ -1,6 +1,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
+import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
+import kotlinx.serialization.Serializable
 import okhttp3.FormBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -10,13 +12,15 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
+@Persisted
+@Serializable
 data class UserRequest(
-    var name: String,
-    var protocol: Protocol,
-    var method: String,
-    var url: String,
+    var name: String = "",
+    var protocol: Protocol = Protocol.Http,
+    var method: String = "",
+    var url: String = "",
 
-    var examples: List<UserRequestExample>,
+    var examples: List<UserRequestExample> = listOf(UserRequestExample("Base")),
 ) {
     init {
         if (method != method.trim().uppercase()) {
@@ -29,12 +33,14 @@ enum class Protocol {
     Http, Grpc, Graphql
 }
 
+@Persisted
+@Serializable
 data class UserRequestExample(
     var name: String,
-    var contentType: ContentType,
-    var headers: MutableList<UserKeyValuePair>,
-    var queryParameters: MutableList<UserKeyValuePair>,
-    var body: UserRequestBody?,
+    var contentType: ContentType = ContentType.None,
+    var headers: MutableList<UserKeyValuePair> = mutableListOf(),
+    var queryParameters: MutableList<UserKeyValuePair> = mutableListOf(),
+    var body: UserRequestBody? = null,
 )
 
 //enum class ContentType {
@@ -49,6 +55,8 @@ enum class ContentType(override val displayText: String, val headerValue: String
     None(displayText = "None", headerValue = null),
 }
 
+@Persisted
+@Serializable
 data class UserKeyValuePair(
     val key: String,
 
@@ -65,14 +73,20 @@ enum class FieldValueType {
     String, File
 }
 
-interface UserRequestBody {
+@Persisted
+@Serializable
+sealed interface UserRequestBody {
     fun toOkHttpBody(mediaType: MediaType): RequestBody
 }
 
+@Persisted
+@Serializable
 class StringBody(val value: String) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody = value.toRequestBody(mediaType)
 }
 
+@Persisted
+@Serializable
 class FormUrlEncodedBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val builder = FormBody.Builder()
@@ -81,6 +95,8 @@ class FormUrlEncodedBody(val value: MutableList<UserKeyValuePair>) : UserRequest
     }
 }
 
+@Persisted
+@Serializable
 class MultipartBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val b = MultipartBody.Builder()

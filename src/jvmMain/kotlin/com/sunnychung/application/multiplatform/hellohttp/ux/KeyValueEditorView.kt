@@ -71,7 +71,8 @@ fun KeyValueEditorView(
                             modifier = Modifier.weight(0.6f)
                         )
                     } else {
-                        AppTextButton(text = "Choose a File", onClick = { fileDialogRequest = index; isShowFileDialog = true }, modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder))
+                        val file = if (it.value.isNotEmpty()) File(it.value) else null
+                        AppTextButton(text = file?.name ?: "Choose a File", onClick = { fileDialogRequest = index; isShowFileDialog = true }, modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder))
                     }
                     if (isSupportFileValue) {
                         DropDownView(
