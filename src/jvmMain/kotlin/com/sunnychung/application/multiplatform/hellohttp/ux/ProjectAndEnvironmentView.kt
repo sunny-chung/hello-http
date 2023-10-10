@@ -127,7 +127,7 @@ fun ProjectAndEnvironmentViewV2(
                     modifier = Modifier.fillMaxWidth(),
                     items = projects,
                     selectedItem = selectedProject,
-                    hasSpacer = true,
+                    isLabelFillMaxWidth = true,
                     onClickItem = { selectedProject = it; true })
                 Spacer(Modifier.height(8.dp))
             }
@@ -171,7 +171,7 @@ fun ProjectAndEnvironmentViewV2(
                         modifier = Modifier.fillMaxWidth(),
                         selectedItem = selectedSubproject,
                         items = selectedProject?.subprojects ?: emptyList(),
-                        hasSpacer = true,
+                        isLabelFillMaxWidth = true,
                         onClickItem = { onSelectSubproject(it); selectedSubproject = it; true })
                 }
                 Spacer(Modifier.height(8.dp))
@@ -186,7 +186,7 @@ fun ProjectAndEnvironmentViewV2(
             DropDownView(
                 modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
                 items = environments,
-                hasSpacer = true,
+                isLabelFillMaxWidth = true,
                 onClickItem = { true })
         }
     }

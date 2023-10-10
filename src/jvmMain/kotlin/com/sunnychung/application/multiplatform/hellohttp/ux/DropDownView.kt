@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.CursorDropdownMenu
@@ -28,9 +28,14 @@ fun <T: DropDownable> DropDownView(
     isEnabled: Boolean = true,
     iconSize: Dp = 16.dp,
     items: List<T>,
-    contentView: @Composable ((T?) -> Unit) = { AppText(text = it?.displayText ?: "--") },
+    isLabelFillMaxWidth: Boolean = false,
     isShowLabel: Boolean = true,
-    hasSpacer: Boolean = false,
+    contentView: @Composable (RowScope.(T?) -> Unit) = {
+        AppText(
+            text = it?.displayText ?: "--",
+            modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier
+        )
+    },
     clickableArea: DropDownClickableArea = DropDownClickableArea.All,
     selectedItem: T? = null,
     onClickItem: (T) -> Boolean
@@ -61,7 +66,9 @@ fun <T: DropDownable> DropDownView(
                     isShowContextMenu = false
                 }
             }.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth()) {
-                contentView(item)
+                Row {
+                    contentView(item)
+                }
             }
         }
     }
@@ -76,9 +83,6 @@ fun <T: DropDownable> DropDownView(
     ) {
         if (isShowLabel) {
             contentView(selectedItem)
-        }
-        if (hasSpacer) {
-            Spacer(modifier = Modifier.weight(1f))
         }
         AppImage(resource = "down-small.svg", size = iconSize)
     }
