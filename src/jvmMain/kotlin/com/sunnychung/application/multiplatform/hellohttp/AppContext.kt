@@ -6,6 +6,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceMan
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.DialogViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditRequestNameViewModel
 
 object AppContext {
     val NetworkManager = NetworkManager()
@@ -16,4 +17,5 @@ object AppContext {
     val ProjectCollectionRepository = ProjectCollectionRepository()
 
     val DialogViewModel = DialogViewModel()
+//    val EditRequestNameViewModel = EditRequestNameViewModel()
 }

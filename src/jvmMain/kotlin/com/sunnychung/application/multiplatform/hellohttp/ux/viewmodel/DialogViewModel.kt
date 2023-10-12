@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 
 class DialogViewModel {
+    // TODO: refactor the boilerplate to MutableStateFlow
     var state: DialogState? = null
     private val stateUpdateChannel = Channel<DialogState?>()
     val stateUpdateFlow =

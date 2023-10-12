@@ -6,6 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.defaultScrollbarStyle
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,12 +21,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
@@ -38,6 +46,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditRequestNameViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -105,12 +114,13 @@ fun AppContentView() {
     }
 
     var selectedSubproject by remember { mutableStateOf<Subproject?>(if (IS_DEV) Subproject(id = "dev", name = "DEV only") else null) }
-    var requests by remember { mutableStateOf(mutableListOf<UserRequest>()) }
+    var requestCollection by remember { mutableStateOf<RequestCollection?>(null) }
+    var requestsState by remember { mutableStateOf(requestCollection?.requests?.toList() ?: emptyList()) }
     var request by remember {
         mutableStateOf(
             runBlocking { // FIXME
                 requestCollectionRepository.read(RequestsDI(subprojectId = selectedSubproject!!.id))?.requests?.firstOrNull()
-                    ?: UserRequest()
+                    ?: UserRequest(id = "-")
             }
         )
     }
@@ -120,13 +130,24 @@ fun AppContentView() {
 
     fun loadRequestsForSubproject(subproject: Subproject) {
         CoroutineScope(Dispatchers.IO).launch {
-            requests = requestCollectionRepository.readOrCreate(RequestsDI(subprojectId = subproject.id)) { id ->
+            val r = requestCollectionRepository.readOrCreate(RequestsDI(subprojectId = subproject.id)) { id ->
                 RequestCollection(id = id, requests = mutableListOf())
-            }.requests
+            }
+            requestCollection = r
+            requestsState = r.requests.toList()
         }
     }
 
-    Row {
+    var isParentClearInputFocus by remember { mutableStateOf(false) }
+
+    var modifier: Modifier = Modifier
+    if (isParentClearInputFocus) {
+        modifier = modifier.clearFocusOnTap()
+    }
+
+    val editRequestNameViewModel = remember { EditRequestNameViewModel() }
+
+    Row(modifier = modifier) {
         Column(modifier = Modifier.width(150.dp)) {
             ProjectAndEnvironmentViewV2(
                 projects = projectCollection.projects,
@@ -148,7 +169,34 @@ fun AppContentView() {
             )
 
             if (selectedSubproject != null) {
-                RequestListView(requests = requests, onSelectRequest = { request = it })
+                RequestListView(
+                    requests = requestsState,
+                    editRequestNameViewModel = editRequestNameViewModel,
+                    onSelectRequest = { request = it },
+                    onAddRequest = {
+                        requestCollection!!.requests += it
+                        requestsState = requestsState.toMutableList() + it
+                        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+                        isParentClearInputFocus = true
+                    },
+                    onUpdateRequest = { update ->
+                        requestsState = requestsState.toMutableList().mapIndexed { index, it ->
+                            if (it.id == update.id) {
+                                requestCollection!!.requests[index] = update
+                                update.copy()
+                            } else {
+                                it
+                            }
+                        }
+                        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+                    },
+                    onFocusRequestNameTextField = {
+                        isParentClearInputFocus = true
+                    },
+                    onUnfocusRequestNameTextField = {
+                        isParentClearInputFocus = false
+                    }
+                )
             }
         }
         RequestEditorView(
@@ -163,5 +211,18 @@ fun AppContentView() {
             }
         )
         ResponseViewerView(response = response ?: UserResponse())
+    }
+}
+
+fun Modifier.clearFocusOnTap(): Modifier = composed {
+    val focusManager = LocalFocusManager.current
+    Modifier.pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(pass = PointerEventPass.Initial)
+            val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+            if (upEvent != null) {
+                focusManager.clearFocus()
+            }
+        }
     }
 }

@@ -16,6 +16,7 @@ import java.io.File
 @Persisted
 @Serializable
 data class UserRequest(
+    var id: String,
     var name: String = "",
     var protocol: Protocol = Protocol.Http,
     var method: String = "",
