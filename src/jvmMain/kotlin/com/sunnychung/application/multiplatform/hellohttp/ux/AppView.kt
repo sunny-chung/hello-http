@@ -171,15 +171,18 @@ fun AppContentView() {
             if (selectedSubproject != null) {
                 RequestListView(
                     requests = requestsState,
+                    selectedRequest = request,
                     editRequestNameViewModel = editRequestNameViewModel,
                     onSelectRequest = { request = it },
                     onAddRequest = {
                         requestCollection!!.requests += it
                         requestsState = requestsState.toMutableList() + it
                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+                        request = it
                         isParentClearInputFocus = true
                     },
                     onUpdateRequest = { update ->
+                        // TODO avoid the loop, refactor to use one state only and no duplicated code
                         requestsState = requestsState.toMutableList().mapIndexed { index, it ->
                             if (it.id == update.id) {
                                 requestCollection!!.requests[index] = update
@@ -207,6 +210,18 @@ fun AppContentView() {
             },
             onRequestModified = {
                 log.d { "onRequestModified" }
+                it?.let { update ->
+                    request = update
+                    // TODO avoid the loop, refactor to use one state only and no duplicated code
+                    requestsState = requestsState.toMutableList().mapIndexed { index, it ->
+                        if (it.id == update.id) {
+                            requestCollection!!.requests[index] = update
+                            update.copy()
+                        } else {
+                            it
+                        }
+                    }
+                }
                 requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
             }
         )

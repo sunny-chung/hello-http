@@ -44,6 +44,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditReque
 @Composable
 fun RequestListView(
     requests: List<UserRequest>,
+    selectedRequest: UserRequest?,
     editRequestNameViewModel: EditRequestNameViewModel,
     onSelectRequest: (UserRequest) -> Unit,
     onAddRequest: (UserRequest) -> Unit,
@@ -54,7 +55,6 @@ fun RequestListView(
     val colors = LocalColor.current
 
     var searchText by remember { mutableStateOf("") }
-    var selectedRequest by remember { mutableStateOf<UserRequest?>(null) }
 //    var isEditing by remember { mutableStateOf(false) }
 //    var hasReachedEditingState by remember { mutableStateOf(false) }
 
@@ -79,7 +79,7 @@ fun RequestListView(
                 onClick = {
                     val newRequest = UserRequest(id = uuidString(), name = "New Request", method = "GET")
                     onAddRequest(newRequest)
-                    selectedRequest = newRequest
+//                    selectedRequest = newRequest
                     editRequestNameViewModel.onStartEdit(newRequest)
                 },
                 modifier = Modifier.padding(4.dp)
@@ -185,15 +185,17 @@ fun RequestListView(
 @Composable
 @Preview
 fun RequestListViewPreview() {
+    val dummyRequests = listOf(
+        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
+        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
+        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
+        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
+        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
+        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
+    )
     RequestListView(
-        requests = listOf(
-            UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
-            UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
-            UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
-            UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
-            UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
-            UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
-        ),
+        requests = dummyRequests,
+        selectedRequest = dummyRequests[2],
         editRequestNameViewModel = EditRequestNameViewModel(),
         onSelectRequest = {},
         onAddRequest = {},

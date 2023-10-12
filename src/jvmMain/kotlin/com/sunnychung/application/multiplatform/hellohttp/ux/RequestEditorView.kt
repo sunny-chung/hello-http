@@ -36,13 +36,15 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 
 @Composable
-fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request) -> Unit, onRequestModified: () -> Unit) {
+fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request) -> Unit, onRequestModified: (UserRequest?) -> Unit) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
     var selectedExample by remember { mutableStateOf(request.examples.first()) }
     var selectedExampleIndex by remember { mutableStateOf(0) }
     var selectedRequestTab by remember { mutableStateOf(RequestTab.values().first()) }
+
+    log.d { "RequestEditorView recompose $request" }
 
     fun sendRequest() {
         // TODO merge with "Base" request
@@ -79,21 +81,21 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                 setter(data)
                 data.set(index, item)
                 keyValues[index] = item
-                onRequestModified()
+                onRequestModified(null) // TODO use copied object instead of null
             },
             onItemAddLast = { item ->
                 log.d { "onItemAddLast" }
                 setter(data)
                 data.add(item)
                 keyValues += item
-                onRequestModified()
+                onRequestModified(null) // TODO use copied object instead of null
             },
             onItemDelete = { index ->
                 log.d { "onItemDelete" }
                 setter(data)
                 data.removeAt(index)
                 keyValues.removeAt(index)
-                onRequestModified()
+                onRequestModified(null) // TODO use copied object instead of null
             },
             modifier = modifier,
         )
@@ -106,11 +108,8 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                 .height(IntrinsicSize.Max),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            var requestMethod by remember { mutableStateOf(request.method) }
-            var requestUrl by remember { mutableStateOf(request.url) }
-
             DropDownView(
-                selectedItem = DropDownValue(requestMethod),
+                selectedItem = DropDownValue(request.method),
                 items = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD").map { DropDownValue(it) },
                 contentView = {
                     val (text, color) = when (request.protocol) {
@@ -138,9 +137,9 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                 },
                 onClickItem = {
                     val newMethod = it.displayText
-                    request.method = newMethod
-                    requestMethod = newMethod
-                    onRequestModified()
+//                    request.method = newMethod
+//                    requestMethod = newMethod
+                    onRequestModified(request.copy(method = newMethod))
                     true
                 },
                 modifier = Modifier.fillMaxHeight()
@@ -148,11 +147,11 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
 //            }
 
             AppTextField(
-                value = requestUrl,
+                value = request.url,
                 onValueChange = {
-                    request.url = it
-                    requestUrl = it
-                    onRequestModified()
+//                    request.url = it
+//                    requestUrl = it
+                    onRequestModified(request.copy(url = it))
                 },
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
@@ -220,7 +219,7 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                                 selectedExample.contentType = selectedContentType
                                 selectedExample.body = StringBody(it)
                                 requestBody = selectedExample.body
-                                onRequestModified()
+                                onRequestModified(null) // TODO use copied object instead of null
                             }
                         )
 
