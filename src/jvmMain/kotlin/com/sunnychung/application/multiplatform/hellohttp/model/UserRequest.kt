@@ -1,6 +1,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -16,13 +18,13 @@ import java.io.File
 @Persisted
 @Serializable
 data class UserRequest(
-    var id: String,
-    var name: String = "",
-    var protocol: Protocol = Protocol.Http,
-    var method: String = "",
-    var url: String = "",
+    val id: String,
+    val name: String = "",
+    val protocol: Protocol = Protocol.Http,
+    val method: String = "",
+    val url: String = "",
 
-    var examples: List<UserRequestExample> = listOf(UserRequestExample("Base")),
+    val examples: List<UserRequestExample> = listOf(UserRequestExample(id = uuidString(), name = "Base")),
 ) {
     init {
         if (method != method.trim().uppercase()) {
@@ -38,12 +40,13 @@ enum class Protocol {
 @Persisted
 @Serializable
 data class UserRequestExample(
-    var name: String,
-    var contentType: ContentType = ContentType.None,
-    var headers: MutableList<UserKeyValuePair> = mutableListOf(),
-    var queryParameters: MutableList<UserKeyValuePair> = mutableListOf(),
-    var body: UserRequestBody? = null,
-)
+    override val id: String,
+    val name: String,
+    val contentType: ContentType = ContentType.None,
+    val headers: List<UserKeyValuePair> = mutableListOf(),
+    val queryParameters: List<UserKeyValuePair> = mutableListOf(),
+    val body: UserRequestBody? = null,
+) : Identifiable
 
 //enum class ContentType {
 //    None, Raw, Json, FormData, Multipart
@@ -91,7 +94,7 @@ class StringBody(val value: String) : UserRequestBody {
 @Persisted
 @Serializable
 @SerialName("FormUrlEncodedBody")
-class FormUrlEncodedBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
+class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val builder = FormBody.Builder()
         value.forEach { builder.add(it.key, it.value) }
@@ -102,7 +105,7 @@ class FormUrlEncodedBody(val value: MutableList<UserKeyValuePair>) : UserRequest
 @Persisted
 @Serializable
 @SerialName("MultipartBody")
-class MultipartBody(val value: MutableList<UserKeyValuePair>) : UserRequestBody {
+class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val b = MultipartBody.Builder()
         value.forEach {

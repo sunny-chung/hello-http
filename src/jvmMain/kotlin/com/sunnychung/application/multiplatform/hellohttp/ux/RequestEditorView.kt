@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,6 +28,9 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
+import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
+import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -40,9 +42,23 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
-    var selectedExample by remember { mutableStateOf(request.examples.first()) }
+//    var selectedExample by remember { mutableStateOf(request.examples.first()) }
+    var previousRequest by remember { mutableStateOf("") }
+
     var selectedExampleIndex by remember { mutableStateOf(0) }
+    if (selectedExampleIndex >= request.examples.size) {
+        selectedExampleIndex = 0
+    }
     var selectedRequestTab by remember { mutableStateOf(RequestTab.values().first()) }
+
+    var selectedContentType by remember { mutableStateOf(request.examples[selectedExampleIndex].contentType) }
+
+    if (previousRequest != request.id) { // any better way to renew cache?
+        selectedExampleIndex = 0
+        selectedContentType = request.examples[selectedExampleIndex].contentType
+        previousRequest = request.id
+    }
+    val selectedExample = request.examples[selectedExampleIndex]
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -68,34 +84,22 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
     }
 
     @Composable
-    fun RequestKeyValueEditorView(modifier: Modifier, initial: MutableList<UserKeyValuePair>?, setter: (MutableList<UserKeyValuePair>) -> Unit, isSupportFileValue: Boolean) {
-        val keyValues = remember { mutableStateListOf<UserKeyValuePair>().apply {
-            initial?.let { addAll(it) }
-        } }
-        val data = initial ?: mutableListOf()
+    fun RequestKeyValueEditorView(modifier: Modifier, value: List<UserKeyValuePair>?, onValueUpdate: (List<UserKeyValuePair>) -> Unit, isSupportFileValue: Boolean) {
+        val data = value ?: listOf()
         KeyValueEditorView(
-            keyValues = keyValues,
+            keyValues = data,
             isSupportFileValue = isSupportFileValue,
             onItemChange = { index, item ->
                 log.d { "onItemChange" }
-                setter(data)
-                data.set(index, item)
-                keyValues[index] = item
-                onRequestModified(null) // TODO use copied object instead of null
+                onValueUpdate(data.copyWithIndexedChange(index, item))
             },
             onItemAddLast = { item ->
                 log.d { "onItemAddLast" }
-                setter(data)
-                data.add(item)
-                keyValues += item
-                onRequestModified(null) // TODO use copied object instead of null
+                onValueUpdate(data + item)
             },
             onItemDelete = { index ->
                 log.d { "onItemDelete" }
-                setter(data)
-                data.removeAt(index)
-                keyValues.removeAt(index)
-                onRequestModified(null) // TODO use copied object instead of null
+                onValueUpdate(data.copyWithRemovedIndex(index))
             },
             modifier = modifier,
         )
@@ -137,8 +141,6 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                 },
                 onClickItem = {
                     val newMethod = it.displayText
-//                    request.method = newMethod
-//                    requestMethod = newMethod
                     onRequestModified(request.copy(method = newMethod))
                     true
                 },
@@ -149,8 +151,6 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
             AppTextField(
                 value = request.url,
                 onValueChange = {
-//                    request.url = it
-//                    requestUrl = it
                     onRequestModified(request.copy(url = it))
                 },
                 singleLine = true,
@@ -176,7 +176,12 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
 
             TabsView(
                 modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
-                onSelectTab = { selectedExample = request.examples[it]; selectedExampleIndex = it },
+                onSelectTab = {
+/*selectedExample = request.examples[it];*/
+                    val selectedExample = request.examples[it]
+                    selectedExampleIndex = it
+                    selectedContentType = selectedExample.contentType
+                },
                 contents = request.examples.map {
                     { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
                 }
@@ -192,8 +197,7 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
         )
         when (selectedRequestTab) {
             RequestTab.Body -> {
-                var selectedContentType by remember { mutableStateOf(selectedExample.contentType) }
-                var requestBody by remember { mutableStateOf(selectedExample.body) }
+                val requestBody = request.examples[selectedExampleIndex].body
                 Row(modifier = Modifier.padding(8.dp)) {
                     AppText("Content Type: ")
                     DropDownView(
@@ -202,7 +206,16 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                         onClickItem = {
                             selectedContentType = it
                             if (it == ContentType.None) {
-                                selectedExample.contentType = selectedContentType
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            request.examples[selectedExampleIndex].copy(
+                                                contentType = selectedContentType,
+                                                body = null
+                                            )
+                                        )
+                                    )
+                                )
                             }
                             true
                         }
@@ -214,23 +227,35 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                         CodeEditorView(
                             modifier = remainModifier,
                             isReadOnly = false,
-                            text = (requestBody as? StringBody)?.value ?: "",
+                            text = (request.examples[selectedExampleIndex].body as? StringBody)?.value ?: "",
                             onTextChange = {
-                                selectedExample.contentType = selectedContentType
-                                selectedExample.body = StringBody(it)
-                                requestBody = selectedExample.body
-                                onRequestModified(null) // TODO use copied object instead of null
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            request.examples[selectedExampleIndex].copy(
+                                                contentType = selectedContentType,
+                                                body = StringBody(it)
+                                            )
+                                        )
+                                    )
+                                )
                             }
                         )
 
                     ContentType.FormUrlEncoded ->
                         RequestKeyValueEditorView(
-                            initial = (requestBody as? FormUrlEncodedBody)?.value,
-                            setter = {
-                                request
-                                selectedExample.contentType = selectedContentType
-                                selectedExample.body = FormUrlEncodedBody(it)
-                                requestBody = selectedExample.body
+                            value = (requestBody as? FormUrlEncodedBody)?.value,
+                            onValueUpdate = {
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            request.examples[selectedExampleIndex].copy(
+                                                contentType = selectedContentType,
+                                                body = FormUrlEncodedBody(it)
+                                            )
+                                        )
+                                    )
+                                )
                             },
                             isSupportFileValue = false,
                             modifier = remainModifier,
@@ -238,11 +263,18 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
 
                     ContentType.Multipart ->
                         RequestKeyValueEditorView(
-                            initial = (requestBody as? MultipartBody)?.value,
-                            setter = {
-                                selectedExample.contentType = selectedContentType
-                                selectedExample.body = MultipartBody(it)
-                                requestBody = selectedExample.body
+                            value = (requestBody as? MultipartBody)?.value,
+                            onValueUpdate = {
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            request.examples[selectedExampleIndex].copy(
+                                                contentType = selectedContentType,
+                                                body = MultipartBody(it)
+                                            )
+                                        )
+                                    )
+                                )
                             },
                             isSupportFileValue = true,
                             modifier = remainModifier,
@@ -254,16 +286,36 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
 
             RequestTab.Header ->
                 RequestKeyValueEditorView(
-                    initial = selectedExample.headers,
-                    setter = { selectedExample.headers = it },
+                    value = selectedExample.headers,
+                    onValueUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    request.examples[selectedExampleIndex].copy(
+                                        headers = it
+                                    )
+                                )
+                            )
+                        )
+                    },
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
             RequestTab.Query ->
                 RequestKeyValueEditorView(
-                    initial = selectedExample.queryParameters,
-                    setter = { selectedExample.queryParameters = it },
+                    value = selectedExample.queryParameters,
+                    onValueUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    request.examples[selectedExampleIndex].copy(
+                                        queryParameters = it
+                                    )
+                                )
+                            )
+                        )
+                    },
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )

@@ -7,6 +7,10 @@ interface Document<ID : DocumentIdentifier> {
     val id: ID
 }
 
+interface Identifiable {
+    val id: String
+}
+
 @Serializable
 @Persisted
 sealed class DocumentIdentifier(val type: PersistenceDocumentType)
