@@ -126,7 +126,11 @@ fun AppContentView() {
     }
     var activeCallId by remember { mutableStateOf<String?>(null) }
     var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value
-    val response = activeCallId?.let { networkManager.getCallData(it) }?.response
+    val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
+    var response by remember { mutableStateOf<UserResponse?>(null) }
+    if (activeResponse != null) {
+        response = activeResponse
+    }
 
     fun loadRequestsForSubproject(subproject: Subproject) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -205,8 +209,13 @@ fun AppContentView() {
         RequestEditorView(
             modifier = Modifier.width(300.dp),
             request = request,
-            onClickSend = {
-                activeCallId = networkManager.sendRequest(it).id
+            onClickSend = { request, error ->
+                if (request != null) {
+                    activeCallId = networkManager.sendRequest(request).id
+                } else {
+                    activeCallId = null
+                    response = UserResponse(isError = true, errorMessage = error?.message)
+                }
             },
             onRequestModified = {
                 log.d { "onRequestModified" }

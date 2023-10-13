@@ -38,7 +38,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 
 @Composable
-fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request) -> Unit, onRequestModified: (UserRequest?) -> Unit) {
+fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request?, Throwable?) -> Unit, onRequestModified: (UserRequest?) -> Unit) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
@@ -65,22 +65,27 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
     fun sendRequest() {
         // TODO merge with "Base" request
 
-        var b = Request.Builder()
-            .url(request.url.toHttpUrl()
-                .newBuilder()
-                .run {
-                    var b = this
-                    selectedExample.queryParameters.filter { it.isEnabled }.forEach { b = b.addQueryParameter(it.key, it.value) }
-                    b
-                }
-                .build())
-            .method(
-                method = request.method,
-                body = selectedExample.body?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
-            )
-        selectedExample.headers.filter { it.isEnabled }.forEach { b = b.addHeader(it.key, it.value) }
-        val request = b.build()
-        onClickSend(request)
+        val (request, error) = try {
+            var b = Request.Builder()
+                .url(request.url.toHttpUrl()
+                    .newBuilder()
+                    .run {
+                        var b = this
+                        selectedExample.queryParameters.filter { it.isEnabled }
+                            .forEach { b = b.addQueryParameter(it.key, it.value) }
+                        b
+                    }
+                    .build())
+                .method(
+                    method = request.method,
+                    body = selectedExample.body?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
+                )
+            selectedExample.headers.filter { it.isEnabled }.forEach { b = b.addHeader(it.key, it.value) }
+            Pair(b.build(), null)
+        } catch (e: Throwable) {
+            Pair(null, e)
+        }
+        onClickSend(request, error)
     }
 
     @Composable
