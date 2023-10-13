@@ -338,7 +338,7 @@ class NetworkManager {
                 out.statusText = response.message
                 out.headers = response.headers.map { it }
                 out.body = response.body?.bytes()
-                out.responseSizeInBytes = response.body?.contentLength()
+                out.responseSizeInBytes = out.body?.size?.toLong() ?: 0L // response.body?.contentLength() returns -1
             } catch (e: Throwable) {
                 log.d { "Call Error: ${e.message}" }
                 out.errorMessage = e.message
