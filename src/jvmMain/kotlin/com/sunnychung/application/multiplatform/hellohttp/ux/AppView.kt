@@ -196,6 +196,10 @@ fun AppContentView() {
                             }
                         }
                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+                        
+                        if (request.id == update.id) {
+                            request = update.copy()
+                        }
                     },
                     onFocusRequestNameTextField = {
                         isParentClearInputFocus = true
