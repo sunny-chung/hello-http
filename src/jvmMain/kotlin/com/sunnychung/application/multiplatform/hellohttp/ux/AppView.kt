@@ -225,7 +225,7 @@ fun AppContentView() {
                 requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
             }
         )
-        ResponseViewerView(response = response ?: UserResponse())
+        ResponseViewerView(response = response?.copy() ?: UserResponse())
     }
 }
 

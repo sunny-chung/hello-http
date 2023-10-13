@@ -3,14 +3,56 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import java.util.*
 
-class UserResponse {
-    var startAt: KInstant? = null
-    var endAt: KInstant? = null
-    var isCommunicating: Boolean = false
-    var statusCode: Int? = null
-    var statusText: String? = null
-    var responseSizeInBytes: Long? = null
-    var body: ByteArray? = null // TODO support non-string body
-    var headers: List<Pair<String, String>>? = null
-    var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf()))
+data class UserResponse(
+    var startAt: KInstant? = null,
+    var endAt: KInstant? = null,
+    var isCommunicating: Boolean = false,
+    var isError: Boolean = false,
+    var statusCode: Int? = null,
+    var statusText: String? = null,
+    var responseSizeInBytes: Long? = null,
+    var body: ByteArray? = null, // TODO support non-string body
+    var errorMessage: String? = null,
+    var headers: List<Pair<String, String>>? = null,
+    var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as UserResponse
+
+        if (startAt != other.startAt) return false
+        if (endAt != other.endAt) return false
+        if (isCommunicating != other.isCommunicating) return false
+        if (isError != other.isError) return false
+        if (statusCode != other.statusCode) return false
+        if (statusText != other.statusText) return false
+        if (responseSizeInBytes != other.responseSizeInBytes) return false
+        if (body != null) {
+            if (other.body == null) return false
+            if (body != other.body) return false // modified
+        } else if (other.body != null) return false
+        if (errorMessage != other.errorMessage) return false
+        if (headers != other.headers) return false
+        if (rawExchange != other.rawExchange) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = startAt?.hashCode() ?: 0
+        result = 31 * result + (endAt?.hashCode() ?: 0)
+        result = 31 * result + isCommunicating.hashCode()
+        result = 31 * result + isError.hashCode()
+        result = 31 * result + (statusCode ?: 0)
+        result = 31 * result + (statusText?.hashCode() ?: 0)
+        result = 31 * result + (responseSizeInBytes?.hashCode() ?: 0)
+        result = 31 * result + (body?.hashCode() ?: 0) // modified
+        result = 31 * result + (errorMessage?.hashCode() ?: 0)
+        result = 31 * result + (headers?.hashCode() ?: 0)
+        result = 31 * result + rawExchange.hashCode()
+        return result
+    }
+
 }
