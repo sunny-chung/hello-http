@@ -37,12 +37,18 @@ kotlin {
                 implementation("com.squareup.okhttp3:okhttp:4.11.0-patch-1")
 //                implementation("com.github.sunny-chung:okhttp:patch~4.11.0-SNAPSHOT")
 
+                implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+                implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
                 implementation("io.github.sunny-chung:kdatetime-multiplatform:0.4.0")
 
                 implementation("net.harawata:appdirs:1.2.2")
             }
         }
-        val jvmTest by getting
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
     }
 }
 

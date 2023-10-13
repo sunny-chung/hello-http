@@ -22,6 +22,7 @@ data class AppColor(
     val disabled: Color = placeholder,
     val highlight: Color,
     val cursor: Color,
+    val warning: Color,
 
     val httpRequestGet: Color,
     val httpRequestPost: Color,
@@ -58,6 +59,7 @@ fun darkColorScheme(): AppColor = AppColor(
     placeholder = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
     highlight = Color(red = 0.9f, green = 0.9f, blue = 0.5f),
     cursor = Color(red = 1f, green = 1f, blue = 1f),
+    warning = Color(red = 1f, green = 0.5f, blue = 0f),
 
     httpRequestGet = Color(red = 0f, green = 0.8f, blue = 0f),
     httpRequestPost = Color(red = 0.3f, green = 0.3f, blue = 0.8f),

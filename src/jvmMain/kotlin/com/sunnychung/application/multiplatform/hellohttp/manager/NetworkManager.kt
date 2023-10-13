@@ -331,15 +331,22 @@ class NetworkManager {
             out.startAt = KInstant.now()
             out.isCommunicating = true
 
-            val response = call.await()
+            try {
+                val response = call.await()
 
-            out.statusCode = response.code
-            out.statusText = response.message
-            out.headers = response.headers.map { it }
-            out.body = response.body?.bytes()
-            out.responseSizeInBytes = response.body?.contentLength()
-            out.endAt = KInstant.now()
-            out.isCommunicating = false
+                out.statusCode = response.code
+                out.statusText = response.message
+                out.headers = response.headers.map { it }
+                out.body = response.body?.bytes()
+                out.responseSizeInBytes = response.body?.contentLength()
+            } catch (e: Throwable) {
+                log.d { "Call Error: ${e.message}" }
+                out.errorMessage = e.message
+                out.isError = true
+            } finally {
+                out.endAt = KInstant.now()
+                out.isCommunicating = false
+            }
 
             eventChannel.send(NetworkEvent(call.id, KInstant.now(), "Response completed"))
         }

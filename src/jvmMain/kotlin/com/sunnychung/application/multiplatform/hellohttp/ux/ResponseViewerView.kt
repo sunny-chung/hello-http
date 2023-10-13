@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -52,12 +54,8 @@ fun ResponseViewerView(response: UserResponse) {
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (selectedTab) {
-                ResponseTab.Body -> if (response.body != null) {
-                    CodeEditorView(
-                        isReadOnly = true,
-                        text = response.body!!.decodeToString(),
-                        modifier = Modifier.fillMaxSize().padding(8.dp),
-                    )
+                ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
+                    ResponseBodyView(response = response)
                 } else {
                     ResponseEmptyView(type = "body", modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
@@ -149,6 +147,8 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse) {
     val colors = LocalColor.current
     val (text, backgroundColor) = if (response.isCommunicating) {
         Pair("Communicating", colors.pendingResponseBackground)
+    } else if (response.isError) {
+        Pair("Error", colors.errorResponseBackground)
     } else when (response.statusCode) {
         null -> return
         in 100..399 -> Pair("${response.statusCode} ${response.statusText}", colors.successfulResponseBackground)
@@ -187,5 +187,55 @@ fun ResponseSizeLabel(modifier: Modifier = Modifier, response: UserResponse) {
 fun ResponseEmptyView(modifier: Modifier = Modifier, type: String) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         AppText(text = "No response $type available", fontSize = LocalFont.current.largeInfoSize, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+fun ResponseBodyView(response: UserResponse) {
+    class PrettifierDropDownValue(val name: String, val prettifier: Prettifier?) : DropDownable {
+        override val displayText: String
+            get() = name
+    }
+    val ORIGINAL = "Original"
+    val CLIENT_ERROR = "Client Error"
+
+    val prettifiers = if (!response.isError) {
+        val contentType = response.headers
+            ?.filter { it.first.lowercase() == "content-type" }
+            ?.map { it.second }
+            ?.first()
+        if (contentType != null) {
+            AppContext.PrettifierManager.matchPrettifiers(contentType)
+        } else {
+            emptyList()
+        }
+            .map { PrettifierDropDownValue(it.formatName, it) } +
+                PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() })
+    } else {
+        listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
+    }
+    var selectedView by remember { mutableStateOf(prettifiers.first()) }
+
+    Column {
+        Row(modifier = Modifier.padding(8.dp)) {
+            AppText(text = "View: ")
+            DropDownView(items = prettifiers, selectedItem = selectedView, onClickItem = { selectedView = it; true })
+        }
+
+        val modifier = Modifier.fillMaxSize().padding(8.dp)
+        if (selectedView.name != CLIENT_ERROR) {
+            CodeEditorView(
+                isReadOnly = true,
+                text = selectedView.prettifier!!.prettify(response.body ?: byteArrayOf()),
+                modifier = modifier,
+            )
+        } else {
+            CodeEditorView(
+                isReadOnly = true,
+                text = response.errorMessage ?: "",
+                textColor = LocalColor.current.warning,
+                modifier = modifier,
+            )
+        }
     }
 }
