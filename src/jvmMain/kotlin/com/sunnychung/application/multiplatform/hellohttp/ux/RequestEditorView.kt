@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -208,7 +209,6 @@ fun RequestEditorView(
                 modifier = Modifier.weight(1f).background(color = colors.backgroundLight),
                 selectedIndex = selectedExampleIndex,
                 onSelectTab = {
-/*selectedExample = request.examples[it];*/
                     val selectedExample = request.examples[it]
                     selectedExampleIndex = it
                     selectedContentType = selectedExample.contentType
@@ -217,7 +217,7 @@ fun RequestEditorView(
                     selectedExampleIndex = it
                     editExampleNameViewModel.onStartEdit()
                 },
-                contents = request.examples.map {
+                contents = request.examples.mapIndexed { index, it ->
                     {
                         if (isEditing && request.examples[selectedExampleIndex].id == it.id) {
                             val focusRequester = remember { FocusRequester() }
@@ -258,7 +258,20 @@ fun RequestEditorView(
                                 focusRequester.requestFocus()
                             }
                         } else {
-                            AppText(text = it.name, modifier = Modifier.padding(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                AppText(text = it.name)
+                                if (index > 0) { // "Base" example cannot be deleted
+                                    AppDeleteButton {
+                                        onRequestModified(
+                                            request.copy(examples = request.examples.copyWithRemovedIndex(index))
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
