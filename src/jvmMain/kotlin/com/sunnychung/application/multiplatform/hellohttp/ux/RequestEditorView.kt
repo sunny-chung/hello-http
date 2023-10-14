@@ -64,7 +64,6 @@ fun RequestEditorView(
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
-//    var selectedExample by remember { mutableStateOf(request.examples.first()) }
     var previousRequest by remember { mutableStateOf("") }
 
     var selectedExampleIndex by remember { mutableStateOf(0) }
@@ -173,7 +172,6 @@ fun RequestEditorView(
                 },
                 modifier = Modifier.fillMaxHeight()
             )
-//            }
 
             AppTextField(
                 value = request.url,

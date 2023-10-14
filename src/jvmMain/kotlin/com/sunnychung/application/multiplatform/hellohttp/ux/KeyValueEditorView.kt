@@ -35,12 +35,10 @@ fun KeyValueEditorView(
 
     var isShowFileDialog by remember { mutableStateOf(false) }
     var fileDialogRequest by remember { mutableStateOf<Int?>(null) }
-//    var chosenFiles by remember { mutableStateOf<List<File>>(emptyList()) }
 
     if (isShowFileDialog) {
         FileDialog {
             println("File Dialog result = $it")
-//            chosenFiles = it
             val index = fileDialogRequest!!
             onItemChange(index, keyValues[index].copy(value = it.firstOrNull()?.absolutePath ?: ""))
             isShowFileDialog = false
@@ -49,7 +47,6 @@ fun KeyValueEditorView(
 
     Column(modifier) {
         Row(modifier = Modifier.padding(8.dp)) {
-//            AppTextButton(text = "Add", onClick = { /* TODO */ })
             AppTextButton(text = "Switch to Raw Input", onClick = { /* TODO */ })
         }
         LazyColumn {

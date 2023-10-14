@@ -55,12 +55,8 @@ fun RequestListView(
     val colors = LocalColor.current
 
     var searchText by remember { mutableStateOf("") }
-//    var isEditing by remember { mutableStateOf(false) }
-//    var hasReachedEditingState by remember { mutableStateOf(false) }
 
     var isEditing = editRequestNameViewModel.isEditing.collectAsState().value
-//    var hasReachedEditingState = editRequestNameViewModel.hasReachedEditingState.collectAsState().value
-//    var textFieldValue = editRequestNameViewModel.textFieldValue.value
 
     log.v { "RequestListView $requests" }
 
@@ -78,7 +74,6 @@ fun RequestListView(
                 size = 24.dp,
                 onClick = {
                     val newRequest = onAddRequest()
-//                    selectedRequest = newRequest
                     editRequestNameViewModel.onStartEdit()
                 },
                 modifier = Modifier.padding(4.dp)
@@ -136,12 +131,6 @@ fun RequestListView(
                         AppTextField(
                             value = textFieldState,
                             onValueChange = { v ->
-//                                it.name = v
-//                                log.v { "onValueChange $it" }
-
-//                                onUpdateRequest(it.copy(name = v.text))
-//                                editRequestNameViewModel.onTextFieldValueChange(v)
-
                                 textFieldState = v
                             },
                             singleLine = true,
@@ -179,7 +168,6 @@ fun RequestListView(
                         )
 
                         LaunchedEffect(Unit) {
-//                            textFieldValue = textFieldValue.copy(selection = TextRange(0, textFieldValue.text.length))
                             focusRequester.requestFocus()
                         }
                     }

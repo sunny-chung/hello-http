@@ -98,12 +98,9 @@ fun AppView() {
     }
 }
 
-val IS_DEV = true
-
 @Composable
 fun AppContentView() {
     val networkManager = AppContext.NetworkManager
-    val persistenceManager = AppContext.PersistenceManager
     val persistResponseManager = AppContext.PersistResponseManager
     val requestCollectionRepository = AppContext.RequestCollectionRepository
     val projectCollectionRepository = AppContext.ProjectCollectionRepository
@@ -117,7 +114,7 @@ fun AppContentView() {
     var requestsState by remember { mutableStateOf(requestCollection?.requests?.toList() ?: emptyList()) }
     var request by remember { mutableStateOf<UserRequest?>(null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
-    var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value
+    var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value // needed for invalidating compose caches
     val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
     var response by remember { mutableStateOf<UserResponse?>(null) }
     if (activeResponse != null && activeResponse.requestId == request?.id) {

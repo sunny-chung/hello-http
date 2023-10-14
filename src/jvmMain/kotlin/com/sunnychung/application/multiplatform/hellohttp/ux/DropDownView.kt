@@ -50,17 +50,6 @@ fun <T: DropDownable> DropDownView(
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
         items.forEach { item ->
-//            DropdownMenuItem(
-//                onClick = {
-//                    if (onClickItem(item)) {
-//                        isShowContextMenu = false
-//                    }
-//                },
-//                contentPadding = PaddingValues(horizontal = 8.dp)
-//            ) {
-//                contentView(item)
-//            }
-
             Column(modifier = Modifier.clickable {
                 if (onClickItem(item)) {
                     isShowContextMenu = false
