@@ -42,7 +42,7 @@ fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit,
                 onClick = {
                     onSelectTab(i)
                 },
-                onDoubleClickTab = onDoubleClickTab?.let { { it(selectedIndex) } },
+                onDoubleClickTab = onDoubleClickTab?.let { { it(i) } },
             ) {
                 contents[i]()
             }

@@ -214,12 +214,16 @@ fun RequestEditorView(
                     selectedContentType = selectedExample.contentType
                 },
                 onDoubleClickTab = {
+                    log.d { "req ex onDoubleClickTab $it" }
                     selectedExampleIndex = it
-                    editExampleNameViewModel.onStartEdit()
+                    if (it > 0) { // the "Base" example cannot be renamed
+                        editExampleNameViewModel.onStartEdit()
+                    }
                 },
                 contents = request.examples.mapIndexed { index, it ->
                     {
                         if (isEditing && request.examples[selectedExampleIndex].id == it.id) {
+                            log.d { "req ex edit $selectedExampleIndex" }
                             val focusRequester = remember { FocusRequester() }
                             val focusManager = LocalFocusManager.current
                             var textFieldState by remember { mutableStateOf(TextFieldValue(it.name, selection = TextRange(0, it.name.length))) }
