@@ -275,10 +275,13 @@ class NetworkManager {
         data.events
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (lastExchange?.payloadBuilder != null && lastExchange.payload == null) {
-                        lastExchange.payload = lastExchange.payloadBuilder!!.toByteArray()
-                        lastExchange.payloadBuilder = null
+                    if (it.event == "Response completed") { // deadline fighter
+                        data.response.rawExchange.exchanges.forEach {
+                            it.consumePayloadBuilder()
+                        }
+                    } else { // lazy
+                        val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                        lastExchange?.consumePayloadBuilder()
                     }
                     data.response.rawExchange.exchanges += RawExchange.Exchange(
                         instant = it.instant,
@@ -334,7 +337,19 @@ class NetworkManager {
             .launchIn(CoroutineScope(Dispatchers.IO))
 
         CoroutineScope(Dispatchers.IO).launch {
-            val out = callData[call.id]!!.response
+            val callData = callData[call.id]!!
+            withTimeout(3000) {
+                while (!callData.isPrepared) {
+                    log.d { "Wait for preparation" }
+                    delay(100)
+                    yield()
+                }
+            }
+            // withTimeout and while(...) guarantee callData is prepared
+            assert(callData.isPrepared)
+            log.d { "Call ${call.id} is prepared" }
+
+            val out = callData.response
             out.startAt = KInstant.now()
             out.isCommunicating = true
 

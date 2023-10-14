@@ -196,7 +196,7 @@ fun ResponseBodyView(response: UserResponse) {
         override val displayText: String
             get() = name
     }
-    val ORIGINAL = "Original"
+    val ORIGINAL = "UTF-8 String"
     val CLIENT_ERROR = "Client Error"
 
     val prettifiers = if (!response.isError) {
@@ -215,6 +215,9 @@ fun ResponseBodyView(response: UserResponse) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     }
     var selectedView by remember { mutableStateOf(prettifiers.first()) }
+    if (selectedView.name !in prettifiers.map { it.name }) {
+        selectedView = prettifiers.first()
+    }
 
     Column {
         Row(modifier = Modifier.padding(8.dp)) {

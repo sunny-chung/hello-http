@@ -21,7 +21,14 @@ data class RawExchange(
         val detail: String?,
         @Transient var payloadBuilder: ByteArrayOutputStream? = null,
         var payload: ByteArray? = null
-    )
+    ) {
+        fun consumePayloadBuilder() {
+            if (payloadBuilder != null && payload == null) {
+                payload = payloadBuilder!!.toByteArray()
+                payloadBuilder = null
+            }
+        }
+    }
 
     enum class Direction {
         Outgoing, Incoming, Unspecified
