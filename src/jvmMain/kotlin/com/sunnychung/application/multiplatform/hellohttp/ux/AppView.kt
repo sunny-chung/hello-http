@@ -112,22 +112,15 @@ fun AppContentView() {
         runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
     }
 
-    var selectedSubproject by remember { mutableStateOf<Subproject?>(if (IS_DEV) Subproject(id = "dev", name = "DEV only") else null) }
+    var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
     var requestCollection by remember { mutableStateOf<RequestCollection?>(null) }
     var requestsState by remember { mutableStateOf(requestCollection?.requests?.toList() ?: emptyList()) }
-    var request by remember {
-        mutableStateOf(
-            runBlocking { // FIXME
-                requestCollectionRepository.read(RequestsDI(subprojectId = selectedSubproject!!.id))?.requests?.firstOrNull()
-                    ?: UserRequest(id = "-")
-            }
-        )
-    }
+    var request by remember { mutableStateOf<UserRequest?>(null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
     var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value
     val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
     var response by remember { mutableStateOf<UserResponse?>(null) }
-    if (activeResponse != null && activeResponse.requestId == request.id) {
+    if (activeResponse != null && activeResponse.requestId == request?.id) {
         response = activeResponse
     }
 
@@ -159,6 +152,16 @@ fun AppContentView() {
 
     val editRequestNameViewModel = remember { EditRequestNameViewModel() }
 
+    fun createRequestForCurrentSubproject(): UserRequest {
+        val newRequest = UserRequest(id = uuidString(), name = "New Request", method = "GET")
+        requestCollection!!.requests += newRequest
+        requestsState = requestsState.toMutableList() + newRequest
+        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+        request = newRequest
+        isParentClearInputFocus = true
+        return newRequest
+    }
+
     Row(modifier = modifier) {
         Column(modifier = Modifier.width(150.dp)) {
             ProjectAndEnvironmentViewV2(
@@ -176,6 +179,8 @@ fun AppContentView() {
                 onSelectSubproject = {
                     selectedSubproject = it
                     loadRequestsForSubproject(it)
+                    request = null
+                    response = UserResponse("-", "-")
                 },
                 modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
             )
@@ -187,11 +192,7 @@ fun AppContentView() {
                     editRequestNameViewModel = editRequestNameViewModel,
                     onSelectRequest = { displayRequest(it) },
                     onAddRequest = {
-                        requestCollection!!.requests += it
-                        requestsState = requestsState.toMutableList() + it
-                        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
-                        request = it
-                        isParentClearInputFocus = true
+                        createRequestForCurrentSubproject()
                     },
                     onUpdateRequest = { update ->
                         // TODO avoid the loop, refactor to use one state only and no duplicated code
@@ -205,7 +206,7 @@ fun AppContentView() {
                         }
                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
 
-                        if (request.id == update.id) {
+                        if (request?.id == update.id) {
                             request = update.copy()
                         }
                     },
@@ -218,27 +219,30 @@ fun AppContentView() {
                 )
             }
         }
-        RequestEditorView(
-            modifier = Modifier.width(300.dp),
-            request = request,
-            onClickSend = { networkRequest, error ->
-                if (networkRequest != null) {
-                    val callData = networkManager.sendRequest(
-                        request = networkRequest,
-                        requestId = request.id,
-                        subprojectId = selectedSubproject!!.id
-                    )
-                    activeCallId = callData.id
+
+        val requestEditorModifier = Modifier.width(300.dp)
+        request?.let { requestNonNull ->
+            RequestEditorView(
+                modifier = requestEditorModifier,
+                request = requestNonNull,
+                onClickSend = { networkRequest, error ->
+                    if (networkRequest != null) {
+                        val callData = networkManager.sendRequest(
+                            request = networkRequest,
+                            requestId = requestNonNull.id,
+                            subprojectId = selectedSubproject!!.id
+                        )
+                        activeCallId = callData.id
                     persistResponseManager.registerCall(callData.id)
                     callData.isPrepared = true
                 } else {
-                    activeCallId = null
-                    response = UserResponse(
-                        id = uuidString(),
-                        requestId = request.id,
-                        isError = true,
-                        errorMessage = error?.message
-                    )
+                        activeCallId = null
+                        response = UserResponse(
+                            id = uuidString(),
+                            requestId = requestNonNull.id,
+                            isError = true,
+                            errorMessage = error?.message
+                        )
                 }
             },
             onRequestModified = {
@@ -255,9 +259,13 @@ fun AppContentView() {
                         }
                     }
                 }
-                requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
-            }
-        )
+                    requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
+                }
+            )
+        } ?: RequestEditorEmptyView(modifier = requestEditorModifier, isShowCreateRequest = selectedSubproject != null && requestCollection != null) {
+            val newRequest = createRequestForCurrentSubproject()
+            editRequestNameViewModel.onStartEdit(newRequest)
+        }
         ResponseViewerView(response = response?.copy() ?: UserResponse(id = "-", requestId = "-"))
     }
 }

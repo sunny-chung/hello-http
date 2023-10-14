@@ -47,7 +47,7 @@ fun RequestListView(
     selectedRequest: UserRequest?,
     editRequestNameViewModel: EditRequestNameViewModel,
     onSelectRequest: (UserRequest) -> Unit,
-    onAddRequest: (UserRequest) -> Unit,
+    onAddRequest: () -> UserRequest,
     onUpdateRequest: (UserRequest) -> Unit,
     onFocusRequestNameTextField: () -> Unit,
     onUnfocusRequestNameTextField: () -> Unit,
@@ -77,8 +77,7 @@ fun RequestListView(
                 resource = "add.svg",
                 size = 24.dp,
                 onClick = {
-                    val newRequest = UserRequest(id = uuidString(), name = "New Request", method = "GET")
-                    onAddRequest(newRequest)
+                    val newRequest = onAddRequest()
 //                    selectedRequest = newRequest
                     editRequestNameViewModel.onStartEdit(newRequest)
                 },
@@ -204,7 +203,7 @@ fun RequestListViewPreview() {
         selectedRequest = dummyRequests[2],
         editRequestNameViewModel = EditRequestNameViewModel(),
         onSelectRequest = {},
-        onAddRequest = {},
+        onAddRequest = { UserRequest(id = uuidString()) },
         onUpdateRequest = {},
         onFocusRequestNameTextField = {},
         onUnfocusRequestNameTextField = {},
