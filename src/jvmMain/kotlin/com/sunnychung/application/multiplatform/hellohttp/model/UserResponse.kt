@@ -1,21 +1,30 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
+import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
+import kotlinx.serialization.Serializable
 import java.util.*
 
+@Persisted
+@Serializable
 data class UserResponse(
-    var startAt: KInstant? = null,
-    var endAt: KInstant? = null,
+    override val id: String,
+    val requestId: String, // corresponding id of UserRequest
+
+    var startAt: KInstantAsLong? = null,
+    var endAt: KInstantAsLong? = null,
     var isCommunicating: Boolean = false,
     var isError: Boolean = false,
     var statusCode: Int? = null,
     var statusText: String? = null,
     var responseSizeInBytes: Long? = null,
-    var body: ByteArray? = null, // TODO support non-string body
+    var body: ByteArray? = null,
     var errorMessage: String? = null,
     var headers: List<Pair<String, String>>? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
-) {
+) : Identifiable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

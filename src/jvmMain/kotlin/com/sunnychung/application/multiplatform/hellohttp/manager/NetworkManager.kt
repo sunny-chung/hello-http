@@ -10,6 +10,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filter
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Connection
@@ -67,6 +70,9 @@ class NetworkManager {
     class NetworkEvent(val callId: String, val instant: KInstant, val event: String)
     class CallData(
         val id: String,
+        val subprojectId: String,
+        var isPrepared: Boolean = false,
+
         val events: Flow<NetworkEvent>,
         val outgoingBytes: Flow<Pair<KInstant, ByteArray>>,
         val incomingBytes: Flow<Pair<KInstant, ByteArray>>,
@@ -228,7 +234,7 @@ class NetworkManager {
 
     fun getCallData(callId: String) = callData[callId]
 
-    fun sendRequest(request: Request): CallData {
+    fun sendRequest(request: Request, requestId: String, subprojectId: String): CallData {
         val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val optionalResponseSize = AtomicInteger()
@@ -250,6 +256,7 @@ class NetworkManager {
         )
         val data = CallData(
             id = call.id,
+            subprojectId = subprojectId,
             events = eventChannel.receiveAsFlow()
                 .filter { it.callId == call.id }
                 .flowOn(Dispatchers.IO)
@@ -261,7 +268,7 @@ class NetworkManager {
                 .flowOn(Dispatchers.IO)
                 .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
             optionalResponseSize = optionalResponseSize,
-            response = UserResponse(),
+            response = UserResponse(id = uuidString(), requestId = requestId),
         )
         callData[call.id] = data
 

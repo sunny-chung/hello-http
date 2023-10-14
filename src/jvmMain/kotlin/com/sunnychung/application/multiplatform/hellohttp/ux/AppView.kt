@@ -21,14 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -37,8 +35,7 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
-import com.sunnychung.application.multiplatform.hellohttp.model.Environment
-import com.sunnychung.application.multiplatform.hellohttp.model.Project
+import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
@@ -107,8 +104,10 @@ val IS_DEV = true
 fun AppContentView() {
     val networkManager = AppContext.NetworkManager
     val persistenceManager = AppContext.PersistenceManager
+    val persistResponseManager = AppContext.PersistResponseManager
     val requestCollectionRepository = AppContext.RequestCollectionRepository
     val projectCollectionRepository = AppContext.ProjectCollectionRepository
+    val responseCollectionRepository = AppContext.ResponseCollectionRepository
     val projectCollection = remember {
         runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
     }
@@ -128,7 +127,7 @@ fun AppContentView() {
     var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value
     val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
     var response by remember { mutableStateOf<UserResponse?>(null) }
-    if (activeResponse != null) {
+    if (activeResponse != null && activeResponse.requestId == request.id) {
         response = activeResponse
     }
 
@@ -137,9 +136,18 @@ fun AppContentView() {
             val r = requestCollectionRepository.readOrCreate(RequestsDI(subprojectId = subproject.id)) { id ->
                 RequestCollection(id = id, requests = mutableListOf())
             }
+            persistResponseManager.loadResponseCollection(ResponsesDI(subprojectId = subproject.id))
             requestCollection = r
             requestsState = r.requests.toList()
         }
+    }
+
+    fun displayRequest(req: UserRequest) {
+        request = req
+        response = runBlocking { // should be fast as it is retrieved from memory
+            responseCollectionRepository.read(ResponsesDI(subprojectId = selectedSubproject!!.id))
+                ?.responsesByRequestId?.get(req.id)
+        } ?: UserResponse(id = "-", requestId = "-")
     }
 
     var isParentClearInputFocus by remember { mutableStateOf(false) }
@@ -177,7 +185,7 @@ fun AppContentView() {
                     requests = requestsState,
                     selectedRequest = request,
                     editRequestNameViewModel = editRequestNameViewModel,
-                    onSelectRequest = { request = it },
+                    onSelectRequest = { displayRequest(it) },
                     onAddRequest = {
                         requestCollection!!.requests += it
                         requestsState = requestsState.toMutableList() + it
@@ -196,7 +204,7 @@ fun AppContentView() {
                             }
                         }
                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
-                        
+
                         if (request.id == update.id) {
                             request = update.copy()
                         }
@@ -213,12 +221,24 @@ fun AppContentView() {
         RequestEditorView(
             modifier = Modifier.width(300.dp),
             request = request,
-            onClickSend = { request, error ->
-                if (request != null) {
-                    activeCallId = networkManager.sendRequest(request).id
+            onClickSend = { networkRequest, error ->
+                if (networkRequest != null) {
+                    val callData = networkManager.sendRequest(
+                        request = networkRequest,
+                        requestId = request.id,
+                        subprojectId = selectedSubproject!!.id
+                    )
+                    activeCallId = callData.id
+                    persistResponseManager.registerCall(callData.id)
+                    callData.isPrepared = true
                 } else {
                     activeCallId = null
-                    response = UserResponse(isError = true, errorMessage = error?.message)
+                    response = UserResponse(
+                        id = uuidString(),
+                        requestId = request.id,
+                        isError = true,
+                        errorMessage = error?.message
+                    )
                 }
             },
             onRequestModified = {
@@ -238,7 +258,7 @@ fun AppContentView() {
                 requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
             }
         )
-        ResponseViewerView(response = response?.copy() ?: UserResponse())
+        ResponseViewerView(response = response?.copy() ?: UserResponse(id = "-", requestId = "-"))
     }
 }
 

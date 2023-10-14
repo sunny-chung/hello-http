@@ -1,17 +1,25 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
+import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.io.ByteArrayOutputStream
 
+@Persisted
+@Serializable
 data class RawExchange(
     val exchanges: MutableList<Exchange>,
 ) {
+    @Persisted
+    @Serializable
     class Exchange(
-        val instant: KInstant,
-        var lastUpdateInstant: KInstant? = null,
+        val instant: KInstantAsLong,
+        var lastUpdateInstant: KInstantAsLong? = null,
         val direction: Direction,
         val detail: String?,
-        var payloadBuilder: ByteArrayOutputStream? = null,
+        @Transient var payloadBuilder: ByteArrayOutputStream? = null,
         var payload: ByteArray? = null
     )
 
