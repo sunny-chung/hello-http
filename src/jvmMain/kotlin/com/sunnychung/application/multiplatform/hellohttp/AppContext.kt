@@ -9,7 +9,6 @@ import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectColl
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.DialogViewModel
-import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditRequestNameViewModel
 
 object AppContext {
     val NetworkManager = NetworkManager()

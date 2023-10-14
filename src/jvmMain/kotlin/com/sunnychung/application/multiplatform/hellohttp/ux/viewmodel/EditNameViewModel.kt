@@ -1,17 +1,12 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
-class EditRequestNameViewModel {
+class EditNameViewModel {
 
     val isEditing = MutableStateFlow(false)
     val isCancelled = MutableStateFlow(false)
@@ -21,10 +16,10 @@ class EditRequestNameViewModel {
 
     val hasReachedEditingState = MutableStateFlow(false)
 
-    fun onStartEdit(request: UserRequest) {
+    fun onStartEdit() {
         isEditing.value = true
         hasReachedEditingState.value = false
-        textFieldValue.value = TextFieldValue(request.name, selection = TextRange(0, request.name.length))
+//        textFieldValue.value = TextFieldValue(request.name, selection = TextRange(0, request.name.length))
         isCancelled.value = false
     }
 

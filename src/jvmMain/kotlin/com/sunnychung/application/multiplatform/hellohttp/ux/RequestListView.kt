@@ -32,20 +32,19 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditRequestNameViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RequestListView(
     requests: List<UserRequest>,
     selectedRequest: UserRequest?,
-    editRequestNameViewModel: EditRequestNameViewModel,
+    editRequestNameViewModel: EditNameViewModel,
     onSelectRequest: (UserRequest) -> Unit,
     onAddRequest: () -> UserRequest,
     onUpdateRequest: (UserRequest) -> Unit,
@@ -80,7 +79,7 @@ fun RequestListView(
                 onClick = {
                     val newRequest = onAddRequest()
 //                    selectedRequest = newRequest
-                    editRequestNameViewModel.onStartEdit(newRequest)
+                    editRequestNameViewModel.onStartEdit()
                 },
                 modifier = Modifier.padding(4.dp)
             )
@@ -94,7 +93,7 @@ fun RequestListView(
                         onClick = { onSelectRequest(it) },
                         onDoubleClick = {
                             onSelectRequest(it)
-                            editRequestNameViewModel.onStartEdit(it)
+                            editRequestNameViewModel.onStartEdit()
                         }
                     )
                 ) {
@@ -204,7 +203,7 @@ fun RequestListViewPreview() {
     RequestListView(
         requests = dummyRequests,
         selectedRequest = dummyRequests[2],
-        editRequestNameViewModel = EditRequestNameViewModel(),
+        editRequestNameViewModel = EditNameViewModel(),
         onSelectRequest = {},
         onAddRequest = { UserRequest(id = uuidString()) },
         onUpdateRequest = {},

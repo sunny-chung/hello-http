@@ -35,7 +35,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 fun ResponseViewerView(response: UserResponse) {
     val colors = LocalColor.current
 
-    var selectedTab by remember { mutableStateOf(ResponseTab.values().first()) }
+    var selectedTabIndex by remember { mutableStateOf(0) }
 
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
@@ -46,14 +46,15 @@ fun ResponseViewerView(response: UserResponse) {
 
         TabsView(
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
-            onSelectTab = { selectedTab = ResponseTab.values()[it] },
+            selectedIndex = selectedTabIndex,
+            onSelectTab = { selectedTabIndex = it },
             contents = ResponseTab.values().map {
                 { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
             }
         )
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            when (selectedTab) {
+            when (ResponseTab.values()[selectedTabIndex]) {
                 ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
                     ResponseBodyView(response = response)
                 } else {

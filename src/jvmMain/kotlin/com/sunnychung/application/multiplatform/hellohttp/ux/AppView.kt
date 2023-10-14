@@ -43,7 +43,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditRequestNameViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -150,7 +150,8 @@ fun AppContentView() {
         modifier = modifier.clearFocusOnTap()
     }
 
-    val editRequestNameViewModel = remember { EditRequestNameViewModel() }
+    val editRequestNameViewModel = remember { EditNameViewModel() }
+    val editExampleNameViewModel = remember { EditNameViewModel() }
 
     fun createRequestForCurrentSubproject(): UserRequest {
         val newRequest = UserRequest(id = uuidString(), name = "New Request", method = "GET")
@@ -237,6 +238,7 @@ fun AppContentView() {
             RequestEditorView(
                 modifier = requestEditorModifier,
                 request = requestNonNull,
+                editExampleNameViewModel = editExampleNameViewModel,
                 onClickSend = { networkRequest, error ->
                     if (networkRequest != null) {
                         val callData = networkManager.sendRequest(
@@ -276,7 +278,7 @@ fun AppContentView() {
             )
         } ?: RequestEditorEmptyView(modifier = requestEditorModifier, isShowCreateRequest = selectedSubproject != null && requestCollection != null) {
             val newRequest = createRequestForCurrentSubproject()
-            editRequestNameViewModel.onStartEdit(newRequest)
+            editRequestNameViewModel.onStartEdit()
         }
         ResponseViewerView(response = response?.copy() ?: UserResponse(id = "-", requestId = "-"))
     }

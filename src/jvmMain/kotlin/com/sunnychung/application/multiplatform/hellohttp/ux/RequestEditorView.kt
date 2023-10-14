@@ -12,12 +12,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
@@ -29,17 +40,26 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 
 @Composable
-fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onClickSend: (Request?, Throwable?) -> Unit, onRequestModified: (UserRequest?) -> Unit) {
+fun RequestEditorView(
+    modifier: Modifier = Modifier,
+    request: UserRequest,
+    editExampleNameViewModel: EditNameViewModel,
+    onClickSend: (Request?, Throwable?) -> Unit,
+    onRequestModified: (UserRequest?) -> Unit,
+) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
@@ -50,7 +70,7 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
     if (selectedExampleIndex >= request.examples.size) {
         selectedExampleIndex = 0
     }
-    var selectedRequestTab by remember { mutableStateOf(RequestTab.values().first()) }
+    var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
     var selectedContentType by remember { mutableStateOf(request.examples[selectedExampleIndex].contentType) }
 
@@ -180,30 +200,96 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
 //        Spacer(modifier = Modifier.height(4.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
+            var isEditing = editExampleNameViewModel.isEditing.collectAsState().value
+
             AppText(text = "Examples: ")
 
             TabsView(
-                modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
+                modifier = Modifier.weight(1f).background(color = colors.backgroundLight),
+                selectedIndex = selectedExampleIndex,
                 onSelectTab = {
 /*selectedExample = request.examples[it];*/
                     val selectedExample = request.examples[it]
                     selectedExampleIndex = it
                     selectedContentType = selectedExample.contentType
                 },
+                onDoubleClickTab = {
+                    selectedExampleIndex = it
+                    editExampleNameViewModel.onStartEdit()
+                },
                 contents = request.examples.map {
-                    { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
+                    {
+                        if (isEditing && request.examples[selectedExampleIndex].id == it.id) {
+                            val focusRequester = remember { FocusRequester() }
+                            val focusManager = LocalFocusManager.current
+                            var textFieldState by remember { mutableStateOf(TextFieldValue(it.name, selection = TextRange(0, it.name.length))) }
+                            AppTextField(
+                                value = textFieldState,
+                                onValueChange = { textFieldState = it },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                                    .focusRequester(focusRequester)
+                                    .onFocusChanged { f ->
+                                        log.d { "RequestListView onFocusChanged ${f.hasFocus} ${f.isFocused}" }
+                                        if (!f.hasFocus && editExampleNameViewModel.isInvokeModelUpdate()) {
+                                            onRequestModified(request.copy(examples = request.examples.copyWithChange(it.copy(name = textFieldState.text))))
+                                        }
+                                        editExampleNameViewModel.onTextFieldFocusChange(f)
+                                    }
+                                    .onKeyEvent { e -> // TODO refactor to reduce code duplication
+                                        when (e.key) {
+                                            Key.Enter -> {
+                                                log.d { "key enter" }
+                                                focusManager.clearFocus()
+                                            }
+                                            Key.Escape -> {
+                                                log.d { "key escape" }
+                                                editExampleNameViewModel.onUserCancelEdit()
+                                                focusManager.clearFocus()
+                                            }
+                                            else -> {
+                                                return@onKeyEvent false
+                                            }
+                                        }
+                                        true
+                                    }
+                            )
+                            LaunchedEffect(Unit) {
+                                focusRequester.requestFocus()
+                            }
+                        } else {
+                            AppText(text = it.name, modifier = Modifier.padding(8.dp))
+                        }
+                    }
                 }
+            )
+
+            AppImageButton(
+                resource = "add.svg",
+                size = 24.dp,
+                onClick = {
+                    onRequestModified(
+                        request.copy(examples = request.examples + UserRequestExample(
+                            id = uuidString(),
+                            name = "New Example"
+                        ))
+                    )
+                    selectedExampleIndex = request.examples.size
+                    editExampleNameViewModel.onStartEdit()
+                },
+                modifier = Modifier.padding(4.dp)
             )
         }
 
         TabsView(
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
-            onSelectTab = { selectedRequestTab = RequestTab.values()[it] },
+            selectedIndex = selectedRequestTabIndex,
+            onSelectTab = { selectedRequestTabIndex = it },
             contents = RequestTab.values().map {
                 { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
             }
         )
-        when (selectedRequestTab) {
+        when (RequestTab.values()[selectedRequestTabIndex]) {
             RequestTab.Body -> {
                 val requestBody = request.examples[selectedExampleIndex].body
                 Row(modifier = Modifier.padding(8.dp)) {
