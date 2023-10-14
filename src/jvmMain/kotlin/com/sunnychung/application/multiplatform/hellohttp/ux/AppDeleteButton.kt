@@ -56,9 +56,11 @@ fun AppDeleteButton(
             } else {
                 AppImageButton(
                     resource = "delete.svg",
+                    color = colors.placeholder,
                     size = size,
                     modifier = modifier,
-                    onClick = { isShowingConfirmButton = true })
+                    onClick = { isShowingConfirmButton = true },
+                )
             }
         } else {
             Row(modifier = modifier.clickable { onClickDelete() }
