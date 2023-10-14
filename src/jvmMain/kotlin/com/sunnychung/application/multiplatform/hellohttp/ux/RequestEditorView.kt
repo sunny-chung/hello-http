@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -165,13 +166,15 @@ fun RequestEditorView(modifier: Modifier = Modifier, request: UserRequest, onCli
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.background(colors.backgroundButton).width(width = 90.dp).fillMaxHeight()
             ) {
-                AppText(
-                    text = "Send",
-                    fontSize = fonts.buttonFontSize,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).clickable { sendRequest() }
-                )
-                AppImageButton(resource = "down-small.svg", size = 24.dp, onClick = { /* TODO */}, modifier = Modifier.padding(end = 4.dp))
+                Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { sendRequest() }) {
+                    AppText(
+                        text = "Send",
+                        fontSize = fonts.buttonFontSize,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 4.dp).align(Alignment.Center)
+                    )
+                }
+                AppImageButton(resource = "down-small.svg", size = 24.dp, onClick = { /* TODO */}, modifier = Modifier.fillMaxHeight().padding(end = 4.dp))
             }
         }
 //        Spacer(modifier = Modifier.height(4.dp))
