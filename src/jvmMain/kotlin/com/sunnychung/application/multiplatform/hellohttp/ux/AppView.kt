@@ -210,6 +210,18 @@ fun AppContentView() {
                             request = update.copy()
                         }
                     },
+                    onDeleteRequest = { delete ->
+                        // TODO avoid the loop, refactor to use one state only and no duplicated code
+                        val index = requestsState.indexOfFirst { it.id == delete.id }
+                        if (index >= 0) {
+                            requestsState = requestsState.toMutableList().apply { removeAt(index) }
+                            requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+
+                            if (request?.id == delete.id) {
+                                request = null
+                            }
+                        }
+                    },
                     onFocusRequestNameTextField = {
                         isParentClearInputFocus = true
                     },
@@ -233,9 +245,9 @@ fun AppContentView() {
                             subprojectId = selectedSubproject!!.id
                         )
                         activeCallId = callData.id
-                    persistResponseManager.registerCall(callData.id)
-                    callData.isPrepared = true
-                } else {
+                        persistResponseManager.registerCall(callData.id)
+                        callData.isPrepared = true
+                    } else {
                         activeCallId = null
                         response = UserResponse(
                             id = uuidString(),
@@ -243,22 +255,22 @@ fun AppContentView() {
                             isError = true,
                             errorMessage = error?.message
                         )
-                }
-            },
-            onRequestModified = {
-                log.d { "onRequestModified" }
-                it?.let { update ->
-                    request = update
-                    // TODO avoid the loop, refactor to use one state only and no duplicated code
-                    requestsState = requestsState.toMutableList().mapIndexed { index, it ->
-                        if (it.id == update.id) {
-                            requestCollection!!.requests[index] = update
-                            update.copy()
-                        } else {
-                            it
+                    }
+                },
+                onRequestModified = {
+                    log.d { "onRequestModified" }
+                    it?.let { update ->
+                        request = update
+                        // TODO avoid the loop, refactor to use one state only and no duplicated code
+                        requestsState = requestsState.toMutableList().mapIndexed { index, it ->
+                            if (it.id == update.id) {
+                                requestCollection!!.requests[index] = update
+                                update.copy()
+                            } else {
+                                it
+                            }
                         }
                     }
-                }
                     requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                 }
             )

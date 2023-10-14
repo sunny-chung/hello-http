@@ -49,6 +49,7 @@ fun RequestListView(
     onSelectRequest: (UserRequest) -> Unit,
     onAddRequest: () -> UserRequest,
     onUpdateRequest: (UserRequest) -> Unit,
+    onDeleteRequest: (UserRequest) -> Unit,
     onFocusRequestNameTextField: () -> Unit,
     onUnfocusRequestNameTextField: () -> Unit,
 ) {
@@ -97,6 +98,8 @@ fun RequestListView(
                         }
                     )
                 ) {
+                    AppDeleteButton { onDeleteRequest(it) }
+
                     val (text, color) = when (it.protocol) {
                         Protocol.Http -> Pair(
                             it.method, when (it.method) {
@@ -205,6 +208,7 @@ fun RequestListViewPreview() {
         onSelectRequest = {},
         onAddRequest = { UserRequest(id = uuidString()) },
         onUpdateRequest = {},
+        onDeleteRequest = {},
         onFocusRequestNameTextField = {},
         onUnfocusRequestNameTextField = {},
     )
