@@ -90,7 +90,13 @@ fun RequestListView(
             items(items = requests) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.combinedClickable(onClick = { onSelectRequest(it) })
+                    modifier = Modifier.combinedClickable(
+                        onClick = { onSelectRequest(it) },
+                        onDoubleClick = {
+                            onSelectRequest(it)
+                            editRequestNameViewModel.onStartEdit(it)
+                        }
+                    )
                 ) {
                     val (text, color) = when (it.protocol) {
                         Protocol.Http -> Pair(
