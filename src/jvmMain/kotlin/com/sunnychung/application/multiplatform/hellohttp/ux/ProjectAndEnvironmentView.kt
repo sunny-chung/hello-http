@@ -64,6 +64,7 @@ fun ProjectAndEnvironmentViewV2(
                         color = colors.placeholder
                     )
                 },
+                singleLine = true,
                 modifier = Modifier.focusRequester(focusRequester)
             )
             AppTextButton(text = "Done", onClick = {
@@ -77,7 +78,7 @@ fun ProjectAndEnvironmentViewV2(
                         }
                     }
                     EditDialogType.Subproject -> {
-                        val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue)
+                        val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue, treeObjects = mutableListOf()) // TODO refactor to AppView
                         onAddSubproject(selectedProject!!, subproject)
                         onSelectSubproject(subproject)
                         selectedSubproject = subproject
@@ -204,7 +205,7 @@ private enum class EditDialogType {
 @Preview
 fun ProjectAndEnvironmentViewV2Preview() {
     ProjectAndEnvironmentViewV2(
-        projects = listOf(Project(id = "p1", name = "Project A", mutableListOf(Subproject("a1", "Subproject A1"), Subproject("a2", "Subproject A2"))), Project(id = "p2", name = "Project B", mutableListOf()), Project(id = "p3", name = "Project C", mutableListOf())),
+        projects = listOf(Project(id = "p1", name = "Project A", mutableListOf(Subproject("a1", "Subproject A1", mutableListOf()), Subproject("a2", "Subproject A2", mutableListOf()))), Project(id = "p2", name = "Project B", mutableListOf()), Project(id = "p3", name = "Project C", mutableListOf())),
         environments = listOf(Environment(name = "Environment A"), Environment(name = "Environment B"), Environment(name = "Environment C")),
         onSelectEnvironment = {},
         onSelectSubproject = {},
