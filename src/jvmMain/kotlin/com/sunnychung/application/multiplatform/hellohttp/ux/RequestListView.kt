@@ -81,7 +81,6 @@ fun RequestListView(
     val treeObjects = selectedSubproject.treeObjects
 
     log.d { "RequestListView recompose ${treeObjects.size} ${requests.size}" }
-//    log.v { "RequestListView $requests" }
 
     @Composable
     fun RequestLeafView(it: UserRequest) {
@@ -147,13 +146,6 @@ fun RequestListView(
                         },
                     )
                 }
-//                .draggable(
-//                    state = rememberDraggableState {  },
-//                    orientation = Orientation.Vertical,
-//                    startDragImmediately = true,
-//                    onDragStarted = { v -> log.d { "${it.name} onDragStarted" } },
-//                    onDragStopped = { v -> log.d { "${it.name} onDragStopped" } },
-//                )
         ) {
             val (text, color) = when (it.protocol) {
                 Protocol.Http -> Pair(
@@ -207,7 +199,6 @@ fun RequestListView(
             .onGloballyPositioned {
                 treeParentBound?.let { treeParentBound ->
                     treeObjectBounds[folder.id] = DropTargetInfo(treeParentBound.localBoundingBoxOf(it), folder)
-//                    log.d { "bound ${treeObjectBounds[folder.id]}" }
                 }
             }
         if (draggingOverTreeObjectId == folder.id) {
@@ -239,21 +230,17 @@ fun RequestListView(
     fun ColumnScope.TreeObjectView(obj: TreeObject) {
         when (obj) {
             is TreeRequest -> {
-//                item {
                     RequestLeafView(requests[obj.id]!!)
-//                }
             }
 
             is TreeFolder -> {
                 var isExpanded by remember { mutableStateOf(false) }
 
-//                item {
                     FolderView(
                         folder = obj,
                         isExpanded = isExpanded, onExpandUnexpand = { isExpanded = it },
                         onDelete = { onDeleteFolder(obj) }
                     )
-//                }
                 if (isExpanded) {
                     Column {
                         obj.childs.forEach {
