@@ -250,7 +250,12 @@ fun AppContentView() {
                         selectedSubproject!!.treeObjects.replaceIf(newFolder) { it.id == newFolder.id }
                         selectedSubprojectState = selectedSubproject!!.deepCopy()
                         projectCollectionRepository.notifyUpdated(projectCollection.id)
-                    }
+                    },
+                    onDeleteFolder = { folder ->
+                        selectedSubproject!!.removeTreeObjectIf { it.id == folder.id }
+                        selectedSubprojectState = selectedSubproject!!.deepCopy()
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                    },
                 )
             }
         }

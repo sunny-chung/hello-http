@@ -53,6 +53,7 @@ fun RequestListView(
     onUnfocusNameTextField: () -> Unit,
     onAddFolder: () -> TreeFolder,
     onUpdateFolder: (TreeFolder) -> Unit,
+    onDeleteFolder: (TreeFolder) -> Unit,
 ) {
     val colors = LocalColor.current
 
@@ -164,7 +165,11 @@ fun RequestListView(
                 var isExpanded by remember { mutableStateOf(false) }
 
 //                item {
-                    FolderView(obj, isExpanded, onExpandUnexpand = { isExpanded = it }, { /* TODO */ })
+                    FolderView(
+                        folder = obj,
+                        isExpanded = isExpanded, onExpandUnexpand = { isExpanded = it },
+                        onDelete = { onDeleteFolder(obj) }
+                    )
 //                }
                 if (isExpanded) {
                     obj.childs.forEach {
@@ -248,5 +253,6 @@ fun RequestListViewPreview() {
         onUnfocusNameTextField = {},
         onAddFolder = { TreeFolder(id = uuidString(), name = "", childs = mutableListOf()) },
         onUpdateFolder = {},
+        onDeleteFolder = {},
     )
 }
