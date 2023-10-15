@@ -45,4 +45,52 @@ data class Subproject(
         }
         return copy(treeObjects = transverse(treeObjects)).apply { renewUICache() }
     }
+
+    /**
+     * Move {item} into {destination}. The only restriction is cannot move into itself.
+     */
+    fun move(itemId: String, destination: TreeFolder?): Boolean {
+        val (parent, item) = findParentAndItem(itemId)
+        if (item == destination) return false
+        if (destination != null) findParentAndItem(destination.id) // assert destination is within this subproject
+        if (parent is TreeFolder) {
+            assert(parent.childs.removeIf { it.id == item.id })
+        } else {
+            assert(treeObjects.removeIf { it.id == item.id })
+        }
+        if (destination != null) {
+            destination.childs += item
+        } else {
+            treeObjects += item
+        }
+        return true
+    }
+
+    /**
+     * Find item that id = itemId and its parent.
+     *
+     * @return pair of parent and item
+     */
+    fun findParentAndItem(itemId: String): Pair<TreeObject?, TreeObject> {
+        fun transverse(current: TreeObject, childs: MutableList<TreeObject>): Pair<TreeObject, TreeObject>? {
+            childs.forEach {
+                if (it.id == itemId) {
+                    return Pair(current, it)
+                }
+                if (it is TreeFolder) {
+                    val r = transverse(it, it.childs)
+                    if (r != null) {
+                        return r
+                    }
+                }
+            }
+            return null
+        }
+        val root = TreeFolder(id = "root", "", mutableListOf())
+        val (parent, item) = transverse(root, treeObjects) ?: throw NoSuchElementException()
+        return when (parent) {
+            root -> Pair(null, item)
+            else -> Pair(parent, item)
+        }
+    }
 }

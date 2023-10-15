@@ -2,10 +2,12 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,12 +19,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -54,6 +64,7 @@ fun RequestListView(
     onAddFolder: () -> TreeFolder,
     onUpdateFolder: (TreeFolder) -> Unit,
     onDeleteFolder: (TreeFolder) -> Unit,
+    onMoveTreeObject: (treeObjectId: String, destination: TreeFolder?) -> Unit,
 ) {
     val colors = LocalColor.current
 
@@ -61,6 +72,9 @@ fun RequestListView(
     var selectedTreeObjectId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    var treeParentBound by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val treeObjectBounds = remember { mutableStateMapOf<String, DropTargetInfo>() }
+    var draggingOverTreeObjectId by remember { mutableStateOf<String?>(null) }
 
     var isEditing = editTreeObjectNameViewModel.isEditing.collectAsState().value
 
@@ -71,6 +85,8 @@ fun RequestListView(
 
     @Composable
     fun RequestLeafView(it: UserRequest) {
+        var myBound by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
+        var draggedPoint by remember { mutableStateOf<Offset?>(null) }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.combinedClickable(
@@ -81,6 +97,63 @@ fun RequestListView(
                     editTreeObjectNameViewModel.onStartEdit()
                 }
             )
+                .onGloballyPositioned { treeParentBound?.let { p -> myBound = p.localBoundingBoxOf(it); /*log.d { "req rect $myBound" }*/ } }
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            if (e.type == PointerEventType.Release) {
+                                log.d { "Pointer release ${it.name}" }
+                            }
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = {
+                            draggedPoint = Offset(myBound.left, myBound.top) + it
+                        },
+                        onDrag = { offset ->
+                            draggedPoint = draggedPoint!! + offset
+                            var intersect: DropTargetInfo? = null
+                            for ((key, value) in treeObjectBounds) {
+                                if (draggedPoint!! in value.bounds) {
+                                    intersect = value
+                                    break
+                                }
+                            }
+//                            log.d { "onDrag o=$offset b=$draggedPoint intersects $intersect"}
+                            draggingOverTreeObjectId = intersect?.folder?.id
+                        },
+                        onDragCancel = {
+                            draggingOverTreeObjectId = null
+                            draggedPoint = null
+                        },
+                        onDragEnd = {
+                            log.d { "Dragged into ${treeObjectBounds[draggingOverTreeObjectId]?.folder?.name}" }
+
+                            if (draggingOverTreeObjectId != null) {
+                                val (dropTargetParent, dropTarget) = selectedSubproject.findParentAndItem(draggingOverTreeObjectId!!)
+                                val destination = if (dropTarget is TreeFolder) {
+                                    dropTarget
+                                } else {
+                                    dropTargetParent as TreeFolder?
+                                }
+                                onMoveTreeObject(it.id, destination)
+                            }
+
+                            draggingOverTreeObjectId = null
+                            draggedPoint = null
+                        },
+                    )
+                }
+//                .draggable(
+//                    state = rememberDraggableState {  },
+//                    orientation = Orientation.Vertical,
+//                    startDragImmediately = true,
+//                    onDragStarted = { v -> log.d { "${it.name} onDragStarted" } },
+//                    onDragStopped = { v -> log.d { "${it.name} onDragStopped" } },
+//                )
         ) {
             val (text, color) = when (it.protocol) {
                 Protocol.Http -> Pair(
@@ -124,15 +197,25 @@ fun RequestListView(
                    onExpandUnexpand: (isExpanded: Boolean) -> Unit,
                    onDelete: () -> Unit
     ) {
+        var modifier = Modifier.combinedClickable(
+            onClick = { onExpandUnexpand(!isExpanded) },
+            onDoubleClick = {
+                selectedTreeObjectId = folder.id
+                editTreeObjectNameViewModel.onStartEdit()
+            }
+        )
+            .onGloballyPositioned {
+                treeParentBound?.let { treeParentBound ->
+                    treeObjectBounds[folder.id] = DropTargetInfo(treeParentBound.localBoundingBoxOf(it), folder)
+//                    log.d { "bound ${treeObjectBounds[folder.id]}" }
+                }
+            }
+        if (draggingOverTreeObjectId == folder.id) {
+            modifier = modifier.background(Color(0f, 0f, 0.3f))
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.combinedClickable(
-                onClick = { onExpandUnexpand(!isExpanded) },
-                onDoubleClick = {
-                    selectedTreeObjectId = folder.id
-                    editTreeObjectNameViewModel.onStartEdit()
-                }
-            )
+            modifier = modifier
         ) {
             AppImage(
                 resource = if (isExpanded) "folder-open.svg" else "folder.svg",
@@ -153,7 +236,7 @@ fun RequestListView(
 
     @Composable
 //    fun LazyListScope.TreeObjectView(obj: TreeObject) {
-    fun TreeObjectView(obj: TreeObject) {
+    fun ColumnScope.TreeObjectView(obj: TreeObject) {
         when (obj) {
             is TreeRequest -> {
 //                item {
@@ -172,8 +255,11 @@ fun RequestListView(
                     )
 //                }
                 if (isExpanded) {
-                    obj.childs.forEach {
-                        TreeObjectView(it)
+                    Column {
+                        obj.childs.forEach {
+                            log.d { "expanded to show ${it}" }
+                            this@Column.TreeObjectView(it)
+                        }
                     }
                 }
             }
@@ -218,9 +304,9 @@ fun RequestListView(
 //            }
 //        }
 
-        Column(modifier = Modifier.verticalScroll(scrollState)) {
+        Column(modifier = Modifier.verticalScroll(scrollState).onGloballyPositioned { treeParentBound = it }) {
             treeObjects.forEach {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.defaultMinSize(minHeight = 28.dp)) {
+                Column(/*verticalAlignment = Alignment.CenterVertically,*/ modifier = Modifier.defaultMinSize(minHeight = 28.dp)) {
                     TreeObjectView(it)
                 }
             }
@@ -254,5 +340,8 @@ fun RequestListViewPreview() {
         onAddFolder = { TreeFolder(id = uuidString(), name = "", childs = mutableListOf()) },
         onUpdateFolder = {},
         onDeleteFolder = {},
+        onMoveTreeObject = {_, _ ->},
     )
 }
+
+data class DropTargetInfo(var bounds: Rect, val folder: TreeFolder?)

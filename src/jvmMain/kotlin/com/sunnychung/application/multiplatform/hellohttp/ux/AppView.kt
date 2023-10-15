@@ -256,6 +256,11 @@ fun AppContentView() {
                         selectedSubprojectState = selectedSubproject!!.deepCopy()
                         projectCollectionRepository.notifyUpdated(projectCollection.id)
                     },
+                    onMoveTreeObject = { treeObjectId, destination ->
+                        selectedSubproject!!.move(treeObjectId, destination)
+                        selectedSubprojectState = selectedSubproject!!.deepCopy()
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                    },
                 )
             }
         }
