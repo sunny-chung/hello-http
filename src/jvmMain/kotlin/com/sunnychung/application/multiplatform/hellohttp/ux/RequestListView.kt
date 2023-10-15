@@ -33,6 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -90,6 +93,7 @@ fun RequestListView(
     fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequest) {
         var myBound by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
         var draggedPoint by remember { mutableStateOf<Offset?>(null) }
+        var dragIsActive by remember { mutableStateOf(false) }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = modifier.combinedClickable(
@@ -115,27 +119,31 @@ fun RequestListView(
                     detectDragGestures(
                         onDragStart = {
                             draggedPoint = Offset(myBound.left, myBound.top) + it
+                            dragIsActive = true
                         },
                         onDrag = { offset ->
-                            draggedPoint = draggedPoint!! + offset
-                            var intersect: DropTargetInfo? = null
-                            for ((key, value) in treeObjectBounds) {
-                                if (draggedPoint!! in value.bounds) {
-                                    intersect = value
-                                    break
+                            if (dragIsActive) {
+                                draggedPoint = draggedPoint!! + offset
+                                var intersect: DropTargetInfo? = null
+                                for ((key, value) in treeObjectBounds) {
+                                    if (draggedPoint!! in value.bounds) {
+                                        intersect = value
+                                        break
+                                    }
                                 }
-                            }
 //                            log.d { "onDrag o=$offset b=$draggedPoint intersects $intersect"}
-                            draggingOverTreeObjectId = intersect?.folder?.id
+                                draggingOverTreeObjectId = intersect?.folder?.id
+                            }
                         },
                         onDragCancel = {
+                            dragIsActive = false
                             draggingOverTreeObjectId = null
                             draggedPoint = null
                         },
                         onDragEnd = {
                             log.d { "Dragged into ${treeObjectBounds[draggingOverTreeObjectId]?.folder?.name}" }
 
-                            if (draggingOverTreeObjectId != null) {
+                            if (dragIsActive && draggingOverTreeObjectId != null) {
                                 val (dropTargetParent, dropTarget) = selectedSubproject.findParentAndItem(draggingOverTreeObjectId!!)
                                 val destination = if (dropTarget is TreeFolder) {
                                     dropTarget
@@ -145,10 +153,21 @@ fun RequestListView(
                                 onMoveTreeObject(it.id, destination)
                             }
 
+                            dragIsActive = false
                             draggingOverTreeObjectId = null
                             draggedPoint = null
                         },
                     )
+                }
+                .onKeyEvent {
+                    if (it.key == Key.Escape) {
+                        log.d { "Detected ESC to cancel drag" }
+                        dragIsActive = false
+                        draggingOverTreeObjectId = null
+                        true
+                    } else {
+                        false
+                    }
                 }
         ) {
             val (text, color) = when (it.protocol) {
