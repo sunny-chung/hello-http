@@ -6,11 +6,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -83,12 +87,12 @@ fun RequestListView(
     log.d { "RequestListView recompose ${treeObjects.size} ${requests.size}" }
 
     @Composable
-    fun RequestLeafView(it: UserRequest) {
+    fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequest) {
         var myBound by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
         var draggedPoint by remember { mutableStateOf<Offset?>(null) }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.combinedClickable(
+            modifier = modifier.combinedClickable(
                 onClick = { onSelectRequest(it) },
                 onDoubleClick = {
                     selectedTreeObjectId = it.id
@@ -184,12 +188,14 @@ fun RequestListView(
     }
 
     @Composable
-    fun FolderView(folder: TreeFolder,
-                   isExpanded: Boolean,
-                   onExpandUnexpand: (isExpanded: Boolean) -> Unit,
-                   onDelete: () -> Unit
+    fun FolderView(
+        modifier: Modifier = Modifier,
+        folder: TreeFolder,
+        isExpanded: Boolean,
+        onExpandUnexpand: (isExpanded: Boolean) -> Unit,
+        onDelete: () -> Unit
     ) {
-        var modifier = Modifier.combinedClickable(
+        var modifierToUse = modifier.combinedClickable(
             onClick = { onExpandUnexpand(!isExpanded) },
             onDoubleClick = {
                 selectedTreeObjectId = folder.id
@@ -202,11 +208,11 @@ fun RequestListView(
                 }
             }
         if (draggingOverTreeObjectId == folder.id) {
-            modifier = modifier.background(Color(0f, 0f, 0.3f))
+            modifierToUse = modifierToUse.background(Color(0f, 0f, 0.3f))
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
+            modifier = modifierToUse
         ) {
             AppImage(
                 resource = if (isExpanded) "folder-open.svg" else "folder.svg",
@@ -227,25 +233,32 @@ fun RequestListView(
 
     @Composable
 //    fun LazyListScope.TreeObjectView(obj: TreeObject) {
-    fun ColumnScope.TreeObjectView(obj: TreeObject) {
-        when (obj) {
-            is TreeRequest -> {
-                    RequestLeafView(requests[obj.id]!!)
-            }
+    fun ColumnScope.TreeObjectView(indentLevel: Int, obj: TreeObject) {
+        Box {
+            Column(modifier = Modifier.align(Alignment.CenterStart)) {
+                val modifier = Modifier.defaultMinSize(minHeight = 28.dp).padding(start = 16.dp * indentLevel)
+                when (obj) {
+                    is TreeRequest -> {
+                        RequestLeafView(modifier, requests[obj.id]!!)
+                    }
 
-            is TreeFolder -> {
-                var isExpanded by remember { mutableStateOf(false) }
+                    is TreeFolder -> {
+                        var isExpanded by remember { mutableStateOf(false) }
 
-                    FolderView(
-                        folder = obj,
-                        isExpanded = isExpanded, onExpandUnexpand = { isExpanded = it },
-                        onDelete = { onDeleteFolder(obj) }
-                    )
-                if (isExpanded) {
-                    Column {
-                        obj.childs.forEach {
-                            log.d { "expanded to show ${it}" }
-                            this@Column.TreeObjectView(it)
+                        FolderView(
+                            modifier = modifier,
+                            folder = obj,
+                            isExpanded = isExpanded,
+                            onExpandUnexpand = { isExpanded = it },
+                            onDelete = { onDeleteFolder(obj) }
+                        )
+                        if (isExpanded) {
+                            Column {
+                                obj.childs.forEach {
+                                    this@Column.TreeObjectView(indentLevel = indentLevel + 1, obj = it)
+                                }
+                            }
+                            Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
                         }
                     }
                 }
@@ -293,9 +306,7 @@ fun RequestListView(
 
         Column(modifier = Modifier.verticalScroll(scrollState).onGloballyPositioned { treeParentBound = it }) {
             treeObjects.forEach {
-                Column(/*verticalAlignment = Alignment.CenterVertically,*/ modifier = Modifier.defaultMinSize(minHeight = 28.dp)) {
-                    TreeObjectView(it)
-                }
+                TreeObjectView(indentLevel = 0, obj = it)
             }
         }
     }

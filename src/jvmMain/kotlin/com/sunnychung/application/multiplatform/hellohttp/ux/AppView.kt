@@ -173,7 +173,7 @@ fun AppContentView() {
     log.d { "AppContentView recompose" }
 
     Row(modifier = modifier) {
-        Column(modifier = Modifier.width(150.dp)) {
+        Column(modifier = Modifier.width(180.dp)) {
             ProjectAndEnvironmentViewV2(
                 projects = projectCollection.projects,
                 environments = emptyList(),

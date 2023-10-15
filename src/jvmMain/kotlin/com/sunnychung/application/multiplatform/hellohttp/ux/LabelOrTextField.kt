@@ -16,7 +16,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.style.TextOverflow
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
@@ -34,8 +37,9 @@ fun LabelOrTextField(
 ) {
     if (!isEditing) {
         AppText(
-            text = value,
+            text = value.replace(' ', '\u00A0'), // disable breaking by words
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             color = labelColor,
             modifier = modifier
         )
