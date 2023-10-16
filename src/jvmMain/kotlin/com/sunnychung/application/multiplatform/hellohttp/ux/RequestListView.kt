@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -81,7 +79,7 @@ fun RequestListView(
     val scrollState = rememberScrollState()
     var treeParentBound by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val treeObjectBounds = remember { mutableStateMapOf<String, DropTargetInfo>() }
-    var draggingOverTreeObjectId by remember { mutableStateOf<String?>(null) }
+    var draggingOverDropTarget by remember { mutableStateOf<DropTargetInfo?>(null) }
 
     var isEditing = editTreeObjectNameViewModel.isEditing.collectAsState().value
 
@@ -90,31 +88,13 @@ fun RequestListView(
     log.d { "RequestListView recompose ${treeObjects.size} ${requests.size}" }
 
     @Composable
-    fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequest) {
+    fun Draggable(modifier: Modifier = Modifier, onDrop: (DropTargetInfo) -> Unit, content: @Composable () -> Unit) {
         var myBound by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
         var draggedPoint by remember { mutableStateOf<Offset?>(null) }
         var dragIsActive by remember { mutableStateOf(false) }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier.combinedClickable(
-                onClick = { onSelectRequest(it) },
-                onDoubleClick = {
-                    selectedTreeObjectId = it.id
-                    onSelectRequest(it)
-                    editTreeObjectNameViewModel.onStartEdit()
-                }
-            )
+        Box(
+            modifier = modifier
                 .onGloballyPositioned { treeParentBound?.let { p -> myBound = p.localBoundingBoxOf(it); /*log.d { "req rect $myBound" }*/ } }
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val e = awaitPointerEvent()
-                            if (e.type == PointerEventType.Release) {
-                                log.d { "Pointer release ${it.name}" }
-                            }
-                        }
-                    }
-                }
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = {
@@ -132,29 +112,23 @@ fun RequestListView(
                                     }
                                 }
 //                            log.d { "onDrag o=$offset b=$draggedPoint intersects $intersect"}
-                                draggingOverTreeObjectId = intersect?.folder?.id
+                                draggingOverDropTarget = intersect
                             }
                         },
                         onDragCancel = {
                             dragIsActive = false
-                            draggingOverTreeObjectId = null
+                            draggingOverDropTarget = null
                             draggedPoint = null
                         },
                         onDragEnd = {
-                            log.d { "Dragged into ${treeObjectBounds[draggingOverTreeObjectId]?.folder?.name}" }
+                            log.d { "Dragged into ${draggingOverDropTarget?.folder?.name}" }
 
-                            if (dragIsActive && draggingOverTreeObjectId != null) {
-                                val (dropTargetParent, dropTarget) = selectedSubproject.findParentAndItem(draggingOverTreeObjectId!!)
-                                val destination = if (dropTarget is TreeFolder) {
-                                    dropTarget
-                                } else {
-                                    dropTargetParent as TreeFolder?
-                                }
-                                onMoveTreeObject(it.id, destination)
+                            if (dragIsActive && draggingOverDropTarget != null) {
+                                onDrop(draggingOverDropTarget!!)
                             }
 
                             dragIsActive = false
-                            draggingOverTreeObjectId = null
+                            draggingOverDropTarget = null
                             draggedPoint = null
                         },
                     )
@@ -163,46 +137,78 @@ fun RequestListView(
                     if (it.key == Key.Escape) {
                         log.d { "Detected ESC to cancel drag" }
                         dragIsActive = false
-                        draggingOverTreeObjectId = null
+                        draggingOverDropTarget = null
                         true
                     } else {
                         false
                     }
                 }
         ) {
-            val (text, color) = when (it.protocol) {
-                Protocol.Http -> Pair(
-                    it.method, when (it.method) {
-                        "GET" -> colors.httpRequestGet
-                        "POST" -> colors.httpRequestPost
-                        "PUT" -> colors.httpRequestPut
-                        "DELETE" -> colors.httpRequestDelete
-                        else -> colors.httpRequestOthers
+            content()
+        }
+    }
+
+    fun handleDropAction(draggable: TreeObject, droppedAt: DropTargetInfo) {
+        // TODO handle reorder as well
+        val (dropTargetParent, dropTarget) = selectedSubproject.findParentAndItem(droppedAt.folder!!.id)
+        val destination = if (dropTarget is TreeFolder) {
+            dropTarget
+        } else {
+            dropTargetParent as TreeFolder?
+        }
+        onMoveTreeObject(draggable.id, destination)
+    }
+
+    @Composable
+    fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequest) {
+        Draggable(
+            onDrop = { destination -> handleDropAction(draggable = TreeRequest(id = it.id), droppedAt = destination) }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = modifier.combinedClickable(
+                    onClick = { onSelectRequest(it) },
+                    onDoubleClick = {
+                        selectedTreeObjectId = it.id
+                        onSelectRequest(it)
+                        editTreeObjectNameViewModel.onStartEdit()
                     }
                 )
+            ) {
+                val (text, color) = when (it.protocol) {
+                    Protocol.Http -> Pair(
+                        it.method, when (it.method) {
+                            "GET" -> colors.httpRequestGet
+                            "POST" -> colors.httpRequestPost
+                            "PUT" -> colors.httpRequestPut
+                            "DELETE" -> colors.httpRequestDelete
+                            else -> colors.httpRequestOthers
+                        }
+                    )
 
-                Protocol.Grpc -> Pair("gRPC", colors.grpcRequest)
-                Protocol.Graphql -> Pair("GQL", colors.graphqlRequest)
+                    Protocol.Grpc -> Pair("gRPC", colors.grpcRequest)
+                    Protocol.Graphql -> Pair("GQL", colors.graphqlRequest)
+                }
+                AppText(
+                    text = text,
+                    color = color,
+                    isFitContent = true,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier.width(width = 36.dp).padding(end = 4.dp)
+                )
+                LabelOrTextField(
+                    isEditing = isEditing && selectedTreeObjectId == it.id,
+                    editNameViewModel = editTreeObjectNameViewModel,
+                    labelColor = if (selectedRequest?.id == it.id) colors.highlight else colors.primary,
+                    value = it.name,
+                    onValueUpdate = { v -> onUpdateRequest(it.copy(name = v)) },
+                    onFocus = onFocusNameTextField,
+                    onUnfocus = onUnfocusNameTextField,
+                    modifier = Modifier.weight(1f),
+                )
+                AppDeleteButton { onDeleteRequest(it) }
             }
-            AppText(
-                text = text,
-                color = color,
-                isFitContent = true,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                modifier = Modifier.width(width = 36.dp).padding(end = 4.dp)
-            )
-            LabelOrTextField(
-                isEditing = isEditing && selectedTreeObjectId == it.id,
-                editNameViewModel = editTreeObjectNameViewModel,
-                labelColor = if (selectedRequest?.id == it.id) colors.highlight else colors.primary,
-                value = it.name,
-                onValueUpdate = { v -> onUpdateRequest(it.copy(name = v)) },
-                onFocus = onFocusNameTextField,
-                onUnfocus = onUnfocusNameTextField,
-                modifier = Modifier.weight(1f),
-            )
-            AppDeleteButton { onDeleteRequest(it) }
         }
     }
 
@@ -214,39 +220,43 @@ fun RequestListView(
         onExpandUnexpand: (isExpanded: Boolean) -> Unit,
         onDelete: () -> Unit
     ) {
-        var modifierToUse = modifier.combinedClickable(
-            onClick = { onExpandUnexpand(!isExpanded) },
-            onDoubleClick = {
-                selectedTreeObjectId = folder.id
-                editTreeObjectNameViewModel.onStartEdit()
-            }
-        )
-            .onGloballyPositioned {
-                treeParentBound?.let { treeParentBound ->
-                    treeObjectBounds[folder.id] = DropTargetInfo(treeParentBound.localBoundingBoxOf(it), folder)
-                }
-            }
-        if (draggingOverTreeObjectId == folder.id) {
-            modifierToUse = modifierToUse.background(Color(0f, 0f, 0.3f))
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifierToUse
+        Draggable(
+            onDrop = { destination -> handleDropAction(draggable = folder, droppedAt = destination) }
         ) {
-            AppImage(
-                resource = if (isExpanded) "folder-open.svg" else "folder.svg",
-                size = 16.dp,
+            var modifierToUse = modifier.combinedClickable(
+                onClick = { onExpandUnexpand(!isExpanded) },
+                onDoubleClick = {
+                    selectedTreeObjectId = folder.id
+                    editTreeObjectNameViewModel.onStartEdit()
+                }
             )
-            LabelOrTextField(
-                isEditing = isEditing && selectedTreeObjectId == folder.id,
-                editNameViewModel = editTreeObjectNameViewModel,
-                value = folder.name,
-                onValueUpdate = { v -> onUpdateFolder(folder.copy(name = v)) },
-                onFocus = onFocusNameTextField,
-                onUnfocus = onUnfocusNameTextField,
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-            )
-            AppDeleteButton { onDelete() }
+                .onGloballyPositioned {
+                    treeParentBound?.let { treeParentBound ->
+                        treeObjectBounds[folder.id] = DropTargetInfo(treeParentBound.localBoundingBoxOf(it), folder)
+                    }
+                }
+            if (draggingOverDropTarget?.folder?.id == folder.id) {
+                modifierToUse = modifierToUse.background(Color(0f, 0f, 0.3f))
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = modifierToUse
+            ) {
+                AppImage(
+                    resource = if (isExpanded) "folder-open.svg" else "folder.svg",
+                    size = 16.dp,
+                )
+                LabelOrTextField(
+                    isEditing = isEditing && selectedTreeObjectId == folder.id,
+                    editNameViewModel = editTreeObjectNameViewModel,
+                    value = folder.name,
+                    onValueUpdate = { v -> onUpdateFolder(folder.copy(name = v)) },
+                    onFocus = onFocusNameTextField,
+                    onUnfocus = onUnfocusNameTextField,
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                )
+                AppDeleteButton { onDelete() }
+            }
         }
     }
 
