@@ -51,15 +51,18 @@ data class Subproject(
      */
     fun move(itemId: String, destination: TreeFolder?): Boolean {
         val (parent, item) = findParentAndItem(itemId)
+        var realDestination: TreeFolder? = null
         if (item == destination) return false
-        if (destination != null) findParentAndItem(destination.id) // assert destination is within this subproject
+        if (destination != null) { // note that the destination object may not be in this subproject (it might be a copy)
+            realDestination = findParentAndItem(destination.id).second as TreeFolder?
+        }
         if (parent is TreeFolder) {
             assert(parent.childs.removeIf { it.id == item.id })
         } else {
             assert(treeObjects.removeIf { it.id == item.id })
         }
-        if (destination != null) {
-            destination.childs += item
+        if (realDestination != null) {
+            realDestination.childs += item
         } else {
             treeObjects += item
         }
