@@ -124,12 +124,13 @@ fun RequestEditorView(
         isSupportFileValue: Boolean
     ) {
         val data = value ?: listOf()
+        val activeBaseValues = baseValue?.filter { it.isEnabled }
         Column(modifier = modifier.padding(8.dp)) {
-            if (baseValue?.isNotEmpty() == true) {
+            if (activeBaseValues?.isNotEmpty() == true) {
                 val isShowInheritedValues by remember { mutableStateOf(true) }
                 InputFormHeader(text = "Inherited from Base")
                 KeyValueEditorView(
-                    keyValues = baseValue,
+                    keyValues = activeBaseValues,
                     isSupportFileValue = isSupportFileValue,
                     disabledIds = baseDisabledIds,
                     isInheritedView = true,
