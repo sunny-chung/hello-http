@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,6 +42,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
@@ -69,7 +72,7 @@ fun RequestListView(
     onAddFolder: () -> TreeFolder,
     onUpdateFolder: (TreeFolder) -> Unit,
     onDeleteFolder: (TreeFolder) -> Unit,
-    onMoveTreeObject: (treeObjectId: String, destination: TreeFolder?) -> Unit,
+    onMoveTreeObject: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
 ) {
     val colors = LocalColor.current
 
@@ -106,12 +109,15 @@ fun RequestListView(
                                 draggedPoint = draggedPoint!! + offset
                                 var intersect: DropTargetInfo? = null
                                 for ((key, value) in treeObjectBounds) {
-                                    if (draggedPoint!! in value.bounds) {
+//                                    log.v { "onDrag e $value" }
+                                    // when there are overlapping regions, "Before" and "After" bars have higher priority than "Inside" folders
+                                    if (draggedPoint!! in value.bounds && (intersect == null || value.direction != MoveDirection.Inside)) {
                                         intersect = value
-                                        break
+//                                        log.d { "onDrag replace ${intersect?.direction} ${intersect?.item}"}
                                     }
                                 }
-//                            log.d { "onDrag o=$offset b=$draggedPoint intersects $intersect"}
+//                            log.v { "onDrag o=$offset b=$draggedPoint intersects $intersect"}
+//                            log.d { "onDrag intersects ${intersect?.direction} ${intersect?.item}"}
                                 draggingOverDropTarget = intersect
                             }
                         },
@@ -121,7 +127,7 @@ fun RequestListView(
                             draggedPoint = null
                         },
                         onDragEnd = {
-                            log.d { "Dragged into ${draggingOverDropTarget?.folder?.name}" }
+//                            log.d { "Dragged into ${draggingOverDropTarget?.item?.name}" }
 
                             if (dragIsActive && draggingOverDropTarget != null) {
                                 onDrop(draggingOverDropTarget!!)
@@ -148,15 +154,32 @@ fun RequestListView(
         }
     }
 
+    fun Modifier.droppable(direction: MoveDirection, item: TreeObject?): Modifier {
+        return this.onGloballyPositioned {
+            treeParentBound?.let { treeParentBound ->
+//                log.v { "registered - $direction $item" }
+                treeObjectBounds["$direction:${item?.id ?: "none"}"] = DropTargetInfo(
+                    bounds = treeParentBound.localBoundingBoxOf(it),
+                    item = item,
+                    direction = direction
+                )
+            } // ?: log.v { "not registered - $direction $item" }
+        }
+    }
+
     fun handleDropAction(draggable: TreeObject, droppedAt: DropTargetInfo) {
         // TODO handle reorder as well
-        val (dropTargetParent, dropTarget) = selectedSubproject.findParentAndItem(droppedAt.folder!!.id)
-        val destination = if (dropTarget is TreeFolder) {
-            dropTarget
+        if (droppedAt.direction == MoveDirection.Inside) {
+            val (dropTargetParent, dropTarget) = selectedSubproject.findParentAndItem(droppedAt.item!!.id)
+            val destination = if (dropTarget is TreeFolder) {
+                dropTarget
+            } else {
+                dropTargetParent as TreeFolder? // TODO can remove?
+            }
+            onMoveTreeObject(draggable.id, droppedAt.direction, destination)
         } else {
-            dropTargetParent as TreeFolder?
+            onMoveTreeObject(draggable.id, droppedAt.direction, droppedAt.item)
         }
-        onMoveTreeObject(draggable.id, destination)
     }
 
     @Composable
@@ -230,13 +253,9 @@ fun RequestListView(
                     editTreeObjectNameViewModel.onStartEdit()
                 }
             )
-                .onGloballyPositioned {
-                    treeParentBound?.let { treeParentBound ->
-                        treeObjectBounds[folder.id] = DropTargetInfo(treeParentBound.localBoundingBoxOf(it), folder)
-                    }
-                }
-            if (draggingOverDropTarget?.folder?.id == folder.id) {
-                modifierToUse = modifierToUse.background(Color(0f, 0f, 0.3f))
+                .droppable(MoveDirection.Inside, folder)
+            if (draggingOverDropTarget?.direction == MoveDirection.Inside && draggingOverDropTarget?.item?.id == folder.id) {
+                modifierToUse = modifierToUse.background(colors.backgroundHoverDroppable)
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -263,9 +282,10 @@ fun RequestListView(
     @Composable
 //    fun LazyListScope.TreeObjectView(obj: TreeObject) {
     fun ColumnScope.TreeObjectView(indentLevel: Int, obj: TreeObject) {
+        val leftPadding = 16.dp * indentLevel
         Box {
             Column(modifier = Modifier.align(Alignment.CenterStart)) {
-                val modifier = Modifier.defaultMinSize(minHeight = 28.dp).padding(start = 16.dp * indentLevel)
+                val modifier = Modifier.defaultMinSize(minHeight = 28.dp).padding(start = leftPadding)
                 when (obj) {
                     is TreeRequest -> {
                         RequestLeafView(modifier, requests[obj.id]!!)
@@ -287,9 +307,39 @@ fun RequestListView(
                                     this@Column.TreeObjectView(indentLevel = indentLevel + 1, obj = it)
                                 }
                             }
-                            Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
+                            if (obj.childs.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(4.dp)
+                                        .droppable(MoveDirection.After, obj.childs.last())
+                                ) {
+                                    if (draggingOverDropTarget?.direction == MoveDirection.After && draggingOverDropTarget?.item?.id == obj.childs.last().id) {
+                                        Surface(
+                                            color = colors.backgroundHoverDroppable,
+                                            modifier = Modifier.fillMaxSize().padding(start = 16.dp * (indentLevel + 1))
+                                        ) {}
+                                    }
+                                }
+                                Spacer(modifier = Modifier.fillMaxWidth().height(4.dp))
+                            } else {
+                                Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
+                            }
                         }
                     }
+                }
+            }
+            Row(modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .height(4.dp)
+                .droppable(MoveDirection.Before, obj)
+            ) {
+                if (draggingOverDropTarget?.direction == MoveDirection.Before && draggingOverDropTarget?.item?.id == obj.id) {
+                    Surface(
+                        color = colors.backgroundHoverDroppable,
+                        modifier = Modifier.fillMaxSize().padding(start = leftPadding)
+                    ) {}
                 }
             }
         }
@@ -367,8 +417,8 @@ fun RequestListViewPreview() {
         onAddFolder = { TreeFolder(id = uuidString(), name = "", childs = mutableListOf()) },
         onUpdateFolder = {},
         onDeleteFolder = {},
-        onMoveTreeObject = {_, _ ->},
+        onMoveTreeObject = {_, _, _ ->},
     )
 }
 
-data class DropTargetInfo(var bounds: Rect, val folder: TreeFolder?)
+data class DropTargetInfo(var bounds: Rect, val direction: MoveDirection, val item: TreeObject?)

@@ -12,6 +12,7 @@ data class AppColor(
     val backgroundButton: Color,
     val backgroundDialogOverlay: Color,
     val backgroundTooltip: Color,
+    val backgroundHoverDroppable: Color,
 
     val primary: Color,
     val bright: Color,
@@ -53,6 +54,7 @@ fun darkColorScheme(): AppColor = AppColor(
     backgroundButton = Color(red = 0f, green = 0f, blue = 0.6f),
     backgroundDialogOverlay = Color.Black.copy(alpha = 0.6f),
     backgroundTooltip = Color(red = 0f, green = 0f, blue = 0.45f),
+    backgroundHoverDroppable = Color(0f, 0f, 0.6f),
 
     primary = Color(red = 0.8f, green = 0.8f, blue = 1.0f),
     bright = Color.White,

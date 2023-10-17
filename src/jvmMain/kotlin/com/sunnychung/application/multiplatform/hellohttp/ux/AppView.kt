@@ -36,6 +36,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
+import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
@@ -43,7 +44,6 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
@@ -256,8 +256,12 @@ fun AppContentView() {
                         selectedSubprojectState = selectedSubproject!!.deepCopy()
                         projectCollectionRepository.notifyUpdated(projectCollection.id)
                     },
-                    onMoveTreeObject = { treeObjectId, destination ->
-                        selectedSubproject!!.move(treeObjectId, destination)
+                    onMoveTreeObject = { treeObjectId, direction, destination ->
+                        if (direction == MoveDirection.Inside) {
+                            selectedSubproject!!.moveInto(treeObjectId, destination as TreeFolder?)
+                        } else {
+                            selectedSubproject!!.moveNear(treeObjectId, direction, destination!!.id)
+                        }
                         selectedSubprojectState = selectedSubproject!!.deepCopy()
                         projectCollectionRepository.notifyUpdated(projectCollection.id)
                     },
