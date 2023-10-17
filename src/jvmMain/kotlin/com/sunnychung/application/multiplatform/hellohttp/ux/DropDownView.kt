@@ -26,6 +26,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 fun <T: DropDownable> DropDownView(
     modifier: Modifier = Modifier,
     isEnabled: Boolean = true,
+    iconResource: String = "down-small.svg",
     iconSize: Dp = 16.dp,
     items: List<T>,
     isLabelFillMaxWidth: Boolean = false,
@@ -73,7 +74,7 @@ fun <T: DropDownable> DropDownView(
         if (isShowLabel) {
             contentView(selectedItem)
         }
-        AppImage(resource = "down-small.svg", size = iconSize)
+        AppImage(resource = iconResource, size = iconSize)
     }
 }
 

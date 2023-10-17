@@ -78,7 +78,6 @@ enum class FieldValueType {
     String, File
 }
 
-@Persisted
 @Serializable
 sealed interface UserRequestBody {
     fun toOkHttpBody(mediaType: MediaType): RequestBody

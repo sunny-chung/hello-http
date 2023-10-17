@@ -36,12 +36,16 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
+import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
+import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -110,8 +114,9 @@ fun AppContentView() {
     }
 
     var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
+    var selectedSubprojectState by remember { mutableStateOf<Subproject?>(null) }
     var requestCollection by remember { mutableStateOf<RequestCollection?>(null) }
-    var requestsState by remember { mutableStateOf(requestCollection?.requests?.toList() ?: emptyList()) }
+    var requestCollectionState by remember { mutableStateOf<RequestCollection?>(null) }
     var request by remember { mutableStateOf<UserRequest?>(null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
     var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value // needed for invalidating compose caches
@@ -128,7 +133,7 @@ fun AppContentView() {
             }
             persistResponseManager.loadResponseCollection(ResponsesDI(subprojectId = subproject.id))
             requestCollection = r
-            requestsState = r.requests.toList()
+            requestCollectionState = requestCollection?.copy()
         }
     }
 
@@ -153,15 +158,22 @@ fun AppContentView() {
     fun createRequestForCurrentSubproject(): UserRequest {
         val newRequest = UserRequest(id = uuidString(), name = "New Request", method = "GET")
         requestCollection!!.requests += newRequest
-        requestsState = requestsState.toMutableList() + newRequest
+        requestCollectionState = requestCollection?.copy()
         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+
+        selectedSubproject!!.treeObjects += TreeRequest(id = newRequest.id)
+        selectedSubprojectState = selectedSubproject?.deepCopy()
+        projectCollectionRepository.notifyUpdated(projectCollection.id)
+
         request = newRequest
         isParentClearInputFocus = true
         return newRequest
     }
 
+    log.d { "AppContentView recompose" }
+
     Row(modifier = modifier) {
-        Column(modifier = Modifier.width(150.dp)) {
+        Column(modifier = Modifier.width(180.dp)) {
             ProjectAndEnvironmentViewV2(
                 projects = projectCollection.projects,
                 environments = emptyList(),
@@ -176,6 +188,7 @@ fun AppContentView() {
                 onSelectEnvironment = {},
                 onSelectSubproject = {
                     selectedSubproject = it
+                    selectedSubprojectState = it
                     loadRequestsForSubproject(it)
                     request = null
                     response = UserResponse("-", "-")
@@ -183,25 +196,21 @@ fun AppContentView() {
                 modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
             )
 
-            if (selectedSubproject != null) {
+            if (selectedSubproject != null && requestCollectionState?.id?.subprojectId == selectedSubproject!!.id) {
                 RequestListView(
-                    requests = requestsState,
+                    selectedSubproject = selectedSubprojectState!!,
+//                    treeObjects = selectedSubprojectState?.treeObjects ?: emptyList(),
+                    requests = requestCollectionState?.requests?.associateBy { it.id } ?: emptyMap(),
                     selectedRequest = request,
-                    editRequestNameViewModel = editRequestNameViewModel,
+                    editTreeObjectNameViewModel = editRequestNameViewModel,
                     onSelectRequest = { displayRequest(it) },
                     onAddRequest = {
                         createRequestForCurrentSubproject()
                     },
                     onUpdateRequest = { update ->
                         // TODO avoid the loop, refactor to use one state only and no duplicated code
-                        requestsState = requestsState.toMutableList().mapIndexed { index, it ->
-                            if (it.id == update.id) {
-                                requestCollection!!.requests[index] = update
-                                update.copy()
-                            } else {
-                                it
-                            }
-                        }
+                        requestCollection!!.requests.replaceIf(update) { it.id == update.id }
+                        requestCollectionState = requestCollection?.copy()
                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
 
                         if (request?.id == update.id) {
@@ -210,22 +219,52 @@ fun AppContentView() {
                     },
                     onDeleteRequest = { delete ->
                         // TODO avoid the loop, refactor to use one state only and no duplicated code
-                        val index = requestsState.indexOfFirst { it.id == delete.id }
-                        if (index >= 0) {
-                            requestsState = requestsState.toMutableList().apply { removeAt(index) }
+                        val hasRemoved = requestCollection!!.requests.removeIf { it.id == delete.id }
+                        if (hasRemoved) {
+                            requestCollectionState = requestCollection?.copy()
                             requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+
+                            selectedSubproject?.removeTreeObjectIf { it.id == delete.id }
+                            selectedSubprojectState = selectedSubproject?.deepCopy()
+                            projectCollectionRepository.notifyUpdated(projectCollection.id)
 
                             if (request?.id == delete.id) {
                                 request = null
                             }
                         }
                     },
-                    onFocusRequestNameTextField = {
+                    onFocusNameTextField = {
                         isParentClearInputFocus = true
                     },
-                    onUnfocusRequestNameTextField = {
+                    onUnfocusNameTextField = {
                         isParentClearInputFocus = false
-                    }
+                    },
+                    onAddFolder = {
+                        val new = TreeFolder(id = uuidString(), name = "New Folder", childs = mutableListOf())
+                        selectedSubproject!!.treeObjects += new
+                        selectedSubprojectState = selectedSubproject!!.deepCopy()
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                        new
+                    },
+                    onUpdateFolder = { newFolder ->
+                        selectedSubproject!!.treeObjects.replaceIf(newFolder) { it.id == newFolder.id }
+                        selectedSubprojectState = selectedSubproject!!.deepCopy()
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                    },
+                    onDeleteFolder = { folder ->
+                        selectedSubproject!!.removeTreeObjectIf { it.id == folder.id }
+                        selectedSubprojectState = selectedSubproject!!.deepCopy()
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                    },
+                    onMoveTreeObject = { treeObjectId, direction, destination ->
+                        if (direction == MoveDirection.Inside) {
+                            selectedSubproject!!.moveInto(treeObjectId, destination as TreeFolder?)
+                        } else {
+                            selectedSubproject!!.moveNear(treeObjectId, direction, destination!!.id)
+                        }
+                        selectedSubprojectState = selectedSubproject!!.deepCopy()
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                    },
                 )
             }
         }
@@ -261,16 +300,9 @@ fun AppContentView() {
                     it?.let { update ->
                         request = update
                         // TODO avoid the loop, refactor to use one state only and no duplicated code
-                        requestsState = requestsState.toMutableList().mapIndexed { index, it ->
-                            if (it.id == update.id) {
-                                requestCollection!!.requests[index] = update
-                                update.copy()
-                            } else {
-                                it
-                            }
-                        }
+                        requestCollection!!.requests.replaceIf(update) { it.id == update.id }
+                        requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                     }
-                    requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                 }
             )
         } ?: RequestEditorEmptyView(modifier = requestEditorModifier, isShowCreateRequest = selectedSubproject != null && requestCollection != null) {
@@ -288,6 +320,7 @@ fun Modifier.clearFocusOnTap(): Modifier = composed {
             awaitFirstDown(pass = PointerEventPass.Initial)
             val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
             if (upEvent != null) {
+                log.d { "clearFocusOnTap clearFocus" }
                 focusManager.clearFocus()
             }
         }
