@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -80,6 +82,7 @@ fun RequestEditorView(
         previousRequest = request.id
     }
     val selectedExample = request.examples[selectedExampleIndex]
+    val baseExample = request.examples.first()
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -110,25 +113,55 @@ fun RequestEditorView(
     }
 
     @Composable
-    fun RequestKeyValueEditorView(modifier: Modifier, value: List<UserKeyValuePair>?, onValueUpdate: (List<UserKeyValuePair>) -> Unit, isSupportFileValue: Boolean) {
+    fun RequestKeyValueEditorView(
+        modifier: Modifier,
+        value: List<UserKeyValuePair>?,
+        baseValue: List<UserKeyValuePair>?,
+        baseDisabledIds: Set<String>,
+        onValueUpdate: (List<UserKeyValuePair>) -> Unit,
+        onDisableUpdate: (Set<String>) -> Unit,
+        isSupportFileValue: Boolean
+    ) {
         val data = value ?: listOf()
-        KeyValueEditorView(
-            keyValues = data,
-            isSupportFileValue = isSupportFileValue,
-            onItemChange = { index, item ->
-                log.d { "onItemChange" }
-                onValueUpdate(data.copyWithIndexedChange(index, item))
-            },
-            onItemAddLast = { item ->
-                log.d { "onItemAddLast" }
-                onValueUpdate(data + item)
-            },
-            onItemDelete = { index ->
-                log.d { "onItemDelete" }
-                onValueUpdate(data.copyWithRemovedIndex(index))
-            },
-            modifier = modifier,
-        )
+        Column(modifier = modifier.padding(8.dp)) {
+            if (baseValue?.isNotEmpty() == true) {
+                val isShowInheritedValues by remember { mutableStateOf(true) }
+                InputFormHeader(text = "Inherited from Base")
+                KeyValueEditorView(
+                    keyValues = baseValue,
+                    isSupportFileValue = isSupportFileValue,
+                    disabledIds = baseDisabledIds,
+                    isInheritedView = true,
+                    onItemChange = {_, _ ->},
+                    onItemAddLast = {_ ->},
+                    onItemDelete = {_ ->},
+                    onDisableChange = onDisableUpdate,
+                )
+
+                InputFormHeader(text = "This Example", modifier = Modifier.padding(top = 12.dp))
+            }
+
+            KeyValueEditorView(
+                keyValues = data,
+                isSupportFileValue = isSupportFileValue,
+                isInheritedView = false,
+                disabledIds = emptySet(),
+                onItemChange = { index, item ->
+                    log.d { "onItemChange" }
+                    onValueUpdate(data.copyWithIndexedChange(index, item))
+                },
+                onItemAddLast = { item ->
+                    log.d { "onItemAddLast" }
+                    onValueUpdate(data + item)
+                },
+                onItemDelete = { index ->
+                    log.d { "onItemDelete" }
+                    onValueUpdate(data.copyWithRemovedIndex(index))
+                },
+                onDisableChange = {_ ->},
+//                modifier = modifier,
+            )
+        }
     }
 
     Column(modifier = modifier) {
@@ -286,7 +319,8 @@ fun RequestEditorView(
                     onRequestModified(
                         request.copy(examples = request.examples + UserRequestExample(
                             id = uuidString(),
-                            name = "New Example"
+                            name = "New Example",
+                            overrides = UserRequestExample.Overrides(),
                         ))
                     )
                     selectedExampleIndex = request.examples.size
@@ -366,6 +400,19 @@ fun RequestEditorView(
                                     )
                                 )
                             },
+                            baseValue = if (selectedExampleIndex > 0) (baseExample.body as? FormUrlEncodedBody)?.value else null,
+                            baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
+                            onDisableUpdate = {
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            request.examples[selectedExampleIndex].run {
+                                                copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
+                                            }
+                                        )
+                                    )
+                                )
+                            },
                             isSupportFileValue = false,
                             modifier = remainModifier,
                         )
@@ -381,6 +428,19 @@ fun RequestEditorView(
                                                 contentType = selectedContentType,
                                                 body = MultipartBody(it)
                                             )
+                                        )
+                                    )
+                                )
+                            },
+                            baseValue = if (selectedExampleIndex > 0) (baseExample.body as? MultipartBody)?.value else null,
+                            baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
+                            onDisableUpdate = {
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            request.examples[selectedExampleIndex].run {
+                                                copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
+                                            }
                                         )
                                     )
                                 )
@@ -407,6 +467,19 @@ fun RequestEditorView(
                             )
                         )
                     },
+                    baseValue = if (selectedExampleIndex > 0) baseExample.headers else null,
+                    baseDisabledIds = selectedExample.overrides?.disabledHeaderIds ?: emptySet(),
+                    onDisableUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    request.examples[selectedExampleIndex].run {
+                                        copy(overrides = overrides!!.copy(disabledHeaderIds = it))
+                                    }
+                                )
+                            )
+                        )
+                    },
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -425,10 +498,33 @@ fun RequestEditorView(
                             )
                         )
                     },
+                    baseValue = if (selectedExampleIndex > 0) baseExample.queryParameters else null,
+                    baseDisabledIds = selectedExample.overrides?.disabledQueryParameterIds ?: emptySet(),
+                    onDisableUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    request.examples[selectedExampleIndex].run {
+                                        copy(overrides = overrides!!.copy(disabledQueryParameterIds = it))
+                                    }
+                                )
+                            )
+                        )
+                    },
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
         }
+    }
+}
+
+@Composable
+fun InputFormHeader(modifier: Modifier = Modifier, text: String) {
+    val colors = LocalColor.current
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Surface(color = colors.placeholder, modifier = Modifier.height(1.dp).padding(horizontal = 4.dp).offset(y = 1.dp).width(20.dp)) {}
+        AppText(text = text)
+        Surface(color = colors.placeholder, modifier = Modifier.height(1.dp).padding(horizontal = 4.dp).offset(y = 1.dp).weight(1f)) {}
     }
 }
 

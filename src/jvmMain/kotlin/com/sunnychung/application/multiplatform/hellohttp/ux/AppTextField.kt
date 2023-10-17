@@ -14,6 +14,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.jetpack.TextFieldCo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.takeOrElse
@@ -208,8 +209,9 @@ fun AppTextFieldWithPlaceholder(
     minLines: Int = 1,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     shape: Shape = TextFieldDefaults.TextFieldShape,
+    textColor: Color = LocalColor.current.text,
     colors: androidx.compose.material.TextFieldColors = androidx.compose.material.TextFieldDefaults.textFieldColors(
-        textColor = LocalColor.current.text,
+        textColor = textColor,
         placeholderColor = LocalColor.current.placeholder,
         cursorColor = LocalColor.current.cursor
     ),

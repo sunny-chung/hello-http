@@ -46,7 +46,18 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
-) : Identifiable
+    val overrides: Overrides? = null,
+) : Identifiable {
+
+    @Persisted
+    @Serializable
+    data class Overrides(
+        val disabledHeaderIds: Set<String> = emptySet(),
+        val disabledQueryParameterIds: Set<String> = emptySet(),
+        val isOverrideBody: Boolean = false, // only for raw body and its similar alternatives (e.g. JSON body)
+        val disabledBodyKeyValueIds: Set<String> = emptySet(),
+    )
+}
 
 //enum class ContentType {
 //    None, Raw, Json, FormData, Multipart
@@ -63,6 +74,7 @@ enum class ContentType(override val displayText: String, val headerValue: String
 @Persisted
 @Serializable
 data class UserKeyValuePair(
+    val id: String,
     val key: String,
 
     /**
