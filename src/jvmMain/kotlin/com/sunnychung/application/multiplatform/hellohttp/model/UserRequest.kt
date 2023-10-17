@@ -119,7 +119,7 @@ class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
 class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val b = MultipartBody.Builder()
-        value.forEach {
+        value.filter { it.isEnabled }.forEach {
             when (it.valueType) {
                 FieldValueType.String -> b.addFormDataPart(it.key, it.value)
                 FieldValueType.File -> {

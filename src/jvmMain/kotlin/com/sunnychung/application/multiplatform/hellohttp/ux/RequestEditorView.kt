@@ -88,7 +88,19 @@ fun RequestEditorView(
     log.d { "RequestEditorView recompose $request" }
 
     fun sendRequest() {
-        // TODO merge with "Base" request
+        fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
+            if (selectedExampleIndex == 0) { // the Base example is selected
+                return propertyGetter(baseExample)?.filter { it.isEnabled } ?: emptyList()
+            }
+
+            val baseValues = (propertyGetter(baseExample) ?: emptyList())
+                .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
+
+            val currentValues = (propertyGetter(selectedExample) ?: emptyList())
+                .filter { it.isEnabled }
+
+            return baseValues + currentValues
+        }
 
         val (request, error) = try {
             var b = Request.Builder()
@@ -96,16 +108,27 @@ fun RequestEditorView(
                     .newBuilder()
                     .run {
                         var b = this
-                        selectedExample.queryParameters.filter { it.isEnabled }
+                        getMergedKeyValues({ it.queryParameters }, selectedExample.overrides?.disabledQueryParameterIds)
                             .forEach { b = b.addQueryParameter(it.key, it.value) }
                         b
                     }
                     .build())
                 .method(
                     method = request.method,
-                    body = selectedExample.body?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
+                    body = when (selectedExample.body) {
+                        null -> null
+                        is FormUrlEncodedBody -> FormUrlEncodedBody(
+                            getMergedKeyValues({ (it.body as? FormUrlEncodedBody)?.value }, selectedExample.overrides?.disabledBodyKeyValueIds)
+                        )
+                        is MultipartBody -> MultipartBody(
+                            getMergedKeyValues({ (it.body as? MultipartBody)?.value }, selectedExample.overrides?.disabledBodyKeyValueIds)
+                        )
+                        else -> selectedExample.body
+                    }?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
                 )
-            selectedExample.headers.filter { it.isEnabled }.forEach { b = b.addHeader(it.key, it.value) }
+            getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
+                .filter { it.isEnabled }
+                .forEach { b = b.addHeader(it.key, it.value) }
             Pair(b.build(), null)
         } catch (e: Throwable) {
             Pair(null, e)
