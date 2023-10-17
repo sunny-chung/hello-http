@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -363,27 +364,57 @@ fun RequestEditorView(
                             true
                         }
                     )
+
+                    if (selectedExampleIndex > 0) {
+                        Spacer(modifier.weight(1f))
+                        AppText("Is Override Base? ")
+                        AppCheckbox(
+                            checked = selectedExample.overrides!!.isOverrideBody,
+                            onCheckedChange = {
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            request.examples[selectedExampleIndex].run {
+                                                copy(overrides = overrides!!.copy(isOverrideBody = it))
+                                            }
+                                        )
+                                    )
+                                )
+                            },
+                            size = 16.dp,
+                        )
+                    }
                 }
                 val remainModifier = Modifier.weight(1f).fillMaxWidth()
                 when (selectedContentType) {
                     ContentType.Json, ContentType.Raw ->
-                        CodeEditorView(
-                            modifier = remainModifier,
-                            isReadOnly = false,
-                            text = (request.examples[selectedExampleIndex].body as? StringBody)?.value ?: "",
-                            onTextChange = {
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            request.examples[selectedExampleIndex].copy(
-                                                contentType = selectedContentType,
-                                                body = StringBody(it)
+                        if (selectedExample.overrides?.isOverrideBody != false) {
+                            CodeEditorView(
+                                modifier = remainModifier,
+                                isReadOnly = false,
+                                text = (request.examples[selectedExampleIndex].body as? StringBody)?.value ?: "",
+                                onTextChange = {
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                request.examples[selectedExampleIndex].copy(
+                                                    contentType = selectedContentType,
+                                                    body = StringBody(it)
+                                                )
                                             )
                                         )
                                     )
-                                )
-                            }
-                        )
+                                }
+                            )
+                        } else {
+                            CodeEditorView(
+                                modifier = remainModifier,
+                                isReadOnly = true,
+                                text = (baseExample.body as? StringBody)?.value ?: "",
+                                onTextChange = {},
+                                textColor = colors.placeholder,
+                            )
+                        }
 
                     ContentType.FormUrlEncoded ->
                         RequestKeyValueEditorView(

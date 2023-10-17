@@ -46,7 +46,7 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
-    val overrides: Overrides? = null,
+    val overrides: Overrides? = null, // only the Base example can be null
 ) : Identifiable {
 
     @Persisted
@@ -54,7 +54,7 @@ data class UserRequestExample(
     data class Overrides(
         val disabledHeaderIds: Set<String> = emptySet(),
         val disabledQueryParameterIds: Set<String> = emptySet(),
-        val isOverrideBody: Boolean = false, // only for raw body and its similar alternatives (e.g. JSON body)
+        val isOverrideBody: Boolean = true, // only for raw body and its similar alternatives (e.g. JSON body)
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
     )
 }
