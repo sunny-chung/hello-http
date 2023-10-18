@@ -120,7 +120,7 @@ fun RequestEditorView(
                         is MultipartBody -> MultipartBody(
                             getMergedKeyValues({ (it.body as? MultipartBody)?.value }, selectedExample.overrides?.disabledBodyKeyValueIds)
                         )
-                        else -> selectedExample.body
+                        else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body else baseExample.body
                     }?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
                 )
             getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
