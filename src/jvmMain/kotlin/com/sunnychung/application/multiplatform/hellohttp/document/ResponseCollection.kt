@@ -12,17 +12,17 @@ import java.util.concurrent.ConcurrentHashMap
 @Serializable
 data class ResponseCollection(
     override val id: ResponsesDI,
-    @SerialName("responses") private var _responsesByRequestId: MutableMap<String, UserResponse>
+    @SerialName("responses") private var _responsesByRequestExampleId: MutableMap<String, UserResponse>
 ) : Document<ResponsesDI> {
 
     init {
-        _responsesByRequestId = ConcurrentHashMap<String, UserResponse>(_responsesByRequestId.size).apply {
-            putAll(_responsesByRequestId)
+        _responsesByRequestExampleId = ConcurrentHashMap<String, UserResponse>(_responsesByRequestExampleId.size).apply {
+            putAll(_responsesByRequestExampleId)
         }
     }
 
-    val responsesByRequestId: MutableMap<String, UserResponse>
-        get() = _responsesByRequestId
+    val responsesByRequestExampleId: MutableMap<String, UserResponse>
+        get() = _responsesByRequestExampleId
 }
 
 @Serializable

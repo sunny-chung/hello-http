@@ -118,11 +118,12 @@ fun AppContentView() {
     var requestCollection by remember { mutableStateOf<RequestCollection?>(null) }
     var requestCollectionState by remember { mutableStateOf<RequestCollection?>(null) }
     var request by remember { mutableStateOf<UserRequest?>(null) }
+    var selectedRequestExampleId by remember { mutableStateOf<String?>(null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
     var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value // needed for invalidating compose caches
     val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
     var response by remember { mutableStateOf<UserResponse?>(null) }
-    if (activeResponse != null && activeResponse.requestId == request?.id) {
+    if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
         response = activeResponse
     }
 
@@ -137,12 +138,17 @@ fun AppContentView() {
         }
     }
 
-    fun displayRequest(req: UserRequest) {
-        request = req
+    fun updateResponseView() {
         response = runBlocking { // should be fast as it is retrieved from memory
             responseCollectionRepository.read(ResponsesDI(subprojectId = selectedSubproject!!.id))
-                ?.responsesByRequestId?.get(req.id)
-        } ?: UserResponse(id = "-", requestId = "-")
+                ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
+        } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
+    }
+
+    fun displayRequest(req: UserRequest) {
+        request = req
+        selectedRequestExampleId = req.examples.first().id
+        updateResponseView()
     }
 
     var isParentClearInputFocus by remember { mutableStateOf(false) }
@@ -191,7 +197,7 @@ fun AppContentView() {
                     selectedSubprojectState = it
                     loadRequestsForSubproject(it)
                     request = null
-                    response = UserResponse("-", "-")
+                    response = UserResponse("-", "-", "-")
                 },
                 modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
             )
@@ -274,11 +280,17 @@ fun AppContentView() {
             RequestEditorView(
                 modifier = requestEditorModifier,
                 request = requestNonNull,
+                selectedExampleId = selectedRequestExampleId!!,
                 editExampleNameViewModel = editExampleNameViewModel,
+                onSelectExample = {
+                    selectedRequestExampleId = it.id
+                    updateResponseView()
+                },
                 onClickSend = { networkRequest, error ->
                     if (networkRequest != null) {
                         val callData = networkManager.sendRequest(
                             request = networkRequest,
+                            requestExampleId = selectedRequestExampleId!!,
                             requestId = requestNonNull.id,
                             subprojectId = selectedSubproject!!.id
                         )
@@ -289,6 +301,7 @@ fun AppContentView() {
                         activeCallId = null
                         response = UserResponse(
                             id = uuidString(),
+                            requestExampleId = selectedRequestExampleId!!,
                             requestId = requestNonNull.id,
                             isError = true,
                             errorMessage = error?.message
@@ -309,7 +322,7 @@ fun AppContentView() {
             val newRequest = createRequestForCurrentSubproject()
             editRequestNameViewModel.onStartEdit()
         }
-        ResponseViewerView(response = response?.copy() ?: UserResponse(id = "-", requestId = "-"))
+        ResponseViewerView(response = response?.copy() ?: UserResponse(id = "-", requestId = "-", requestExampleId = "-"))
     }
 }
 

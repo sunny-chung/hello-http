@@ -60,36 +60,33 @@ import okhttp3.Request
 fun RequestEditorView(
     modifier: Modifier = Modifier,
     request: UserRequest,
+    selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
+    onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: (Request?, Throwable?) -> Unit,
     onRequestModified: (UserRequest?) -> Unit,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
-    var previousRequest by remember { mutableStateOf("") }
+    val selectedExample = request.examples.first { it.id == selectedExampleId }
+    val baseExample = request.examples.first()
 
-    var selectedExampleIndex by remember { mutableStateOf(0) }
-    if (selectedExampleIndex >= request.examples.size) {
-        selectedExampleIndex = 0
-    }
+    var previousRequest by remember { mutableStateOf("") }
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
-    var selectedContentType by remember { mutableStateOf(request.examples[selectedExampleIndex].contentType) }
+    var selectedContentType by remember { mutableStateOf(selectedExample.contentType) }
 
     if (previousRequest != request.id) { // any better way to renew cache?
-        selectedExampleIndex = 0
-        selectedContentType = request.examples[selectedExampleIndex].contentType
+        selectedContentType = selectedExample.contentType
         previousRequest = request.id
     }
-    val selectedExample = request.examples[selectedExampleIndex]
-    val baseExample = request.examples.first()
 
     log.d { "RequestEditorView recompose $request" }
 
     fun sendRequest() {
         fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
-            if (selectedExampleIndex == 0) { // the Base example is selected
+            if (selectedExampleId == baseExample.id) { // the Base example is selected
                 return propertyGetter(baseExample)?.filter { it.isEnabled } ?: emptyList()
             }
 
@@ -263,23 +260,24 @@ fun RequestEditorView(
 
             TabsView(
                 modifier = Modifier.weight(1f).background(color = colors.backgroundLight),
-                selectedIndex = selectedExampleIndex,
+                selectedIndex = request.examples.indexOfFirst { it.id == selectedExampleId },
                 onSelectTab = {
                     val selectedExample = request.examples[it]
-                    selectedExampleIndex = it
+                    onSelectExample(selectedExample)
                     selectedContentType = selectedExample.contentType
                 },
                 onDoubleClickTab = {
                     log.d { "req ex onDoubleClickTab $it" }
-                    selectedExampleIndex = it
+                    val selectedExample = request.examples[it]
+                    onSelectExample(selectedExample)
                     if (it > 0) { // the "Base" example cannot be renamed
                         editExampleNameViewModel.onStartEdit()
                     }
                 },
                 contents = request.examples.mapIndexed { index, it ->
                     {
-                        if (isEditing && request.examples[selectedExampleIndex].id == it.id) {
-                            log.d { "req ex edit $selectedExampleIndex" }
+                        if (isEditing && selectedExample.id == it.id) {
+                            log.d { "req ex edit ${selectedExample.id}" }
                             val focusRequester = remember { FocusRequester() }
                             val focusManager = LocalFocusManager.current
                             var textFieldState by remember { mutableStateOf(TextFieldValue(it.name, selection = TextRange(0, it.name.length))) }
@@ -341,14 +339,15 @@ fun RequestEditorView(
                 resource = "add.svg",
                 size = 24.dp,
                 onClick = {
-                    onRequestModified(
-                        request.copy(examples = request.examples + UserRequestExample(
-                            id = uuidString(),
-                            name = "New Example",
-                            overrides = UserRequestExample.Overrides(),
-                        ))
+                    val newExample = UserRequestExample(
+                        id = uuidString(),
+                        name = "New Example",
+                        overrides = UserRequestExample.Overrides(),
                     )
-                    selectedExampleIndex = request.examples.size
+                    onRequestModified(
+                        request.copy(examples = request.examples + newExample)
+                    )
+                    onSelectExample(newExample)
                     editExampleNameViewModel.onStartEdit()
                 },
                 modifier = Modifier.padding(4.dp)
@@ -365,7 +364,7 @@ fun RequestEditorView(
         )
         when (RequestTab.values()[selectedRequestTabIndex]) {
             RequestTab.Body -> {
-                val requestBody = request.examples[selectedExampleIndex].body
+                val requestBody = selectedExample.body
                 Row(modifier = Modifier.padding(8.dp)) {
                     AppText("Content Type: ")
                     DropDownView(
@@ -377,7 +376,7 @@ fun RequestEditorView(
                                 onRequestModified(
                                     request.copy(
                                         examples = request.examples.copyWithChange(
-                                            request.examples[selectedExampleIndex].copy(
+                                            selectedExample.copy(
                                                 contentType = selectedContentType,
                                                 body = null
                                             )
@@ -389,7 +388,7 @@ fun RequestEditorView(
                         }
                     )
 
-                    if (selectedExampleIndex > 0) {
+                    if (selectedExampleId != baseExample.id) {
                         Spacer(modifier.weight(1f))
                         AppText("Is Override Base? ")
                         AppCheckbox(
@@ -398,7 +397,7 @@ fun RequestEditorView(
                                 onRequestModified(
                                     request.copy(
                                         examples = request.examples.copyWithChange(
-                                            request.examples[selectedExampleIndex].run {
+                                            selectedExample.run {
                                                 copy(overrides = overrides!!.copy(isOverrideBody = it))
                                             }
                                         )
@@ -416,12 +415,12 @@ fun RequestEditorView(
                             CodeEditorView(
                                 modifier = remainModifier,
                                 isReadOnly = false,
-                                text = (request.examples[selectedExampleIndex].body as? StringBody)?.value ?: "",
+                                text = (selectedExample.body as? StringBody)?.value ?: "",
                                 onTextChange = {
                                     onRequestModified(
                                         request.copy(
                                             examples = request.examples.copyWithChange(
-                                                request.examples[selectedExampleIndex].copy(
+                                                selectedExample.copy(
                                                     contentType = selectedContentType,
                                                     body = StringBody(it)
                                                 )
@@ -447,7 +446,7 @@ fun RequestEditorView(
                                 onRequestModified(
                                     request.copy(
                                         examples = request.examples.copyWithChange(
-                                            request.examples[selectedExampleIndex].copy(
+                                            selectedExample.copy(
                                                 contentType = selectedContentType,
                                                 body = FormUrlEncodedBody(it)
                                             )
@@ -455,13 +454,13 @@ fun RequestEditorView(
                                     )
                                 )
                             },
-                            baseValue = if (selectedExampleIndex > 0) (baseExample.body as? FormUrlEncodedBody)?.value else null,
+                            baseValue = if (selectedExampleId != baseExample.id) (baseExample.body as? FormUrlEncodedBody)?.value else null,
                             baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
                             onDisableUpdate = {
                                 onRequestModified(
                                     request.copy(
                                         examples = request.examples.copyWithChange(
-                                            request.examples[selectedExampleIndex].run {
+                                            selectedExample.run {
                                                 copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
                                             }
                                         )
@@ -479,7 +478,7 @@ fun RequestEditorView(
                                 onRequestModified(
                                     request.copy(
                                         examples = request.examples.copyWithChange(
-                                            request.examples[selectedExampleIndex].copy(
+                                            selectedExample.copy(
                                                 contentType = selectedContentType,
                                                 body = MultipartBody(it)
                                             )
@@ -487,13 +486,13 @@ fun RequestEditorView(
                                     )
                                 )
                             },
-                            baseValue = if (selectedExampleIndex > 0) (baseExample.body as? MultipartBody)?.value else null,
+                            baseValue = if (selectedExampleId != baseExample.id) (baseExample.body as? MultipartBody)?.value else null,
                             baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
                             onDisableUpdate = {
                                 onRequestModified(
                                     request.copy(
                                         examples = request.examples.copyWithChange(
-                                            request.examples[selectedExampleIndex].run {
+                                            selectedExample.run {
                                                 copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
                                             }
                                         )
@@ -515,20 +514,20 @@ fun RequestEditorView(
                         onRequestModified(
                             request.copy(
                                 examples = request.examples.copyWithChange(
-                                    request.examples[selectedExampleIndex].copy(
+                                    selectedExample.copy(
                                         headers = it
                                     )
                                 )
                             )
                         )
                     },
-                    baseValue = if (selectedExampleIndex > 0) baseExample.headers else null,
+                    baseValue = if (selectedExampleId != baseExample.id) baseExample.headers else null,
                     baseDisabledIds = selectedExample.overrides?.disabledHeaderIds ?: emptySet(),
                     onDisableUpdate = {
                         onRequestModified(
                             request.copy(
                                 examples = request.examples.copyWithChange(
-                                    request.examples[selectedExampleIndex].run {
+                                    selectedExample.run {
                                         copy(overrides = overrides!!.copy(disabledHeaderIds = it))
                                     }
                                 )
@@ -546,20 +545,20 @@ fun RequestEditorView(
                         onRequestModified(
                             request.copy(
                                 examples = request.examples.copyWithChange(
-                                    request.examples[selectedExampleIndex].copy(
+                                    selectedExample.copy(
                                         queryParameters = it
                                     )
                                 )
                             )
                         )
                     },
-                    baseValue = if (selectedExampleIndex > 0) baseExample.queryParameters else null,
+                    baseValue = if (selectedExampleId != baseExample.id) baseExample.queryParameters else null,
                     baseDisabledIds = selectedExample.overrides?.disabledQueryParameterIds ?: emptySet(),
                     onDisableUpdate = {
                         onRequestModified(
                             request.copy(
                                 examples = request.examples.copyWithChange(
-                                    request.examples[selectedExampleIndex].run {
+                                    selectedExample.run {
                                         copy(overrides = overrides!!.copy(disabledQueryParameterIds = it))
                                     }
                                 )

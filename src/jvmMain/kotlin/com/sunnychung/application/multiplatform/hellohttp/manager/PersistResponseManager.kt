@@ -1,7 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
-import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponseCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
@@ -25,7 +24,7 @@ class PersistResponseManager {
             log.d { "PersistResponseManager receives call $callId event" }
             val documentId = ResponsesDI(subprojectId = callData.subprojectId)
             val record = loadResponseCollection(documentId)
-            record.responsesByRequestId[callData.response.requestId] = callData.response
+            record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response
             responseCollectionRepository.notifyUpdated(documentId)
         }.launchIn(CoroutineScope(Dispatchers.IO))
     }
@@ -40,11 +39,11 @@ class PersistResponseManager {
 
         // cleanup responses that is not linked to an active request
         requestCollectionRepository.read(RequestsDI(subprojectId = documentId.subprojectId))?.let { requestCollection ->
-            val requestIds = requestCollection.requests.map { it.id }.toSet()
-            val keysOfDetachedResponses = result.responsesByRequestId.keys - requestIds
+            val requestExampleIds = requestCollection.requests.flatMap { it.examples }.map { it.id }.toSet()
+            val keysOfDetachedResponses = result.responsesByRequestExampleId.keys - requestExampleIds
             if (keysOfDetachedResponses.isNotEmpty()) {
                 keysOfDetachedResponses.forEach {
-                    result.responsesByRequestId.remove(key = it)
+                    result.responsesByRequestExampleId.remove(key = it)
                 }
                 responseCollectionRepository.notifyUpdated(documentId)
             }

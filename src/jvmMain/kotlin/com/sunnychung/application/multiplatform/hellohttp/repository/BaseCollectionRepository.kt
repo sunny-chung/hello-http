@@ -64,7 +64,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
     protected fun buildIndex(document: T) {}
     protected fun removeIndex(document: T) {}
 
-    suspend fun create(document: T) {
+    open suspend fun create(document: T) {
         val identifier = document.id
         withLock(identifier) {
             with(persistenceManager) {
@@ -75,7 +75,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
-    suspend fun read(identifier: ID): T? {
+    open suspend fun read(identifier: ID): T? {
         return withLock(identifier) {
             readWithoutLock(identifier)
         }
@@ -92,7 +92,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
-    suspend fun readOrCreate(identifier: ID, documentSupplier: (ID) -> T): T {
+    open suspend fun readOrCreate(identifier: ID, documentSupplier: (ID) -> T): T {
         return withLock(identifier) {
             val record = readWithoutLock(identifier)
             if (record != null) return@withLock record
@@ -118,11 +118,11 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
-    fun notifyUpdated(identifier: ID) {
+    open fun notifyUpdated(identifier: ID) {
         updates += identifier
     }
 
-    suspend fun delete(identifier: ID) {
+    open suspend fun delete(identifier: ID) {
         withLock(identifier) {
             with(persistenceManager) {
                 val document = documentCaches.remove(identifier)
