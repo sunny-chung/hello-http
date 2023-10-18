@@ -69,8 +69,13 @@ fun RequestEditorView(
     val colors = LocalColor.current
     val fonts = LocalFont.current
 
-    val selectedExample = request.examples.first { it.id == selectedExampleId }
+    var selectedExample = request.examples.firstOrNull { it.id == selectedExampleId }
     val baseExample = request.examples.first()
+
+    if (selectedExample == null) {
+        selectedExample = baseExample
+        onSelectExample(baseExample)
+    } // do not use `selectedExampleId` directly, because selectedExample can be changed
 
     var previousRequest by remember { mutableStateOf("") }
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
@@ -86,7 +91,7 @@ fun RequestEditorView(
 
     fun sendRequest() {
         fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
-            if (selectedExampleId == baseExample.id) { // the Base example is selected
+            if (selectedExample.id == baseExample.id) { // the Base example is selected
                 return propertyGetter(baseExample)?.filter { it.isEnabled } ?: emptyList()
             }
 
@@ -260,7 +265,7 @@ fun RequestEditorView(
 
             TabsView(
                 modifier = Modifier.weight(1f).background(color = colors.backgroundLight),
-                selectedIndex = request.examples.indexOfFirst { it.id == selectedExampleId },
+                selectedIndex = request.examples.indexOfFirst { it.id == selectedExample.id },
                 onSelectTab = {
                     val selectedExample = request.examples[it]
                     onSelectExample(selectedExample)
@@ -388,7 +393,7 @@ fun RequestEditorView(
                         }
                     )
 
-                    if (selectedExampleId != baseExample.id) {
+                    if (selectedExample.id != baseExample.id) {
                         Spacer(modifier.weight(1f))
                         AppText("Is Override Base? ")
                         AppCheckbox(
@@ -454,7 +459,7 @@ fun RequestEditorView(
                                     )
                                 )
                             },
-                            baseValue = if (selectedExampleId != baseExample.id) (baseExample.body as? FormUrlEncodedBody)?.value else null,
+                            baseValue = if (selectedExample.id != baseExample.id) (baseExample.body as? FormUrlEncodedBody)?.value else null,
                             baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
                             onDisableUpdate = {
                                 onRequestModified(
@@ -486,7 +491,7 @@ fun RequestEditorView(
                                     )
                                 )
                             },
-                            baseValue = if (selectedExampleId != baseExample.id) (baseExample.body as? MultipartBody)?.value else null,
+                            baseValue = if (selectedExample.id != baseExample.id) (baseExample.body as? MultipartBody)?.value else null,
                             baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
                             onDisableUpdate = {
                                 onRequestModified(
@@ -521,7 +526,7 @@ fun RequestEditorView(
                             )
                         )
                     },
-                    baseValue = if (selectedExampleId != baseExample.id) baseExample.headers else null,
+                    baseValue = if (selectedExample.id != baseExample.id) baseExample.headers else null,
                     baseDisabledIds = selectedExample.overrides?.disabledHeaderIds ?: emptySet(),
                     onDisableUpdate = {
                         onRequestModified(
@@ -552,7 +557,7 @@ fun RequestEditorView(
                             )
                         )
                     },
-                    baseValue = if (selectedExampleId != baseExample.id) baseExample.queryParameters else null,
+                    baseValue = if (selectedExample.id != baseExample.id) baseExample.queryParameters else null,
                     baseDisabledIds = selectedExample.overrides?.disabledQueryParameterIds ?: emptySet(),
                     onDisableUpdate = {
                         onRequestModified(
