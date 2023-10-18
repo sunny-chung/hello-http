@@ -4,10 +4,8 @@ import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -57,13 +55,14 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
 //            items(items = exchange.exchanges) {
             Column(modifier = Modifier.verticalScroll(scrollState)) {
                 synchronized(exchange.exchanges) {
-                    exchange.exchanges.forEach {
-                        Row(modifier = Modifier.height(IntrinsicSize.Min).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                    exchange.exchanges.forEachIndexed { index, it ->
+                        // Not using `height(IntrinsicSize.Min)` because it is buggy.
+                        Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
                             DisableSelection {
                                 TimestampColumn(
                                     createTime = it.instant,
                                     lastUpdateTime = it.lastUpdateInstant,
-                                    modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP).fillMaxHeight()
+                                    modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
                                         .padding(end = 1.dp)
                                 )
                                 AppText(
@@ -73,14 +72,14 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                                         else -> "= "
                                     },
                                     fontFamily = FontFamily.Monospace,
-                                    modifier = Modifier.padding(start = 4.dp).fillMaxHeight()
+                                    modifier = Modifier.padding(start = 4.dp)
                                 )
                             }
                             AppText(
                                 text = it.detail ?: it.payload?.decodeToString() ?: it.payloadBuilder!!.toByteArray()
                                     .decodeToString(),
                                 fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.weight(1f).fillMaxHeight()
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }

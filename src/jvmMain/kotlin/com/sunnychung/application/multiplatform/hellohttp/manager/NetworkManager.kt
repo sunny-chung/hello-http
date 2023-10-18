@@ -275,7 +275,7 @@ class NetworkManager {
         data.events
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
-                    if (it.event == "Response completed") { // deadline fighter
+                    if (true || it.event == "Response completed") { // deadline fighter
                         data.response.rawExchange.exchanges.forEach {
                             it.consumePayloadBuilder()
                         }
