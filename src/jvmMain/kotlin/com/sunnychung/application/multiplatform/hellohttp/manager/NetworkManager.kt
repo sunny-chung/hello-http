@@ -234,7 +234,7 @@ class NetworkManager {
 
     fun getCallData(callId: String) = callData[callId]
 
-    fun sendRequest(request: Request, requestId: String, subprojectId: String): CallData {
+    fun sendRequest(request: Request, requestExampleId: String, requestId: String, subprojectId: String): CallData {
         val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val optionalResponseSize = AtomicInteger()
@@ -268,14 +268,14 @@ class NetworkManager {
                 .flowOn(Dispatchers.IO)
                 .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
             optionalResponseSize = optionalResponseSize,
-            response = UserResponse(id = uuidString(), requestId = requestId),
+            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
         )
         callData[call.id] = data
 
         data.events
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
-                    if (it.event == "Response completed") { // deadline fighter
+                    if (true || it.event == "Response completed") { // deadline fighter
                         data.response.rawExchange.exchanges.forEach {
                             it.consumePayloadBuilder()
                         }

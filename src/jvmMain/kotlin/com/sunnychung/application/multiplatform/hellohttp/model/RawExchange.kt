@@ -23,9 +23,9 @@ data class RawExchange(
         var payload: ByteArray? = null
     ) {
         fun consumePayloadBuilder() {
-            if (payloadBuilder != null && payload == null) {
+            if ((payload?.size ?: 0) < (payloadBuilder?.size() ?: 0)) {
                 payload = payloadBuilder!!.toByteArray()
-                payloadBuilder = null
+//                payloadBuilder = null
             }
         }
     }

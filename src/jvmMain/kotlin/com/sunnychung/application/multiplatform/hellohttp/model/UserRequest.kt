@@ -46,7 +46,18 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
-) : Identifiable
+    val overrides: Overrides? = null, // only the Base example can be null
+) : Identifiable {
+
+    @Persisted
+    @Serializable
+    data class Overrides(
+        val disabledHeaderIds: Set<String> = emptySet(),
+        val disabledQueryParameterIds: Set<String> = emptySet(),
+        val isOverrideBody: Boolean = true, // only for raw body and its similar alternatives (e.g. JSON body)
+        val disabledBodyKeyValueIds: Set<String> = emptySet(),
+    )
+}
 
 //enum class ContentType {
 //    None, Raw, Json, FormData, Multipart
@@ -63,6 +74,7 @@ enum class ContentType(override val displayText: String, val headerValue: String
 @Persisted
 @Serializable
 data class UserKeyValuePair(
+    val id: String,
     val key: String,
 
     /**
@@ -107,7 +119,7 @@ class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
 class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType): RequestBody {
         val b = MultipartBody.Builder()
-        value.forEach {
+        value.filter { it.isEnabled }.forEach {
             when (it.valueType) {
                 FieldValueType.String -> b.addFormDataPart(it.key, it.value)
                 FieldValueType.File -> {

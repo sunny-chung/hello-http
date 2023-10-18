@@ -12,6 +12,7 @@ import java.util.*
 data class UserResponse(
     override val id: String,
     val requestId: String, // corresponding id of UserRequest
+    val requestExampleId: String, // corresponding id of UserRequestExample
 
     var startAt: KInstantAsLong? = null,
     var endAt: KInstantAsLong? = null,

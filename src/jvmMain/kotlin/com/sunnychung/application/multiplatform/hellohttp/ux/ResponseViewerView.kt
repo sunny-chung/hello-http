@@ -82,7 +82,7 @@ private enum class ResponseTab {
 @Preview
 fun ResponseViewerViewPreview() {
     ResponseViewerView(
-        UserResponse(id = "preview", requestId = "preview").apply {
+        UserResponse(id = "preview", requestId = "preview", requestExampleId = "preview").apply {
             startAt = KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond)
             endAt = KInstant.now()
             isCommunicating = false
@@ -115,7 +115,7 @@ fun ResponseViewerViewPreview() {
 @Preview
 fun ResponseViewerViewPreview_EmptyBody() {
     ResponseViewerView(
-        UserResponse(id = "preview", requestId = "preview").apply {
+        UserResponse(id = "preview", requestId = "preview", requestExampleId = "preview").apply {
             startAt = KInstant.now() - KDuration.of(2346, KFixedTimeUnit.MilliSecond)
             endAt = KInstant.now()
             isCommunicating = false

@@ -21,7 +21,7 @@ data class AppColor(
     val line: Color,
 
     val placeholder: Color,
-    val disabled: Color = placeholder,
+    val disabled: Color,
     val highlight: Color,
     val cursor: Color,
     val warning: Color,
@@ -61,6 +61,7 @@ fun darkColorScheme(): AppColor = AppColor(
     line = Color(red = 0.6f, green = 0.6f, blue = 0.6f),
 
     placeholder = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
+    disabled = Color(red = 0.3f, green = 0.3f, blue = 0.6f),
     highlight = Color(red = 0.9f, green = 0.9f, blue = 0.5f),
     cursor = Color(red = 1f, green = 1f, blue = 1f),
     warning = Color(red = 1f, green = 0.5f, blue = 0f),
