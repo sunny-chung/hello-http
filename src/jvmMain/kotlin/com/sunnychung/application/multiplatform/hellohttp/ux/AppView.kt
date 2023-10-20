@@ -36,6 +36,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
+import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -302,7 +303,13 @@ fun AppContentView() {
                     selectedRequestExampleId = it.id
                     updateResponseView()
                 },
-                onClickSend = { networkRequest, error ->
+                onClickSend = {
+                    val (networkRequest, error) = try {
+                        Pair(requestNonNull.toOkHttpRequest(selectedRequestExampleId!!), null)
+                    } catch (e: Throwable) {
+                        Pair(null, e)
+                    }
+
                     if (networkRequest != null) {
                         val callData = networkManager.sendRequest(
                             request = networkRequest,

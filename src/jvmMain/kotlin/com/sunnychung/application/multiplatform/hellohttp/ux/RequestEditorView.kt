@@ -35,7 +35,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
@@ -53,7 +52,6 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
-import okhttp3.Request
 
 @Composable
 fun RequestEditorView(
@@ -62,7 +60,7 @@ fun RequestEditorView(
     selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
     onSelectExample: (UserRequestExample) -> Unit,
-    onClickSend: (Request?, Throwable?) -> Unit,
+    onClickSend: () -> Unit,
     onRequestModified: (UserRequest?) -> Unit,
 ) {
     val colors = LocalColor.current
@@ -87,15 +85,6 @@ fun RequestEditorView(
     }
 
     log.d { "RequestEditorView recompose $request" }
-
-    fun sendRequest() {
-        val (request, error) = try {
-            Pair(request.toOkHttpRequest(selectedExample.id), null)
-        } catch (e: Throwable) {
-            Pair(null, e)
-        }
-        onClickSend(request, error)
-    }
 
     @Composable
     fun RequestKeyValueEditorView(
@@ -204,7 +193,7 @@ fun RequestEditorView(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.background(colors.backgroundButton).width(width = 90.dp).fillMaxHeight()
             ) {
-                Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { sendRequest() }) {
+                Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { onClickSend() }) {
                     AppText(
                         text = "Send",
                         fontSize = fonts.buttonFontSize,
