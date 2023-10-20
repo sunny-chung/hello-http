@@ -35,11 +35,10 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -51,9 +50,9 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIn
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 
 @Composable
@@ -90,48 +89,8 @@ fun RequestEditorView(
     log.d { "RequestEditorView recompose $request" }
 
     fun sendRequest() {
-        fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
-            if (selectedExample.id == baseExample.id) { // the Base example is selected
-                return propertyGetter(baseExample)?.filter { it.isEnabled } ?: emptyList()
-            }
-
-            val baseValues = (propertyGetter(baseExample) ?: emptyList())
-                .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
-
-            val currentValues = (propertyGetter(selectedExample) ?: emptyList())
-                .filter { it.isEnabled }
-
-            return baseValues + currentValues
-        }
-
         val (request, error) = try {
-            var b = Request.Builder()
-                .url(request.url.toHttpUrl()
-                    .newBuilder()
-                    .run {
-                        var b = this
-                        getMergedKeyValues({ it.queryParameters }, selectedExample.overrides?.disabledQueryParameterIds)
-                            .forEach { b = b.addQueryParameter(it.key, it.value) }
-                        b
-                    }
-                    .build())
-                .method(
-                    method = request.method,
-                    body = when (selectedExample.body) {
-                        null -> null
-                        is FormUrlEncodedBody -> FormUrlEncodedBody(
-                            getMergedKeyValues({ (it.body as? FormUrlEncodedBody)?.value }, selectedExample.overrides?.disabledBodyKeyValueIds)
-                        )
-                        is MultipartBody -> MultipartBody(
-                            getMergedKeyValues({ (it.body as? MultipartBody)?.value }, selectedExample.overrides?.disabledBodyKeyValueIds)
-                        )
-                        else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body else baseExample.body
-                    }?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
-                )
-            getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
-                .filter { it.isEnabled }
-                .forEach { b = b.addHeader(it.key, it.value) }
-            Pair(b.build(), null)
+            Pair(request.toOkHttpRequest(selectedExample.id), null)
         } catch (e: Throwable) {
             Pair(null, e)
         }
