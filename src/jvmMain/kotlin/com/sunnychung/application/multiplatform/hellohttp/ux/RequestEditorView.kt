@@ -36,6 +36,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
@@ -51,6 +52,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 
 @Composable
@@ -59,6 +61,7 @@ fun RequestEditorView(
     request: UserRequest,
     selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
+    environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
     onRequestModified: (UserRequest?) -> Unit,
@@ -83,6 +86,8 @@ fun RequestEditorView(
         selectedContentType = selectedExample.contentType
         previousRequest = request.id
     }
+
+    val environmentVariableKeys = environment?.variables?.filter { it.isEnabled }?.map { it.key }?.toSet() ?: emptySet()
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -186,6 +191,7 @@ fun RequestEditorView(
                 onValueChange = {
                     onRequestModified(request.copy(url = it))
                 },
+                visualTransformation = EnvironmentVariableTransformation(colors, environmentVariableKeys),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )

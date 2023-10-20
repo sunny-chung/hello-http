@@ -214,6 +214,8 @@ fun AppContentView() {
                     }
                     selectedSubprojectState = selectedSubproject!!.deepCopy()
                     projectCollectionRepository.notifyUpdated(projectCollection.id)
+
+                    selectedEnvironment = it.environments.firstOrNull { it.id == selectedEnvironment?.id }
                 },
                 modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
             )
@@ -299,13 +301,20 @@ fun AppContentView() {
                 request = requestNonNull,
                 selectedExampleId = selectedRequestExampleId!!,
                 editExampleNameViewModel = editExampleNameViewModel,
+                environment = selectedEnvironment,
                 onSelectExample = {
                     selectedRequestExampleId = it.id
                     updateResponseView()
                 },
                 onClickSend = {
                     val (networkRequest, error) = try {
-                        Pair(requestNonNull.toOkHttpRequest(selectedRequestExampleId!!), null)
+                        Pair(
+                            requestNonNull.toOkHttpRequest(
+                                exampleId = selectedRequestExampleId!!,
+                                environment = selectedEnvironment
+                            ),
+                            null
+                        )
                     } catch (e: Throwable) {
                         Pair(null, e)
                     }

@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.extension
 
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -9,9 +10,13 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 
-fun UserRequest.toOkHttpRequest(exampleId: String): Request {
+fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): Request {
     val baseExample = examples.first()
     val selectedExample = examples.first { it.id == exampleId }
+    val environmentVariables = environment?.variables
+        ?.filter { it.isEnabled }
+        ?.associate { it.key to it.value }
+        ?: emptyMap()
 
     fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
         if (selectedExample.id == baseExample.id) { // the Base example is selected
@@ -27,8 +32,16 @@ fun UserRequest.toOkHttpRequest(exampleId: String): Request {
         return baseValues + currentValues
     }
 
+    fun String.expandVariables(): String {
+        var s = this
+        environmentVariables.forEach {
+            s = s.replace("\${{${it.key}}}", it.value)
+        }
+        return s
+    }
+
     var b = Request.Builder()
-        .url(url.toHttpUrl()
+        .url(url.expandVariables().toHttpUrl()
             .newBuilder()
             .run {
                 var b = this
