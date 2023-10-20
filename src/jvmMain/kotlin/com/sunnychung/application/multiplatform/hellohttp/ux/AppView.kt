@@ -36,6 +36,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
@@ -115,6 +116,7 @@ fun AppContentView() {
 
     var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
     var selectedSubprojectState by remember { mutableStateOf<Subproject?>(null) }
+    var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollection by remember { mutableStateOf<RequestCollection?>(null) }
     var requestCollectionState by remember { mutableStateOf<RequestCollection?>(null) }
     var request by remember { mutableStateOf<UserRequest?>(null) }
@@ -182,7 +184,9 @@ fun AppContentView() {
         Column(modifier = Modifier.width(180.dp)) {
             ProjectAndEnvironmentViewV2(
                 projects = projectCollection.projects,
-                environments = emptyList(),
+                selectedSubproject = selectedSubprojectState,
+                selectedEnvironment = selectedEnvironment,
+//                environments = emptyList(),
                 onAddProject = {
                     projectCollection.projects += it
                     projectCollectionRepository.notifyUpdated(projectCollection.id)
@@ -191,13 +195,23 @@ fun AppContentView() {
                     project.subprojects += newSubproject
                     projectCollectionRepository.notifyUpdated(projectCollection.id)
                 },
-                onSelectEnvironment = {},
+                onSelectEnvironment = { selectedEnvironment = it },
                 onSelectSubproject = {
                     selectedSubproject = it
                     selectedSubprojectState = it
-                    loadRequestsForSubproject(it)
+                    it?.let { loadRequestsForSubproject(it) }
                     request = null
                     response = UserResponse("-", "-", "-")
+                },
+                onSubprojectUpdate = {
+                    assert(it.id == selectedSubproject!!.id)
+                    with(selectedSubproject!!) {
+                        environments = it.environments
+                        name = it.name
+//                        log.d { "Updated subproject ${environments}" }
+                    }
+                    selectedSubprojectState = selectedSubproject!!.deepCopy()
+                    projectCollectionRepository.notifyUpdated(projectCollection.id)
                 },
                 modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
             )

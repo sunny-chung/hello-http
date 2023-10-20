@@ -10,8 +10,9 @@ import kotlinx.serialization.Transient
 @Serializable
 data class Subproject(
     val id: String,
-    val name: String,
+    var name: String,
     val treeObjects: MutableList<TreeObject>,
+    var environments: List<Environment>,
     @Transient var uiVersion: String = "", // for UI use only, to make Subproject.equals() returns false
 ) : DropDownable {
     override val displayText: String

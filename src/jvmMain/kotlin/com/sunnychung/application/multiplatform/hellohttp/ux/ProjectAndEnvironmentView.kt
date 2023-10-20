@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -35,23 +37,26 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 fun ProjectAndEnvironmentViewV2(
     modifier: Modifier = Modifier,
     projects: List<Project>,
+    selectedSubproject: Subproject?,
+    selectedEnvironment: Environment?,
     onAddProject: (Project) -> Unit,
     onAddSubproject: (project: Project, newSubproject: Subproject) -> Unit,
-    onSelectSubproject: (Subproject) -> Unit,
-    environments: List<Environment>,
-    onSelectEnvironment: (Environment) -> Unit
+    onSelectSubproject: (Subproject?) -> Unit,
+//    environments: List<Environment>,
+    onSelectEnvironment: (Environment?) -> Unit,
+    onSubprojectUpdate: (Subproject) -> Unit,
 ) {
     val colors = LocalColor.current
 
     var expandedSection by remember { mutableStateOf(ExpandedSection.Project) }
     var selectedProject by remember { mutableStateOf<Project?>(null) }
-    var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
+//    var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
 
     var showDialogType by remember { mutableStateOf(EditDialogType.None) }
     var dialogTextFieldValue by remember { mutableStateOf("") }
 
     MainWindowDialog(
-        isEnabled = showDialogType != EditDialogType.None,
+        isEnabled = showDialogType in setOf(EditDialogType.Project, EditDialogType.Subproject),
         onDismiss = { showDialogType = EditDialogType.None }) {
         val focusRequester = remember { FocusRequester() }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -72,16 +77,19 @@ fun ProjectAndEnvironmentViewV2(
                     EditDialogType.Project -> {
                         val project = Project(id = uuidString(), name = dialogTextFieldValue, subprojects = mutableListOf())
                         onAddProject(project)
+                        onSelectSubproject(null)
+                        onSelectEnvironment(null)
                         if (selectedProject == null) {
-                            selectedProject = project
                             expandedSection = ExpandedSection.Subproject
                         }
+                        selectedProject = project
                     }
                     EditDialogType.Subproject -> {
-                        val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue, treeObjects = mutableListOf()) // TODO refactor to AppView
+                        val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue, treeObjects = mutableListOf(), environments = emptyList()) // TODO refactor to AppView
                         onAddSubproject(selectedProject!!, subproject)
                         onSelectSubproject(subproject)
-                        selectedSubproject = subproject
+                        onSelectEnvironment(null)
+//                        selectedSubproject = subproject
                         expandedSection = ExpandedSection.None
                     }
                     EditDialogType.Environment -> TODO()
@@ -95,6 +103,18 @@ fun ProjectAndEnvironmentViewV2(
             focusRequester.requestFocus()
         }
     }
+
+    MainWindowDialog(
+        isEnabled = showDialogType in setOf(EditDialogType.Environment),
+        onDismiss = { showDialogType = EditDialogType.None }
+    ) {
+        SubprojectEnvironmentsEditorView(
+            subproject = selectedSubproject!!,
+            onSubprojectUpdate = { onSubprojectUpdate(it) },
+            modifier = Modifier.padding(12.dp).size(width = 480.dp, height = 300.dp),
+        )
+    }
+
 
     Column(modifier = modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -129,7 +149,13 @@ fun ProjectAndEnvironmentViewV2(
                     items = projects,
                     selectedItem = selectedProject,
                     isLabelFillMaxWidth = true,
-                    onClickItem = { selectedProject = it; true })
+                    onClickItem = {
+                        selectedProject = it
+                        onSelectSubproject(null)
+                        onSelectEnvironment(null)
+                        true
+                    }
+                )
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -160,7 +186,11 @@ fun ProjectAndEnvironmentViewV2(
                                 text = it.name,
                                 hasHoverHighlight = true,
                                 modifier = Modifier
-                                    .clickable { onSelectSubproject(it); selectedSubproject = it; expandedSection = ExpandedSection.None }
+                                    .clickable {
+                                        onSelectSubproject(it); /*selectedSubproject = it;*/
+                                        onSelectEnvironment(null)
+                                        expandedSection = ExpandedSection.None
+                                    }
                             )
                         }
                     }
@@ -173,22 +203,35 @@ fun ProjectAndEnvironmentViewV2(
                         selectedItem = selectedSubproject,
                         items = selectedProject?.subprojects ?: emptyList(),
                         isLabelFillMaxWidth = true,
-                        onClickItem = { onSelectSubproject(it); selectedSubproject = it; true })
+                        onClickItem = {
+                            onSelectSubproject(it); /*selectedSubproject = it;*/
+                            onSelectEnvironment(null)
+                            true
+                        }
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
             }
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AppText(text = "Environment", modifier = Modifier.weight(1f))
-            AppImageButton(resource = "add.svg", size = 24.dp, onClick = { /* TODO */ })
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            DropDownView(
-                modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
-                items = environments,
-                isLabelFillMaxWidth = true,
-                onClickItem = { true })
+        if (selectedSubproject != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppText(text = "Environment", modifier = Modifier.weight(1f))
+                AppImageButton(
+                    resource = "edit.svg",
+                    size = 20.dp,
+                    onClick = { showDialogType = EditDialogType.Environment }
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DropDownView(
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
+                    selectedItem = selectedEnvironment,
+                    items = selectedSubproject.environments,
+                    isLabelFillMaxWidth = true,
+                    onClickItem = { onSelectEnvironment(it); true }
+                )
+            }
         }
     }
 }
@@ -205,11 +248,14 @@ private enum class EditDialogType {
 @Preview
 fun ProjectAndEnvironmentViewV2Preview() {
     ProjectAndEnvironmentViewV2(
-        projects = listOf(Project(id = "p1", name = "Project A", mutableListOf(Subproject("a1", "Subproject A1", mutableListOf()), Subproject("a2", "Subproject A2", mutableListOf()))), Project(id = "p2", name = "Project B", mutableListOf()), Project(id = "p3", name = "Project C", mutableListOf())),
-        environments = listOf(Environment(name = "Environment A"), Environment(name = "Environment B"), Environment(name = "Environment C")),
+        projects = listOf(Project(id = "p1", name = "Project A", mutableListOf(Subproject("a1", "Subproject A1", mutableListOf(), mutableListOf()), Subproject("a2", "Subproject A2", mutableListOf(), emptyList()))), Project(id = "p2", name = "Project B", mutableListOf()), Project(id = "p3", name = "Project C", mutableListOf())),
+        selectedSubproject = null,
+        selectedEnvironment = null,
+//        environments = listOf(Environment(name = "Environment A", id = "A", variables = emptyList()), Environment(name = "Environment B", id = "B", variables = emptyList()), Environment(name = "Environment C", id = "C", variables = emptyList())),
         onSelectEnvironment = {},
         onSelectSubproject = {},
         onAddProject = {},
         onAddSubproject = {_, _ ->},
+        onSubprojectUpdate = {_->},
     )
 }

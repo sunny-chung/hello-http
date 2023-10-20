@@ -30,3 +30,9 @@ fun <T> List<T>.copyWithRemovedIndex(index: Int): List<T> {
         .apply { removeAt(index) }
         .toList()
 }
+
+fun <T> List<T>.copyWithRemoval(removeIf: (T) -> Boolean): List<T> {
+    return toMutableList()
+        .apply { removeIf(removeIf) }
+        .toList()
+}

@@ -403,7 +403,7 @@ fun RequestListViewPreview() {
         UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
     )
     RequestListView(
-        selectedSubproject = Subproject(id = "preview", name = "", treeObjects = dummyRequests.map { TreeRequest(it.id) }.toMutableList()),
+        selectedSubproject = Subproject(id = "preview", name = "", treeObjects = dummyRequests.map { TreeRequest(it.id) }.toMutableList(), emptyList()),
 //        treeObjects = dummyRequests.map { TreeRequest(it.id) },
         requests = dummyRequests.associateBy { it.id },
         selectedRequest = dummyRequests[2],
