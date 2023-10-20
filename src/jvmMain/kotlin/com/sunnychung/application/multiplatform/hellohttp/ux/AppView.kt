@@ -173,7 +173,7 @@ fun AppContentView() {
         selectedSubprojectState = selectedSubproject?.deepCopy()
         projectCollectionRepository.notifyUpdated(projectCollection.id)
 
-        request = newRequest
+        displayRequest(newRequest)
         isParentClearInputFocus = true
         return newRequest
     }
@@ -201,6 +201,7 @@ fun AppContentView() {
                     selectedSubprojectState = it
                     it?.let { loadRequestsForSubproject(it) }
                     request = null
+                    selectedRequestExampleId = null
                     response = UserResponse("-", "-", "-")
                 },
                 onSubprojectUpdate = {
@@ -250,6 +251,7 @@ fun AppContentView() {
 
                             if (request?.id == delete.id) {
                                 request = null
+                                selectedRequestExampleId = null
                             }
                         }
                     },
