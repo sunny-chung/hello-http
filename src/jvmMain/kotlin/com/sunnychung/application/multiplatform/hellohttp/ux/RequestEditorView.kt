@@ -97,6 +97,7 @@ fun RequestEditorView(
         value: List<UserKeyValuePair>?,
         baseValue: List<UserKeyValuePair>?,
         baseDisabledIds: Set<String>,
+        knownVariables: Set<String>,
         onValueUpdate: (List<UserKeyValuePair>) -> Unit,
         onDisableUpdate: (Set<String>) -> Unit,
         isSupportFileValue: Boolean
@@ -110,6 +111,8 @@ fun RequestEditorView(
                 KeyValueEditorView(
                     keyValues = activeBaseValues,
                     isSupportFileValue = isSupportFileValue,
+                    isSupportVariables = true,
+                    knownVariables = knownVariables,
                     disabledIds = baseDisabledIds,
                     isInheritedView = true,
                     onItemChange = {_, _ ->},
@@ -124,6 +127,8 @@ fun RequestEditorView(
             KeyValueEditorView(
                 keyValues = data,
                 isSupportFileValue = isSupportFileValue,
+                isSupportVariables = true,
+                knownVariables = knownVariables,
                 isInheritedView = false,
                 disabledIds = emptySet(),
                 onItemChange = { index, item ->
@@ -191,7 +196,10 @@ fun RequestEditorView(
                 onValueChange = {
                     onRequestModified(request.copy(url = it))
                 },
-                visualTransformation = EnvironmentVariableTransformation(colors, environmentVariableKeys),
+                visualTransformation = EnvironmentVariableTransformation(
+                    themeColors = colors,
+                    knownVariables = environmentVariableKeys
+                ),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
@@ -374,6 +382,8 @@ fun RequestEditorView(
                             CodeEditorView(
                                 modifier = remainModifier,
                                 isReadOnly = false,
+                                isEnableVariables = true,
+                                knownVariables = environmentVariableKeys,
                                 text = (selectedExample.body as? StringBody)?.value ?: "",
                                 onTextChange = {
                                     onRequestModified(
@@ -392,6 +402,8 @@ fun RequestEditorView(
                             CodeEditorView(
                                 modifier = remainModifier,
                                 isReadOnly = true,
+                                isEnableVariables = true,
+                                knownVariables = environmentVariableKeys,
                                 text = (baseExample.body as? StringBody)?.value ?: "",
                                 onTextChange = {},
                                 textColor = colors.placeholder,
@@ -426,6 +438,7 @@ fun RequestEditorView(
                                     )
                                 )
                             },
+                            knownVariables = environmentVariableKeys,
                             isSupportFileValue = false,
                             modifier = remainModifier,
                         )
@@ -458,6 +471,7 @@ fun RequestEditorView(
                                     )
                                 )
                             },
+                            knownVariables = environmentVariableKeys,
                             isSupportFileValue = true,
                             modifier = remainModifier,
                         )
@@ -493,6 +507,7 @@ fun RequestEditorView(
                             )
                         )
                     },
+                    knownVariables = environmentVariableKeys,
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -524,6 +539,7 @@ fun RequestEditorView(
                             )
                         )
                     },
+                    knownVariables = environmentVariableKeys,
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )

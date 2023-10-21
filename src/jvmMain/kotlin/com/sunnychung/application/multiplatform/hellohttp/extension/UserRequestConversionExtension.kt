@@ -3,8 +3,10 @@ package com.sunnychung.application.multiplatform.hellohttp.extension
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -18,9 +20,19 @@ fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): R
         ?.associate { it.key to it.value }
         ?: emptyMap()
 
+    fun String.expandVariables(): String {
+        var s = this
+        environmentVariables.forEach {
+            s = s.replace("\${{${it.key}}}", it.value)
+        }
+        return s
+    }
+
     fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
         if (selectedExample.id == baseExample.id) { // the Base example is selected
-            return propertyGetter(baseExample)?.filter { it.isEnabled } ?: emptyList()
+            return propertyGetter(baseExample)?.filter { it.isEnabled }
+                ?.map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
+                ?: emptyList() // TODO reduce code duplication
         }
 
         val baseValues = (propertyGetter(baseExample) ?: emptyList())
@@ -29,15 +41,15 @@ fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): R
         val currentValues = (propertyGetter(selectedExample) ?: emptyList())
             .filter { it.isEnabled }
 
-        return baseValues + currentValues
+        return (baseValues + currentValues)
+            .map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
     }
 
-    fun String.expandVariables(): String {
-        var s = this
-        environmentVariables.forEach {
-            s = s.replace("\${{${it.key}}}", it.value)
+    fun UserRequestBody.expandStringBody(): UserRequestBody {
+        if (this is StringBody) {
+            return StringBody(value.expandVariables())
         }
-        return s
+        return this
     }
 
     var b = Request.Builder()
@@ -66,7 +78,7 @@ fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): R
                         disabledIds = selectedExample.overrides?.disabledBodyKeyValueIds
                     )
                 )
-                else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body else baseExample.body
+                else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body.expandStringBody() else baseExample.body?.expandStringBody()
             }?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
         )
     getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
