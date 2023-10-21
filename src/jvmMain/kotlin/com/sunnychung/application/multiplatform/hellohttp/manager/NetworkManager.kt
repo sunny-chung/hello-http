@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.GzipDecompressionNetworkInterceptor
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -229,6 +230,7 @@ class NetworkManager {
                     socketAsyncTimeoutClassSourceMethod.call(timeout, source) as Source
                 }
             ))
+            .addNetworkInterceptor(GzipDecompressionNetworkInterceptor())
             .build()
     }
 
