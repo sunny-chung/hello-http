@@ -355,7 +355,7 @@ fun RequestEditorView(
                         }
                     )
 
-                    if (selectedExample.id != baseExample.id) {
+                    if (selectedExample.id != baseExample.id && selectedContentType in setOf(ContentType.Json, ContentType.Raw)) {
                         Spacer(modifier.weight(1f))
                         AppText("Is Override Base? ")
                         AppCheckbox(
