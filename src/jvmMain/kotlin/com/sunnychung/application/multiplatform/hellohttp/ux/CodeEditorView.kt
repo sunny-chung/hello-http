@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
@@ -49,7 +50,7 @@ fun CodeEditorView(
             readOnly = isReadOnly,
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
             colors = colors,
-            modifier = Modifier.verticalScroll(scrollState)
+            modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
         )
         VerticalScrollbar(
             modifier = Modifier.align(Alignment.CenterEnd),
