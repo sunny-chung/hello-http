@@ -36,10 +36,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -51,10 +50,10 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIn
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
 
 @Composable
 fun RequestEditorView(
@@ -62,8 +61,9 @@ fun RequestEditorView(
     request: UserRequest,
     selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
+    environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
-    onClickSend: (Request?, Throwable?) -> Unit,
+    onClickSend: () -> Unit,
     onRequestModified: (UserRequest?) -> Unit,
 ) {
     val colors = LocalColor.current
@@ -87,56 +87,9 @@ fun RequestEditorView(
         previousRequest = request.id
     }
 
+    val environmentVariableKeys = environment?.variables?.filter { it.isEnabled }?.map { it.key }?.toSet() ?: emptySet()
+
     log.d { "RequestEditorView recompose $request" }
-
-    fun sendRequest() {
-        fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
-            if (selectedExample.id == baseExample.id) { // the Base example is selected
-                return propertyGetter(baseExample)?.filter { it.isEnabled } ?: emptyList()
-            }
-
-            val baseValues = (propertyGetter(baseExample) ?: emptyList())
-                .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
-
-            val currentValues = (propertyGetter(selectedExample) ?: emptyList())
-                .filter { it.isEnabled }
-
-            return baseValues + currentValues
-        }
-
-        val (request, error) = try {
-            var b = Request.Builder()
-                .url(request.url.toHttpUrl()
-                    .newBuilder()
-                    .run {
-                        var b = this
-                        getMergedKeyValues({ it.queryParameters }, selectedExample.overrides?.disabledQueryParameterIds)
-                            .forEach { b = b.addQueryParameter(it.key, it.value) }
-                        b
-                    }
-                    .build())
-                .method(
-                    method = request.method,
-                    body = when (selectedExample.body) {
-                        null -> null
-                        is FormUrlEncodedBody -> FormUrlEncodedBody(
-                            getMergedKeyValues({ (it.body as? FormUrlEncodedBody)?.value }, selectedExample.overrides?.disabledBodyKeyValueIds)
-                        )
-                        is MultipartBody -> MultipartBody(
-                            getMergedKeyValues({ (it.body as? MultipartBody)?.value }, selectedExample.overrides?.disabledBodyKeyValueIds)
-                        )
-                        else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body else baseExample.body
-                    }?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
-                )
-            getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
-                .filter { it.isEnabled }
-                .forEach { b = b.addHeader(it.key, it.value) }
-            Pair(b.build(), null)
-        } catch (e: Throwable) {
-            Pair(null, e)
-        }
-        onClickSend(request, error)
-    }
 
     @Composable
     fun RequestKeyValueEditorView(
@@ -144,6 +97,7 @@ fun RequestEditorView(
         value: List<UserKeyValuePair>?,
         baseValue: List<UserKeyValuePair>?,
         baseDisabledIds: Set<String>,
+        knownVariables: Set<String>,
         onValueUpdate: (List<UserKeyValuePair>) -> Unit,
         onDisableUpdate: (Set<String>) -> Unit,
         isSupportFileValue: Boolean
@@ -157,6 +111,8 @@ fun RequestEditorView(
                 KeyValueEditorView(
                     keyValues = activeBaseValues,
                     isSupportFileValue = isSupportFileValue,
+                    isSupportVariables = true,
+                    knownVariables = knownVariables,
                     disabledIds = baseDisabledIds,
                     isInheritedView = true,
                     onItemChange = {_, _ ->},
@@ -171,6 +127,8 @@ fun RequestEditorView(
             KeyValueEditorView(
                 keyValues = data,
                 isSupportFileValue = isSupportFileValue,
+                isSupportVariables = true,
+                knownVariables = knownVariables,
                 isInheritedView = false,
                 disabledIds = emptySet(),
                 onItemChange = { index, item ->
@@ -238,6 +196,10 @@ fun RequestEditorView(
                 onValueChange = {
                     onRequestModified(request.copy(url = it))
                 },
+                visualTransformation = EnvironmentVariableTransformation(
+                    themeColors = colors,
+                    knownVariables = environmentVariableKeys
+                ),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
@@ -245,7 +207,7 @@ fun RequestEditorView(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.background(colors.backgroundButton).width(width = 90.dp).fillMaxHeight()
             ) {
-                Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { sendRequest() }) {
+                Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { onClickSend() }) {
                     AppText(
                         text = "Send",
                         fontSize = fonts.buttonFontSize,
@@ -420,6 +382,8 @@ fun RequestEditorView(
                             CodeEditorView(
                                 modifier = remainModifier,
                                 isReadOnly = false,
+                                isEnableVariables = true,
+                                knownVariables = environmentVariableKeys,
                                 text = (selectedExample.body as? StringBody)?.value ?: "",
                                 onTextChange = {
                                     onRequestModified(
@@ -438,6 +402,8 @@ fun RequestEditorView(
                             CodeEditorView(
                                 modifier = remainModifier,
                                 isReadOnly = true,
+                                isEnableVariables = true,
+                                knownVariables = environmentVariableKeys,
                                 text = (baseExample.body as? StringBody)?.value ?: "",
                                 onTextChange = {},
                                 textColor = colors.placeholder,
@@ -472,6 +438,7 @@ fun RequestEditorView(
                                     )
                                 )
                             },
+                            knownVariables = environmentVariableKeys,
                             isSupportFileValue = false,
                             modifier = remainModifier,
                         )
@@ -504,6 +471,7 @@ fun RequestEditorView(
                                     )
                                 )
                             },
+                            knownVariables = environmentVariableKeys,
                             isSupportFileValue = true,
                             modifier = remainModifier,
                         )
@@ -539,6 +507,7 @@ fun RequestEditorView(
                             )
                         )
                     },
+                    knownVariables = environmentVariableKeys,
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -570,6 +539,7 @@ fun RequestEditorView(
                             )
                         )
                     },
+                    knownVariables = environmentVariableKeys,
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )

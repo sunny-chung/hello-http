@@ -15,11 +15,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import java.io.File
 
 @Composable
@@ -29,6 +31,8 @@ fun KeyValueEditorView(
     isInheritedView: Boolean,
     disabledIds: Set<String>,
     isSupportFileValue: Boolean = false,
+    isSupportVariables: Boolean = false,
+    knownVariables: Set<String> = emptySet(),
     onItemChange: (index: Int, item: UserKeyValuePair) -> Unit,
     onItemAddLast: (item: UserKeyValuePair) -> Unit,
     onItemDelete: (index: Int) -> Unit,
@@ -62,6 +66,14 @@ fun KeyValueEditorView(
                         placeholder = { AppText(text = "Key", color = colors.placeholder) },
                         value = it.key,
                         onValueChange = { v -> onItemChange(index, it.copy(key = v)) },
+                        visualTransformation = if (isSupportVariables) {
+                            EnvironmentVariableTransformation(
+                                themeColors = colors,
+                                knownVariables = knownVariables
+                            )
+                        } else {
+                            VisualTransformation.None
+                        },
                         readOnly = isInheritedView,
                         textColor = if (isEnabled) colors.primary else colors.disabled,
                         hasIndicatorLine = !isInheritedView,
@@ -72,6 +84,14 @@ fun KeyValueEditorView(
                             placeholder = { AppText(text = "Value", color = colors.placeholder) },
                             value = it.value,
                             onValueChange = { v -> onItemChange(index, it.copy(value = v)) },
+                            visualTransformation = if (isSupportVariables) {
+                                EnvironmentVariableTransformation(
+                                    themeColors = colors,
+                                    knownVariables = knownVariables
+                                )
+                            } else {
+                                VisualTransformation.None
+                            },
                             readOnly = isInheritedView,
                             textColor = if (isEnabled) colors.primary else colors.disabled,
                             hasIndicatorLine = !isInheritedView,

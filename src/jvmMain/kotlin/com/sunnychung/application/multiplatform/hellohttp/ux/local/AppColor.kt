@@ -35,6 +35,10 @@ data class AppColor(
     val grpcRequest: Color,
     val graphqlRequest: Color,
 
+    val variableTextColor: Color,
+    val variableBackgroundColor: Color,
+    val variableErrorBackgroundColor: Color,
+
     val pendingResponseBackground: Color,
     val successfulResponseBackground: Color,
     val errorResponseBackground: Color,
@@ -74,6 +78,10 @@ fun darkColorScheme(): AppColor = AppColor(
 
     grpcRequest = Color(red = 1f, green = 1f, blue = 1f),
     graphqlRequest = Color(red = 204, green = 67, blue = 162),
+
+    variableTextColor = Color.Yellow,
+    variableBackgroundColor = Color(red = 0.3f, green = 0.3f, blue = 0.8f),
+    variableErrorBackgroundColor = Color(red = 0.6f, green = 0.2f, blue = 0.3f),
 
     pendingResponseBackground = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
     successfulResponseBackground = Color(red = 0.1f, green = 0.6f, blue = 0.1f),
