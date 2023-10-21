@@ -339,18 +339,22 @@ fun RequestEditorView(
                         selectedItem = selectedContentType,
                         onClickItem = {
                             selectedContentType = it
-                            if (it == ContentType.None) {
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            selectedExample.copy(
-                                                contentType = selectedContentType,
-                                                body = null
-                                            )
+                            val newBody = when (it) {
+                                ContentType.None -> null
+                                ContentType.Json, ContentType.Raw -> StringBody("")
+                                ContentType.Multipart -> MultipartBody(emptyList())
+                                ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
+                            }
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.copy(
+                                            contentType = selectedContentType,
+                                            body = newBody
                                         )
                                     )
                                 )
-                            }
+                            )
                             true
                         }
                     )
