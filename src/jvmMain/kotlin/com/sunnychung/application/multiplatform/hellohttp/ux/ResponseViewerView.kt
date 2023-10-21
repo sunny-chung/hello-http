@@ -230,7 +230,11 @@ fun ResponseBodyView(response: UserResponse) {
         if (selectedView.name != CLIENT_ERROR) {
             CodeEditorView(
                 isReadOnly = true,
-                text = selectedView.prettifier!!.prettify(response.body ?: byteArrayOf()),
+                text = try {
+                    selectedView.prettifier!!.prettify(response.body ?: byteArrayOf())
+                } catch (e: Throwable) {
+                    response.body?.decodeToString() ?: ""
+                },
                 modifier = modifier,
             )
         } else {
