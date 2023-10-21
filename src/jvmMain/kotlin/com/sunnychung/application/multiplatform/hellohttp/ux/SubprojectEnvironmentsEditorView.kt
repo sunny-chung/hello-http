@@ -42,11 +42,12 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 fun SubprojectEnvironmentsEditorView(
     modifier: Modifier = Modifier,
     subproject: Subproject,
+    initialEnvironment: Environment?,
     onSubprojectUpdate: (Subproject) -> Unit,
 ) {
     val colors = LocalColor.current
 
-    var selectedEnvironmentId by remember { mutableStateOf<String?>(null) }
+    var selectedEnvironmentId by remember { mutableStateOf(initialEnvironment?.id) }
     var isFocusOnEnvNameField by remember { mutableStateOf(false) }
 
     val selectedEnvironment = selectedEnvironmentId?.let { id -> subproject.environments.firstOrNull { it.id == id } }

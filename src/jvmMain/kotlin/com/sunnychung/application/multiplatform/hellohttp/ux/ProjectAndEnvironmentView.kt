@@ -111,6 +111,7 @@ fun ProjectAndEnvironmentViewV2(
         SubprojectEnvironmentsEditorView(
             subproject = selectedSubproject!!,
             onSubprojectUpdate = { onSubprojectUpdate(it) },
+            initialEnvironment = selectedEnvironment,
             modifier = Modifier.padding(12.dp).size(width = 480.dp, height = 300.dp),
         )
     }
