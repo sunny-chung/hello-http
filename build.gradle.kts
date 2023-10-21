@@ -1,4 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.io.ByteArrayOutputStream
+import java.util.Properties
 
 plugins {
     kotlin("multiplatform")
@@ -43,6 +45,8 @@ kotlin {
 
                 implementation("net.harawata:appdirs:1.2.2")
             }
+
+            resources.srcDir("$buildDir/resources")
         }
         val jvmTest by getting {
             dependencies {
@@ -52,9 +56,37 @@ kotlin {
     }
 }
 
+fun getGitCommitHash(): String {
+    val stdout = ByteArrayOutputStream()
+    rootProject.exec {
+        commandLine("git", "rev-parse", "--short", "HEAD")
+        standardOutput = stdout
+    }
+    return stdout.toString().trim()
+}
+
+tasks.create("createBuildProperties") {
+    dependsOn("jvmProcessResources")
+
+    doFirst {
+        val file = File("$buildDir/resources/build.properties")
+        file.parentFile.mkdirs()
+        file.writer().use { writer ->
+            val p = Properties()
+            p["version"] = project.version.toString()
+            p["git.commit"] = getGitCommitHash()
+            p.store(writer, null)
+        }
+    }
+}
+
+tasks.getByName("jvmMainClasses") {
+    dependsOn("createBuildProperties")
+}
+
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "com.sunnychung.application.multiplatform.hellohttp.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "hello-http"

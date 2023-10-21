@@ -181,180 +181,192 @@ fun AppContentView() {
 
     log.d { "AppContentView recompose" }
 
-    Row(modifier = modifier) {
-        Column(modifier = Modifier.width(180.dp)) {
-            ProjectAndEnvironmentViewV2(
-                projects = projectCollection.projects,
-                selectedSubproject = selectedSubprojectState,
-                selectedEnvironment = selectedEnvironment,
+    Column(modifier = modifier) {
+        Row(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.width(180.dp)) {
+                ProjectAndEnvironmentViewV2(
+                    projects = projectCollection.projects,
+                    selectedSubproject = selectedSubprojectState,
+                    selectedEnvironment = selectedEnvironment,
 //                environments = emptyList(),
-                onAddProject = {
-                    projectCollection.projects += it
-                    projectCollectionRepository.notifyUpdated(projectCollection.id)
-                },
-                onAddSubproject = { project, newSubproject ->
-                    project.subprojects += newSubproject
-                    projectCollectionRepository.notifyUpdated(projectCollection.id)
-                },
-                onSelectEnvironment = { selectedEnvironment = it },
-                onSelectSubproject = {
-                    selectedSubproject = it
-                    selectedSubprojectState = it
-                    it?.let { loadRequestsForSubproject(it) }
-                    request = null
-                    selectedRequestExampleId = null
-                    response = UserResponse("-", "-", "-")
-                },
-                onSubprojectUpdate = {
-                    assert(it.id == selectedSubproject!!.id)
-                    with(selectedSubproject!!) {
-                        environments = it.environments
-                        name = it.name
+                    onAddProject = {
+                        projectCollection.projects += it
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                    },
+                    onAddSubproject = { project, newSubproject ->
+                        project.subprojects += newSubproject
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                    },
+                    onSelectEnvironment = { selectedEnvironment = it },
+                    onSelectSubproject = {
+                        selectedSubproject = it
+                        selectedSubprojectState = it
+                        it?.let { loadRequestsForSubproject(it) }
+                        request = null
+                        selectedRequestExampleId = null
+                        response = UserResponse("-", "-", "-")
+                    },
+                    onSubprojectUpdate = {
+                        assert(it.id == selectedSubproject!!.id)
+                        with(selectedSubproject!!) {
+                            environments = it.environments
+                            name = it.name
 //                        log.d { "Updated subproject ${environments}" }
-                    }
-                    selectedSubprojectState = selectedSubproject!!.deepCopy()
-                    projectCollectionRepository.notifyUpdated(projectCollection.id)
-
-                    selectedEnvironment = it.environments.firstOrNull { it.id == selectedEnvironment?.id }
-                },
-                modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
-            )
-
-            if (selectedSubproject != null && requestCollectionState?.id?.subprojectId == selectedSubproject!!.id) {
-                RequestListView(
-                    selectedSubproject = selectedSubprojectState!!,
-//                    treeObjects = selectedSubprojectState?.treeObjects ?: emptyList(),
-                    requests = requestCollectionState?.requests?.associateBy { it.id } ?: emptyMap(),
-                    selectedRequest = request,
-                    editTreeObjectNameViewModel = editRequestNameViewModel,
-                    onSelectRequest = { displayRequest(it) },
-                    onAddRequest = {
-                        createRequestForCurrentSubproject()
-                    },
-                    onUpdateRequest = { update ->
-                        // TODO avoid the loop, refactor to use one state only and no duplicated code
-                        requestCollection!!.requests.replaceIf(update) { it.id == update.id }
-                        requestCollectionState = requestCollection?.copy()
-                        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
-
-                        if (request?.id == update.id) {
-                            request = update.copy()
                         }
+                        selectedSubprojectState = selectedSubproject!!.deepCopy()
+                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+
+                        selectedEnvironment = it.environments.firstOrNull { it.id == selectedEnvironment?.id }
                     },
-                    onDeleteRequest = { delete ->
-                        // TODO avoid the loop, refactor to use one state only and no duplicated code
-                        val hasRemoved = requestCollection!!.requests.removeIf { it.id == delete.id }
-                        if (hasRemoved) {
+                    modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
+                )
+
+                if (selectedSubproject != null && requestCollectionState?.id?.subprojectId == selectedSubproject!!.id) {
+                    RequestListView(
+                        selectedSubproject = selectedSubprojectState!!,
+//                    treeObjects = selectedSubprojectState?.treeObjects ?: emptyList(),
+                        requests = requestCollectionState?.requests?.associateBy { it.id } ?: emptyMap(),
+                        selectedRequest = request,
+                        editTreeObjectNameViewModel = editRequestNameViewModel,
+                        onSelectRequest = { displayRequest(it) },
+                        onAddRequest = {
+                            createRequestForCurrentSubproject()
+                        },
+                        onUpdateRequest = { update ->
+                            // TODO avoid the loop, refactor to use one state only and no duplicated code
+                            requestCollection!!.requests.replaceIf(update) { it.id == update.id }
                             requestCollectionState = requestCollection?.copy()
                             requestCollectionRepository.notifyUpdated(requestCollection!!.id)
 
-                            selectedSubproject?.removeTreeObjectIf { it.id == delete.id }
-                            selectedSubprojectState = selectedSubproject?.deepCopy()
-                            projectCollectionRepository.notifyUpdated(projectCollection.id)
-
-                            if (request?.id == delete.id) {
-                                request = null
-                                selectedRequestExampleId = null
+                            if (request?.id == update.id) {
+                                request = update.copy()
                             }
-                        }
-                    },
-                    onFocusNameTextField = {
-                        isParentClearInputFocus = true
-                    },
-                    onUnfocusNameTextField = {
-                        isParentClearInputFocus = false
-                    },
-                    onAddFolder = {
-                        val new = TreeFolder(id = uuidString(), name = "New Folder", childs = mutableListOf())
-                        selectedSubproject!!.treeObjects += new
-                        selectedSubprojectState = selectedSubproject!!.deepCopy()
-                        projectCollectionRepository.notifyUpdated(projectCollection.id)
-                        new
-                    },
-                    onUpdateFolder = { newFolder ->
-                        selectedSubproject!!.treeObjects.replaceIf(newFolder) { it.id == newFolder.id }
-                        selectedSubprojectState = selectedSubproject!!.deepCopy()
-                        projectCollectionRepository.notifyUpdated(projectCollection.id)
-                    },
-                    onDeleteFolder = { folder ->
-                        selectedSubproject!!.removeTreeObjectIf { it.id == folder.id }
-                        selectedSubprojectState = selectedSubproject!!.deepCopy()
-                        projectCollectionRepository.notifyUpdated(projectCollection.id)
-                    },
-                    onMoveTreeObject = { treeObjectId, direction, destination ->
-                        if (direction == MoveDirection.Inside) {
-                            selectedSubproject!!.moveInto(treeObjectId, destination as TreeFolder?)
-                        } else {
-                            selectedSubproject!!.moveNear(treeObjectId, direction, destination!!.id)
-                        }
-                        selectedSubprojectState = selectedSubproject!!.deepCopy()
-                        projectCollectionRepository.notifyUpdated(projectCollection.id)
-                    },
-                )
-            }
-        }
+                        },
+                        onDeleteRequest = { delete ->
+                            // TODO avoid the loop, refactor to use one state only and no duplicated code
+                            val hasRemoved = requestCollection!!.requests.removeIf { it.id == delete.id }
+                            if (hasRemoved) {
+                                requestCollectionState = requestCollection?.copy()
+                                requestCollectionRepository.notifyUpdated(requestCollection!!.id)
 
-        val requestEditorModifier = Modifier.width(300.dp)
-        request?.let { requestNonNull ->
-            RequestEditorView(
-                modifier = requestEditorModifier,
-                request = requestNonNull,
-                selectedExampleId = selectedRequestExampleId!!,
-                editExampleNameViewModel = editExampleNameViewModel,
-                environment = selectedEnvironment,
-                onSelectExample = {
-                    selectedRequestExampleId = it.id
-                    updateResponseView()
-                },
-                onClickSend = {
-                    val (networkRequest, error) = try {
-                        Pair(
-                            requestNonNull.toOkHttpRequest(
-                                exampleId = selectedRequestExampleId!!,
-                                environment = selectedEnvironment
-                            ),
-                            null
-                        )
-                    } catch (e: Throwable) {
-                        Pair(null, e)
-                    }
+                                selectedSubproject?.removeTreeObjectIf { it.id == delete.id }
+                                selectedSubprojectState = selectedSubproject?.deepCopy()
+                                projectCollectionRepository.notifyUpdated(projectCollection.id)
 
-                    if (networkRequest != null) {
-                        val callData = networkManager.sendRequest(
-                            request = networkRequest,
-                            requestExampleId = selectedRequestExampleId!!,
-                            requestId = requestNonNull.id,
-                            subprojectId = selectedSubproject!!.id
-                        )
-                        activeCallId = callData.id
-                        persistResponseManager.registerCall(callData.id)
-                        callData.isPrepared = true
-                    } else {
-                        activeCallId = null
-                        response = UserResponse(
-                            id = uuidString(),
-                            requestExampleId = selectedRequestExampleId!!,
-                            requestId = requestNonNull.id,
-                            isError = true,
-                            errorMessage = error?.message
-                        )
-                    }
-                },
-                onRequestModified = {
-                    log.d { "onRequestModified" }
-                    it?.let { update ->
-                        request = update
-                        // TODO avoid the loop, refactor to use one state only and no duplicated code
-                        requestCollection!!.requests.replaceIf(update) { it.id == update.id }
-                        requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
-                    }
+                                if (request?.id == delete.id) {
+                                    request = null
+                                    selectedRequestExampleId = null
+                                }
+                            }
+                        },
+                        onFocusNameTextField = {
+                            isParentClearInputFocus = true
+                        },
+                        onUnfocusNameTextField = {
+                            isParentClearInputFocus = false
+                        },
+                        onAddFolder = {
+                            val new = TreeFolder(id = uuidString(), name = "New Folder", childs = mutableListOf())
+                            selectedSubproject!!.treeObjects += new
+                            selectedSubprojectState = selectedSubproject!!.deepCopy()
+                            projectCollectionRepository.notifyUpdated(projectCollection.id)
+                            new
+                        },
+                        onUpdateFolder = { newFolder ->
+                            selectedSubproject!!.treeObjects.replaceIf(newFolder) { it.id == newFolder.id }
+                            selectedSubprojectState = selectedSubproject!!.deepCopy()
+                            projectCollectionRepository.notifyUpdated(projectCollection.id)
+                        },
+                        onDeleteFolder = { folder ->
+                            selectedSubproject!!.removeTreeObjectIf { it.id == folder.id }
+                            selectedSubprojectState = selectedSubproject!!.deepCopy()
+                            projectCollectionRepository.notifyUpdated(projectCollection.id)
+                        },
+                        onMoveTreeObject = { treeObjectId, direction, destination ->
+                            if (direction == MoveDirection.Inside) {
+                                selectedSubproject!!.moveInto(treeObjectId, destination as TreeFolder?)
+                            } else {
+                                selectedSubproject!!.moveNear(treeObjectId, direction, destination!!.id)
+                            }
+                            selectedSubprojectState = selectedSubproject!!.deepCopy()
+                            projectCollectionRepository.notifyUpdated(projectCollection.id)
+                        },
+                    )
                 }
+            }
+
+            val requestEditorModifier = Modifier.width(300.dp)
+            request?.let { requestNonNull ->
+                RequestEditorView(
+                    modifier = requestEditorModifier,
+                    request = requestNonNull,
+                    selectedExampleId = selectedRequestExampleId!!,
+                    editExampleNameViewModel = editExampleNameViewModel,
+                    environment = selectedEnvironment,
+                    onSelectExample = {
+                        selectedRequestExampleId = it.id
+                        updateResponseView()
+                    },
+                    onClickSend = {
+                        val (networkRequest, error) = try {
+                            Pair(
+                                requestNonNull.toOkHttpRequest(
+                                    exampleId = selectedRequestExampleId!!,
+                                    environment = selectedEnvironment
+                                ),
+                                null
+                            )
+                        } catch (e: Throwable) {
+                            Pair(null, e)
+                        }
+
+                        if (networkRequest != null) {
+                            val callData = networkManager.sendRequest(
+                                request = networkRequest,
+                                requestExampleId = selectedRequestExampleId!!,
+                                requestId = requestNonNull.id,
+                                subprojectId = selectedSubproject!!.id
+                            )
+                            activeCallId = callData.id
+                            persistResponseManager.registerCall(callData.id)
+                            callData.isPrepared = true
+                        } else {
+                            activeCallId = null
+                            response = UserResponse(
+                                id = uuidString(),
+                                requestExampleId = selectedRequestExampleId!!,
+                                requestId = requestNonNull.id,
+                                isError = true,
+                                errorMessage = error?.message
+                            )
+                        }
+                    },
+                    onRequestModified = {
+                        log.d { "onRequestModified" }
+                        it?.let { update ->
+                            request = update
+                            // TODO avoid the loop, refactor to use one state only and no duplicated code
+                            requestCollection!!.requests.replaceIf(update) { it.id == update.id }
+                            requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
+                        }
+                    }
+                )
+            } ?: RequestEditorEmptyView(
+                modifier = requestEditorModifier,
+                isShowCreateRequest = selectedSubproject != null && requestCollection != null
+            ) {
+                val newRequest = createRequestForCurrentSubproject()
+                editRequestNameViewModel.onStartEdit()
+            }
+            ResponseViewerView(
+                response = response?.copy() ?: UserResponse(
+                    id = "-",
+                    requestId = "-",
+                    requestExampleId = "-"
+                )
             )
-        } ?: RequestEditorEmptyView(modifier = requestEditorModifier, isShowCreateRequest = selectedSubproject != null && requestCollection != null) {
-            val newRequest = createRequestForCurrentSubproject()
-            editRequestNameViewModel.onStartEdit()
         }
-        ResponseViewerView(response = response?.copy() ?: UserResponse(id = "-", requestId = "-", requestExampleId = "-"))
+        StatusBarView()
     }
 }
 

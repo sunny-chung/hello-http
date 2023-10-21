@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp
 
 import com.sunnychung.application.multiplatform.hellohttp.manager.FileManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.MetadataManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistResponseManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceManager
@@ -11,6 +12,7 @@ import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCol
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.DialogViewModel
 
 object AppContext {
+    val MetadataManager = MetadataManager()
     val NetworkManager = NetworkManager()
     val FileManager = FileManager()
     val PersistenceManager = PersistenceManager()
