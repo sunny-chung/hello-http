@@ -12,7 +12,7 @@ data class Subproject(
     val id: String,
     var name: String,
     val treeObjects: MutableList<TreeObject>,
-    var environments: List<Environment>,
+    var environments: MutableList<Environment>,
     @Transient var uiVersion: String = "", // for UI use only, to make Subproject.equals() returns false
 ) : DropDownable {
     override val displayText: String

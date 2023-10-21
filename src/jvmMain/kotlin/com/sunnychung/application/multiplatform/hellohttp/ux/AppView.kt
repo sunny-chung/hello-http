@@ -191,8 +191,10 @@ fun AppContentView() {
     Column(modifier = modifier) {
         Row(modifier = Modifier.weight(1f)) {
             Column(modifier = Modifier.width(180.dp)) {
+                val projectUpdates = projectCollectionRepository.subscribeUpdates().collectAsState(null).value
+                log.d { "projectUpdates $projectUpdates" }
                 ProjectAndEnvironmentViewV2(
-                    projects = projectCollection.projects,
+                    projects = projectCollection.projects.toList(),
                     selectedSubproject = selectedSubprojectState,
                     selectedEnvironment = selectedEnvironment,
 //                environments = emptyList(),

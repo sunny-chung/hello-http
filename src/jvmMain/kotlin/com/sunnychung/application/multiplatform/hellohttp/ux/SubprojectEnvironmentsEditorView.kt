@@ -91,12 +91,12 @@ fun SubprojectEnvironmentsEditorView(
                 onEnvironmentUpdate = { newEnv ->
                     val index = subproject.environments.indexOfFirst { it.id == newEnv.id }
                     onSubprojectUpdate(subproject.copy(
-                        environments = subproject.environments.copyWithIndexedChange(index, newEnv)
+                        environments = subproject.environments.copyWithIndexedChange(index, newEnv).toMutableList()
                     ))
                 },
                 onDeleteEnvironment = { env ->
                     onSubprojectUpdate(subproject.copy(
-                        environments = subproject.environments.copyWithRemoval { it.id == env.id }
+                        environments = subproject.environments.copyWithRemoval { it.id == env.id }.toMutableList()
                     ))
                 },
                 isFocusOnEnvNameField = isFocusOnEnvNameField,

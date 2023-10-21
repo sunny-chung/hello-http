@@ -85,7 +85,7 @@ fun ProjectAndEnvironmentViewV2(
                         selectedProject = project
                     }
                     EditDialogType.Subproject -> {
-                        val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue, treeObjects = mutableListOf(), environments = emptyList()) // TODO refactor to AppView
+                        val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue, treeObjects = mutableListOf(), environments = mutableListOf()) // TODO refactor to AppView
                         onAddSubproject(selectedProject!!, subproject)
                         onSelectSubproject(subproject)
                         onSelectEnvironment(null)
@@ -249,7 +249,7 @@ private enum class EditDialogType {
 @Preview
 fun ProjectAndEnvironmentViewV2Preview() {
     ProjectAndEnvironmentViewV2(
-        projects = listOf(Project(id = "p1", name = "Project A", mutableListOf(Subproject("a1", "Subproject A1", mutableListOf(), mutableListOf()), Subproject("a2", "Subproject A2", mutableListOf(), emptyList()))), Project(id = "p2", name = "Project B", mutableListOf()), Project(id = "p3", name = "Project C", mutableListOf())),
+        projects = listOf(Project(id = "p1", name = "Project A", mutableListOf(Subproject("a1", "Subproject A1", mutableListOf(), mutableListOf()), Subproject("a2", "Subproject A2", mutableListOf(), mutableListOf()))), Project(id = "p2", name = "Project B", mutableListOf()), Project(id = "p3", name = "Project C", mutableListOf())),
         selectedSubproject = null,
         selectedEnvironment = null,
 //        environments = listOf(Environment(name = "Environment A", id = "A", variables = emptyList()), Environment(name = "Environment B", id = "B", variables = emptyList()), Environment(name = "Environment C", id = "C", variables = emptyList())),
