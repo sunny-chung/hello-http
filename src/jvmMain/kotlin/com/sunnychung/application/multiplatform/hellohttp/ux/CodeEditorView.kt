@@ -1,7 +1,13 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -27,10 +33,12 @@ fun CodeEditorView(
         cursorColor = LocalColor.current.cursor
     )
 
-    AppTextField(
-        value = text,
-        onValueChange = { onTextChange?.invoke(it) },
-        visualTransformation = if (isEnableVariables) {
+    Box(modifier = modifier) {
+        val scrollState = rememberScrollState()
+        AppTextField(
+            value = text,
+            onValueChange = { onTextChange?.invoke(it) },
+            visualTransformation = if (isEnableVariables) {
                 EnvironmentVariableTransformation(
                     themeColors = LocalColor.current,
                     knownVariables = knownVariables
@@ -38,9 +46,14 @@ fun CodeEditorView(
             } else {
                 VisualTransformation.None
             },
-        readOnly = isReadOnly,
-        textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-        colors = colors,
-        modifier = modifier
-    )
+            readOnly = isReadOnly,
+            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+            colors = colors,
+            modifier = Modifier.verticalScroll(scrollState)
+        )
+        VerticalScrollbar(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            adapter = rememberScrollbarAdapter(scrollState),
+        )
+    }
 }
