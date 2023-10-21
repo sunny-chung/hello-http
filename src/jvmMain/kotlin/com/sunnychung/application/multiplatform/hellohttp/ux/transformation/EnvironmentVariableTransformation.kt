@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.transformation
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
@@ -11,7 +12,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import java.util.*
 
 class EnvironmentVariableTransformation(val themeColors: AppColor, val knownVariables: Set<String>) : VisualTransformation {
-    val variableRegex = "\\$\\{\\{([^{}]+)\\}\\}".toRegex()
+    private val variableRegex = "\\$\\{\\{([^{}]+)\\}\\}".toRegex()
 
     override fun filter(text: AnnotatedString): TransformedText {
         val originalText = text.toString()
@@ -44,7 +45,8 @@ class EnvironmentVariableTransformation(val themeColors: AppColor, val knownVari
                 val variableName = it.groups[1]!!.value
                 withStyle(SpanStyle(
                     color = themeColors.variableTextColor,
-                    background = if (variableName in knownVariables) themeColors.variableBackgroundColor else themeColors.variableErrorBackgroundColor
+                    background = if (variableName in knownVariables) themeColors.variableBackgroundColor else themeColors.variableErrorBackgroundColor,
+                    fontFamily = FontFamily.Monospace,
                 )) {
                     append(variableName)
                 }
