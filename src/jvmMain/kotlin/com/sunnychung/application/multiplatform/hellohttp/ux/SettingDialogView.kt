@@ -6,11 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
@@ -30,7 +30,7 @@ import java.io.File
 fun SettingDialogView(closeDialog: () -> Unit) {
     val tabs = listOf("Data")
     var selectedTabIndex by remember { mutableStateOf(0) }
-    Column(modifier = Modifier.defaultMinSize(minWidth = 480.dp, minHeight = 300.dp)) {
+    Column(modifier = Modifier.size(width = 480.dp, height = 300.dp)) {
         TabsView(
             selectedIndex = selectedTabIndex,
             contents = tabs.map { { AppText(text = it) } },

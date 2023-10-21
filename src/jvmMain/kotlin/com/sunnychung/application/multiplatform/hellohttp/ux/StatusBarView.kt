@@ -26,7 +26,7 @@ fun StatusBarView(modifier: Modifier = Modifier) {
 
     var isShowSettingDialog by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier.fillMaxWidth().height(24.dp).background(colors.backgroundLight).padding(4.dp)) {
+    Box(modifier = modifier.fillMaxWidth().height(22.dp).background(colors.backgroundLight).padding(4.dp)) {
         AppText(
             text = "v${metadataManager.version} (${metadataManager.gitCommitHash})",
             fontSize = 12.sp,
@@ -37,7 +37,7 @@ fun StatusBarView(modifier: Modifier = Modifier) {
 
         Row(modifier = Modifier.align(Alignment.CenterEnd).clickable { isShowSettingDialog = true }) {
             AppImage(resource = "setting.svg", size = 16.dp, modifier = Modifier.padding(horizontal = 4.dp))
-            AppText(text = "Setting & Others")
+            AppText(text = "Setting & Data", fontSize = 12.sp)
         }
     }
 
