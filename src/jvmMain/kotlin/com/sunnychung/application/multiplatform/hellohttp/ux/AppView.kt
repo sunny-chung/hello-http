@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -97,6 +98,12 @@ fun AppView() {
                             }
                     ) {
                         dialog.content()
+                        AppImageButton(
+                            resource = "close.svg",
+                            size = 24.dp,
+                            onClick = { dialogViewModel.updateState(null) },
+                            modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = -28.dp)
+                        )
                     }
                 }
             }
