@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.lib.multiplatform.kdatetime.KDuration
+import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -34,6 +37,7 @@ fun AppDeleteButton(
 ) {
     val colors = LocalColor.current
     var isShowingConfirmButton by remember { mutableStateOf(false) }
+    var lastClickInstant by remember { mutableStateOf(KInstant.now()) }
 
     TooltipArea(
         tooltip = {
@@ -59,11 +63,18 @@ fun AppDeleteButton(
                     color = colors.placeholder,
                     size = size,
                     modifier = modifier,
-                    onClick = { isShowingConfirmButton = true },
+                    onClick = {
+                        isShowingConfirmButton = true
+                        lastClickInstant = KInstant.now()
+                    },
                 )
             }
         } else {
-            Row(modifier = modifier.clickable { onClickDelete() }
+            Row(modifier = modifier.clickable {
+                if (KInstant.now() - lastClickInstant >= KDuration.of(500, KFixedTimeUnit.MilliSecond)) {
+                    onClickDelete()
+                }
+            }
                 .onPointerEvent(eventType = PointerEventType.Exit, onEvent = { isShowingConfirmButton = false })) {
                 AppImage(resource = "warning-sharp.svg", color = colors.highlight, size = size)
                 if (isShowTextLabel) {
