@@ -85,24 +85,30 @@ fun RequestListView(
     var draggingOverDropTarget by remember { mutableStateOf<DropTargetInfo?>(null) }
 
     var isEditing = editTreeObjectNameViewModel.isEditing.collectAsState().value
+    val isDraggable = searchText.isEmpty()
 
-    val treeObjects = selectedSubproject.treeObjects
+    val treeObjects = filterTreeObjects(
+        rootObjects = selectedSubproject.treeObjects,
+        containText = searchText,
+        requests = requests
+    )
 
-    log.d { "RequestListView recompose ${treeObjects.size} ${requests.size}" }
+    log.d { "RequestListView recompose ${treeObjects.size} ${requests.size} isDraggable=$isDraggable" }
 
     @Composable
-    fun Draggable(modifier: Modifier = Modifier, onDrop: (DropTargetInfo) -> Unit, content: @Composable () -> Unit) {
+    fun Draggable(modifier: Modifier = Modifier, isEnableDrag: Boolean, id: String, onDrop: (DropTargetInfo) -> Unit, content: @Composable () -> Unit) {
         var myBound by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
         var draggedPoint by remember { mutableStateOf<Offset?>(null) }
         var dragIsActive by remember { mutableStateOf(false) }
         Box(
             modifier = modifier
                 .onGloballyPositioned { treeParentBound?.let { p -> myBound = p.localBoundingBoxOf(it); /*log.d { "req rect $myBound" }*/ } }
-                .pointerInput(Unit) {
+                .pointerInput(isEnableDrag, id) { // https://stackoverflow.com/questions/72299963/value-of-mutablestate-inside-modifier-pointerinput-doesnt-change-after-remember
                     detectDragGestures(
                         onDragStart = {
                             draggedPoint = Offset(myBound.left, myBound.top) + it
-                            dragIsActive = true
+                            log.d { "drag start $isEnableDrag" }
+                            dragIsActive = isEnableDrag
                         },
                         onDrag = { offset ->
                             if (dragIsActive) {
@@ -119,6 +125,8 @@ fun RequestListView(
 //                            log.v { "onDrag o=$offset b=$draggedPoint intersects $intersect"}
 //                            log.d { "onDrag intersects ${intersect?.direction} ${intersect?.item}"}
                                 draggingOverDropTarget = intersect
+
+                                log.v { "onDrag point=$draggedPoint intersects ${intersect?.direction}/${intersect?.item?.id?.let { requests[it]?.name }}"}
                             }
                         },
                         onDragCancel = {
@@ -163,7 +171,15 @@ fun RequestListView(
                     item = item,
                     direction = direction
                 )
+                log.v { "registered [$direction:${item?.id ?: "none"}] = ${treeObjectBounds["$direction:${item?.id ?: "none"}"]}" }
             } // ?: log.v { "not registered - $direction $item" }
+        }
+    }
+
+    fun TreeObject.describe(): String {
+        return when (this) {
+            is TreeFolder -> name
+            is TreeRequest -> requests[id]?.name ?: "unknown request"
         }
     }
 
@@ -176,8 +192,10 @@ fun RequestListView(
             } else {
                 dropTargetParent as TreeFolder? // TODO can remove?
             }
+            log.d { "dropped ${draggable.describe()} in ${destination?.describe()}" }
             onMoveTreeObject(draggable.id, droppedAt.direction, destination)
         } else {
+            log.d { "dropped ${draggable.describe()} ${droppedAt.direction} ${droppedAt.item?.describe()}" }
             onMoveTreeObject(draggable.id, droppedAt.direction, droppedAt.item)
         }
     }
@@ -185,6 +203,8 @@ fun RequestListView(
     @Composable
     fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequest) {
         Draggable(
+            isEnableDrag = isDraggable,
+            id = it.id,
             onDrop = { destination -> handleDropAction(draggable = TreeRequest(id = it.id), droppedAt = destination) }
         ) {
             Row(
@@ -244,6 +264,8 @@ fun RequestListView(
         onDelete: () -> Unit
     ) {
         Draggable(
+            isEnableDrag = isDraggable,
+            id = folder.id,
             onDrop = { destination -> handleDropAction(draggable = folder, droppedAt = destination) }
         ) {
             var modifierToUse = modifier.combinedClickable(
@@ -389,6 +411,31 @@ fun RequestListView(
             }
         }
     }
+}
+
+fun filterTreeObjects(rootObjects: MutableList<TreeObject>, containText: String, requests: Map<String, UserRequest>): MutableList<TreeObject> {
+    fun transverse(current: TreeObject): TreeObject? {
+        return when (current) {
+            is TreeRequest -> if (requests[current.id]?.name?.contains(containText, ignoreCase = true) == true) {
+                current.copy()
+            } else {
+                null
+            }
+
+            is TreeFolder -> if (current.name.contains(containText, ignoreCase = true)) {
+                current.copy()
+            } else {
+                val childs = current.childs.mapNotNull { transverse(it) }
+                if (childs.isNotEmpty()) {
+                    current.copy(childs = childs.toMutableList())
+                } else {
+                    null
+                }
+            }
+        }
+    }
+    val root = TreeFolder(id = "root", name = "", childs = rootObjects)
+    return (transverse(root) as TreeFolder?)?.childs ?: mutableListOf()
 }
 
 @Composable
