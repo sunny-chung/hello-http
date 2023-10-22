@@ -19,7 +19,8 @@ object InsomniaV4 {
     ) {
         data class Body(
             val mimeType: String?,
-            val text: String?
+            val text: String?,
+            val params: List<KeyValue>?,
         )
 
         data class KeyValue(
@@ -28,6 +29,8 @@ object InsomniaV4 {
             val value: String,
             val description: String?,
             val disabled: Boolean?,
+            val type: String?, // only in multipart body params
+            val fileName: String?, // only in multipart body params
         )
 
         data class Authentication(

@@ -12,6 +12,8 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.`if`
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
+import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
@@ -132,22 +134,54 @@ class InsomniaV4Importer {
                         contentType = when (it.body.mimeType) {
                             null -> ContentType.None
                             "application/json" -> ContentType.Json
-                            // TODO multipart
-                            // TODO form urlencoded
+                            "multipart/form-data" -> ContentType.Multipart
+                            "application/x-www-form-urlencoded" -> ContentType.FormUrlEncoded
                             else -> ContentType.Raw
                         },
                         body = when (it.body.mimeType) {
                             null -> null
                             "application/json" -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
-                            // TODO multipart
-                            // TODO form urlencoded
+                            "multipart/form-data" -> MultipartBody(
+                                it.body.params?.map {
+                                    if (it.type == "file") {
+                                        UserKeyValuePair(
+                                            id = uuidString(),
+                                            key = it.name.convertVariables(postFlightBodyVariables),
+                                            value = it.fileName ?: "",
+                                            valueType = FieldValueType.File,
+                                            isEnabled = it.disabled != true,
+                                        )
+                                    } else {
+                                        UserKeyValuePair(
+                                            id = uuidString(),
+                                            key = it.name.convertVariables(postFlightBodyVariables),
+                                            value = it.value.convertVariables(postFlightBodyVariables),
+                                            valueType = FieldValueType.String,
+                                            isEnabled = it.disabled != true,
+                                        )
+                                    }
+                                }?.filterNonEmpty()
+                                    ?: emptyList()
+                            )
+                            "application/x-www-form-urlencoded" -> FormUrlEncodedBody(
+                                it.body.params?.map {
+                                    UserKeyValuePair(
+                                        id = uuidString(),
+                                        key = it.name.convertVariables(postFlightBodyVariables),
+                                        value = it.value.convertVariables(postFlightBodyVariables),
+                                        valueType = FieldValueType.String,
+                                        isEnabled = it.disabled != true,
+                                    )
+                                }?.filterNonEmpty()
+                                    ?: emptyList()
+                            )
                             else -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
                         },
                         headers = (it.headers.map { UserKeyValuePair(
                             id = uuidString(),
                             key = it.name.convertVariables(postFlightBodyVariables),
                             value = it.value.convertVariables(postFlightBodyVariables),
-                            valueType = FieldValueType.String, // TODO file
+                            valueType = FieldValueType.String,
                             isEnabled = it.disabled != true,
                         ) } + (it.authentication.`if` { it.type == "bearer" }?.let { listOf(UserKeyValuePair(
                             id = uuidString(),
