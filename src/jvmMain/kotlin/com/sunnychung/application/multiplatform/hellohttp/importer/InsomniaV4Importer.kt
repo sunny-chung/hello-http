@@ -12,6 +12,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.`if`
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
+import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
@@ -117,12 +118,14 @@ class InsomniaV4Importer {
         resources.filter { it["_type"]?.textValue() == "request" }
             .map { log.d { it.toString() }; jsonParser.treeToValue(it, InsomniaV4.HttpRequest::class.java) }
             .forEach {
-                val req = UserRequest(
+                val postFlightBodyVariables = mutableListOf<UserKeyValuePair>()
+
+                var req = UserRequest(
                     id = uuidString(),
                     name = it.name,
                     protocol = Protocol.Http,
                     method = it.method,
-                    url = it.url.convertVariables(),
+                    url = it.url.convertVariables(postFlightBodyVariables),
                     examples = listOf(UserRequestExample(
                         id = uuidString(),
                         name = "Base",
@@ -135,35 +138,42 @@ class InsomniaV4Importer {
                         },
                         body = when (it.body.mimeType) {
                             null -> null
-                            "application/json" -> StringBody(it.body.text?.convertVariables() ?: "")
+                            "application/json" -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
                             // TODO multipart
                             // TODO form urlencoded
-                            else -> StringBody(it.body.text?.convertVariables() ?: "")
+                            else -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
                         },
-                        headers = it.headers.map { UserKeyValuePair(
+                        headers = (it.headers.map { UserKeyValuePair(
                             id = uuidString(),
-                            key = it.name.convertVariables(),
-                            value = it.value.convertVariables(),
+                            key = it.name.convertVariables(postFlightBodyVariables),
+                            value = it.value.convertVariables(postFlightBodyVariables),
                             valueType = FieldValueType.String, // TODO file
                             isEnabled = it.disabled != true,
                         ) } + (it.authentication.`if` { it.type == "bearer" }?.let { listOf(UserKeyValuePair(
                             id = uuidString(),
                             key = "Authorization",
-                            value = "${it.prefix?.convertVariables() ?: "Bearer"} ${it.token?.convertVariables()}",
+                            value = "${it.prefix?.convertVariables(postFlightBodyVariables) ?: "Bearer"} ${it.token?.convertVariables(postFlightBodyVariables)}",
                             valueType = FieldValueType.String,
                             isEnabled = it.disabled != true,
-                        )) } ?: emptyList()),
+                        )) } ?: emptyList())).filterNonEmpty(),
                         queryParameters = it.parameters.map {
                             UserKeyValuePair(
                                 id = uuidString(),
-                                key = it.name.convertVariables(),
-                                value = it.value.convertVariables(),
+                                key = it.name.convertVariables(postFlightBodyVariables),
+                                value = it.value.convertVariables(postFlightBodyVariables),
                                 valueType = FieldValueType.String,
                                 isEnabled = it.disabled != true,
                             )
-                        },
+                        }.filterNonEmpty(),
                     ))
                 )
+                req = req.copy(examples = req.examples.map {
+                    it.copy(
+                        postFlight = PostFlightSpec(
+                            updateVariablesFromBody = postFlightBodyVariables
+                        )
+                    )
+                })
                 val parent = folderMap[it.parentId]
                 val subproject: Subproject?
                 if (parent != null) {
@@ -197,9 +207,22 @@ class InsomniaV4Importer {
         projectCollectionRepository.notifyUpdated(ProjectAndEnvironmentsDI())
     }
 
-    fun String.convertVariables(): String {
-        return this.replace("\\{\\{([^{}]+)\\}\\}".toRegex(), "\\\${{\$1}}")
+    val INSOMNIA_SAVE_VARIABLE_REGEX = "\\{% savevariable '([^{}%']*)', '([^{}%']*)', '([^{}%']*)', '([^{}%']*)', '([^{}%']*)' %\\}".toRegex()
+    fun String.convertVariables(postFlightBodyVariables: MutableList<UserKeyValuePair>): String {
+        var s = this.replace("\\{\\{([^{}]+)\\}\\}".toRegex(), "\\\${{\$1}}")
             .replace("\\{% variable '([^{}%']*)' %\\}".toRegex(), "\\\${{\$1}}")
+        INSOMNIA_SAVE_VARIABLE_REGEX.findAll(s)
+            .filter { it.groupValues[2] == "responseBody" && it.groupValues[4] == "jsonPath" }
+            .forEach {
+                postFlightBodyVariables += UserKeyValuePair(
+                    id = uuidString(),
+                    key = it.groupValues[1],
+                    value = it.groupValues[5],
+                    valueType = FieldValueType.String,
+                    isEnabled = true,
+                )
+            }
+        return s.replace(INSOMNIA_SAVE_VARIABLE_REGEX, "")
     }
 
     fun JsonNode.stringify(): String {
@@ -208,5 +231,9 @@ class InsomniaV4Importer {
         } else {
             toString()
         }
+    }
+
+    fun List<UserKeyValuePair>.filterNonEmpty(): List<UserKeyValuePair> {
+        return filter { it.key.isNotBlank() && it.value.isNotBlank() }
     }
 }
