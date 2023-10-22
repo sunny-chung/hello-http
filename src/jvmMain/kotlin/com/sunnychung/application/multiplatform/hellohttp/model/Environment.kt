@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 data class Environment(
     val id: String,
     val name: String,
-    val variables: List<UserKeyValuePair>,
+    val variables: MutableList<UserKeyValuePair>,
 ) : DropDownable {
     override val displayText: String
         get() = name

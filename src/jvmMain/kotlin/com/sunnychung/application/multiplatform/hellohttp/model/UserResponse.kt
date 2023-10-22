@@ -5,6 +5,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.util.*
 
 @Persisted
@@ -23,6 +24,7 @@ data class UserResponse(
     var responseSizeInBytes: Long? = null,
     var body: ByteArray? = null,
     var errorMessage: String? = null,
+    @Transient var postFlightErrorMessage: String? = null,
     var headers: List<Pair<String, String>>? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
 ) : Identifiable {

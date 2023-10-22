@@ -32,17 +32,22 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import com.fasterxml.jackson.databind.JsonNode
+import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
+import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
+import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -136,13 +141,13 @@ fun AppContentView() {
     var selectedRequestExampleId by remember { mutableStateOf<String?>(null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
 
-    var callDataUpdates =
-        activeCallId?.let { networkManager.getCallData(it) }?.events
-            ?.onEach { log.d { "callDataUpdates onEach ${it.event}" } }
-            ?.collectAsState(null)?.value // needed for invalidating compose caches
+    val callDataUpdates by
+        activeCallId?.let { networkManager.getCallData(it) }?.eventsStateFlow
+            ?.onEach { log.d { "callDataUpdates onEach ${it?.event}" } }
+            ?.collectAsState(null) // needed for invalidating compose caches
             ?: run {
                 log.d { "callDataUpdates no flow" }
-                null as Nothing?
+                mutableStateOf(null)
             }
     val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
     var response by remember { mutableStateOf<UserResponse?>(null) }
@@ -366,11 +371,78 @@ fun AppContentView() {
                                         }
 
                                         if (networkRequest != null) {
+                                            val (postFlightHeaderVars, postFlightBodyVars) = requestNonNull.getPostFlightVariables(
+                                                exampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment
+                                            )
+                                            val postFlightEnvironment = selectedEnvironment
+
+                                            val postFlightAction = if (postFlightEnvironment != null && (postFlightHeaderVars.isNotEmpty() || postFlightBodyVars.isNotEmpty())) {
+                                                { resp: UserResponse ->
+                                                    postFlightHeaderVars.forEach { v -> // O(n^2)
+                                                        try {
+                                                            val variable = postFlightEnvironment.variables.firstOrNull { it.key == v.key }
+                                                            val value = resp.headers?.first { it.first == v.value }?.second ?: ""
+                                                            if (variable != null) {
+                                                                variable.value = value
+                                                            } else {
+                                                                postFlightEnvironment.variables += UserKeyValuePair(
+                                                                    id = uuidString(),
+                                                                    key = v.key,
+                                                                    value = value,
+                                                                    valueType = FieldValueType.String,
+                                                                    isEnabled = true
+                                                                )
+                                                            }
+                                                        } catch (e: Throwable) {
+                                                            throw PostflightError(variable = v.key, cause = e)
+                                                        }
+                                                    }
+                                                    if (postFlightBodyVars.isNotEmpty()) {
+                                                        val responseBody = resp.body?.decodeToString()
+                                                        val context = if (resp.headers?.firstOrNull { it.first.equals("content-type", ignoreCase = true) }?.second?.contains("json", ignoreCase = true) == true) {
+                                                            JsonPath.parse(responseBody)
+                                                        } else {
+                                                            null
+                                                        }
+                                                        postFlightBodyVars.forEach { v ->
+                                                            try {
+                                                                val variable = postFlightEnvironment.variables.firstOrNull { it.key == v.key }
+                                                                val value = v.value.let {
+                                                                    if (it == "$") {
+                                                                        responseBody
+                                                                    } else {
+                                                                        context?.read<String>(it)
+                                                                    }
+                                                                } ?: ""
+                                                                if (variable != null) {
+                                                                    variable.value = value
+                                                                } else {
+                                                                    postFlightEnvironment.variables += UserKeyValuePair(
+                                                                        id = uuidString(),
+                                                                        key = v.key,
+                                                                        value = value,
+                                                                        valueType = FieldValueType.String,
+                                                                        isEnabled = true
+                                                                    )
+                                                                }
+                                                            } catch (e: Throwable) {
+                                                                throw PostflightError(variable = v.key, cause = e)
+                                                            }
+                                                        }
+                                                    }
+                                                    projectCollectionRepository.notifyUpdated(ProjectAndEnvironmentsDI())
+                                                }
+                                            } else {
+                                                null
+                                            }
+
                                             val callData = networkManager.sendRequest(
                                                 request = networkRequest,
                                                 requestExampleId = selectedRequestExampleId!!,
                                                 requestId = requestNonNull.id,
-                                                subprojectId = selectedSubproject!!.id
+                                                subprojectId = selectedSubproject!!.id,
+                                                postFlightAction = postFlightAction,
                                             )
                                             activeCallId = callData.id
                                             persistResponseManager.registerCall(callData.id)

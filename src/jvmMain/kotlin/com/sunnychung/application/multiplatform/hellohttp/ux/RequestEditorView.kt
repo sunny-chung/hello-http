@@ -100,7 +100,9 @@ fun RequestEditorView(
         knownVariables: Set<String>,
         onValueUpdate: (List<UserKeyValuePair>) -> Unit,
         onDisableUpdate: (Set<String>) -> Unit,
-        isSupportFileValue: Boolean
+        isSupportFileValue: Boolean,
+        keyPlaceholder: String = "Key",
+        valuePlaceholder: String = "Value",
     ) {
         val data = value ?: listOf()
         val activeBaseValues = baseValue?.filter { it.isEnabled }
@@ -110,6 +112,8 @@ fun RequestEditorView(
                 InputFormHeader(text = "Inherited from Base")
                 KeyValueEditorView(
                     keyValues = activeBaseValues,
+                    keyPlaceholder = keyPlaceholder,
+                    valuePlaceholder = valuePlaceholder,
                     isSupportFileValue = isSupportFileValue,
                     isSupportVariables = true,
                     knownVariables = knownVariables,
@@ -126,6 +130,8 @@ fun RequestEditorView(
 
             KeyValueEditorView(
                 keyValues = data,
+                keyPlaceholder = keyPlaceholder,
+                valuePlaceholder = valuePlaceholder,
                 isSupportFileValue = isSupportFileValue,
                 isSupportVariables = true,
                 knownVariables = knownVariables,
@@ -547,6 +553,80 @@ fun RequestEditorView(
                     isSupportFileValue = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+            RequestTab.`Post Flight` -> Column {
+                AppText(text = "Update environment variables according to response headers.", modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp))
+                RequestKeyValueEditorView(
+                    keyPlaceholder = "Variable",
+                    valuePlaceholder = "Header",
+                    value = selectedExample.postFlight.updateVariablesFromHeader,
+                    onValueUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.copy(
+                                        postFlight = selectedExample.postFlight.copy(
+                                            updateVariablesFromHeader = it
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    },
+                    baseValue = if (selectedExample.id != baseExample.id) baseExample.postFlight.updateVariablesFromHeader else null,
+                    baseDisabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds ?: emptySet(),
+                    onDisableUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.run {
+                                        copy(overrides = overrides!!.copy(disablePostFlightUpdateVarIds = it))
+                                    }
+                                )
+                            )
+                        )
+                    },
+                    knownVariables = environmentVariableKeys,
+                    isSupportFileValue = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                AppText(text = "Update environment variables according to response bodies.", modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp))
+                RequestKeyValueEditorView(
+                    keyPlaceholder = "Variable",
+                    valuePlaceholder = "Field's JSON Path",
+                    value = selectedExample.postFlight.updateVariablesFromBody,
+                    onValueUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.copy(
+                                        postFlight = selectedExample.postFlight.copy(
+                                            updateVariablesFromBody = it
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    },
+                    baseValue = if (selectedExample.id != baseExample.id) baseExample.postFlight.updateVariablesFromBody else null,
+                    baseDisabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds ?: emptySet(),
+                    onDisableUpdate = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.run {
+                                        copy(overrides = overrides!!.copy(disablePostFlightUpdateVarIds = it))
+                                    }
+                                )
+                            )
+                        )
+                    },
+                    knownVariables = environmentVariableKeys,
+                    isSupportFileValue = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
@@ -562,5 +642,5 @@ fun InputFormHeader(modifier: Modifier = Modifier, text: String) {
 }
 
 private enum class RequestTab {
-    Body, /* Authorization, */ Query, Header
+    Body, /* Authorization, */ Query, Header, `Post Flight`
 }

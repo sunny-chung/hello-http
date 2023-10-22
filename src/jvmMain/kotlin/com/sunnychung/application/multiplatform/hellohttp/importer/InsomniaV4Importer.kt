@@ -68,7 +68,7 @@ class InsomniaV4Importer {
                 val env = Environment(
                     id = uuidString(),
                     name = it.name,
-                    variables = (parentEnv?.variables ?: emptyList()) +
+                    variables = ((parentEnv?.variables ?: emptyList()) +
                         it.data.fields().asSequence().map {
                             UserKeyValuePair(
                                 id = uuidString(),
@@ -77,7 +77,7 @@ class InsomniaV4Importer {
                                 valueType = FieldValueType.String,
                                 isEnabled = true,
                             )
-                        }.toList()
+                        }).toMutableList()
                 )
                 if (parentEnv == null) {
                     subproject = subprojectMap[it.parentId]

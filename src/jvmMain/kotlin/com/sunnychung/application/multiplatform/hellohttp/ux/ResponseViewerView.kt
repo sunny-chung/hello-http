@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +24,7 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
@@ -220,13 +222,13 @@ fun ResponseBodyView(response: UserResponse) {
         selectedView = prettifiers.first()
     }
 
-    Column {
-        Row(modifier = Modifier.padding(8.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+        Row(modifier = Modifier.padding(vertical = 8.dp)) {
             AppText(text = "View: ")
             DropDownView(items = prettifiers, selectedItem = selectedView, onClickItem = { selectedView = it; true })
         }
 
-        val modifier = Modifier.fillMaxSize().padding(8.dp)
+        val modifier = Modifier.fillMaxWidth().weight(1f).padding(vertical = 8.dp)
         if (selectedView.name != CLIENT_ERROR) {
             CodeEditorView(
                 isReadOnly = true,
@@ -243,6 +245,16 @@ fun ResponseBodyView(response: UserResponse) {
                 text = response.errorMessage ?: "",
                 textColor = LocalColor.current.warning,
                 modifier = modifier,
+            )
+        }
+
+        if (response.postFlightErrorMessage?.isNotEmpty() == true) {
+            AppText(text = "Post-flight Error", modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+            CodeEditorView(
+                isReadOnly = true,
+                text = response.postFlightErrorMessage ?: "",
+                textColor = LocalColor.current.warning,
+                modifier = Modifier.fillMaxWidth().height(100.dp),
             )
         }
     }

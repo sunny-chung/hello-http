@@ -28,6 +28,8 @@ import java.io.File
 fun KeyValueEditorView(
     modifier: Modifier = Modifier,
     keyValues: List<UserKeyValuePair>,
+    keyPlaceholder: String = "Key",
+    valuePlaceholder: String = "Value",
     isInheritedView: Boolean,
     disabledIds: Set<String>,
     isSupportFileValue: Boolean = false,
@@ -64,7 +66,7 @@ fun KeyValueEditorView(
                 val isEnabled = it?.let { if (!isInheritedView) it.isEnabled else !disabledIds.contains(it.id) } ?: true
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppTextFieldWithPlaceholder(
-                        placeholder = { AppText(text = "Key", color = colors.placeholder) },
+                        placeholder = { AppText(text = keyPlaceholder, color = colors.placeholder) },
                         value = it?.key ?: "",
                         onValueChange = { v ->
                             if (it != null) {
@@ -96,7 +98,7 @@ fun KeyValueEditorView(
                     )
                     if (it?.valueType == FieldValueType.String || it == null) {
                         AppTextFieldWithPlaceholder(
-                            placeholder = { AppText(text = "Value", color = colors.placeholder) },
+                            placeholder = { AppText(text = valuePlaceholder, color = colors.placeholder) },
                             value = it?.value ?: "",
                             onValueChange = { v ->
                                 if (it != null) {

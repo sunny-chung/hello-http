@@ -12,38 +12,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 
-fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): Request {
-    val baseExample = examples.first()
-    val selectedExample = examples.first { it.id == exampleId }
-    val environmentVariables = environment?.variables
-        ?.filter { it.isEnabled }
-        ?.associate { it.key to it.value }
-        ?: emptyMap()
-
-    fun String.expandVariables(): String {
-        var s = this
-        environmentVariables.forEach {
-            s = s.replace("\${{${it.key}}}", it.value)
-        }
-        return s
-    }
-
-    fun getMergedKeyValues(propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?, disabledIds: Set<String>?): List<UserKeyValuePair> {
-        if (selectedExample.id == baseExample.id) { // the Base example is selected
-            return propertyGetter(baseExample)?.filter { it.isEnabled }
-                ?.map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
-                ?: emptyList() // TODO reduce code duplication
-        }
-
-        val baseValues = (propertyGetter(baseExample) ?: emptyList())
-            .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
-
-        val currentValues = (propertyGetter(selectedExample) ?: emptyList())
-            .filter { it.isEnabled }
-
-        return (baseValues + currentValues)
-            .map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
-    }
+fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): Request = withScope(exampleId, environment) {
 
     fun UserRequestBody.expandStringBody(): UserRequestBody {
         if (this is StringBody) {
@@ -85,5 +54,5 @@ fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): R
         .filter { it.isEnabled }
         .forEach { b = b.addHeader(it.key, it.value) }
 
-    return b.build()
+    b.build()
 }

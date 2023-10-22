@@ -60,7 +60,7 @@ fun SubprojectEnvironmentsEditorView(
                     val newEnvironment = Environment(
                         id = uuidString(),
                         name = "New Environment",
-                        variables = listOf()
+                        variables = mutableListOf()
                     )
                     onSubprojectUpdate(
                         subproject.copy(
@@ -123,7 +123,7 @@ fun EnvironmentEditorView(
     val updateEnvVariable = { update: (List<UserKeyValuePair>) -> List<UserKeyValuePair> ->
         onEnvironmentUpdate(
             environment.run {
-                copy(variables = update(variables))
+                copy(variables = update(variables).toMutableList())
             }
         )
     }

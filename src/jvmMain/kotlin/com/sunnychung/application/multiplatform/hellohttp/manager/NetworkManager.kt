@@ -14,8 +14,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOn
@@ -78,6 +80,7 @@ class NetworkManager {
         var isPrepared: Boolean = false,
 
         val events: SharedFlow<NetworkEvent>,
+        val eventsStateFlow: StateFlow<NetworkEvent?>,
         val outgoingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
         val incomingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
         val optionalResponseSize: AtomicInteger,
@@ -85,7 +88,18 @@ class NetworkManager {
     )
 
     private val eventSharedFlow = MutableSharedFlow<NetworkEvent>()
+
+    /**
+     * MutableSharedFlow#collectAsState is buggy in Jetpack Compose
+     * Copy to MutableStateFlow to make UI updates
+     */
+    private val eventStateFlow = MutableStateFlow<NetworkEvent?>(null)
+
     private val callData = ConcurrentHashMap<String, CallData>()
+
+    init {
+        eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
+    }
 
     fun buildHttpClient(callId: String, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>, responseSize: AtomicInteger): OkHttpClient {
 
@@ -240,7 +254,7 @@ class NetworkManager {
 
     fun getCallData(callId: String) = callData[callId]
 
-    fun sendRequest(request: Request, requestExampleId: String, requestId: String, subprojectId: String): CallData {
+    fun sendRequest(request: Request, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?): CallData {
         val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val optionalResponseSize = AtomicInteger()
@@ -267,6 +281,7 @@ class NetworkManager {
                 .filter { it.callId == call.id }
                 .flowOn(Dispatchers.IO)
                 .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
+            eventsStateFlow = eventStateFlow,
             outgoingBytes = outgoingBytesChannel.receiveAsFlow()
                 .flowOn(Dispatchers.IO)
                 .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
@@ -374,6 +389,17 @@ class NetworkManager {
             } finally {
                 out.endAt = KInstant.now()
                 out.isCommunicating = false
+            }
+
+            if (!out.isError && postFlightAction != null) {
+                eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Executing Post Flight Actions"))
+                try {
+                    postFlightAction(out)
+                    eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Post Flight Actions Completed"))
+                } catch (e: Throwable) {
+                    out.postFlightErrorMessage = e.message
+                    eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Post Flight Actions Stopped with Error"))
+                }
             }
 
             eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed"))

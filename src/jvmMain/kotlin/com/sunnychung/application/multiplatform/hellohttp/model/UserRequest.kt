@@ -31,6 +31,63 @@ data class UserRequest(
             throw IllegalArgumentException("`name` must be in upper case")
         }
     }
+
+    data class Scope(val baseExample: UserRequestExample, val selectedExample: UserRequestExample, val environmentVariables: Map<String, String>) {
+        fun String.expandVariables(): String {
+            var s = this
+            environmentVariables.forEach {
+                s = s.replace("\${{${it.key}}}", it.value)
+            }
+            return s
+        }
+
+        fun getMergedKeyValues(
+            propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?,
+            disabledIds: Set<String>?
+        ): List<UserKeyValuePair> {
+            if (selectedExample.id == baseExample.id) { // the Base example is selected
+                return propertyGetter(baseExample)?.filter { it.isEnabled }
+                    ?.map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
+                    ?: emptyList() // TODO reduce code duplication
+            }
+
+            val baseValues = (propertyGetter(baseExample) ?: emptyList())
+                .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
+
+            val currentValues = (propertyGetter(selectedExample) ?: emptyList())
+                .filter { it.isEnabled }
+
+            return (baseValues + currentValues)
+                .map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
+        }
+    }
+
+    fun <R> withScope(exampleId: String, environment: Environment?, action: Scope.() -> R): R {
+        val baseExample = examples.first()
+        val selectedExample = examples.first { it.id == exampleId }
+
+        val environmentVariables = environment?.variables
+            ?.filter { it.isEnabled }
+            ?.associate { it.key to it.value }
+            ?: emptyMap()
+        return Scope(baseExample, selectedExample, environmentVariables).action()
+    }
+
+    fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
+        val headerVariables = getMergedKeyValues(
+            propertyGetter = { it.postFlight.updateVariablesFromHeader },
+            disabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val bodyVariables = getMergedKeyValues(
+            propertyGetter = { it.postFlight.updateVariablesFromBody },
+            disabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        Pair(headerVariables, bodyVariables)
+    }
 }
 
 enum class Protocol {
@@ -46,6 +103,7 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
+    val postFlight: PostFlightSpec = PostFlightSpec(),
     val overrides: Overrides? = null, // only the Base example can be null
 ) : Identifiable {
 
@@ -56,8 +114,17 @@ data class UserRequestExample(
         val disabledQueryParameterIds: Set<String> = emptySet(),
         val isOverrideBody: Boolean = true, // only for raw body and its similar alternatives (e.g. JSON body)
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
+
+        val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     )
 }
+
+@Persisted
+@Serializable
+data class PostFlightSpec(
+    val updateVariablesFromHeader: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromBody: List<UserKeyValuePair> = mutableListOf(),
+)
 
 //enum class ContentType {
 //    None, Raw, Json, FormData, Multipart
@@ -80,7 +147,7 @@ data class UserKeyValuePair(
     /**
      * If valueType = File, this value is a relative path
      */
-    val value: String,
+    var value: String,
 
     val valueType: FieldValueType,
     val isEnabled: Boolean
