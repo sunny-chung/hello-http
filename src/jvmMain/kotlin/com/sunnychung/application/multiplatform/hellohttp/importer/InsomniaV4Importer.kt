@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.importer
 
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
@@ -40,6 +41,7 @@ class InsomniaV4Importer {
         val resources = root["resources"].toList()
 
         val subprojectMap = mutableMapOf<String, Subproject>() // key is _id in the file
+        val environmentMap = mutableMapOf<String, Pair<Environment, Subproject?>>() // key is _id in the file
         val folderMap = mutableMapOf<String, Pair<TreeFolder, Subproject?>>() // key is _id in the file
 
         val subprojects = mutableListOf<Subproject>()
@@ -60,21 +62,28 @@ class InsomniaV4Importer {
 
         resources.filter { it["_type"]?.textValue() == "environment" }
             .map { jsonParser.treeToValue(it, InsomniaV4.Environment::class.java) }
-            .forEach {
+            .forEach { // assume parent env must appear before child env
+                var (parentEnv, subproject) = environmentMap[it.parentId] ?: Pair(null, null)
+
                 val env = Environment(
                     id = uuidString(),
                     name = it.name,
-                    variables = it.data.fields().asSequence().map {
-                        UserKeyValuePair(
-                            id = uuidString(),
-                            key = it.key,
-                            value = it.value.toString(),
-                            valueType = FieldValueType.String,
-                            isEnabled = true,
-                        )
-                    }.toList()
+                    variables = (parentEnv?.variables ?: emptyList()) +
+                        it.data.fields().asSequence().map {
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = it.key,
+                                value = it.value.stringify(),
+                                valueType = FieldValueType.String,
+                                isEnabled = true,
+                            )
+                        }.toList()
                 )
-                subprojectMap[it.parentId]?.environments?.add(env)
+                if (parentEnv == null) {
+                    subproject = subprojectMap[it.parentId]
+                }
+                subproject?.environments?.add(env)
+                environmentMap[it.id] = Pair(env, subproject)
             }
 
         val insomniaGroups = resources.filter { it["_type"]?.textValue() == "request_group" }
@@ -191,5 +200,13 @@ class InsomniaV4Importer {
     fun String.convertVariables(): String {
         return this.replace("\\{\\{([^{}]+)\\}\\}".toRegex(), "\\\${{\$1}}")
             .replace("\\{% variable '([^{}%']*)' %\\}".toRegex(), "\\\${{\$1}}")
+    }
+
+    fun JsonNode.stringify(): String {
+        return if (isValueNode) {
+            asText() ?: toString()
+        } else {
+            toString()
+        }
     }
 }
