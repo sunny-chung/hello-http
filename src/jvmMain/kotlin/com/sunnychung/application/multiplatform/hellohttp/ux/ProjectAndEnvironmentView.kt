@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -28,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
-import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -44,7 +41,9 @@ fun ProjectAndEnvironmentViewV2(
     onSelectSubproject: (Subproject?) -> Unit,
 //    environments: List<Environment>,
     onSelectEnvironment: (Environment?) -> Unit,
-    onSubprojectUpdate: (Subproject) -> Unit,
+    onUpdateProject: (Project) -> Unit,
+    onUpdateSubproject: (Subproject) -> Unit,
+    onDeleteProject: (Project) -> Unit,
 ) {
     val colors = LocalColor.current
 
@@ -54,6 +53,7 @@ fun ProjectAndEnvironmentViewV2(
 
     var showDialogType by remember { mutableStateOf(EditDialogType.None) }
     var dialogTextFieldValue by remember { mutableStateOf("") }
+    var dialogIsCreate by remember { mutableStateOf<Boolean>(true) }
 
     MainWindowDialog(
         isEnabled = showDialogType in setOf(EditDialogType.Project, EditDialogType.Subproject),
@@ -75,14 +75,20 @@ fun ProjectAndEnvironmentViewV2(
             AppTextButton(text = "Done", onClick = {
                 when (showDialogType) {
                     EditDialogType.Project -> {
-                        val project = Project(id = uuidString(), name = dialogTextFieldValue, subprojects = mutableListOf())
-                        onAddProject(project)
-                        onSelectSubproject(null)
-                        onSelectEnvironment(null)
-                        if (selectedProject == null) {
-                            expandedSection = ExpandedSection.Subproject
+                        if (dialogIsCreate) {
+                            val project = Project(id = uuidString(), name = dialogTextFieldValue, subprojects = mutableListOf())
+                            onAddProject(project)
+                            onSelectSubproject(null)
+                            onSelectEnvironment(null)
+                            if (selectedProject == null) {
+                                expandedSection = ExpandedSection.Subproject
+                            }
+                            selectedProject = project
+                        } else {
+                            val updated = selectedProject!!.copy(name = dialogTextFieldValue)
+                            onUpdateProject(updated)
+                            selectedProject = updated
                         }
-                        selectedProject = project
                     }
                     EditDialogType.Subproject -> {
                         val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue, treeObjects = mutableListOf(), environments = mutableListOf()) // TODO refactor to AppView
@@ -110,7 +116,7 @@ fun ProjectAndEnvironmentViewV2(
     ) {
         SubprojectEnvironmentsEditorView(
             subproject = selectedSubproject!!,
-            onSubprojectUpdate = { onSubprojectUpdate(it) },
+            onSubprojectUpdate = { onUpdateSubproject(it) },
             initialEnvironment = selectedEnvironment,
             modifier = Modifier.padding(12.dp).size(width = 480.dp, height = 300.dp),
         )
@@ -120,7 +126,11 @@ fun ProjectAndEnvironmentViewV2(
     Column(modifier = modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Project", modifier = Modifier.weight(1f))
-            AppImageButton(resource = "add.svg", size = 24.dp, onClick = { showDialogType = EditDialogType.Project; dialogTextFieldValue = "" })
+            AppImageButton(resource = "add.svg", size = 24.dp, onClick = {
+                showDialogType = EditDialogType.Project
+                dialogTextFieldValue = ""
+                dialogIsCreate = true
+            })
         }
         Column(modifier = Modifier.padding(start = 8.dp)) {
             if (expandedSection == ExpandedSection.Project) {
@@ -129,7 +139,11 @@ fun ProjectAndEnvironmentViewV2(
                         text = "Click to Create a Project",
                         fontSize = LocalFont.current.createLabelSize,
                         modifier = Modifier
-                            .clickable { showDialogType = EditDialogType.Project; dialogTextFieldValue = "" }
+                            .clickable {
+                                showDialogType = EditDialogType.Project
+                                dialogTextFieldValue = ""
+                                dialogIsCreate = true
+                            }
                     )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -145,18 +159,41 @@ fun ProjectAndEnvironmentViewV2(
                 }
                 Spacer(Modifier.height(24.dp))
             } else {
-                DropDownView(
-                    modifier = Modifier.fillMaxWidth(),
-                    items = projects,
-                    selectedItem = selectedProject,
-                    isLabelFillMaxWidth = true,
-                    onClickItem = {
-                        selectedProject = it
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    DropDownView(
+                        modifier = Modifier.weight(1f),
+                        items = projects,
+                        selectedItem = selectedProject,
+                        isLabelFillMaxWidth = true,
+                        onClickItem = {
+                            selectedProject = it
+                            onSelectSubproject(null)
+                            onSelectEnvironment(null)
+                            true
+                        }
+                    )
+                    AppImageButton(
+                        resource = "edit.svg",
+                        size = 16.dp,
+                        onClick = {
+                            showDialogType = EditDialogType.Project
+                            dialogTextFieldValue = selectedProject!!.name
+                            dialogIsCreate = false
+                        }
+                    )
+                    AppDeleteButton {
+                        onDeleteProject(selectedProject!!)
+                        val anotherProject = projects.firstOrNull { it.id != selectedProject!!.id }
+                        if (anotherProject != null) {
+                            selectedProject = anotherProject
+                        } else {
+                            selectedProject = null
+                            expandedSection = ExpandedSection.Project
+                        }
                         onSelectSubproject(null)
                         onSelectEnvironment(null)
-                        true
                     }
-                )
+                }
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -166,7 +203,11 @@ fun ProjectAndEnvironmentViewV2(
             AppImageButton(
                 resource = "add.svg",
                 size = 24.dp,
-                onClick = { showDialogType = EditDialogType.Subproject; dialogTextFieldValue = "" },
+                onClick = {
+                    showDialogType = EditDialogType.Subproject
+                    dialogTextFieldValue = ""
+                    dialogIsCreate = true
+                },
                 enabled = selectedProject != null
             )
         }
@@ -178,7 +219,11 @@ fun ProjectAndEnvironmentViewV2(
                         text = "Click to Create a Subproject",
                         fontSize = LocalFont.current.createLabelSize,
                         modifier = Modifier
-                            .clickable { showDialogType = EditDialogType.Subproject; dialogTextFieldValue = "" }
+                            .clickable {
+                                showDialogType = EditDialogType.Subproject
+                                dialogTextFieldValue = ""
+                                dialogIsCreate = true
+                            }
                     )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -257,6 +302,8 @@ fun ProjectAndEnvironmentViewV2Preview() {
         onSelectSubproject = {},
         onAddProject = {},
         onAddSubproject = {_, _ ->},
-        onSubprojectUpdate = {_->},
+        onUpdateSubproject = { _->},
+        onUpdateProject = {_ ->},
+        onDeleteProject = {_ ->},
     )
 }

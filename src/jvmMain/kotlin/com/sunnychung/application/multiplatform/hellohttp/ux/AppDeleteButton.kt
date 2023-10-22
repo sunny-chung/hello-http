@@ -73,6 +73,7 @@ fun AppDeleteButton(
             Row(modifier = modifier.clickable {
                 if (KInstant.now() - lastClickInstant >= KDuration.of(500, KFixedTimeUnit.MilliSecond)) {
                     onClickDelete()
+                    isShowingConfirmButton = false
                 }
             }
                 .onPointerEvent(eventType = PointerEventType.Exit, onEvent = { isShowingConfirmButton = false })) {

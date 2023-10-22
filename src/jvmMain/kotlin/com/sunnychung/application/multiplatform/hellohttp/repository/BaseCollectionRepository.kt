@@ -4,12 +4,15 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.Document
 import com.sunnychung.application.multiplatform.hellohttp.document.DocumentIdentifier
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
@@ -37,8 +40,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
-    private val publishUpdates = Channel<ID>()
-    private val publishUpdatesFlow = publishUpdates.receiveAsFlow().shareIn(CoroutineScope(Dispatchers.Default), SharingStarted.Eagerly)
+    private val publishUpdates = MutableSharedFlow<Pair<ID, String>>()
 
     init {
         timerFlow //.takeWhile { updates.isNotEmpty() }
@@ -124,7 +126,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
                 writeToFile(relativeFilePath(id = identifier), serializer, document as T)
             }
         }
-        publishUpdates.send(identifier)
+        publishUpdates.emit(Pair(identifier, uuidString()))
     }
 
     open fun notifyUpdated(identifier: ID) {
@@ -141,5 +143,5 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
-    open fun subscribeUpdates(): Flow<ID> = publishUpdatesFlow
+    open fun subscribeUpdates(): SharedFlow<Pair<ID, String>> = publishUpdates
 }

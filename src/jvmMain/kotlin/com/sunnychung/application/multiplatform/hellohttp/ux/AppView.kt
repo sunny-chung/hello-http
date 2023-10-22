@@ -232,7 +232,7 @@ fun AppContentView() {
                                 selectedRequestExampleId = null
                                 response = UserResponse("-", "-", "-")
                             },
-                            onSubprojectUpdate = {
+                            onUpdateSubproject = {
                                 assert(it.id == selectedSubproject!!.id)
                                 with(selectedSubproject!!) {
                                     environments = it.environments
@@ -243,6 +243,14 @@ fun AppContentView() {
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
 
                                 selectedEnvironment = it.environments.firstOrNull { it.id == selectedEnvironment?.id }
+                            },
+                            onUpdateProject = { project ->
+                                projectCollection.projects.replaceIf(project) { it.id == project.id }
+                                projectCollectionRepository.notifyUpdated(projectCollection.id)
+                            },
+                            onDeleteProject = { project ->
+                                projectCollection.projects.removeIf { it.id == project.id }
+                                projectCollectionRepository.notifyUpdated(projectCollection.id)
                             },
                             modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
                         )
