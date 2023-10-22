@@ -38,6 +38,9 @@ kotlin {
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
                 implementation("com.squareup.okhttp3:okhttp:4.11.0-patch-1")
 //                implementation("com.github.sunny-chung:okhttp:patch~4.11.0-SNAPSHOT")
+                implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") {
+                    exclude(group = "com.squareup.okhttp3", module = "okhttp")
+                }
 
                 implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")

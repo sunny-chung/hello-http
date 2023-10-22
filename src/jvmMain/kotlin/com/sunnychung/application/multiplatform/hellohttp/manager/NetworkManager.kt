@@ -2,7 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.network.GzipDecompressionNetworkInterceptor
+import com.sunnychung.application.multiplatform.hellohttp.network.GzipDecompressionInterceptor
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -283,16 +283,16 @@ class NetworkManager {
                 synchronized(data.response.rawExchange.exchanges) {
                     if (true || it.event == "Response completed") { // deadline fighter
                         data.response.rawExchange.exchanges.forEach {
-                            it.consumePayloadBuilder()
+                                it.consumePayloadBuilder()
+                            }
+                        } else { // lazy
+                            val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                            lastExchange?.consumePayloadBuilder()
                         }
-                    } else { // lazy
-                        val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                        lastExchange?.consumePayloadBuilder()
-                    }
-                    data.response.rawExchange.exchanges += RawExchange.Exchange(
-                        instant = it.instant,
-                        direction = RawExchange.Direction.Unspecified,
-                        detail = it.event
+                        data.response.rawExchange.exchanges += RawExchange.Exchange(
+                            instant = it.instant,
+                            direction = RawExchange.Direction.Unspecified,
+                            detail = it.event
                     )
                 }
             }
@@ -368,7 +368,7 @@ class NetworkManager {
                 out.body = response.body?.bytes()
                 out.responseSizeInBytes = out.body?.size?.toLong() ?: 0L // response.body?.contentLength() returns -1
             } catch (e: Throwable) {
-                log.d { "Call Error: ${e.message}" }
+                log.d(e) { "Call Error: ${e.message}" }
                 out.errorMessage = e.message
                 out.isError = true
             } finally {

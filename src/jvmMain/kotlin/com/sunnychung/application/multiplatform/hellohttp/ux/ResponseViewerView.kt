@@ -204,7 +204,7 @@ fun ResponseBodyView(response: UserResponse) {
         val contentType = response.headers
             ?.filter { it.first.lowercase() == "content-type" }
             ?.map { it.second }
-            ?.first()
+            ?.firstOrNull()
         if (contentType != null) {
             AppContext.PrettifierManager.matchPrettifiers(contentType)
         } else {

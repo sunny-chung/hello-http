@@ -6,7 +6,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
 import okio.GzipSource
 
-class GzipDecompressionNetworkInterceptor : Interceptor {
+class GzipDecompressionInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val response = chain.proceed(chain.request())
 
