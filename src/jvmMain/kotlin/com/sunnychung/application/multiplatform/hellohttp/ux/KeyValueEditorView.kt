@@ -59,13 +59,28 @@ fun KeyValueEditorView(
             }
         }
         LazyColumn {
-            itemsIndexed(items = keyValues) { index, it ->
-                val isEnabled = if (!isInheritedView) it.isEnabled else !disabledIds.contains(it.id)
+            items(count = keyValues.size + if (!isInheritedView) 1 else 0) { index ->
+                val it = if (index < keyValues.size) keyValues[index] else null
+                val isEnabled = it?.let { if (!isInheritedView) it.isEnabled else !disabledIds.contains(it.id) } ?: true
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppTextFieldWithPlaceholder(
                         placeholder = { AppText(text = "Key", color = colors.placeholder) },
-                        value = it.key,
-                        onValueChange = { v -> onItemChange(index, it.copy(key = v)) },
+                        value = it?.key ?: "",
+                        onValueChange = { v ->
+                            if (it != null) {
+                                onItemChange(index, it.copy(key = v))
+                            } else if (v.isNotEmpty()) {
+                                onItemAddLast(
+                                    UserKeyValuePair(
+                                        id = uuidString(),
+                                        key = v,
+                                        value = "",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                )
+                            }
+                        },
                         visualTransformation = if (isSupportVariables) {
                             EnvironmentVariableTransformation(
                                 themeColors = colors,
@@ -79,11 +94,25 @@ fun KeyValueEditorView(
                         hasIndicatorLine = !isInheritedView,
                         modifier = Modifier.weight(0.4f)
                     )
-                    if (it.valueType == FieldValueType.String) {
+                    if (it?.valueType == FieldValueType.String || it == null) {
                         AppTextFieldWithPlaceholder(
                             placeholder = { AppText(text = "Value", color = colors.placeholder) },
-                            value = it.value,
-                            onValueChange = { v -> onItemChange(index, it.copy(value = v)) },
+                            value = it?.value ?: "",
+                            onValueChange = { v ->
+                                if (it != null) {
+                                    onItemChange(index, it.copy(value = v))
+                                } else if (v.isNotEmpty()) {
+                                    onItemAddLast(
+                                        UserKeyValuePair(
+                                            id = uuidString(),
+                                            key = "",
+                                            value = v,
+                                            valueType = FieldValueType.String,
+                                            isEnabled = true
+                                        )
+                                    )
+                                }
+                            },
                             visualTransformation = if (isSupportVariables) {
                                 EnvironmentVariableTransformation(
                                     themeColors = colors,
@@ -108,87 +137,46 @@ fun KeyValueEditorView(
                             modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder)
                         )
                     }
-                    if (isSupportFileValue && !isInheritedView) {
-                        DropDownView(
-                            items = ValueType.values().toList(),
-                            isShowLabel = false,
-                            onClickItem = { v ->
-                                val valueType = when (v) {
-                                    ValueType.Text -> FieldValueType.String
-                                    ValueType.File -> FieldValueType.File
-                                }
-                                onItemChange(index, it.copy(valueType = valueType))
-                                true
-                            },
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                    }
-                    AppCheckbox(
-                        checked = isEnabled,
-                        onCheckedChange = { v ->
-                            if (!isInheritedView) {
-                                onItemChange(index, it.copy(isEnabled = v))
-                            } else {
-                                val newSet = if (!v) {
-                                    disabledIds + it.id
+                    if (it != null) {
+                        if (isSupportFileValue && !isInheritedView) {
+                            DropDownView(
+                                items = ValueType.values().toList(),
+                                isShowLabel = false,
+                                onClickItem = { v ->
+                                    val valueType = when (v) {
+                                        ValueType.Text -> FieldValueType.String
+                                        ValueType.File -> FieldValueType.File
+                                    }
+                                    onItemChange(index, it.copy(valueType = valueType))
+                                    true
+                                },
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+                        AppCheckbox(
+                            checked = isEnabled,
+                            onCheckedChange = { v ->
+                                if (!isInheritedView) {
+                                    onItemChange(index, it.copy(isEnabled = v))
                                 } else {
-                                    disabledIds - it.id
+                                    val newSet = if (!v) {
+                                        disabledIds + it.id
+                                    } else {
+                                        disabledIds - it.id
+                                    }
+                                    onDisableChange(newSet)
                                 }
-                                onDisableChange(newSet)
-                            }
-                        },
-                        size = 16.dp,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                    if (!isInheritedView) {
-                        AppDeleteButton(
-                            onClickDelete = { onItemDelete(index) },
+                            },
+                            size = 16.dp,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         )
-                    }
-                }
-            }
-            if (!isInheritedView) {
-                item {
-                    Row {
-                        AppTextFieldWithPlaceholder(
-                            placeholder = { AppText(text = "Key", color = colors.placeholder) },
-                            value = "",
-                            onValueChange = { v ->
-                                if (v.isNotEmpty()) {
-                                    onItemAddLast(
-                                        UserKeyValuePair(
-                                            id = uuidString(),
-                                            key = v,
-                                            value = "",
-                                            valueType = FieldValueType.String,
-                                            isEnabled = true
-                                        )
-                                    )
-                                }
-                            },
-                            hasIndicatorLine = true,
-                            modifier = Modifier.weight(0.4f)
-                        )
-                        AppTextFieldWithPlaceholder(
-                            placeholder = { AppText(text = "Value", color = colors.placeholder) },
-                            value = "",
-                            onValueChange = { v ->
-                                if (v.isNotEmpty()) {
-                                    onItemAddLast(
-                                        UserKeyValuePair(
-                                            id = uuidString(),
-                                            key = "",
-                                            value = v,
-                                            valueType = FieldValueType.String,
-                                            isEnabled = true
-                                        )
-                                    )
-                                }
-                            },
-                            hasIndicatorLine = true,
-                            modifier = Modifier.weight(0.6f)
-                        )
+                        if (!isInheritedView) {
+                            AppDeleteButton(
+                                onClickDelete = { onItemDelete(index) },
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+                    } else {
                         Spacer(modifier = Modifier.width((4.dp + 16.dp + 4.dp) * (if (isSupportFileValue) 3 else 2)))
                     }
                 }
