@@ -367,6 +367,7 @@ fun AppContentView() {
                                                 null
                                             )
                                         } catch (e: Throwable) {
+                                            log.w(e) { "Cannot convert request" }
                                             Pair(null, e)
                                         }
 

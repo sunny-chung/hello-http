@@ -48,7 +48,7 @@ fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): R
                     )
                 )
                 else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body.expandStringBody() else baseExample.body?.expandStringBody()
-            }?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType()!!)
+            }?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType())
         )
     getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
         .filter { it.isEnabled }

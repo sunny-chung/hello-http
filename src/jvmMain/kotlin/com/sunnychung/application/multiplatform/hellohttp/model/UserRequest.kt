@@ -159,21 +159,21 @@ enum class FieldValueType {
 
 @Serializable
 sealed interface UserRequestBody {
-    fun toOkHttpBody(mediaType: MediaType): RequestBody
+    fun toOkHttpBody(mediaType: MediaType?): RequestBody
 }
 
 @Persisted
 @Serializable
 @SerialName("StringBody")
 class StringBody(val value: String) : UserRequestBody {
-    override fun toOkHttpBody(mediaType: MediaType): RequestBody = value.toRequestBody(mediaType)
+    override fun toOkHttpBody(mediaType: MediaType?): RequestBody = value.toRequestBody(mediaType)
 }
 
 @Persisted
 @Serializable
 @SerialName("FormUrlEncodedBody")
 class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
-    override fun toOkHttpBody(mediaType: MediaType): RequestBody {
+    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
         val builder = FormBody.Builder()
         value.forEach { builder.add(it.key, it.value) }
         return builder.build()
@@ -184,7 +184,7 @@ class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
 @Serializable
 @SerialName("MultipartBody")
 class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
-    override fun toOkHttpBody(mediaType: MediaType): RequestBody {
+    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
         val b = MultipartBody.Builder()
         value.filter { it.isEnabled }.forEach {
             when (it.valueType) {
