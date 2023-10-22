@@ -44,6 +44,7 @@ fun ProjectAndEnvironmentViewV2(
     onUpdateProject: (Project) -> Unit,
     onUpdateSubproject: (Subproject) -> Unit,
     onDeleteProject: (Project) -> Unit,
+    onDeleteSubproject: (Subproject) -> Unit,
 ) {
     val colors = LocalColor.current
 
@@ -91,12 +92,22 @@ fun ProjectAndEnvironmentViewV2(
                         }
                     }
                     EditDialogType.Subproject -> {
-                        val subproject = Subproject(id = uuidString(), name = dialogTextFieldValue, treeObjects = mutableListOf(), environments = mutableListOf()) // TODO refactor to AppView
-                        onAddSubproject(selectedProject!!, subproject)
-                        onSelectSubproject(subproject)
-                        onSelectEnvironment(null)
+                        if (dialogIsCreate) {
+                            val subproject = Subproject(
+                                id = uuidString(),
+                                name = dialogTextFieldValue,
+                                treeObjects = mutableListOf(),
+                                environments = mutableListOf()
+                            ) // TODO refactor to AppView
+                            onAddSubproject(selectedProject!!, subproject)
+                            onSelectSubproject(subproject)
+                            onSelectEnvironment(null)
 //                        selectedSubproject = subproject
-                        expandedSection = ExpandedSection.None
+                            expandedSection = ExpandedSection.None
+                        } else {
+                            val updated = selectedSubproject!!.copy(name = dialogTextFieldValue)
+                            onUpdateSubproject(updated)
+                        }
                     }
                     EditDialogType.Environment -> TODO()
                     EditDialogType.None -> {}
@@ -243,9 +254,9 @@ fun ProjectAndEnvironmentViewV2(
                 }
                 Spacer(Modifier.height(24.dp))
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     DropDownView(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.weight(1f),
                         selectedItem = selectedSubproject,
                         items = selectedProject?.subprojects ?: emptyList(),
                         isLabelFillMaxWidth = true,
@@ -255,6 +266,26 @@ fun ProjectAndEnvironmentViewV2(
                             true
                         }
                     )
+                    AppImageButton(
+                        resource = "edit.svg",
+                        size = 16.dp,
+                        onClick = {
+                            showDialogType = EditDialogType.Subproject
+                            dialogTextFieldValue = selectedSubproject!!.name
+                            dialogIsCreate = false
+                        }
+                    )
+                    AppDeleteButton {
+                        onDeleteSubproject(selectedSubproject!!)
+                        val anotherSubproject = selectedProject!!.subprojects.firstOrNull { it.id != selectedSubproject.id }
+                        if (anotherSubproject != null) {
+                            onSelectSubproject(anotherSubproject)
+                        } else {
+                            onSelectSubproject(null)
+                            expandedSection = ExpandedSection.Subproject
+                        }
+                        onSelectEnvironment(null)
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
             }
@@ -305,5 +336,6 @@ fun ProjectAndEnvironmentViewV2Preview() {
         onUpdateSubproject = { _->},
         onUpdateProject = {_ ->},
         onDeleteProject = {_ ->},
+        onDeleteSubproject = {_ ->},
     )
 }

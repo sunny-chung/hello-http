@@ -252,6 +252,12 @@ fun AppContentView() {
                                 projectCollection.projects.removeIf { it.id == project.id }
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
                             },
+                            onDeleteSubproject = { subproject ->
+                                // TODO: lower time complexity from O(n^2) to O(n)
+                                val project = projectCollection.projects.first { it.subprojects.any { it.id == subproject.id } }
+                                project.subprojects.removeIf { it.id == subproject.id }
+                                projectCollectionRepository.notifyUpdated(projectCollection.id)
+                            },
                             modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
                         )
 
