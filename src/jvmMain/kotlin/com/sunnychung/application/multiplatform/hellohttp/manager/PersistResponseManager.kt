@@ -21,7 +21,7 @@ class PersistResponseManager {
     fun registerCall(callId: String) {
         val callData = networkManager.getCallData(callId)!!
         callData.events.onEach {
-            log.d { "PersistResponseManager receives call $callId event" }
+            log.d { "PersistResponseManager receives call $callId event ${it.event}" }
             val documentId = ResponsesDI(subprojectId = callData.subprojectId)
             val record = loadResponseCollection(documentId)
             record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response

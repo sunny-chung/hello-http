@@ -53,6 +53,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorSche
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -134,12 +135,22 @@ fun AppContentView() {
     var request by remember { mutableStateOf<UserRequest?>(null) }
     var selectedRequestExampleId by remember { mutableStateOf<String?>(null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
-    var callDataUpdates = activeCallId?.let { networkManager.getCallData(it) }?.events?.collectAsState(null)?.value // needed for invalidating compose caches
+
+    var callDataUpdates =
+        activeCallId?.let { networkManager.getCallData(it) }?.events
+            ?.onEach { log.d { "callDataUpdates onEach ${it.event}" } }
+            ?.collectAsState(null)?.value // needed for invalidating compose caches
+            ?: run {
+                log.d { "callDataUpdates no flow" }
+                null as Nothing?
+            }
     val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
     var response by remember { mutableStateOf<UserResponse?>(null) }
     if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
         response = activeResponse
     }
+
+    log.d { "callDataUpdates $activeCallId ${callDataUpdates?.event}; status = ${response?.isCommunicating}" }
 
     fun loadRequestsForSubproject(subproject: Subproject) {
         CoroutineScope(Dispatchers.IO).launch {

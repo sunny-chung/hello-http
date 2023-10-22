@@ -13,7 +13,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
@@ -74,14 +77,14 @@ class NetworkManager {
         val subprojectId: String,
         var isPrepared: Boolean = false,
 
-        val events: Flow<NetworkEvent>,
-        val outgoingBytes: Flow<Pair<KInstant, ByteArray>>,
-        val incomingBytes: Flow<Pair<KInstant, ByteArray>>,
+        val events: SharedFlow<NetworkEvent>,
+        val outgoingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
+        val incomingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
         val optionalResponseSize: AtomicInteger,
         val response: UserResponse,
     )
 
-    private val eventChannel = Channel<NetworkEvent>()
+    private val eventSharedFlow = MutableSharedFlow<NetworkEvent>()
     private val callData = ConcurrentHashMap<String, CallData>()
 
     fun buildHttpClient(callId: String, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>, responseSize: AtomicInteger): OkHttpClient {
@@ -90,7 +93,7 @@ class NetworkManager {
             val instant = KInstant.now()
             runBlocking {
                 log.d { "Network Event: $event" }
-                eventChannel.send(NetworkEvent(callId = callId, instant = instant, event = event))
+                eventSharedFlow.emit(NetworkEvent(callId = callId, instant = instant, event = event))
             }
         }
 
@@ -230,7 +233,8 @@ class NetworkManager {
                     socketAsyncTimeoutClassSourceMethod.call(timeout, source) as Source
                 }
             ))
-            .addNetworkInterceptor(GzipDecompressionNetworkInterceptor())
+//            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
+            .addInterceptor(GzipDecompressionInterceptor())
             .build()
     }
 
@@ -259,7 +263,7 @@ class NetworkManager {
         val data = CallData(
             id = call.id,
             subprojectId = subprojectId,
-            events = eventChannel.receiveAsFlow()
+            events = eventSharedFlow.asSharedFlow()
                 .filter { it.callId == call.id }
                 .flowOn(Dispatchers.IO)
                 .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
@@ -372,7 +376,7 @@ class NetworkManager {
                 out.isCommunicating = false
             }
 
-            eventChannel.send(NetworkEvent(call.id, KInstant.now(), "Response completed"))
+            eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed"))
         }
         return data
     }
