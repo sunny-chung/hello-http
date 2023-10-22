@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +39,7 @@ fun <T: DropDownable> DropDownView(
         )
     },
     clickableArea: DropDownClickableArea = DropDownClickableArea.All,
+    arrowPadding: PaddingValues = PaddingValues(0.dp),
     selectedItem: T? = null,
     onClickItem: (T) -> Boolean
 ) {
@@ -74,7 +76,7 @@ fun <T: DropDownable> DropDownView(
         if (isShowLabel) {
             contentView(selectedItem)
         }
-        AppImage(resource = iconResource, size = iconSize)
+        AppImage(resource = iconResource, size = iconSize, modifier = Modifier.padding(arrowPadding))
     }
 }
 

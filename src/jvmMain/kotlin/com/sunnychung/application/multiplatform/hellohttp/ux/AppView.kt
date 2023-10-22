@@ -30,7 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.fasterxml.jackson.databind.JsonNode
 import com.jayway.jsonpath.JsonPath
@@ -40,6 +42,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollec
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
+import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
 import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -131,6 +134,7 @@ fun AppContentView() {
     val projectCollection = remember {
         runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
     }
+    val clipboardManager = LocalClipboardManager.current
 
     var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
     var selectedSubprojectState by remember { mutableStateOf<Subproject?>(null) }
@@ -457,6 +461,24 @@ fun AppContentView() {
                                                 isError = true,
                                                 errorMessage = error?.message
                                             )
+                                        }
+                                    },
+                                    onClickCopyCurl = {
+                                        val (curl, error) = try {
+                                            Pair(
+                                                requestNonNull.toCurlCommand(
+                                                    exampleId = selectedRequestExampleId!!,
+                                                    environment = selectedEnvironment
+                                                ),
+                                                null
+                                            )
+                                        } catch (e: Throwable) {
+                                            log.w(e) { "Cannot convert request" }
+                                            Pair(null, e)
+                                        }
+                                        log.d { "curl: $curl" }
+                                        if (curl != null) {
+                                            clipboardManager.setText(AnnotatedString(curl))
                                         }
                                     },
                                     onRequestModified = {

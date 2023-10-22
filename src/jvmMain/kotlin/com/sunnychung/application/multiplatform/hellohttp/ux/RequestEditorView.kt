@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -64,6 +65,7 @@ fun RequestEditorView(
     environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
+    onClickCopyCurl: () -> Unit,
     onRequestModified: (UserRequest?) -> Unit,
 ) {
     val colors = LocalColor.current
@@ -211,17 +213,30 @@ fun RequestEditorView(
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.background(colors.backgroundButton).width(width = 90.dp).fillMaxHeight()
+                modifier = Modifier.background(colors.backgroundButton).width(width = 84.dp).fillMaxHeight()
             ) {
                 Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { onClickSend() }) {
                     AppText(
                         text = "Send",
                         fontSize = fonts.buttonFontSize,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 4.dp).align(Alignment.Center)
+                        modifier = Modifier.padding(start = 4.dp).align(Alignment.Center)
                     )
                 }
-                AppImageButton(resource = "down-small.svg", size = 24.dp, onClick = { /* TODO */}, modifier = Modifier.fillMaxHeight().padding(end = 4.dp))
+                DropDownView(
+                    iconSize = 24.dp,
+                    items = listOf("Send", "Copy as cURL command").map { DropDownValue(it) },
+                    isShowLabel = false,
+                    onClickItem = {
+                        when (it.displayText) {
+                            "Send" -> onClickSend()
+                            "Copy as cURL command" -> onClickCopyCurl()
+                        }
+                        true
+                    },
+                    arrowPadding = PaddingValues(end = 4.dp),
+                    modifier = Modifier.fillMaxHeight(),
+                )
             }
         }
 //        Spacer(modifier = Modifier.height(4.dp))
