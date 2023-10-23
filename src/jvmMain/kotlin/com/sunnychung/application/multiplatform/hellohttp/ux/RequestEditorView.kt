@@ -362,6 +362,7 @@ fun RequestEditorView(
                         items = ContentType.values().toList(),
                         selectedItem = selectedContentType,
                         onClickItem = {
+                            if (selectedContentType == it) return@DropDownView true
                             selectedContentType = it
                             val newBody = when (it) {
                                 ContentType.None -> null
