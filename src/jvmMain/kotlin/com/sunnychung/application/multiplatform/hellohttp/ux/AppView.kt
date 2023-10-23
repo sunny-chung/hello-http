@@ -47,6 +47,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequ
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
+import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
@@ -448,7 +449,7 @@ fun AppContentView() {
                                                 requestId = requestNonNull.id,
                                                 subprojectId = selectedSubproject!!.id,
                                                 postFlightAction = postFlightAction,
-                                                sslConfig = selectedEnvironment!!.sslConfig,
+                                                sslConfig = selectedEnvironment?.sslConfig ?: SslConfig(),
                                             )
                                             activeCallId = callData.id
                                             persistResponseManager.registerCall(callData.id)
