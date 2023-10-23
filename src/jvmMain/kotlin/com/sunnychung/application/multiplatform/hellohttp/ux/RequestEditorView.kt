@@ -65,7 +65,7 @@ fun RequestEditorView(
     environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
-    onClickCopyCurl: () -> Unit,
+    onClickCopyCurl: () -> Boolean,
     onRequestModified: (UserRequest?) -> Unit,
 ) {
     val colors = LocalColor.current
@@ -228,11 +228,14 @@ fun RequestEditorView(
                     items = listOf("Send", "Copy as cURL command").map { DropDownValue(it) },
                     isShowLabel = false,
                     onClickItem = {
+                        var isSuccess = true
                         when (it.displayText) {
                             "Send" -> onClickSend()
-                            "Copy as cURL command" -> onClickCopyCurl()
+                            "Copy as cURL command" -> {
+                                isSuccess = onClickCopyCurl()
+                            }
                         }
-                        true
+                        isSuccess
                     },
                     arrowPadding = PaddingValues(end = 4.dp),
                     modifier = Modifier.fillMaxHeight(),

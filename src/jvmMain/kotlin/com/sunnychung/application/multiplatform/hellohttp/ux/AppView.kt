@@ -480,6 +480,9 @@ fun AppContentView() {
                                         log.d { "curl: $curl" }
                                         if (curl != null) {
                                             clipboardManager.setText(AnnotatedString(curl))
+                                            true
+                                        } else {
+                                            false
                                         }
                                     },
                                     onRequestModified = {
