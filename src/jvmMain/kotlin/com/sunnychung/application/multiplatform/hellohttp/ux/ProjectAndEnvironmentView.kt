@@ -157,7 +157,7 @@ fun ProjectAndEnvironmentViewV2(
                             }
                     )
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         items(items = projects) { it ->
                             AppText(
                                 text = it.name,
@@ -237,7 +237,7 @@ fun ProjectAndEnvironmentViewV2(
                             }
                     )
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         items(items = subprojects) { it ->
                             AppText(
                                 text = it.name,

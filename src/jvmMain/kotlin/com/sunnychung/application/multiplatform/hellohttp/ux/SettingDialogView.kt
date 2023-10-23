@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.importer.InsomniaV4Importer
+import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2JsonImporter
+import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2ZipImporter
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -73,14 +75,17 @@ private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) 
     }
 }
 
+enum class ImportFormat {
+    `Insomnia v4 JSON`, `Postman v2 ZIP Data Dump`, `Postman v2 JSON Single Collection`
+}
+
 @Composable
 private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
     val colors = LocalColor.current
-    val formats = listOf("Insomnia v4 JSON")
 
     var isShowFileDialog by remember { mutableStateOf(false) }
     var file by remember { mutableStateOf<File?>(null) }
-    var fileFormat by remember { mutableStateOf(formats.first()) }
+    var fileFormat by remember { mutableStateOf(ImportFormat.values().first()) }
 
     if (isShowFileDialog) {
         FileDialog {
@@ -105,19 +110,21 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppText(text = "Choose a Format", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
                     DropDownView(
-                        selectedItem = DropDownValue(fileFormat),
-                        items = formats.map { DropDownValue(it) },
-                        onClickItem = { fileFormat = it.displayText; true },
+                        selectedItem = DropDownValue(fileFormat.name),
+                        items = ImportFormat.values().map { DropDownValue(it.name) },
+                        onClickItem = { fileFormat = ImportFormat.valueOf(it.displayText); true },
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppText(text = "New Project Name", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
-                    AppTextFieldWithPlaceholder(
-                        value = projectName,
-                        onValueChange = { projectName = it },
-                        placeholder = { AppText(text = "New Project Name", color = colors.placeholder) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                if (fileFormat in setOf(ImportFormat.`Insomnia v4 JSON`, ImportFormat.`Postman v2 JSON Single Collection`)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppText(text = "New Project Name", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
+                        AppTextFieldWithPlaceholder(
+                            value = projectName,
+                            onValueChange = { projectName = it },
+                            placeholder = { AppText(text = "New Project Name", color = colors.placeholder) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
             AppTextButton(
@@ -125,7 +132,17 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                 onClick = {
                     runBlocking { // TODO change to suspend in background
                         // FIXME error handling
-                        InsomniaV4Importer().importAsProject(file = file!!, projectName = projectName)
+                        when (fileFormat) {
+                            ImportFormat.`Insomnia v4 JSON` -> {
+                                InsomniaV4Importer().importAsProject(file = file!!, projectName = projectName)
+                            }
+                            ImportFormat.`Postman v2 ZIP Data Dump` -> {
+                                PostmanV2ZipImporter().importAsProjects(file!!)
+                            }
+                            ImportFormat.`Postman v2 JSON Single Collection` -> {
+                                PostmanV2JsonImporter().importAsProject(file = file!!, projectName = projectName)
+                            }
+                        }
                     }
                     closeDialog()
                 }
