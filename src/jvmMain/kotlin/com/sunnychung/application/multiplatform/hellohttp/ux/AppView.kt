@@ -34,7 +34,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import com.fasterxml.jackson.databind.JsonNode
 import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
@@ -44,6 +43,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
 import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -59,6 +59,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,18 +73,24 @@ import org.jetbrains.compose.splitpane.rememberSplitPaneState
 @Composable
 @Preview
 fun AppView() {
-    CompositionLocalProvider(LocalColor provides darkColorScheme()) {
+    val colourTheme by AppContext.UserPreferenceViewModel.colourTheme.collectAsState()
+    val colourScheme = when (colourTheme) {
+        ColourTheme.Dark -> darkColorScheme()
+        ColourTheme.Light -> lightColorScheme()
+    }
+    CompositionLocalProvider(LocalColor provides colourScheme) {
         val colors = LocalColor.current
         CompositionLocalProvider(LocalScrollbarStyle provides defaultScrollbarStyle().copy(
             unhoverColor = colors.scrollBarUnhover,
             hoverColor = colors.scrollBarHover,
         )) {
             val dialogViewModel = AppContext.DialogViewModel
-            val dialogUpdate = dialogViewModel.stateUpdateFlow.collectAsState(null).value // needed for updating UI by flow
+            val dialogState = dialogViewModel.state.collectAsState().value // needed for updating UI by flow
+            log.d { "Dialog State = $dialogState" }
             Box(modifier = Modifier.background(colors.background).fillMaxSize()) {
                 AppContentView()
 
-                dialogViewModel.state?.let { dialog ->
+                dialogState?.let { dialog ->
                     Box(
                         modifier = Modifier
                             .fillMaxSize()

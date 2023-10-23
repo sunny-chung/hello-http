@@ -16,5 +16,5 @@ interface Identifiable {
 sealed class DocumentIdentifier(val type: PersistenceDocumentType)
 
 enum class PersistenceDocumentType {
-    ProjectAndEnvironments, Requests, Responses
+    ProjectAndEnvironments, Requests, Responses, UserPreference
 }

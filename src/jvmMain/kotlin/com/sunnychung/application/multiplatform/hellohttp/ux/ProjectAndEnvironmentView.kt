@@ -57,6 +57,7 @@ fun ProjectAndEnvironmentViewV2(
     var dialogIsCreate by remember { mutableStateOf<Boolean>(true) }
 
     MainWindowDialog(
+        key = "ProjectNameAndSubprojectName",
         isEnabled = showDialogType in setOf(EditDialogType.Project, EditDialogType.Subproject),
         onDismiss = { showDialogType = EditDialogType.None }) {
         val focusRequester = remember { FocusRequester() }
@@ -122,6 +123,7 @@ fun ProjectAndEnvironmentViewV2(
     }
 
     MainWindowDialog(
+        key = "Environment",
         isEnabled = showDialogType in setOf(EditDialogType.Environment),
         onDismiss = { showDialogType = EditDialogType.None }
     ) {

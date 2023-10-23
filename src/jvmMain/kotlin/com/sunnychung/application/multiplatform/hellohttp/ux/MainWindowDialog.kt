@@ -5,6 +5,17 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.DialogState
 
 @Composable
-fun MainWindowDialog(isEnabled: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
-    AppContext.DialogViewModel.updateState(if (isEnabled) DialogState(content = content, onDismiss = onDismiss) else null)
+fun MainWindowDialog(key: String, isEnabled: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val dialogViewModel = AppContext.DialogViewModel
+    if (isEnabled) {
+        dialogViewModel.updateState(
+            DialogState(
+                key = key,
+                content = content,
+                onDismiss = onDismiss,
+            )
+        )
+    } else if (key == dialogViewModel.state.value?.key) {
+        dialogViewModel.updateState(null)
+    }
 }

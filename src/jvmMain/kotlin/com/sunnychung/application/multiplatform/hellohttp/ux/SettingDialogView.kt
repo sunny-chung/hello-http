@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,9 +23,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.importer.InsomniaV4Importer
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2JsonImporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2ZipImporter
+import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -32,24 +36,30 @@ import java.io.File
 @Composable
 fun SettingDialogView(closeDialog: () -> Unit) {
     val colors = LocalColor.current
-    val tabs = listOf("Data")
     var selectedTabIndex by remember { mutableStateOf(0) }
     Column(modifier = Modifier.size(width = 480.dp, height = 300.dp)) {
         TabsView(
             selectedIndex = selectedTabIndex,
-            contents = tabs.map { { AppTabLabel(text = it) } },
+            contents = SettingTab.values().map { { AppTabLabel(text = it.name) } },
             onSelectTab = { selectedTabIndex = it },
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
         )
 
         Box(modifier = Modifier.padding(8.dp)) {
-            when (tabs[selectedTabIndex]) {
-                "Data" -> {
+            when (SettingTab.values()[selectedTabIndex]) {
+                SettingTab.Data -> {
                     DataTab(closeDialog = closeDialog)
+                }
+                SettingTab.Appearance -> {
+                    AppearanceTab()
                 }
             }
         }
     }
+}
+
+private enum class SettingTab {
+    Data, Appearance
 }
 
 private val COLUMN_HEADER_WIDTH = 160.dp
@@ -146,6 +156,34 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                     }
                     closeDialog()
                 }
+            )
+        }
+    }
+}
+
+@Composable
+fun AppearanceTab() {
+    val currentColourTheme by AppContext.UserPreferenceViewModel.colourTheme.collectAsState()
+
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppText(text = "Colour Theme", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
+            DropDownView(
+                selectedItem = DropDownValue(currentColourTheme.name),
+                items = ColourTheme.values().map { DropDownValue(it.name) },
+                onClickItem = {
+                    val newColourTheme = ColourTheme.valueOf(it.displayText)
+                    AppContext.UserPreferenceViewModel.setColorTheme(newColourTheme)
+
+                    runBlocking {
+                        val userPreferenceRepository = AppContext.UserPreferenceRepository
+                        val userPreference = userPreferenceRepository.read(UserPreferenceDI())!!.preference
+                        userPreference.colourTheme = newColourTheme
+                        userPreferenceRepository.notifyUpdated(UserPreferenceDI())
+                    }
+
+                    true
+                },
             )
         }
     }

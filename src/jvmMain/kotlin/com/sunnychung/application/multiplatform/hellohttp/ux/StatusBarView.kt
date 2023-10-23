@@ -41,7 +41,7 @@ fun StatusBarView(modifier: Modifier = Modifier) {
         }
     }
 
-    MainWindowDialog(isEnabled = isShowSettingDialog, onDismiss = { isShowSettingDialog = false }) {
+    MainWindowDialog(key = "Setting", isEnabled = isShowSettingDialog, onDismiss = { isShowSettingDialog = false }) {
         SettingDialogView(closeDialog = { isShowSettingDialog = false })
     }
 }
