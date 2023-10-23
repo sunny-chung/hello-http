@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -49,7 +48,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeObject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
@@ -57,16 +56,16 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun RequestListView(
+fun RequestTreeView(
     selectedSubproject: Subproject,
 //    treeObjects: List<TreeObject>,
-    requests: Map<String, UserRequest>,
-    selectedRequest: UserRequest?,
+    requests: Map<String, UserRequestTemplate>,
+    selectedRequest: UserRequestTemplate?,
     editTreeObjectNameViewModel: EditNameViewModel,
-    onSelectRequest: (UserRequest) -> Unit,
-    onAddRequest: () -> UserRequest,
-    onUpdateRequest: (UserRequest) -> Unit,
-    onDeleteRequest: (UserRequest) -> Unit,
+    onSelectRequest: (UserRequestTemplate) -> Unit,
+    onAddRequest: () -> UserRequestTemplate,
+    onUpdateRequest: (UserRequestTemplate) -> Unit,
+    onDeleteRequest: (UserRequestTemplate) -> Unit,
     onFocusNameTextField: () -> Unit,
     onUnfocusNameTextField: () -> Unit,
     onAddFolder: () -> TreeFolder,
@@ -201,7 +200,7 @@ fun RequestListView(
     }
 
     @Composable
-    fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequest) {
+    fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequestTemplate) {
         Draggable(
             isEnableDrag = isDraggable,
             id = it.id,
@@ -417,7 +416,7 @@ fun RequestListView(
     }
 }
 
-fun filterTreeObjects(rootObjects: MutableList<TreeObject>, containText: String, requests: Map<String, UserRequest>): MutableList<TreeObject> {
+fun filterTreeObjects(rootObjects: MutableList<TreeObject>, containText: String, requests: Map<String, UserRequestTemplate>): MutableList<TreeObject> {
     fun transverse(current: TreeObject): TreeObject? {
         return when (current) {
             is TreeRequest -> if (requests[current.id]?.name?.contains(containText, ignoreCase = true) == true) {
@@ -446,21 +445,21 @@ fun filterTreeObjects(rootObjects: MutableList<TreeObject>, containText: String,
 @Preview
 fun RequestListViewPreview() {
     val dummyRequests = listOf(
-        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
-        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
-        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
-        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
-        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
-        UserRequest(id = uuidString(), name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
     )
-    RequestListView(
+    RequestTreeView(
         selectedSubproject = Subproject(id = "preview", name = "", treeObjects = dummyRequests.map { TreeRequest(it.id) }.toMutableList(), mutableListOf()),
 //        treeObjects = dummyRequests.map { TreeRequest(it.id) },
         requests = dummyRequests.associateBy { it.id },
         selectedRequest = dummyRequests[2],
         editTreeObjectNameViewModel = EditNameViewModel(),
         onSelectRequest = {},
-        onAddRequest = { UserRequest(id = uuidString()) },
+        onAddRequest = { UserRequestTemplate(id = uuidString()) },
         onUpdateRequest = {},
         onDeleteRequest = {},
         onFocusNameTextField = {},

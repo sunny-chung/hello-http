@@ -1,9 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel
 
 import androidx.compose.ui.focus.FocusState
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class EditNameViewModel {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.sunnychung.application.multiplatform.hellohttp.ux.jetpack
+package com.sunnychung.application.multiplatform.hellohttp.ux.compose
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -33,7 +33,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.MaterialTheme
-import com.sunnychung.application.multiplatform.hellohttp.ux.jetpack.TextFieldDefaults.indicatorLine
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults.indicatorLine
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment

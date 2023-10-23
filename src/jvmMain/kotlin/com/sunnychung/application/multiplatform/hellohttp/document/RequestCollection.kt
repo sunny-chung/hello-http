@@ -2,13 +2,13 @@ package com.sunnychung.application.multiplatform.hellohttp.document
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.DocumentRoot
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import kotlinx.serialization.Serializable
 
 @DocumentRoot
 @Persisted
 @Serializable
-data class RequestCollection(override val id: RequestsDI, val requests: MutableList<UserRequest>) : Document<RequestsDI>
+data class RequestCollection(override val id: RequestsDI, val requests: MutableList<UserRequestTemplate>) : Document<RequestsDI>
 
 @Persisted
 @Serializable

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.sunnychung.application.multiplatform.hellohttp.ux.jetpack
+package com.sunnychung.application.multiplatform.hellohttp.ux.compose
 
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing

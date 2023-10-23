@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.sunnychung.application.multiplatform.hellohttp.ux.jetpack
+package com.sunnychung.application.multiplatform.hellohttp.ux.compose
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -34,7 +34,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.LocalContentAlpha
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
-import com.sunnychung.application.multiplatform.hellohttp.ux.jetpack.TextFieldDefaults.OutlinedTextFieldDecorationBox
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults.OutlinedTextFieldDecorationBox
 //import androidx.compose.material.internal.JvmDefaultWithCompatibility
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier

@@ -6,17 +6,15 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
-import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-fun UserRequest.toHttpRequest(exampleId: String, environment: Environment?): HttpRequest = withScope(exampleId, environment) {
+fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environment?): HttpRequest = withScope(exampleId, environment) {
 
     fun UserRequestBody.expandStringBody(): UserRequestBody {
         if (this is StringBody) {
@@ -51,7 +49,7 @@ fun UserRequest.toHttpRequest(exampleId: String, environment: Environment?): Htt
     )
 }
 
-fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): Request {
+fun UserRequestTemplate.toOkHttpRequest(exampleId: String, environment: Environment?): Request {
     val req = toHttpRequest(exampleId, environment)
     val selectedExample = examples.first { it.id == exampleId }
 
@@ -76,7 +74,7 @@ fun UserRequest.toOkHttpRequest(exampleId: String, environment: Environment?): R
     return b.build()
 }
 
-fun UserRequest.toCurlCommand(exampleId: String, environment: Environment?): String {
+fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?): String {
     fun String.escape(): String {
         return replace("\\", "\\\\").replace("\"", "\\\"")
     }

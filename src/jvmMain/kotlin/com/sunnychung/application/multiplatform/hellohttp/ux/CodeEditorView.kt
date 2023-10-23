@@ -13,8 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.VisualTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.jetpack.TextFieldColors
-import com.sunnychung.application.multiplatform.hellohttp.ux.jetpack.TextFieldDefaults
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 

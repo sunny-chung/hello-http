@@ -18,7 +18,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeObject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.postmanv2.PostmanV2
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -72,11 +72,11 @@ class PostmanV2ZipImporter {
         projectCollectionRepository.notifyUpdated(ProjectAndEnvironmentsDI())
     }
 
-    fun parseCollection(collection: PostmanV2.Collection, postmanEnvironments: List<PostmanV2.Environment>): Pair<MutableList<UserRequest>, Project> {
+    fun parseCollection(collection: PostmanV2.Collection, postmanEnvironments: List<PostmanV2.Environment>): Pair<MutableList<UserRequestTemplate>, Project> {
         val collectionName = collection.info.name
 
         val auths = mutableMapOf<String, PostmanV2.Auth>()
-        val requests = mutableListOf<UserRequest>()
+        val requests = mutableListOf<UserRequestTemplate>()
         /**
          * The processing order is deterministic for auth inheritance to be processed correctly
          */
@@ -171,12 +171,12 @@ class PostmanV2ZipImporter {
         }?.firstOrNull()
     }
 
-    fun PostmanV2.Item.toUserRequest(inheritedAuths: Collection<PostmanV2.Auth>): UserRequest {
+    fun PostmanV2.Item.toUserRequest(inheritedAuths: Collection<PostmanV2.Auth>): UserRequestTemplate {
         request!!
         val headers: List<UserKeyValuePair> = request.header.map { it.toUserKeyValuePair() } +
                 inheritedAuths.mapNotNull { it.toUserKeyValuePair() } +
                 listOfNotNull(request.auth?.toUserKeyValuePair())
-        return UserRequest(
+        return UserRequestTemplate(
             id = uuidString(),
             name = name,
             method = request.method,

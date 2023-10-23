@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.sunnychung.application.multiplatform.hellohttp.ux.jetpack
+package com.sunnychung.application.multiplatform.hellohttp.ux.compose
 
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong

@@ -17,7 +17,7 @@ import java.io.File
 
 @Persisted
 @Serializable
-data class UserRequest(
+data class UserRequestTemplate(
     val id: String,
     val name: String = "",
     val protocol: Protocol = Protocol.Http,

@@ -22,7 +22,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.insomniav4.InsomniaV4
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -48,7 +48,7 @@ class InsomniaV4Importer {
         val folderMap = mutableMapOf<String, Pair<TreeFolder, Subproject?>>() // key is _id in the file
 
         val subprojects = mutableListOf<Subproject>()
-        val requestsBySubproject = mutableMapOf<String, MutableList<UserRequest>>()
+        val requestsBySubproject = mutableMapOf<String, MutableList<UserRequestTemplate>>()
 
         resources.filter { it["_type"]?.textValue() == "workspace" && it["scope"]?.textValue() == "collection" }
             .map { jsonParser.treeToValue(it, InsomniaV4.Workspace::class.java) }
@@ -122,7 +122,7 @@ class InsomniaV4Importer {
             .forEach {
                 val postFlightBodyVariables = mutableListOf<UserKeyValuePair>()
 
-                var req = UserRequest(
+                var req = UserRequestTemplate(
                     id = uuidString(),
                     name = it.name,
                     protocol = Protocol.Http,

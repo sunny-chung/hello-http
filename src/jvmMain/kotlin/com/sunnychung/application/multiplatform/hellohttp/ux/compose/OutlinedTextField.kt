@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.sunnychung.application.multiplatform.hellohttp.ux.jetpack
+package com.sunnychung.application.multiplatform.hellohttp.ux.compose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.Interaction

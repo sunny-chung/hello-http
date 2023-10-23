@@ -43,7 +43,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
@@ -59,14 +59,14 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameV
 @Composable
 fun RequestEditorView(
     modifier: Modifier = Modifier,
-    request: UserRequest,
+    request: UserRequestTemplate,
     selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
     environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
     onClickCopyCurl: () -> Boolean,
-    onRequestModified: (UserRequest?) -> Unit,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current

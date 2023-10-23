@@ -10,7 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.TextFieldDefaults.indicatorLine
-import com.sunnychung.application.multiplatform.hellohttp.ux.jetpack.TextFieldColors
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -22,7 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.sunnychung.application.multiplatform.hellohttp.ux.jetpack.TextFieldDefaults
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 /**

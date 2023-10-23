@@ -52,7 +52,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
@@ -149,7 +149,7 @@ fun AppContentView() {
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollection by remember { mutableStateOf<RequestCollection?>(null) }
     var requestCollectionState by remember { mutableStateOf<RequestCollection?>(null) }
-    var request by remember { mutableStateOf<UserRequest?>(null) }
+    var request by remember { mutableStateOf<UserRequestTemplate?>(null) }
     var selectedRequestExampleId by remember { mutableStateOf<String?>(null) }
     var activeCallId by remember { mutableStateOf<String?>(null) }
 
@@ -187,7 +187,7 @@ fun AppContentView() {
         } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
     }
 
-    fun displayRequest(req: UserRequest) {
+    fun displayRequest(req: UserRequestTemplate) {
         request = req
         selectedRequestExampleId = req.examples.first().id
         updateResponseView()
@@ -203,8 +203,8 @@ fun AppContentView() {
     val editRequestNameViewModel = remember { EditNameViewModel() }
     val editExampleNameViewModel = remember { EditNameViewModel() }
 
-    fun createRequestForCurrentSubproject(): UserRequest {
-        val newRequest = UserRequest(id = uuidString(), name = "New Request", method = "GET")
+    fun createRequestForCurrentSubproject(): UserRequestTemplate {
+        val newRequest = UserRequestTemplate(id = uuidString(), name = "New Request", method = "GET")
         requestCollection!!.requests += newRequest
         requestCollectionState = requestCollection?.copy()
         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
@@ -279,7 +279,7 @@ fun AppContentView() {
                         )
 
                         if (selectedSubproject != null && requestCollectionState?.id?.subprojectId == selectedSubproject!!.id) {
-                            RequestListView(
+                            RequestTreeView(
                                 selectedSubproject = selectedSubprojectState!!,
 //                    treeObjects = selectedSubprojectState?.treeObjects ?: emptyList(),
                                 requests = requestCollectionState?.requests?.associateBy { it.id } ?: emptyMap(),
