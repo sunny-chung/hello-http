@@ -347,7 +347,7 @@ fun RequestEditorView(
             selectedIndex = selectedRequestTabIndex,
             onSelectTab = { selectedRequestTabIndex = it },
             contents = RequestTab.values().map {
-                { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
+                { AppTabLabel(text = it.name) }
             }
         )
         when (RequestTab.values()[selectedRequestTabIndex]) {

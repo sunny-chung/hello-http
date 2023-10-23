@@ -1,10 +1,12 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.GzipDecompressionInterceptor
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
+import com.sunnychung.application.multiplatform.hellohttp.network.TrustAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -50,9 +52,11 @@ import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
+import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import javax.net.ssl.SSLContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.reflect.full.memberFunctions
@@ -101,7 +105,7 @@ class NetworkManager {
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    fun buildHttpClient(callId: String, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>, responseSize: AtomicInteger): OkHttpClient {
+    fun buildHttpClient(callId: String, sslConfig: SslConfig, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>, responseSize: AtomicInteger): OkHttpClient {
 
         fun logNetworkEvent(call: Call, event: String) {
             val instant = KInstant.now()
@@ -118,6 +122,15 @@ class NetworkManager {
                 timeUnit = TimeUnit.SECONDS
             ))
             .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
+            .apply {
+                if (sslConfig.isInsecure == true) {
+                    val trustManager = TrustAllSslCertificateManager()
+                    val sslContext = SSLContext.getInstance("SSL")
+                    sslContext.init(null, arrayOf(trustManager), SecureRandom())
+                    sslSocketFactory(sslContext.socketFactory, trustManager)
+                    hostnameVerifier { _, _ -> true }
+                }
+            }
             .eventListener(object : EventListener() {
                 override fun callEnd(call: Call) {
                     logNetworkEvent(call, "Call ended")
@@ -254,7 +267,7 @@ class NetworkManager {
 
     fun getCallData(callId: String) = callData[callId]
 
-    fun sendRequest(request: Request, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?): CallData {
+    fun sendRequest(request: Request, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, sslConfig: SslConfig): CallData {
         val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
         val optionalResponseSize = AtomicInteger()
@@ -263,6 +276,7 @@ class NetworkManager {
 
         val httpClient = buildHttpClient(
             callId = callId,
+            sslConfig = sslConfig,
             outgoingBytesChannel = outgoingBytesChannel,
             incomingBytesChannel = incomingBytesChannel,
             responseSize = optionalResponseSize

@@ -448,6 +448,7 @@ fun AppContentView() {
                                                 requestId = requestNonNull.id,
                                                 subprojectId = selectedSubproject!!.id,
                                                 postFlightAction = postFlightAction,
+                                                sslConfig = selectedEnvironment!!.sslConfig,
                                             )
                                             activeCallId = callData.id
                                             persistResponseManager.registerCall(callData.id)

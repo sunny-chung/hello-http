@@ -95,6 +95,9 @@ fun UserRequest.toCurlCommand(exampleId: String, environment: Environment?): Str
     }.build().toString()
 
     var curl = "time curl --verbose"
+    if (environment?.sslConfig?.isInsecure == true) {
+        curl += " \\\n  --insecure"
+    }
     curl += " \\\n  --request \"${request.method.escape()}\""
     curl += " \\\n  --url \"${url.escape()}\""
     request.headers.forEach {

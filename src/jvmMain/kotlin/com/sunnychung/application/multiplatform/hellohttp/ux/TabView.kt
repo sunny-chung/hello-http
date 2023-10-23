@@ -32,10 +32,11 @@ import kotlin.math.min
 
 @Composable
 fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit, onDoubleClickTab: ((Int) -> Unit)? = null, contents: List<@Composable (() -> Unit)>) {
+    val colors = LocalColor.current
     var lastSelectedIndex by remember { mutableStateOf(-1) }
     val scrollState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope() // needed for scrolling
-    LazyRow(modifier = modifier, state = scrollState) {
+    LazyRow(modifier = modifier.background(color = colors.backgroundLight), state = scrollState) {
         items(count = contents.size) { i ->
             TabItem(
                 isSelected = (selectedIndex == i),

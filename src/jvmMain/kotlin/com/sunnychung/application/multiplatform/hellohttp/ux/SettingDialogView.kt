@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,14 +29,15 @@ import java.io.File
 
 @Composable
 fun SettingDialogView(closeDialog: () -> Unit) {
+    val colors = LocalColor.current
     val tabs = listOf("Data")
     var selectedTabIndex by remember { mutableStateOf(0) }
     Column(modifier = Modifier.size(width = 480.dp, height = 300.dp)) {
         TabsView(
             selectedIndex = selectedTabIndex,
-            contents = tabs.map { { AppText(text = it) } },
+            contents = tabs.map { { AppTabLabel(text = it) } },
             onSelectTab = { selectedTabIndex = it },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
         )
 
         Box(modifier = Modifier.padding(8.dp)) {

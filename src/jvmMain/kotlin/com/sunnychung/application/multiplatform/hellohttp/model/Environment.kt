@@ -10,7 +10,14 @@ data class Environment(
     val id: String,
     val name: String,
     val variables: MutableList<UserKeyValuePair>,
+    val sslConfig: SslConfig = SslConfig(),
 ) : DropDownable {
     override val displayText: String
         get() = name
 }
+
+@Persisted
+@Serializable
+data class SslConfig(
+    val isInsecure: Boolean? = null
+)
