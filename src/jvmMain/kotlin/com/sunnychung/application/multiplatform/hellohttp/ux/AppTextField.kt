@@ -38,6 +38,7 @@ fun AppTextField(
     enabled: Boolean = true,
     readOnly: Boolean = false,
     textStyle: TextStyle = LocalTextStyle.current,
+    backgroundColor: Color = LocalColor.current.backgroundInputField,
     label: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
@@ -54,7 +55,8 @@ fun AppTextField(
     colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = LocalColor.current.text,
         placeholderColor = LocalColor.current.placeholder,
-        cursorColor = LocalColor.current.cursor
+        cursorColor = LocalColor.current.cursor,
+        backgroundColor = backgroundColor,
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp)
 ) {
@@ -133,7 +135,8 @@ fun AppTextField(
     colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = LocalColor.current.text,
         placeholderColor = LocalColor.current.placeholder,
-        cursorColor = LocalColor.current.cursor
+        cursorColor = LocalColor.current.cursor,
+        backgroundColor = LocalColor.current.backgroundInputField,
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp)
 ) {
@@ -213,7 +216,8 @@ fun AppTextFieldWithPlaceholder(
     colors: androidx.compose.material.TextFieldColors = androidx.compose.material.TextFieldDefaults.textFieldColors(
         textColor = textColor,
         placeholderColor = LocalColor.current.placeholder,
-        cursorColor = LocalColor.current.cursor
+        cursorColor = LocalColor.current.cursor,
+        backgroundColor = LocalColor.current.backgroundInputField,
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
@@ -300,7 +304,8 @@ fun AppTextFieldWithPlaceholder(
     colors: androidx.compose.material.TextFieldColors = androidx.compose.material.TextFieldDefaults.textFieldColors(
         textColor = textColor,
         placeholderColor = LocalColor.current.placeholder,
-        cursorColor = LocalColor.current.cursor
+        cursorColor = LocalColor.current.cursor,
+        backgroundColor = LocalColor.current.backgroundInputField,
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,

@@ -31,7 +31,8 @@ fun CodeEditorView(
     val colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = textColor,
         placeholderColor = LocalColor.current.placeholder,
-        cursorColor = LocalColor.current.cursor
+        cursorColor = LocalColor.current.cursor,
+        backgroundColor = LocalColor.current.backgroundInputField
     )
 
     Box(modifier = modifier) {

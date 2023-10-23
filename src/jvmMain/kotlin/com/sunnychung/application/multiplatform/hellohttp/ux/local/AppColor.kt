@@ -90,3 +90,45 @@ fun darkColorScheme(): AppColor = AppColor(
     scrollBarUnhover = Color(red = 0.7f, green = 0.7f, blue = 0.7f).copy(alpha = 0.25f),
     scrollBarHover = Color(red = 0.7f, green = 0.7f, blue = 0.7f).copy(alpha = 0.50f),
 )
+
+fun lightColorScheme(): AppColor = AppColor(
+    background = Color(red = 0.9f, green = 0.9f, blue = 0.9f),
+    backgroundLight = Color(red = 0.8f, green = 0.8f, blue = 0.8f),
+    backgroundSemiLight = Color(red = 0.85f, green = 0.85f, blue = 0.85f),
+    backgroundContextMenu = Color(red = 0.88f, green = 0.88f, blue = 0.88f),
+    backgroundInputField = Color(red = 0.92f, green = 0.92f, blue = 0.92f),
+    backgroundButton = Color(red = 0.6f, green = 0.6f, blue = 1f),
+    backgroundDialogOverlay = Color.Black.copy(alpha = 0.4f),
+    backgroundTooltip = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
+    backgroundHoverDroppable = Color(0f, 0f, 0.4f),
+
+    primary = Color(red = 0.2f, green = 0.2f, blue = 0.3f),
+    bright = Color.Black,
+    line = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
+
+    placeholder = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
+    disabled = Color(red = 0.7f, green = 0.7f, blue = 0.8f),
+    highlight = Color(red = 0.4f, green = 0.4f, blue = 0.9f),
+    cursor = Color(red = 0.3f, green = 0.3f, blue = 0.3f),
+    warning = Color(red = 0.8f, green = 0.4f, blue = 0f),
+
+    httpRequestGet = Color(red = 0f, green = 0.6f, blue = 0f),
+    httpRequestPost = Color(red = 0.3f, green = 0.3f, blue = 0.8f),
+    httpRequestPut = Color(red = 1f, green = 0.5f, blue = 0f),
+    httpRequestDelete = Color(red = 0.9f, green = 0.3f, blue = 0.3f),
+    httpRequestOthers = Color(red = 0.35f, green = 0.35f, blue = 0.35f),
+
+    grpcRequest = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
+    graphqlRequest = Color(red = 204, green = 67, blue = 162),
+
+    variableTextColor = Color.Yellow,
+    variableBackgroundColor = Color(red = 0.5f, green = 0.5f, blue = 0.8f),
+    variableErrorBackgroundColor = Color(red = 0.9f, green = 0.2f, blue = 0.3f),
+
+    pendingResponseBackground = Color(red = 0.7f, green = 0.7f, blue = 0.7f),
+    successfulResponseBackground = Color(red = 0.2f, green = 0.8f, blue = 0.2f),
+    errorResponseBackground = Color(red = 1f, green = 0.3f, blue = 0.3f),
+
+    scrollBarUnhover = Color(red = 0.4f, green = 0.4f, blue = 0.4f).copy(alpha = 0.25f),
+    scrollBarHover = Color(red = 0.4f, green = 0.4f, blue = 0.4f).copy(alpha = 0.50f),
+)

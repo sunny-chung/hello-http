@@ -405,7 +405,11 @@ fun RequestListView(
 //            }
 //        }
 
-        Column(modifier = Modifier.verticalScroll(scrollState).onGloballyPositioned { treeParentBound = it }) {
+        Column(modifier = Modifier
+            .verticalScroll(scrollState)
+            .onGloballyPositioned { treeParentBound = it }
+            .padding(end = 8.dp)
+        ) {
             treeObjects.forEach {
                 TreeObjectView(indentLevel = 0, obj = it)
             }
