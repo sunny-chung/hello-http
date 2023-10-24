@@ -6,6 +6,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistResponseManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
@@ -15,6 +16,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.UserPrefe
 
 object AppContext {
     val MetadataManager = MetadataManager()
+    val SingleInstanceProcessService = SingleInstanceProcessService()
     val NetworkManager = NetworkManager()
     val FileManager = FileManager()
     val PersistenceManager = PersistenceManager()
