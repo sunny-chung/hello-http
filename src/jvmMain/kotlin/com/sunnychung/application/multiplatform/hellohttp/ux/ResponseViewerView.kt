@@ -27,6 +27,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
@@ -236,6 +237,11 @@ fun ResponseBodyView(response: UserResponse) {
                     selectedView.prettifier!!.prettify(response.body ?: byteArrayOf())
                 } catch (e: Throwable) {
                     response.body?.decodeToString() ?: ""
+                },
+                transformations = if (selectedView.prettifier!!.formatName.contains("JSON")) {
+                    listOf(JsonSyntaxHighlightTransformation(colours = LocalColor.current))
+                } else {
+                    emptyList()
                 },
                 modifier = modifier,
             )

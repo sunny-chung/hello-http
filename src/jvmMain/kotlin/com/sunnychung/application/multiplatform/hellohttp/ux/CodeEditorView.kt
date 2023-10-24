@@ -13,10 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.VisualTransformation
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 
 @Composable
 fun CodeEditorView(
@@ -25,6 +27,7 @@ fun CodeEditorView(
     text: String,
     onTextChange: ((String) -> Unit)? = null,
     textColor: Color = LocalColor.current.text,
+    transformations: List<VisualTransformation> = emptyList(),
     isEnableVariables: Boolean = false,
     knownVariables: Set<String> = setOf(),
     ) {
@@ -37,16 +40,27 @@ fun CodeEditorView(
 
     Box(modifier = modifier) {
         val scrollState = rememberScrollState()
+//        log.v { "CodeEditorView text=$text" }
         AppTextField(
             value = text,
             onValueChange = { onTextChange?.invoke(it) },
-            visualTransformation = if (isEnableVariables) {
-                EnvironmentVariableTransformation(
-                    themeColors = LocalColor.current,
-                    knownVariables = knownVariables
+            visualTransformation = (transformations + if (isEnableVariables) {
+                listOf(
+                    EnvironmentVariableTransformation(
+                        themeColors = LocalColor.current,
+                        knownVariables = knownVariables
+                    )
                 )
             } else {
-                VisualTransformation.None
+                emptyList()
+            }).let {
+                if (it.size > 1) {
+                    MultipleVisualTransformation(it)
+                } else if (it.size == 1) {
+                    it.first()
+                } else {
+                    VisualTransformation.None
+                }
             },
             readOnly = isReadOnly,
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),

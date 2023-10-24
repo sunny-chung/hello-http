@@ -45,6 +45,16 @@ data class AppColor(
 
     val scrollBarUnhover: Color,
     val scrollBarHover: Color,
+
+    val syntaxColor: SyntaxColor,
+)
+
+data class SyntaxColor(
+    val stringLiteral: Color,
+    val numberLiteral: Color,
+    val booleanLiteral: Color,
+    val nothingLiteral: Color,
+    val objectKey: Color,
 )
 
 val LocalColor = compositionLocalOf { darkColorScheme() }
@@ -89,6 +99,14 @@ fun darkColorScheme(): AppColor = AppColor(
 
     scrollBarUnhover = Color(red = 0.7f, green = 0.7f, blue = 0.7f).copy(alpha = 0.25f),
     scrollBarHover = Color(red = 0.7f, green = 0.7f, blue = 0.7f).copy(alpha = 0.50f),
+
+    syntaxColor = SyntaxColor(
+        stringLiteral = Color(red = 0.8f, green = 0.8f, blue = 0.2f),
+        numberLiteral = Color(red = 0.4f, green = 0.4f, blue = 0.9f),
+        booleanLiteral = Color(red = 0.8f, green = 0.3f, blue = 0.3f),
+        nothingLiteral = Color(red = 0.6f, green = 0.6f, blue = 0.6f),
+        objectKey = Color(red = 0.2f, green = 0.6f, blue = 0.2f),
+    ),
 )
 
 fun lightColorScheme(): AppColor = AppColor(
@@ -131,4 +149,12 @@ fun lightColorScheme(): AppColor = AppColor(
 
     scrollBarUnhover = Color(red = 0.4f, green = 0.4f, blue = 0.4f).copy(alpha = 0.25f),
     scrollBarHover = Color(red = 0.4f, green = 0.4f, blue = 0.4f).copy(alpha = 0.50f),
+
+    syntaxColor = SyntaxColor(
+        stringLiteral = Color(red = 0.5f, green = 0.5f, blue = 0f),
+        numberLiteral = Color(red = 0.3f, green = 0.3f, blue = 0.9f),
+        booleanLiteral = Color(red = 0.8f, green = 0.3f, blue = 0.3f),
+        nothingLiteral = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
+        objectKey = Color(red = 0.2f, green = 0.6f, blue = 0.2f),
+    ),
 )

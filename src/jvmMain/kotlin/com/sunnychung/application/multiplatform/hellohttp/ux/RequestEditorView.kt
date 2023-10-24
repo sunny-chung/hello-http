@@ -54,6 +54,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 
 @Composable
@@ -425,7 +426,12 @@ fun RequestEditorView(
                                             )
                                         )
                                     )
-                                }
+                                },
+                                transformations = if (selectedContentType == ContentType.Json) {
+                                    listOf(JsonSyntaxHighlightTransformation(colours = colors))
+                                } else {
+                                    emptyList()
+                                },
                             )
                         } else {
                             CodeEditorView(

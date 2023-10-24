@@ -15,7 +15,7 @@ class EnvironmentVariableTransformation(val themeColors: AppColor, val knownVari
     private val variableRegex = "\\$\\{\\{([^{}]+)\\}\\}".toRegex()
 
     override fun filter(text: AnnotatedString): TransformedText {
-        val originalText = text.toString()
+        val originalText = text.text
         val variables = variableRegex.findAll(originalText)
 //        val inlines = mutableMapOf<String, InlineTextContent>()
         val variableRanges = TreeMap<Int, IntRange>()
@@ -55,7 +55,12 @@ class EnvironmentVariableTransformation(val themeColors: AppColor, val knownVari
             }
             append(originalText.substring(start))
         }
-        return TransformedText(newAnnotated, EnvironmentVariableTransformationOffsetMapping(variableRanges))
+        val offsetMapping = EnvironmentVariableTransformationOffsetMapping(variableRanges)
+        return TransformedText(
+            text = AnnotatedString(text = newAnnotated.text, spanStyles = mergeSpanStylesWithTransformedOffset(text.spanStyles, offsetMapping) + newAnnotated.spanStyles)
+                /*.correctSpanStyleRanges()*/,
+            offsetMapping = offsetMapping
+        )
     }
 }
 
