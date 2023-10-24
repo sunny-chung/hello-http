@@ -49,6 +49,7 @@ kotlin {
                 implementation("io.github.sunny-chung:kdatetime-multiplatform:0.4.0")
 
                 implementation("net.harawata:appdirs:1.2.2")
+                implementation("com.darkrockstudios:mpfilepicker:2.1.0")
 
                 implementation("org.jetbrains.compose.components:components-splitpane:1.5.2")
             }

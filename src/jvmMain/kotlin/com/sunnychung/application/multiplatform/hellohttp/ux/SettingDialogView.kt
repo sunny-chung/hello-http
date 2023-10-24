@@ -3,7 +3,6 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -13,23 +12,32 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
+import com.sunnychung.application.multiplatform.hellohttp.exporter.InsomniaV4Exporter
+import com.sunnychung.application.multiplatform.hellohttp.extension.`if`
 import com.sunnychung.application.multiplatform.hellohttp.importer.InsomniaV4Importer
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2JsonImporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2ZipImporter
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
@@ -45,7 +53,7 @@ fun SettingDialogView(closeDialog: () -> Unit) {
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
         )
 
-        Box(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(8.dp).verticalScroll(rememberScrollState())) {
             when (SettingTab.values()[selectedTabIndex]) {
                 SettingTab.Data -> {
                     DataTab(closeDialog = closeDialog)
@@ -62,7 +70,7 @@ private enum class SettingTab {
     Data, Appearance
 }
 
-private val COLUMN_HEADER_WIDTH = 160.dp
+private val COLUMN_HEADER_WIDTH = 140.dp
 
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
@@ -89,13 +97,16 @@ enum class ImportFormat {
     `Insomnia v4 JSON`, `Postman v2 ZIP Data Dump`, `Postman v2 JSON Single Collection`
 }
 
+enum class ExportFormat {
+    `Insomnia v4 JSON (One File per Project)`
+}
+
 @Composable
 private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
     val colors = LocalColor.current
 
     var isShowFileDialog by remember { mutableStateOf(false) }
     var file by remember { mutableStateOf<File?>(null) }
-    var fileFormat by remember { mutableStateOf(ImportFormat.values().first()) }
 
     if (isShowFileDialog) {
         FileDialog {
@@ -107,6 +118,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
 
     Column {
         Section("Import Projects") {
+            var importFileFormat by remember { mutableStateOf(ImportFormat.values().first()) }
             var projectName by remember { mutableStateOf("") }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -120,12 +132,12 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppText(text = "Choose a Format", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
                     DropDownView(
-                        selectedItem = DropDownValue(fileFormat.name),
+                        selectedItem = DropDownValue(importFileFormat.name),
                         items = ImportFormat.values().map { DropDownValue(it.name) },
-                        onClickItem = { fileFormat = ImportFormat.valueOf(it.displayText); true },
+                        onClickItem = { importFileFormat = ImportFormat.valueOf(it.displayText); true },
                     )
                 }
-                if (fileFormat in setOf(ImportFormat.`Insomnia v4 JSON`, ImportFormat.`Postman v2 JSON Single Collection`)) {
+                if (importFileFormat in setOf(ImportFormat.`Insomnia v4 JSON`, ImportFormat.`Postman v2 JSON Single Collection`)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AppText(text = "New Project Name", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
                         AppTextFieldWithPlaceholder(
@@ -142,7 +154,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                 onClick = {
                     runBlocking { // TODO change to suspend in background
                         // FIXME error handling
-                        when (fileFormat) {
+                        when (importFileFormat) {
                             ImportFormat.`Insomnia v4 JSON` -> {
                                 InsomniaV4Importer().importAsProject(file = file!!, projectName = projectName)
                             }
@@ -157,6 +169,56 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                     closeDialog()
                 }
             )
+        }
+
+        Section("Export Projects") {
+            val selectedProjectIds = remember { mutableStateListOf<String>() }
+            var exportFileFormat by remember { mutableStateOf(ExportFormat.values().first()) }
+            var isShowDirectoryPicker by remember { mutableStateOf(false) }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppText(text = "Choose project(s) to export")
+                ProjectChooserView(
+                    selectedProjectIds = selectedProjectIds.toSet(),
+                    onUpdateSelection = {
+                        selectedProjectIds.clear()
+                        selectedProjectIds.addAll(it.toList())
+                    },
+                    modifier = Modifier.fillMaxWidth().height(160.dp).padding(start = 8.dp),
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppText(text = "Choose a Format", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
+                    DropDownView(
+                        selectedItem = DropDownValue(exportFileFormat.name),
+                        items = ExportFormat.values().map { DropDownValue(it.name) },
+                        onClickItem = { exportFileFormat = ExportFormat.valueOf(it.displayText); true },
+                    )
+                }
+                AppTextButton(
+                    text = "Export",
+                    onClick = { isShowDirectoryPicker = true}
+                )
+            }
+
+            DirectoryPicker(isShowDirectoryPicker) { dir ->
+                log.d { "Chosen dir $dir" }
+                isShowDirectoryPicker = false
+
+                dir?.let { File(dir) }?.`if` { it.isDirectory }?.let { dirFile ->
+                    runBlocking {
+                        val exporter = InsomniaV4Exporter()
+                        val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
+                        AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
+                                .projects
+                                .filter { it.id in selectedProjectIds }
+                            .forEach {
+                                val exportFile = File(dirFile, "${it.name.replace("[\\s\\p{Punct}]".toRegex(), "-")}_$dateTimeString.json")
+                                exporter.exportToFile(it, exportFile)
+                            }
+                    }
+                    closeDialog()
+                }
+            }
         }
     }
 }

@@ -1,9 +1,17 @@
 package com.sunnychung.application.multiplatform.hellohttp.model.insomniav4
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.JsonNode
 
 object InsomniaV4 {
+    data class Dump(
+        @JsonProperty("_type") val type: String,
+        @JsonProperty("__export_format") val exportFormat: Int,
+        @JsonProperty("__export_date") val exportDate: String,
+        @JsonProperty("__export_source") val exportSource: String,
+        val resources: List<Any>,
+    )
 
     data class HttpRequest(
         @JsonProperty("_id") val id: String,
@@ -16,6 +24,7 @@ object InsomniaV4 {
         val parameters: List<KeyValue>,
         val headers: List<KeyValue>,
         val authentication: Authentication,
+        @JsonProperty("_type") val type: String,
     ) {
         data class Body(
             val mimeType: String?,
@@ -45,6 +54,7 @@ object InsomniaV4 {
         @JsonProperty("_id") val id: String,
         val parentId: String,
         val name: String,
+        @JsonProperty("_type") val type: String,
     )
 
     data class Environment(
@@ -52,13 +62,15 @@ object InsomniaV4 {
         val parentId: String,
         val name: String,
         val data: JsonNode,
+        @JsonProperty("_type") val type: String,
     )
 
     data class Workspace(
         @JsonProperty("_id") val id: String,
-        val parentId: String?, // always null
+        @JsonInclude val parentId: String?, // always null
         val name: String,
         val description: String,
         val scope: String,
+        @JsonProperty("_type") val type: String,
     )
 }

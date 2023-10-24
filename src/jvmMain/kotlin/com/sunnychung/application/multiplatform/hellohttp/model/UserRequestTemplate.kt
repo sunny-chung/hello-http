@@ -31,12 +31,18 @@ data class UserRequestTemplate(
             throw IllegalArgumentException("`name` must be in upper case")
         }
     }
+    sealed class ResolveVariableMode
+    object ExpandByEnvironment : ResolveVariableMode()
+    data class ReplaceAsString(val replacement: String = "{{\$1}}") : ResolveVariableMode()
 
-    data class Scope(val baseExample: UserRequestExample, val selectedExample: UserRequestExample, val environmentVariables: Map<String, String>) {
-        fun String.expandVariables(): String {
+    data class Scope(val baseExample: UserRequestExample, val selectedExample: UserRequestExample, val environmentVariables: Map<String, String>, val resolveVariableMode: ResolveVariableMode = ExpandByEnvironment) {
+        fun String.resolveVariables(): String {
             var s = this
-            environmentVariables.forEach {
-                s = s.replace("\${{${it.key}}}", it.value)
+            when (resolveVariableMode) {
+                is ExpandByEnvironment -> environmentVariables.forEach {
+                    s = s.replace("\${{${it.key}}}", it.value)
+                }
+                is ReplaceAsString -> s = s.replace("\\\$\\{\\{([^{}]+)\\}\\}".toRegex(), resolveVariableMode.replacement)
             }
             return s
         }
@@ -47,7 +53,7 @@ data class UserRequestTemplate(
         ): List<UserKeyValuePair> {
             if (selectedExample.id == baseExample.id) { // the Base example is selected
                 return propertyGetter(baseExample)?.filter { it.isEnabled }
-                    ?.map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
+                    ?.map { it.copy(key = it.key.resolveVariables(), value = it.value.resolveVariables()) }
                     ?: emptyList() // TODO reduce code duplication
             }
 
@@ -58,11 +64,11 @@ data class UserRequestTemplate(
                 .filter { it.isEnabled }
 
             return (baseValues + currentValues)
-                .map { it.copy(key = it.key.expandVariables(), value = it.value.expandVariables()) }
+                .map { it.copy(key = it.key.resolveVariables(), value = it.value.resolveVariables()) }
         }
     }
 
-    fun <R> withScope(exampleId: String, environment: Environment?, action: Scope.() -> R): R {
+    fun <R> withScope(exampleId: String, environment: Environment?, resolveVariableMode: ResolveVariableMode = ExpandByEnvironment, action: Scope.() -> R): R {
         val baseExample = examples.first()
         val selectedExample = examples.first { it.id == exampleId }
 
@@ -70,7 +76,7 @@ data class UserRequestTemplate(
             ?.filter { it.isEnabled }
             ?.associate { it.key to it.value }
             ?: emptyMap()
-        return Scope(baseExample, selectedExample, environmentVariables).action()
+        return Scope(baseExample, selectedExample, environmentVariables, resolveVariableMode).action()
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {

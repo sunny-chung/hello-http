@@ -14,18 +14,18 @@ import okhttp3.Request
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environment?): HttpRequest = withScope(exampleId, environment) {
+fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environment?, resolveVariableMode: UserRequestTemplate.ResolveVariableMode = UserRequestTemplate.ExpandByEnvironment): HttpRequest = withScope(exampleId, environment, resolveVariableMode) {
 
     fun UserRequestBody.expandStringBody(): UserRequestBody {
         if (this is StringBody) {
-            return StringBody(value.expandVariables())
+            return StringBody(value.resolveVariables())
         }
         return this
     }
 
     HttpRequest(
         method = method,
-        url = url.expandVariables(),
+        url = url.resolveVariables(),
         headers = getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
             .map { it.key to it.value },
         queryParameters = getMergedKeyValues({ it.queryParameters }, selectedExample.overrides?.disabledQueryParameterIds)
