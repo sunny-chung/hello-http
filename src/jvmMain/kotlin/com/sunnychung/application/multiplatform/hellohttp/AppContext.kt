@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp
 
+import com.sunnychung.application.multiplatform.hellohttp.manager.AutoBackupManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.FileManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.MetadataManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkManager
@@ -22,6 +23,7 @@ object AppContext {
     val PersistenceManager = PersistenceManager()
     val PrettifierManager = PrettifierManager()
     val PersistResponseManager = PersistResponseManager()
+    val AutoBackupManager = AutoBackupManager()
 
     val RequestCollectionRepository = RequestCollectionRepository()
     val ProjectCollectionRepository = ProjectCollectionRepository()

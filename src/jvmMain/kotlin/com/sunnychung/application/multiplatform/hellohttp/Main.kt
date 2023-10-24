@@ -40,6 +40,7 @@ fun main() {
         }
         println("Preparing to start")
         AppContext.PersistenceManager.initialize()
+        AppContext.AutoBackupManager.backupNow()
         val preference = AppContext.UserPreferenceRepository.read(UserPreferenceDI())!!.preference
         AppContext.UserPreferenceViewModel.setColorTheme(preference.colourTheme)
     }

@@ -37,10 +37,12 @@ import com.sunnychung.application.multiplatform.hellohttp.importer.InsomniaV4Imp
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2JsonImporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2ZipImporter
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
+import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_BACKUP_RETENTION_DAYS
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import kotlinx.coroutines.runBlocking
+import java.awt.Desktop
 import java.io.File
 
 @Composable
@@ -239,7 +241,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
             }
             if (isShowFileDialog) {
                 val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
-                FileDialog(mode = java.awt.FileDialog.SAVE, filename = "HelloHTTP_dump_$dateTimeString.dump") {
+                FileDialog(mode = java.awt.FileDialog.SAVE, filename = "Hello-HTTP_dump_$dateTimeString.dump") {
                     isShowFileDialog = false
                     val file = it.firstOrNull()
 
@@ -257,6 +259,43 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                     }
                 }
             }
+        }
+
+        Section("Automatic Backup") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val userPreferenceRepository = AppContext.UserPreferenceRepository
+                userPreferenceRepository.subscribeUpdates().collectAsState(null).value
+                val userPreference = runBlocking { // TODO don't use runBlocking
+                    userPreferenceRepository.read(UserPreferenceDI())!!.preference
+                }
+                var inputState by remember { mutableStateOf(userPreference.backupRetentionDays) }
+                inputState = userPreference.backupRetentionDays
+
+                AppText(text = "Keep backups for", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
+                AppTextField(
+                    value = (inputState ?: DEFAULT_BACKUP_RETENTION_DAYS).toString(),
+                    onValueChange = {
+                        val days = if (it.isEmpty()) {
+                            null
+                        } else {
+                            it.toIntOrNull() ?: -1
+                        }
+                        if (days == null || days >= 0) {
+                            userPreference.backupRetentionDays = days
+                            userPreferenceRepository.notifyUpdated(UserPreferenceDI())
+                            inputState = days
+                        }
+                    },
+                )
+                AppText(text = " days")
+            }
+            AppTextButton(
+                text = "Open Backup Directory",
+                onClick = {
+                    Desktop.getDesktop().open(AppContext.AutoBackupManager.backupDir())
+                },
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
 }
