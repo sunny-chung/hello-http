@@ -29,8 +29,10 @@ import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
+import com.sunnychung.application.multiplatform.hellohttp.exporter.DataDumpExporter
 import com.sunnychung.application.multiplatform.hellohttp.exporter.InsomniaV4Exporter
 import com.sunnychung.application.multiplatform.hellohttp.extension.`if`
+import com.sunnychung.application.multiplatform.hellohttp.importer.DataDumpImporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.InsomniaV4Importer
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2JsonImporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2ZipImporter
@@ -94,32 +96,32 @@ private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) 
 }
 
 enum class ImportFormat {
-    `Insomnia v4 JSON`, `Postman v2 ZIP Data Dump`, `Postman v2 JSON Single Collection`
+    `Hello HTTP Data Dump`, `Insomnia v4 JSON`, `Postman v2 ZIP Data Dump`, `Postman v2 JSON Single Collection`
 }
 
 enum class ExportFormat {
-    `Insomnia v4 JSON (One File per Project)`
+    `Hello HTTP Data Dump`, `Insomnia v4 JSON (One File per Project)`
 }
 
 @Composable
 private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
     val colors = LocalColor.current
 
-    var isShowFileDialog by remember { mutableStateOf(false) }
-    var file by remember { mutableStateOf<File?>(null) }
-
-    if (isShowFileDialog) {
-        FileDialog {
-            println("File Dialog result = $it")
-            file = it.firstOrNull()
-            isShowFileDialog = false
-        }
-    }
-
     Column {
         Section("Import Projects") {
             var importFileFormat by remember { mutableStateOf(ImportFormat.values().first()) }
             var projectName by remember { mutableStateOf("") }
+
+            var isShowFileDialog by remember { mutableStateOf(false) }
+            var file by remember { mutableStateOf<File?>(null) }
+            if (isShowFileDialog) {
+                FileDialog {
+                    println("File Dialog result = $it")
+                    file = it.firstOrNull()
+                    isShowFileDialog = false
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppText(text = "File", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
@@ -155,6 +157,9 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                     runBlocking { // TODO change to suspend in background
                         // FIXME error handling
                         when (importFileFormat) {
+                            ImportFormat.`Hello HTTP Data Dump` -> {
+                                DataDumpImporter().importAsProjects(file!!)
+                            }
                             ImportFormat.`Insomnia v4 JSON` -> {
                                 InsomniaV4Importer().importAsProject(file = file!!, projectName = projectName)
                             }
@@ -175,6 +180,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
             val selectedProjectIds = remember { mutableStateListOf<String>() }
             var exportFileFormat by remember { mutableStateOf(ExportFormat.values().first()) }
             var isShowDirectoryPicker by remember { mutableStateOf(false) }
+            var isShowFileDialog by remember { mutableStateOf(false) }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AppText(text = "Choose project(s) to export")
@@ -196,7 +202,12 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                 }
                 AppTextButton(
                     text = "Export",
-                    onClick = { isShowDirectoryPicker = true}
+                    onClick = {
+                        when (exportFileFormat) {
+                            ExportFormat.`Hello HTTP Data Dump` -> isShowFileDialog = true
+                            ExportFormat.`Insomnia v4 JSON (One File per Project)` -> isShowDirectoryPicker = true
+                        }
+                    }
                 )
             }
 
@@ -204,19 +215,45 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                 log.d { "Chosen dir $dir" }
                 isShowDirectoryPicker = false
 
-                dir?.let { File(dir) }?.`if` { it.isDirectory }?.let { dirFile ->
-                    runBlocking {
-                        val exporter = InsomniaV4Exporter()
-                        val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
-                        AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
+                dir?.let { File(dir) }?.`if` { it.isDirectory }
+                    ?.takeIf { exportFileFormat == ExportFormat.`Insomnia v4 JSON (One File per Project)` }
+                    ?.let { dirFile ->
+                        // TODO suspend instead of runBlocking
+                        runBlocking {
+                            val exporter = InsomniaV4Exporter()
+                            val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
+                            AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
                                 .projects
                                 .filter { it.id in selectedProjectIds }
-                            .forEach {
-                                val exportFile = File(dirFile, "${it.name.replace("[\\s\\p{Punct}]".toRegex(), "-")}_$dateTimeString.json")
-                                exporter.exportToFile(it, exportFile)
-                            }
+                                .forEach {
+                                    val exportFile = File(
+                                        dirFile,
+                                        "${it.name.replace("[\\s\\p{Punct}]".toRegex(), "-")}_$dateTimeString.json"
+                                    )
+                                    exporter.exportToFile(it, exportFile)
+                                }
+                        }
+                        closeDialog()
                     }
-                    closeDialog()
+            }
+            if (isShowFileDialog) {
+                val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
+                FileDialog(mode = java.awt.FileDialog.SAVE, filename = "HelloHTTP_dump_$dateTimeString.dump") {
+                    isShowFileDialog = false
+                    val file = it.firstOrNull()
+
+                    file?.takeIf { exportFileFormat == ExportFormat.`Hello HTTP Data Dump` }?.let { file ->
+                        // TODO suspend instead of runBlocking
+                        runBlocking {
+                            val selectedProjects =
+                                AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
+                                    .projects
+                                    .filter { it.id in selectedProjectIds }
+
+                            DataDumpExporter().exportToFile(selectedProjects, file)
+                        }
+                        closeDialog()
+                    }
                 }
             }
         }

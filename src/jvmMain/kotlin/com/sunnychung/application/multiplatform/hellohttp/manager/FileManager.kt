@@ -21,7 +21,7 @@ class FileManager {
     private val fileLocks = ConcurrentHashMap<String, Mutex>()
 
 
-    protected suspend fun <R> withLock(file: File, operation: File.() -> R): R {
+    suspend fun <R> withLock(file: File, operation: File.() -> R): R {
         val lock = fileLocks.getOrPut(file.absolutePath) { Mutex() }
         return lock.withLock { file.operation() }
     }
