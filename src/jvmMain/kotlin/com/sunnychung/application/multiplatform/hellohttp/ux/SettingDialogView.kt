@@ -172,7 +172,8 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                         }
                     }
                     closeDialog()
-                }
+                },
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
 

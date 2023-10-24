@@ -54,7 +54,7 @@ fun SubprojectEnvironmentsEditorView(
     Row(modifier = modifier) {
         Column(modifier = Modifier.weight(0.3f).defaultMinSize(minWidth = 160.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
-                AppText(text = "Environments:", modifier = Modifier.weight(1f))
+                AppText(text = "Environments", modifier = Modifier.weight(1f))
                 AppImageButton(resource = "add.svg", size = 24.dp, onClick = {
                     val newEnvironment = Environment(
                         id = uuidString(),
@@ -75,7 +75,7 @@ fun SubprojectEnvironmentsEditorView(
                     AppText(
                         text = it.name,
                         color = if (selectedEnvironmentId == it.id) colors.highlight else colors.primary,
-                        modifier = Modifier.padding(6.dp).defaultMinSize(minHeight = 24.dp).clickable {
+                        modifier = Modifier.padding(6.dp).defaultMinSize(minHeight = 24.dp).fillMaxWidth().clickable {
                             selectedEnvironmentId = it.id
                             isFocusOnEnvNameField = false
                         }
