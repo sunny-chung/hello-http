@@ -17,6 +17,10 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
+# Gradle and Maven with auto-import
+.idea/artifacts
+.idea/modules
+
 ### Eclipse ###
 .apt_generated
 .classpath
