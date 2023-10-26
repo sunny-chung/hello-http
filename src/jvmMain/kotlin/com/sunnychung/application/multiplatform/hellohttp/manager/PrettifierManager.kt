@@ -5,16 +5,16 @@ import com.fasterxml.jackson.module.kotlin.jacksonMapperBuilder
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 class PrettifierManager {
-    private val registrations: MutableMap<String, MutableSet<Prettifier>> = mutableMapOf()
+    private val registrations: MutableSet<PrettifierRegistration> = mutableSetOf()
 
-    fun register(contentType: String, prettifier: Prettifier) {
-        registrations.getOrPut(contentType) { linkedSetOf() } += prettifier
+    fun register(contentTypeRegex: Regex, prettifier: Prettifier) {
+        registrations += PrettifierRegistration(contentTypeRegex = contentTypeRegex, prettifier = prettifier)
     }
 
     init {
         // JSON
         register(
-            contentType = "application/json",
+            contentTypeRegex = "application\\/(json|.+\\+json)".toRegex(),
             prettifier = Prettifier(
                 formatName = "JSON (Prettified)",
                 prettify = {
@@ -26,8 +26,8 @@ class PrettifierManager {
 
     fun matchPrettifiers(contentType: String): List<Prettifier> {
         return registrations
-            .filter { Regex("\\b${Regex.escape(it.key)}\\b").containsMatchIn(contentType) }
-            .flatMap { it.value }
+            .filter { it.contentTypeRegex.matches(contentType) }
+            .map { it.prettifier }
             .distinct()
     }
 }
@@ -35,4 +35,9 @@ class PrettifierManager {
 class Prettifier(
     val formatName: String,
     val prettify: (ByteArray) -> String,
+)
+
+data class PrettifierRegistration(
+    val contentTypeRegex: Regex,
+    val prettifier: Prettifier,
 )
