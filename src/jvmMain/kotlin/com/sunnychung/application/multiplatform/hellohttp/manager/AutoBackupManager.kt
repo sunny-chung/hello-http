@@ -11,10 +11,12 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import net.harawata.appdirs.AppDirsFactory
@@ -29,9 +31,11 @@ class AutoBackupManager {
 
     val backupInterval = KDuration.of(6, KFixedTimeUnit.Hour)
     private val timerFlow = flow {
-        delay(backupInterval.toMilliseconds())
-        emit(Unit)
-        yield()
+        while (currentCoroutineContext().isActive) {
+            delay(backupInterval.toMilliseconds())
+            emit(Unit)
+            yield()
+        }
     }
 
     init {
