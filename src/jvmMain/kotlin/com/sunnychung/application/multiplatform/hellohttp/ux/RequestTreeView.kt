@@ -405,18 +405,20 @@ fun RequestTreeView(
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
         listOf("New Request", "New Folder").forEach { item ->
-            Column(modifier = Modifier.clickable {
-                expandedFolderIds[contextMenuAtItemId!!] = Unit
-                createRequestOrFolder(
-                    resourceType = when (item) {
-                        "New Request" -> ResourceType.Request
-                        "New Folder" -> ResourceType.Folder
-                        else -> throw UnsupportedOperationException()
-                    },
-                    parentId = contextMenuAtItemId,
-                )
-                isShowContextMenu = false
-            }.padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Column(
+                modifier = Modifier.clickable {
+                    expandedFolderIds[contextMenuAtItemId!!] = Unit
+                    createRequestOrFolder(
+                        resourceType = when (item) {
+                            "New Request" -> ResourceType.Request
+                            "New Folder" -> ResourceType.Folder
+                            else -> throw UnsupportedOperationException()
+                        },
+                        parentId = contextMenuAtItemId,
+                    )
+                    isShowContextMenu = false
+                }.padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
                 AppText(text = item)
             }
         }
