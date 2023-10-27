@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -144,6 +145,7 @@ fun AppContentView() {
     }
     val clipboardManager = LocalClipboardManager.current
 
+    val coroutineScope = rememberCoroutineScope()
     var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
     var selectedSubprojectState by remember { mutableStateOf<Subproject?>(null) }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
@@ -218,6 +220,14 @@ fun AppContentView() {
         return newRequest
     }
 
+    // TODO refactor to a better location
+    fun deleteSubprojectRelatedData(subproject: Subproject) {
+        coroutineScope.launch {
+            requestCollectionRepository.delete(RequestsDI(subprojectId = subproject.id))
+            responseCollectionRepository.delete(ResponsesDI(subprojectId = subproject.id))
+        }
+    }
+
     log.d { "AppContentView recompose" }
 
     Column(modifier = modifier) {
@@ -266,10 +276,16 @@ fun AppContentView() {
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
                             },
                             onDeleteProject = { project ->
+                                project.subprojects.forEach {
+                                    deleteSubprojectRelatedData(it)
+                                }
+
                                 projectCollection.projects.removeIf { it.id == project.id }
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
                             },
                             onDeleteSubproject = { subproject ->
+                                deleteSubprojectRelatedData(subproject)
+
                                 // TODO: lower time complexity from O(n^2) to O(n)
                                 val project = projectCollection.projects.first { it.subprojects.any { it.id == subproject.id } }
                                 project.subprojects.removeIf { it.id == subproject.id }
