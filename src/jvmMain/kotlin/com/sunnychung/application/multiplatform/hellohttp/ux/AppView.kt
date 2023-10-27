@@ -347,7 +347,12 @@ fun AppContentView() {
                                     new
                                 },
                                 onUpdateFolder = { newFolder ->
-                                    selectedSubproject!!.treeObjects.replaceIf(newFolder) { it.id == newFolder.id }
+                                    val parent = selectedSubproject!!.findParentAndItem(newFolder.id).first as? TreeFolder
+                                    if (parent == null) {
+                                        selectedSubproject!!.treeObjects.replaceIf(newFolder) { it.id == newFolder.id }
+                                    } else {
+                                        parent.childs.replaceIf(newFolder) { it.id == newFolder.id }
+                                    }
                                     selectedSubprojectState = selectedSubproject!!.deepCopy()
                                     projectCollectionRepository.notifyUpdated(projectCollection.id)
                                 },
