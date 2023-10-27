@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.Dp
@@ -62,7 +63,7 @@ fun AppDeleteButton(
                     resource = "delete.svg",
                     color = colors.placeholder,
                     size = size,
-                    modifier = modifier,
+                    modifier = modifier.focusProperties { canFocus = false },
                     onClick = {
                         isShowingConfirmButton = true
                         lastClickInstant = KInstant.now()
@@ -70,13 +71,16 @@ fun AppDeleteButton(
                 )
             }
         } else {
-            Row(modifier = modifier.clickable {
-                if (KInstant.now() - lastClickInstant >= KDuration.of(500, KFixedTimeUnit.MilliSecond)) {
-                    onClickDelete()
-                    isShowingConfirmButton = false
+            Row(modifier = modifier
+                .clickable {
+                    if (KInstant.now() - lastClickInstant >= KDuration.of(500, KFixedTimeUnit.MilliSecond)) {
+                        onClickDelete()
+                        isShowingConfirmButton = false
+                    }
                 }
-            }
-                .onPointerEvent(eventType = PointerEventType.Exit, onEvent = { isShowingConfirmButton = false })) {
+                .onPointerEvent(eventType = PointerEventType.Exit, onEvent = { isShowingConfirmButton = false })
+                .focusProperties { canFocus = false }
+            ) {
                 AppImage(resource = "warning-sharp.svg", color = colors.highlight, size = size)
                 if (isShowTextLabel) {
                     AppText(text = "Click to Confirm", color = colors.highlight)

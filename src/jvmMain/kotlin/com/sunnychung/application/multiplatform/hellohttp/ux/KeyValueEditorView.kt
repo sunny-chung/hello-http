@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +14,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -60,6 +68,29 @@ fun KeyValueEditorView(
                 AppTextButton(text = "Switch to Raw Input", onClick = { /* TODO */ })
             }
         }
+        val focusManager = LocalFocusManager.current
+
+        fun Modifier.onKeyDownTabMoveFocus(position: FocusPosition): Modifier {
+            return this.onPreviewKeyEvent {
+                when {
+                    it.key == Key.Tab && it.type == KeyEventType.KeyDown -> {
+                        if (it.isShiftPressed && position != FocusPosition.Start) {
+                            focusManager.moveFocus(FocusDirection.Previous)
+                            true
+                        } else if (!it.isShiftPressed && position != FocusPosition.End) {
+                            focusManager.moveFocus(FocusDirection.Next)
+                            true
+                        } else {
+                            // consume the event and do nothing, so that "\t" is not inserted
+                            true
+                        }
+                    }
+
+                    else -> false
+                }
+            }
+        }
+
         LazyColumn {
             items(count = keyValues.size + if (!isInheritedView) 1 else 0) { index ->
                 val it = if (index < keyValues.size) keyValues[index] else null
@@ -95,6 +126,7 @@ fun KeyValueEditorView(
                         textColor = if (isEnabled) colors.primary else colors.disabled,
                         hasIndicatorLine = !isInheritedView,
                         modifier = Modifier.weight(0.4f)
+                            .onKeyDownTabMoveFocus(if (index == 0) FocusPosition.Start else FocusPosition.Middle),
                     )
                     if (it?.valueType == FieldValueType.String || it == null) {
                         AppTextFieldWithPlaceholder(
@@ -127,6 +159,7 @@ fun KeyValueEditorView(
                             textColor = if (isEnabled) colors.primary else colors.disabled,
                             hasIndicatorLine = !isInheritedView,
                             modifier = Modifier.weight(0.6f)
+                                .onKeyDownTabMoveFocus(if (index == keyValues.size) FocusPosition.End else FocusPosition.Middle),
                         )
                     } else {
                         val file = if (it.value.isNotEmpty()) File(it.value) else null
@@ -171,6 +204,7 @@ fun KeyValueEditorView(
                             },
                             size = 16.dp,
                             modifier = Modifier.padding(horizontal = 4.dp)
+                                .focusProperties { canFocus = false }
                         )
                         if (!isInheritedView) {
                             AppDeleteButton(
@@ -190,4 +224,8 @@ fun KeyValueEditorView(
 private enum class ValueType(override val displayText: String) : DropDownable {
     Text("Text"),
     File("File")
+}
+
+private enum class FocusPosition {
+    Start, Middle, End
 }
