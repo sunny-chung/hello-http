@@ -55,7 +55,8 @@ data class AppColor(
 data class SyntaxColor(
     val stringLiteral: Color,
     val numberLiteral: Color,
-    val booleanLiteral: Color,
+    val booleanTrueLiteral: Color,
+    val booleanFalseLiteral: Color,
     val nothingLiteral: Color,
     val objectKey: Color,
 )
@@ -109,9 +110,10 @@ fun darkColorScheme(): AppColor = AppColor(
     syntaxColor = SyntaxColor(
         stringLiteral = Color(red = 0.8f, green = 0.8f, blue = 0.2f),
         numberLiteral = Color(red = 0.4f, green = 0.4f, blue = 0.9f),
-        booleanLiteral = Color(red = 0.8f, green = 0.3f, blue = 0.3f),
+        booleanTrueLiteral = Color(red = 0.2f, green = 0.8f, blue = 0.2f),
+        booleanFalseLiteral = Color(red = 0.9f, green = 0.4f, blue = 0.4f),
         nothingLiteral = Color(red = 0.6f, green = 0.6f, blue = 0.6f),
-        objectKey = Color(red = 0.2f, green = 0.6f, blue = 0.2f),
+        objectKey = Color(red = 0.5f, green = 0.7f, blue = 1f),
     ),
 )
 
@@ -134,7 +136,7 @@ fun lightColorScheme(): AppColor = AppColor(
     disabled = Color(red = 0.7f, green = 0.7f, blue = 0.8f),
     highlight = Color(red = 0.4f, green = 0.4f, blue = 0.9f),
     cursor = Color(red = 0.3f, green = 0.3f, blue = 0.3f),
-    warning = Color(red = 0.8f, green = 0.4f, blue = 0f),
+    warning = Color(red = 0.8f, green = 0.3f, blue = 0f),
 
     httpRequestGet = Color(red = 0f, green = 0.6f, blue = 0f),
     httpRequestPost = Color(red = 0.3f, green = 0.3f, blue = 0.8f),
@@ -154,16 +156,18 @@ fun lightColorScheme(): AppColor = AppColor(
 
     pendingResponseBackground = Color(red = 0.7f, green = 0.7f, blue = 0.7f),
     successfulResponseBackground = Color(red = 0.2f, green = 0.8f, blue = 0.2f),
-    errorResponseBackground = Color(red = 1f, green = 0.3f, blue = 0.3f),
+    errorResponseBackground = Color(red = 1f, green = 0.45f, blue = 0.45f),
 
     scrollBarUnhover = Color(red = 0.4f, green = 0.4f, blue = 0.4f).copy(alpha = 0.25f),
     scrollBarHover = Color(red = 0.4f, green = 0.4f, blue = 0.4f).copy(alpha = 0.50f),
 
     syntaxColor = SyntaxColor(
-        stringLiteral = Color(red = 0.5f, green = 0.5f, blue = 0f),
+//        stringLiteral = Color(red = 0.5f, green = 0.5f, blue = 0f),
+        stringLiteral = Color(red = 0.9f, green = 0.45f, blue = 0.12f),
         numberLiteral = Color(red = 0.3f, green = 0.3f, blue = 0.9f),
-        booleanLiteral = Color(red = 0.8f, green = 0.3f, blue = 0.3f),
+        booleanTrueLiteral = Color(red = 0f, green = 0.6f, blue = 0f),
+        booleanFalseLiteral = Color(red = 1f, green = 0.1f, blue = 0.1f),
         nothingLiteral = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
-        objectKey = Color(red = 0.2f, green = 0.6f, blue = 0.2f),
+        objectKey = Color(red = 0.4f, green = 0.4f, blue = 0.6f),
     ),
 )

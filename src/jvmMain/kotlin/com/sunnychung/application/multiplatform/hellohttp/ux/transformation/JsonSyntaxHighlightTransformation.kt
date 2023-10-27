@@ -10,7 +10,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 val OBJECT_KEY_REGEX = "(?<!\\\\)(\"(?:[^\"]|\\\\\\\")*?(?<!\\\\)\")\\s*:".toRegex()
 val STRING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(?<!\\\\)(\"(?:[^\"]|\\\\\\\")*?(?<!\\\\)\")".toRegex()
 val NUMBER_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)\\b".toRegex()
-val BOOLEAN_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(true|false)\\b".toRegex()
+val BOOLEAN_TRUE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(true)\\b".toRegex()
+val BOOLEAN_FALSE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(false)\\b".toRegex()
 val NOTHING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(null|undefined)\\b".toRegex()
 
 class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransformation {
@@ -18,7 +19,8 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
     val objectKeyStyle = SpanStyle(color = colours.syntaxColor.objectKey)
     val stringLiteralStyle = SpanStyle(color = colours.syntaxColor.stringLiteral)
     val numberLiteralStyle = SpanStyle(color = colours.syntaxColor.numberLiteral)
-    val booleanLiteralStyle = SpanStyle(color = colours.syntaxColor.booleanLiteral)
+    val booleanTrueLiteralStyle = SpanStyle(color = colours.syntaxColor.booleanTrueLiteral)
+    val booleanFalseLiteralStyle = SpanStyle(color = colours.syntaxColor.booleanFalseLiteral)
     val nothingLiteralStyle = SpanStyle(color = colours.syntaxColor.nothingLiteral)
 
     var lastTextHash: Int? = null
@@ -36,7 +38,8 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
             OBJECT_KEY_REGEX to objectKeyStyle,
             STRING_LITERAL_REGEX to stringLiteralStyle,
             NUMBER_LITERAL_REGEX to numberLiteralStyle,
-            BOOLEAN_LITERAL_REGEX to booleanLiteralStyle,
+            BOOLEAN_TRUE_LITERAL_REGEX to booleanTrueLiteralStyle,
+            BOOLEAN_FALSE_LITERAL_REGEX to booleanFalseLiteralStyle,
             NOTHING_LITERAL_REGEX to nothingLiteralStyle,
         ).forEach { (regex, style) ->
             regex.findAll(s).forEach { m ->
