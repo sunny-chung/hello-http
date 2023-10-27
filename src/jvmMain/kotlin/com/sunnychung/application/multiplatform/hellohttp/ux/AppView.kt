@@ -205,13 +205,18 @@ fun AppContentView() {
     val editRequestNameViewModel = remember { EditNameViewModel() }
     val editExampleNameViewModel = remember { EditNameViewModel() }
 
-    fun createRequestForCurrentSubproject(): UserRequestTemplate {
+    fun createRequestForCurrentSubproject(parentId: String?): UserRequestTemplate {
         val newRequest = UserRequestTemplate(id = uuidString(), name = "New Request", method = "GET")
         requestCollection!!.requests += newRequest
         requestCollectionState = requestCollection?.copy()
         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
 
-        selectedSubproject!!.treeObjects += TreeRequest(id = newRequest.id)
+        val newTreeRequest = TreeRequest(id = newRequest.id)
+        if (parentId == null) {
+            selectedSubproject!!.treeObjects += newTreeRequest
+        } else {
+            (selectedSubproject!!.findParentAndItem(parentId).second as TreeFolder).childs += newTreeRequest
+        }
         selectedSubprojectState = selectedSubproject?.deepCopy()
         projectCollectionRepository.notifyUpdated(projectCollection.id)
 
@@ -303,7 +308,7 @@ fun AppContentView() {
                                 editTreeObjectNameViewModel = editRequestNameViewModel,
                                 onSelectRequest = { displayRequest(it) },
                                 onAddRequest = {
-                                    createRequestForCurrentSubproject()
+                                    createRequestForCurrentSubproject(parentId = it)
                                 },
                                 onUpdateRequest = { update ->
                                     // TODO avoid the loop, refactor to use one state only and no duplicated code
@@ -338,10 +343,13 @@ fun AppContentView() {
                                 onUnfocusNameTextField = {
                                     isParentClearInputFocus = false
                                 },
-                                onAddFolder = {
-                                    val new =
-                                        TreeFolder(id = uuidString(), name = "New Folder", childs = mutableListOf())
-                                    selectedSubproject!!.treeObjects += new
+                                onAddFolder = { parentId ->
+                                    val new = TreeFolder(id = uuidString(), name = "New Folder", childs = mutableListOf())
+                                    if (parentId == null) {
+                                        selectedSubproject!!.treeObjects += new
+                                    } else {
+                                        (selectedSubproject!!.findParentAndItem(parentId).second as TreeFolder).childs += new
+                                    }
                                     selectedSubprojectState = selectedSubproject!!.deepCopy()
                                     projectCollectionRepository.notifyUpdated(projectCollection.id)
                                     new
@@ -528,7 +536,7 @@ fun AppContentView() {
                                 modifier = requestEditorModifier,
                                 isShowCreateRequest = selectedSubproject != null && requestCollection != null
                             ) {
-                                val newRequest = createRequestForCurrentSubproject()
+                                val newRequest = createRequestForCurrentSubproject(parentId = null)
                                 editRequestNameViewModel.onStartEdit()
                             }
                         }

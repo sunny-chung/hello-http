@@ -2,8 +2,10 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -17,9 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.CursorDropdownMenu
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,6 +40,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -63,12 +68,12 @@ fun RequestTreeView(
     selectedRequest: UserRequestTemplate?,
     editTreeObjectNameViewModel: EditNameViewModel,
     onSelectRequest: (UserRequestTemplate) -> Unit,
-    onAddRequest: () -> UserRequestTemplate,
+    onAddRequest: (parentId: String?) -> UserRequestTemplate,
     onUpdateRequest: (UserRequestTemplate) -> Unit,
     onDeleteRequest: (UserRequestTemplate) -> Unit,
     onFocusNameTextField: () -> Unit,
     onUnfocusNameTextField: () -> Unit,
-    onAddFolder: () -> TreeFolder,
+    onAddFolder: (parentId: String?) -> TreeFolder,
     onUpdateFolder: (TreeFolder) -> Unit,
     onDeleteFolder: (TreeFolder) -> Unit,
     onMoveTreeObject: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
@@ -77,6 +82,7 @@ fun RequestTreeView(
 
     var searchText by remember { mutableStateOf("") }
     var selectedTreeObjectId by remember { mutableStateOf<String?>(null) }
+    var expandedFolderIds = remember { mutableStateMapOf<String, Unit>() }
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var treeParentBound by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -85,6 +91,9 @@ fun RequestTreeView(
 
     var isEditing = editTreeObjectNameViewModel.isEditing.collectAsState().value
     val isDraggable = searchText.isEmpty()
+
+    var isShowContextMenu by remember { mutableStateOf(false) }
+    var contextMenuAtItemId by remember { mutableStateOf<String?>(null) }
 
     val treeObjects = filterTreeObjects(
         rootObjects = selectedSubproject.treeObjects,
@@ -267,13 +276,21 @@ fun RequestTreeView(
             id = folder.id,
             onDrop = { destination -> handleDropAction(draggable = folder, droppedAt = destination) }
         ) {
-            var modifierToUse = modifier.combinedClickable(
+            var modifierToUse = modifier.onClick(
+                matcher = PointerMatcher.Primary,
                 onClick = { onExpandUnexpand(!isExpanded) },
                 onDoubleClick = {
                     selectedTreeObjectId = folder.id
                     editTreeObjectNameViewModel.onStartEdit()
                 }
             )
+                .onClick(
+                    matcher = PointerMatcher.mouse(PointerButton.Secondary),
+                    onClick = {
+                        contextMenuAtItemId = folder.id
+                        isShowContextMenu = true
+                    }
+                )
                 .droppable(MoveDirection.Inside, folder)
             if (draggingOverDropTarget?.direction == MoveDirection.Inside && draggingOverDropTarget?.item?.id == folder.id) {
                 modifierToUse = modifierToUse.background(colors.backgroundHoverDroppable)
@@ -313,13 +330,16 @@ fun RequestTreeView(
                     }
 
                     is TreeFolder -> {
-                        var isExpanded by remember { mutableStateOf(false) }
+                        val isExpanded = expandedFolderIds.containsKey(obj.id)
 
                         FolderView(
                             modifier = modifier,
                             folder = obj,
                             isExpanded = isExpanded,
-                            onExpandUnexpand = { isExpanded = it },
+                            onExpandUnexpand = { when(it) {
+                                true -> expandedFolderIds[obj.id] = Unit
+                                false -> expandedFolderIds.remove(obj.id)
+                            } },
                             onDelete = { onDeleteFolder(obj) }
                         )
                         if (isExpanded) {
@@ -366,6 +386,42 @@ fun RequestTreeView(
         }
     }
 
+    fun createRequestOrFolder(resourceType: ResourceType, parentId: String?) {
+        selectedTreeObjectId = when (resourceType) {
+            ResourceType.Request -> onAddRequest(parentId).id
+            ResourceType.Folder -> {
+                onAddFolder(parentId).id
+            }
+        }
+        editTreeObjectNameViewModel.onStartEdit()
+        coroutineScope.launch {
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
+    CursorDropdownMenu(
+        expanded = isShowContextMenu,
+        onDismissRequest = { isShowContextMenu = false },
+        modifier = Modifier.background(colors.backgroundContextMenu)
+    ) {
+        listOf("New Request", "New Folder").forEach { item ->
+            Column(modifier = Modifier.clickable {
+                expandedFolderIds[contextMenuAtItemId!!] = Unit
+                createRequestOrFolder(
+                    resourceType = when (item) {
+                        "New Request" -> ResourceType.Request
+                        "New Folder" -> ResourceType.Folder
+                        else -> throw UnsupportedOperationException()
+                    },
+                    parentId = contextMenuAtItemId,
+                )
+                isShowContextMenu = false
+            }.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                AppText(text = item)
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             AppTextField(
@@ -378,20 +434,10 @@ fun RequestTreeView(
             DropDownView(
                 iconResource = "add.svg",
                 iconSize = 24.dp,
-                items = listOf(DropDownValue("Request"), DropDownValue("Folder")),
+                items = ResourceType.values().map { DropDownValue(it.name) },
                 isShowLabel = false,
                 onClickItem = {
-                    selectedTreeObjectId = when (it.displayText) {
-                        "Request" -> onAddRequest().id
-                        "Folder" -> {
-                            onAddFolder().id
-                        }
-                        else -> null
-                    }
-                    editTreeObjectNameViewModel.onStartEdit()
-                    coroutineScope.launch {
-                        scrollState.animateScrollTo(scrollState.maxValue)
-                    }
+                    createRequestOrFolder(resourceType = ResourceType.valueOf(it.displayText), parentId = null)
                     true
                 },
                 modifier = Modifier.padding(4.dp)
@@ -472,3 +518,7 @@ fun RequestListViewPreview() {
 }
 
 data class DropTargetInfo(var bounds: Rect, val direction: MoveDirection, val item: TreeObject?)
+
+private enum class ResourceType {
+    Request, Folder
+}
