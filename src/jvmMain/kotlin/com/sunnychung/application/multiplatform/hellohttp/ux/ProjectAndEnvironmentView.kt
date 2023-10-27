@@ -165,6 +165,7 @@ fun ProjectAndEnvironmentViewV2(
                                 text = it.name,
                                 hasHoverHighlight = true,
                                 modifier = Modifier
+                                    .fillMaxWidth()
                                     .clickable { selectedProject = it; expandedSection = ExpandedSection.Subproject }
                             )
                         }
@@ -245,6 +246,7 @@ fun ProjectAndEnvironmentViewV2(
                                 text = it.name,
                                 hasHoverHighlight = true,
                                 modifier = Modifier
+                                    .fillMaxWidth()
                                     .clickable {
                                         onSelectSubproject(it); /*selectedSubproject = it;*/
                                         onSelectEnvironment(null)
