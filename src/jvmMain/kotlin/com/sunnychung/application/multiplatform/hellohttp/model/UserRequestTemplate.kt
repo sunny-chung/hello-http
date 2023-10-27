@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.constant.UserFunctions
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
@@ -39,8 +40,13 @@ data class UserRequestTemplate(
         fun String.resolveVariables(): String {
             var s = this
             when (resolveVariableMode) {
-                is ExpandByEnvironment -> environmentVariables.forEach {
-                    s = s.replace("\${{${it.key}}}", it.value)
+                is ExpandByEnvironment -> {
+                    environmentVariables.forEach {
+                        s = s.replace("\${{${it.key}}}", it.value)
+                    }
+                    UserFunctions.forEach {
+                        s = s.replace("\$((${it.key}))", it.value.function())
+                    }
                 }
                 is ReplaceAsString -> s = s.replace("\\\$\\{\\{([^{}]+)\\}\\}".toRegex(), resolveVariableMode.replacement)
             }

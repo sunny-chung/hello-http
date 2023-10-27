@@ -74,7 +74,7 @@ private const val POSTFIX_LENGTH = 2
  * originalToTransformed  0 1 2 3 3 3 4 5 5 5 6  7  8  8  8  8  8  9  10
  * transformedToOriginal  0 1 2 5 5 5 6 7 7 7 10 11 14 14 14 14 14 17 18
  */
-class EnvironmentVariableTransformationOffsetMapping(val variableRanges: TreeMap<Int, IntRange>) : OffsetMapping {
+open class EnvironmentVariableTransformationOffsetMapping(val variableRanges: TreeMap<Int, IntRange>) : OffsetMapping {
 
     override fun originalToTransformed(offset: Int): Int {
         val preRanges = variableRanges.headMap(offset, true)

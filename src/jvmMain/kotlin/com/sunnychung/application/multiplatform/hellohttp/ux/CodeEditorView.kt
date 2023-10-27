@@ -18,6 +18,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldCo
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 
 @Composable
@@ -38,22 +39,26 @@ fun CodeEditorView(
         backgroundColor = LocalColor.current.backgroundInputField
     )
 
+    val themeColours = LocalColor.current
+
     Box(modifier = modifier) {
         val scrollState = rememberScrollState()
 //        log.v { "CodeEditorView text=$text" }
         AppTextField(
             value = text,
             onValueChange = { onTextChange?.invoke(it) },
-            visualTransformation = (transformations + if (isEnableVariables) {
-                listOf(
-                    EnvironmentVariableTransformation(
-                        themeColors = LocalColor.current,
-                        knownVariables = knownVariables
-                    )
-                )
-            } else {
-                emptyList()
-            }).let {
+            visualTransformation = (transformations +
+                    if (isEnableVariables) {
+                        listOf(
+                            EnvironmentVariableTransformation(
+                                themeColors = themeColours,
+                                knownVariables = knownVariables
+                            ),
+                            FunctionTransformation(themeColours),
+                        )
+                    } else {
+                        emptyList()
+                    }).let {
                 if (it.size > 1) {
                     MultipleVisualTransformation(it)
                 } else if (it.size == 1) {
