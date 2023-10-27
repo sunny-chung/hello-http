@@ -61,13 +61,13 @@ fun ResponseViewerView(response: UserResponse) {
                 ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
                     ResponseBodyView(response = response)
                 } else {
-                    ResponseEmptyView(type = "body", modifier = Modifier.fillMaxSize().padding(8.dp))
+                    ResponseEmptyView(type = "body", isCommunicating = response.isCommunicating, modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
 
                 ResponseTab.Header -> if (response.headers != null) {
                     KeyValueTableView(keyValues = response.headers!!, modifier = Modifier.fillMaxSize().padding(8.dp))
                 } else {
-                    ResponseEmptyView(type = "header", modifier = Modifier.fillMaxSize().padding(8.dp))
+                    ResponseEmptyView(type = "header", isCommunicating = response.isCommunicating, modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
 
                 ResponseTab.Raw ->
@@ -188,9 +188,17 @@ fun ResponseSizeLabel(modifier: Modifier = Modifier, response: UserResponse) {
 }
 
 @Composable
-fun ResponseEmptyView(modifier: Modifier = Modifier, type: String) {
+fun ResponseEmptyView(modifier: Modifier = Modifier, type: String, isCommunicating: Boolean) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        AppText(text = "No response $type available", fontSize = LocalFont.current.largeInfoSize, textAlign = TextAlign.Center)
+        AppText(
+            text = if (!isCommunicating) {
+                "No response $type available"
+            } else {
+                "Waiting for response"
+            },
+            fontSize = LocalFont.current.largeInfoSize,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
