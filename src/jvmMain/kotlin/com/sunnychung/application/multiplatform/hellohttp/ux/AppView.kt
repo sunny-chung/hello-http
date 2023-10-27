@@ -559,14 +559,15 @@ fun AppContentView() {
 
 fun Modifier.clearFocusOnTap(): Modifier = composed {
     val focusManager = LocalFocusManager.current
-    Modifier.pointerInput(Unit) {
-        awaitEachGesture {
-            awaitFirstDown(pass = PointerEventPass.Initial)
-            val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
-            if (upEvent != null) {
-                log.d { "clearFocusOnTap clearFocus" }
-                focusManager.clearFocus()
-            }
-        }
-    }
+//    Modifier.pointerInput(Unit) {
+//        awaitEachGesture {
+//            awaitFirstDown(pass = PointerEventPass.Initial)
+//            val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+//            if (upEvent != null) {
+//                log.d { "clearFocusOnTap clearFocus" }
+//                focusManager.clearFocus()
+//            }
+//        }
+//    }
+    Modifier
 }
