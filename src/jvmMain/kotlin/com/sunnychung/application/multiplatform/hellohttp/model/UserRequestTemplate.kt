@@ -147,6 +147,7 @@ enum class ContentType(override val displayText: String, val headerValue: String
     Multipart(displayText = "Multipart Form", headerValue = "multipart/form-data"), // "multipart/form-data; boundary=<generated>"
     FormUrlEncoded(displayText = "Form URL-Encoded", headerValue = "application/x-www-form-urlencoded"),
     Raw(displayText = "Raw", headerValue = null),
+    BinaryFile(displayText = "Binary File", headerValue = null),
     None(displayText = "None", headerValue = null),
 }
 
@@ -208,5 +209,14 @@ class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
             }
         }
         return b.build()
+    }
+}
+
+@Persisted
+@Serializable
+@SerialName("FileBody")
+class FileBody(val filePath: String?) : UserRequestBody {
+    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
+        return filePath?.let { File(it).asRequestBody(mediaType) } ?: byteArrayOf().toRequestBody(mediaType)
     }
 }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
+import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
@@ -129,6 +130,12 @@ class InsomniaV4Exporter {
                         is StringBody -> InsomniaV4.HttpRequest.Body(
                             mimeType = "application/json",
                             text = it.body.value.resolveVariables(),
+                            params = null,
+                        )
+                        is FileBody -> InsomniaV4.HttpRequest.Body(
+                            mimeType = "application/octet-stream",
+                            text = null,
+                            fileName = it.body.filePath,
                             params = null,
                         )
                         null -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)

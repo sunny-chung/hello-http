@@ -30,6 +30,7 @@ object InsomniaV4 {
             val mimeType: String?,
             val text: String?,
             val params: List<KeyValue>?,
+            val fileName: String? = null,
         )
 
         data class KeyValue(

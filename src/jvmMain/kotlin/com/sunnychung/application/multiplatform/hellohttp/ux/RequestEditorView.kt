@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
+import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
@@ -56,6 +58,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
+import java.io.File
 
 @Composable
 fun RequestEditorView(
@@ -370,6 +373,7 @@ fun RequestEditorView(
                                 ContentType.Json, ContentType.Raw -> StringBody("")
                                 ContentType.Multipart -> MultipartBody(emptyList())
                                 ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
+                                ContentType.BinaryFile -> FileBody(null)
                             }
                             onRequestModified(
                                 request.copy(
@@ -385,7 +389,7 @@ fun RequestEditorView(
                         }
                     )
 
-                    if (selectedExample.id != baseExample.id && selectedContentType in setOf(ContentType.Json, ContentType.Raw)) {
+                    if (selectedExample.id != baseExample.id && selectedContentType in setOf(ContentType.Json, ContentType.Raw, ContentType.BinaryFile)) {
                         Spacer(modifier.weight(1f))
                         AppText("Is Override Base? ")
                         AppCheckbox(
@@ -510,6 +514,27 @@ fun RequestEditorView(
                             isSupportFileValue = true,
                             modifier = remainModifier,
                         )
+
+                    ContentType.BinaryFile -> {
+                        BinaryFileInputView(
+                            modifier = remainModifier,
+                            filePath = (selectedExample.body as? FileBody)?.filePath,
+                            onFilePathUpdate = {
+                                if (it != null) {
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                selectedExample.copy(
+                                                    contentType = selectedContentType,
+                                                    body = FileBody(it)
+                                                )
+                                            )
+                                        )
+                                    )
+                                }
+                            },
+                        )
+                    }
 
                     ContentType.None -> {}
                 }
@@ -663,6 +688,36 @@ fun InputFormHeader(modifier: Modifier = Modifier, text: String) {
         Surface(color = colors.placeholder, modifier = Modifier.height(1.dp).padding(horizontal = 4.dp).offset(y = 1.dp).width(20.dp)) {}
         AppText(text = text)
         Surface(color = colors.placeholder, modifier = Modifier.height(1.dp).padding(horizontal = 4.dp).offset(y = 1.dp).weight(1f)) {}
+    }
+}
+
+@Composable
+fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFilePathUpdate: (String?) -> Unit) {
+    val colours = LocalColor.current
+
+    var isShowFileDialog by remember { mutableStateOf(false) }
+
+    if (isShowFileDialog) {
+        FileDialog {
+            if (it.isNotEmpty()) {
+                onFilePathUpdate(it.first().absolutePath)
+            }
+            isShowFileDialog = false
+        }
+    }
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .height(200.dp)
+            .background(colours.backgroundLight)
+        ) {
+            AppTextButton(
+                text = filePath?.let { File(it).name } ?: "Choose a File",
+                onClick = { isShowFileDialog = true },
+                modifier = Modifier.align(Alignment.Center).border(width = 1.dp, color = colours.placeholder),
+            )
+        }
     }
 }
 

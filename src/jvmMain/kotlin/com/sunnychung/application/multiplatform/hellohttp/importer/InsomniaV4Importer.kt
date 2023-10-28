@@ -12,6 +12,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.`if`
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
+import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
@@ -136,6 +137,7 @@ class InsomniaV4Importer {
                             "application/json" -> ContentType.Json
                             "multipart/form-data" -> ContentType.Multipart
                             "application/x-www-form-urlencoded" -> ContentType.FormUrlEncoded
+                            "application/octet-stream" -> ContentType.BinaryFile
                             else -> ContentType.Raw
                         },
                         body = when (it.body.mimeType) {
@@ -174,6 +176,9 @@ class InsomniaV4Importer {
                                     )
                                 }?.filterNonEmpty()
                                     ?: emptyList()
+                            )
+                            "application/octet-stream" -> FileBody(
+                                filePath = it.body.fileName
                             )
                             else -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
                         },

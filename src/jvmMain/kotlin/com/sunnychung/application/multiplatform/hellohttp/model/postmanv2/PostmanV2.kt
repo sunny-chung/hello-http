@@ -62,9 +62,10 @@ object PostmanV2 {
     )
 
     data class Body(
-        val mode: String, // known values: formdata, raw, urlencoded
+        val mode: String, // known values: formdata, raw, urlencoded, file
         val formdata: List<KeyValue>?,
         val urlencoded: List<KeyValue>?,
+        val file: File?,
         val raw: String?, // json
         val options: Options?,
     ) {
@@ -73,6 +74,10 @@ object PostmanV2 {
         )
         data class Raw(
             val language: String
+        )
+
+        data class File(
+            val src: String?
         )
     }
 

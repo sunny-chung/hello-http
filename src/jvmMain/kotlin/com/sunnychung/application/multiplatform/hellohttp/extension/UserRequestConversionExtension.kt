@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.extension
 
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
+import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
@@ -117,6 +118,11 @@ fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environmen
         }
         is StringBody -> {
             curl += " \\\n  --data \"${request.body.value.escape()}\""
+        }
+        is FileBody -> {
+            if (request.body.filePath != null) {
+                curl += " \\\n  --data-binary \"@${request.body.filePath}\""
+            }
         }
         null -> {}
     }

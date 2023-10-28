@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
+import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
@@ -190,6 +191,7 @@ class PostmanV2ZipImporter {
                     null -> ContentType.None
                     "formdata" -> ContentType.Multipart
                     "urlencoded" -> ContentType.FormUrlEncoded
+                    "file" -> ContentType.BinaryFile
                     "raw" -> if (headers.firstOrNull {
                             it.key.equals(
                                 "content-type",
@@ -212,6 +214,7 @@ class PostmanV2ZipImporter {
                     "urlencoded" -> FormUrlEncodedBody(
                         request.body.urlencoded?.map { it.toUserKeyValuePair() } ?: emptyList()
                     )
+                    "file" -> FileBody(request.body.file?.src)
                     "raw" -> StringBody(request.body.raw?.convertVariables() ?: "")
                     else -> StringBody(request.body.raw?.convertVariables() ?: "")
                 }
