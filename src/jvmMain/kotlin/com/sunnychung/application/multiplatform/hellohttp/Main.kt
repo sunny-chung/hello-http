@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -50,9 +51,11 @@ fun main() {
             title = "Hello HTTP",
             onCloseRequest = ::exitApplication,
             icon = painterResource("image/appicon.svg"),
-            state = rememberWindowState(width = 1024.dp, height = 768.dp)
+            state = rememberWindowState(width = 1024.dp, height = 560.dp)
         ) {
-            window.minimumSize = Dimension(800, 600)
+            with(LocalDensity.current) {
+                window.minimumSize = Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+            }
             AppView()
         }
     }
