@@ -22,6 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
@@ -61,6 +66,49 @@ fun ProjectAndEnvironmentViewV2(
         isEnabled = showDialogType in setOf(EditDialogType.Project, EditDialogType.Subproject),
         onDismiss = { showDialogType = EditDialogType.None }) {
         val focusRequester = remember { FocusRequester() }
+
+        fun onDone() {
+            when (showDialogType) {
+                EditDialogType.Project -> {
+                    if (dialogIsCreate) {
+                        val project = Project(id = uuidString(), name = dialogTextFieldValue, subprojects = mutableListOf())
+                        onAddProject(project)
+                        onSelectSubproject(null)
+                        onSelectEnvironment(null)
+                        if (selectedProject == null) {
+                            expandedSection = ExpandedSection.Subproject
+                        }
+                        selectedProject = project
+                    } else {
+                        val updated = selectedProject!!.copy(name = dialogTextFieldValue)
+                        onUpdateProject(updated)
+                        selectedProject = updated
+                    }
+                }
+                EditDialogType.Subproject -> {
+                    if (dialogIsCreate) {
+                        val subproject = Subproject(
+                            id = uuidString(),
+                            name = dialogTextFieldValue,
+                            treeObjects = mutableListOf(),
+                            environments = mutableListOf()
+                        ) // TODO refactor to AppView
+                        onAddSubproject(selectedProject!!, subproject)
+                        onSelectSubproject(subproject)
+                        onSelectEnvironment(null)
+//                        selectedSubproject = subproject
+                        expandedSection = ExpandedSection.None
+                    } else {
+                        val updated = selectedSubproject!!.copy(name = dialogTextFieldValue)
+                        onUpdateSubproject(updated)
+                    }
+                }
+                EditDialogType.Environment -> TODO()
+                EditDialogType.None -> {}
+            }
+            showDialogType = EditDialogType.None
+        }
+
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             AppTextFieldWithPlaceholder(
                 value = dialogTextFieldValue,
@@ -73,47 +121,17 @@ fun ProjectAndEnvironmentViewV2(
                 },
                 singleLine = true,
                 modifier = Modifier.focusRequester(focusRequester)
+                    .onPreviewKeyEvent {
+                        if (it.key == Key.Enter && it.type == KeyEventType.KeyDown) {
+                            onDone()
+                            true
+                        } else {
+                            false
+                        }
+                    }
             )
             AppTextButton(text = "Done", onClick = {
-                when (showDialogType) {
-                    EditDialogType.Project -> {
-                        if (dialogIsCreate) {
-                            val project = Project(id = uuidString(), name = dialogTextFieldValue, subprojects = mutableListOf())
-                            onAddProject(project)
-                            onSelectSubproject(null)
-                            onSelectEnvironment(null)
-                            if (selectedProject == null) {
-                                expandedSection = ExpandedSection.Subproject
-                            }
-                            selectedProject = project
-                        } else {
-                            val updated = selectedProject!!.copy(name = dialogTextFieldValue)
-                            onUpdateProject(updated)
-                            selectedProject = updated
-                        }
-                    }
-                    EditDialogType.Subproject -> {
-                        if (dialogIsCreate) {
-                            val subproject = Subproject(
-                                id = uuidString(),
-                                name = dialogTextFieldValue,
-                                treeObjects = mutableListOf(),
-                                environments = mutableListOf()
-                            ) // TODO refactor to AppView
-                            onAddSubproject(selectedProject!!, subproject)
-                            onSelectSubproject(subproject)
-                            onSelectEnvironment(null)
-//                        selectedSubproject = subproject
-                            expandedSection = ExpandedSection.None
-                        } else {
-                            val updated = selectedSubproject!!.copy(name = dialogTextFieldValue)
-                            onUpdateSubproject(updated)
-                        }
-                    }
-                    EditDialogType.Environment -> TODO()
-                    EditDialogType.None -> {}
-                }
-                showDialogType = EditDialogType.None
+                onDone()
             })
         }
 
