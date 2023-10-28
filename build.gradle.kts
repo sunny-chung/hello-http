@@ -104,9 +104,9 @@ compose.desktop {
             macOS {
                 iconFile.set(project.file("appicon/appicon.icns"))
             }
-            windows {
-                iconFile.set(project.file("appicon/appicon.ico"))
-            }
+//            windows {
+//                iconFile.set(project.file("appicon/appicon.ico"))
+//            }
             linux {
                 iconFile.set(project.file("appicon/appicon.png"))
             }
