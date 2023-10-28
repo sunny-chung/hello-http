@@ -40,6 +40,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_BACKUP_RETENTION_DAYS
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import kotlinx.coroutines.runBlocking
 import java.awt.Desktop
@@ -116,10 +117,13 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
 
             var isShowFileDialog by remember { mutableStateOf(false) }
             var file by remember { mutableStateOf<File?>(null) }
+            val fileDialogState = rememberFileDialogState()
             if (isShowFileDialog) {
-                FileDialog {
+                FileDialog(state = fileDialogState) {
                     println("File Dialog result = $it")
-                    file = it.firstOrNull()
+                    if (it != null) {
+                        file = it.firstOrNull()
+                    }
                     isShowFileDialog = false
                 }
             }
@@ -184,6 +188,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
             var exportFileFormat by remember { mutableStateOf(ExportFormat.values().first()) }
             var isShowDirectoryPicker by remember { mutableStateOf(false) }
             var isShowFileDialog by remember { mutableStateOf(false) }
+            val fileDialogState = rememberFileDialogState()
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AppText(text = "Choose project(s) to export")
@@ -241,9 +246,9 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
             }
             if (isShowFileDialog) {
                 val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
-                FileDialog(mode = java.awt.FileDialog.SAVE, filename = "Hello-HTTP_dump_$dateTimeString.dump") {
+                FileDialog(state = fileDialogState, mode = java.awt.FileDialog.SAVE, filename = "Hello-HTTP_dump_$dateTimeString.dump") {
                     isShowFileDialog = false
-                    val file = it.firstOrNull()
+                    val file = it?.firstOrNull()
 
                     file?.takeIf { exportFileFormat == ExportFormat.`Hello HTTP Data Dump` }?.let { file ->
                         // TODO suspend instead of runBlocking

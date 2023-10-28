@@ -58,6 +58,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import java.io.File
 
 @Composable
@@ -696,10 +697,11 @@ fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFile
     val colours = LocalColor.current
 
     var isShowFileDialog by remember { mutableStateOf(false) }
+    val fileDialogState = rememberFileDialogState()
 
     if (isShowFileDialog) {
-        FileDialog {
-            if (it.isNotEmpty()) {
+        FileDialog(state = fileDialogState) {
+            if (it != null && it.isNotEmpty()) {
                 onFilePathUpdate(it.first().absolutePath)
             }
             isShowFileDialog = false
