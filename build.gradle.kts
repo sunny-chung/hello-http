@@ -36,7 +36,7 @@ kotlin {
 
                 implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1")
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
-                implementation("com.squareup.okhttp3:okhttp:4.11.0-patch-1")
+                implementation("io.github.sunny-chung:okhttp:4.11.0-patch-1")
 //                implementation("com.github.sunny-chung:okhttp:patch~4.11.0-SNAPSHOT")
                 implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") {
                     exclude(group = "com.squareup.okhttp3", module = "okhttp")
