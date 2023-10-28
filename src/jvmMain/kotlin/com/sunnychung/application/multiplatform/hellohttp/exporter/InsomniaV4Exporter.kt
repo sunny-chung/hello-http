@@ -174,6 +174,8 @@ class InsomniaV4Exporter {
 
     fun String.resolveVariables(): String {
         return replace("\\\$\\{\\{([^{}]+)\\}\\}".toRegex(), "{{\$1}}")
+            .replace("$((uuid))", "{% uuid 'v4' %}")
+            .replace("$((now.iso8601))", "{% now 'iso-8601', '' %}")
     }
 
     fun UserRequestTemplate.getMergedProperty(exampleIndex: Int, getter: (UserRequestExample) -> List<UserKeyValuePair>?): List<UserKeyValuePair> {

@@ -30,6 +30,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import java.io.File
 
 @Composable
@@ -115,10 +117,13 @@ fun KeyValueEditorView(
                             }
                         },
                         visualTransformation = if (isSupportVariables) {
-                            EnvironmentVariableTransformation(
-                                themeColors = colors,
-                                knownVariables = knownVariables
-                            )
+                            MultipleVisualTransformation(listOf(
+                                EnvironmentVariableTransformation(
+                                    themeColors = colors,
+                                    knownVariables = knownVariables
+                                ),
+                                FunctionTransformation(themeColors = colors),
+                            ))
                         } else {
                             VisualTransformation.None
                         },
@@ -148,10 +153,13 @@ fun KeyValueEditorView(
                                 }
                             },
                             visualTransformation = if (isSupportVariables) {
-                                EnvironmentVariableTransformation(
-                                    themeColors = colors,
-                                    knownVariables = knownVariables
-                                )
+                                MultipleVisualTransformation(listOf(
+                                    EnvironmentVariableTransformation(
+                                        themeColors = colors,
+                                        knownVariables = knownVariables
+                                    ),
+                                    FunctionTransformation(themeColors = colors),
+                                ))
                             } else {
                                 VisualTransformation.None
                             },
