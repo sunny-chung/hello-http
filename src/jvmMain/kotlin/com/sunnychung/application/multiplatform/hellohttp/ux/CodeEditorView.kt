@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -65,19 +66,81 @@ fun CodeEditorView(
 
         log.d { "onPressEnterAddIndent" }
 
-        var numNewLines = 0
-        var lastLineStart = 0
-        for (i in (cursorPos - 1) downTo 0) {
-            if (text[i] == '\n') {
-                lastLineStart = i + 1
-                break
-            }
-        }
+        var lastLineStart = getLineStart(text, cursorPos)
         var spacesMatch = "^(\\s+)".toRegex().matchAt(text.substring(lastLineStart, cursorPos), 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
         log.d { "onPressEnterAddIndent add ${newSpaces.length} spaces" }
-        onTextChange?.invoke(text.insert(cursorPos, newSpaces))
         textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length))
+        onTextChange?.invoke(text.insert(cursorPos, newSpaces))
+    }
+
+    log.v { "cursor at ${textValue.selection}" }
+    fun onPressTab(isShiftPressed: Boolean) {
+        val selection = textValue.selection
+        if (selection.length == 0) {
+            val cursorPos = selection.min
+            val newSpaces = " ".repeat(4)
+            textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length))
+            onTextChange?.invoke(text.insert(cursorPos, newSpaces))
+        } else if (!isShiftPressed) { // select text and press tab to insert 1-level indent to lines
+            val lineStarts = getAllLineStartsInRegion(
+                text = text,
+                from = selection.min,
+                to = selection.max - 1,
+            )
+            log.v { "lineStarts = $lineStarts" }
+            val newSpaces = " ".repeat(4)
+            var s = text
+            for (i in lineStarts.size - 1 downTo 0) {
+                val it = lineStarts[i]
+                s = s.insert(it, newSpaces)
+            }
+
+            val (minOffset, maxOffset) = Pair(newSpaces.length, newSpaces.length * lineStarts.size)
+            log.d { "off = $minOffset, $maxOffset" }
+            textValue = textValue.copy(
+                text = s,
+                selection = TextRange(
+                    start = selection.start + if (!selection.reversed) minOffset else maxOffset,
+                    end = selection.end + if (!selection.reversed) maxOffset else minOffset,
+                )
+            )
+
+            onTextChange?.invoke(s)
+        } else { // select text and press shift+tab to remove 1-level indent from lines
+            val lineStarts = getAllLineStartsInRegion(
+                text = text,
+                from = selection.min,
+                to = selection.max - 1,
+            )
+            log.v { "lineStarts R = $lineStarts" }
+            var s = text
+            var firstLineSpaces = 0
+            var numSpaces = 0
+            for (i in lineStarts.size - 1 downTo 0) {
+                val it = lineStarts[i]
+                // at most remove 4 spaces
+                val spaceRange = "^ {1,4}".toRegex().matchAt(s.substring(it, minOf(it + 4, s.length)), 0)?.range
+                if (spaceRange != null) {
+                    s = s.removeRange(it + spaceRange.start..it + spaceRange.endInclusive)
+                    val spaceLength = spaceRange.endInclusive + 1 - spaceRange.start
+                    numSpaces += spaceLength
+                    if (i == 0) firstLineSpaces = spaceLength
+                }
+            }
+
+            val (minOffset, maxOffset) = Pair(- firstLineSpaces, - numSpaces)
+            log.d { "off = $minOffset, $maxOffset" }
+            textValue = textValue.copy(
+                text = s,
+                selection = TextRange(
+                    start = maxOf(0, selection.start + if (!selection.reversed) minOffset else maxOffset),
+                    end = selection.end + if (!selection.reversed) maxOffset else minOffset,
+                )
+            )
+
+            onTextChange?.invoke(s)
+        }
     }
 
     Box(modifier = modifier) {
@@ -122,6 +185,10 @@ fun CodeEditorView(
                                         onPressEnterAddIndent()
                                         true
                                     }
+                                    Key.Tab -> {
+                                        onPressTab(it.isShiftPressed)
+                                        true
+                                    }
 
                                     else -> false
                                 }
@@ -139,4 +206,19 @@ fun CodeEditorView(
             adapter = rememberScrollbarAdapter(scrollState),
         )
     }
+}
+
+fun getLineStart(text: String, position: Int): Int {
+    for (i in (position - 1) downTo 0) {
+        if (text[i] == '\n') {
+            return i + 1
+        }
+    }
+    return 0
+}
+
+fun getAllLineStartsInRegion(text: String, from: Int, to: Int): List<Int> {
+    return listOf(getLineStart(text, from)) +
+            "\n".toRegex().findAll(text.substring(from, to + 1), 0)
+                .map { from + it.range.endInclusive + 1 }
 }
