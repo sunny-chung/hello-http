@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.0.0"
+version = "1.1.0"
 
 repositories {
     google()
@@ -97,8 +97,9 @@ compose.desktop {
         mainClass = "com.sunnychung.application.multiplatform.hellohttp.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "hello-http"
-            packageVersion = "1.0.0"
+            packageName = "Hello HTTP"
+            vendor = "Sunny Chung"
+            copyright = "© 2023 Sunny Chung"
         }
     }
 }
