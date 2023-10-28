@@ -100,6 +100,16 @@ compose.desktop {
             packageName = "Hello HTTP"
             vendor = "Sunny Chung"
             copyright = "© 2023 Sunny Chung"
+
+            macOS {
+                iconFile.set(project.file("appicon/appicon.icns"))
+            }
+            windows {
+                iconFile.set(project.file("appicon/appicon.ico"))
+            }
+            linux {
+                iconFile.set(project.file("appicon/appicon.png"))
+            }
         }
     }
 }

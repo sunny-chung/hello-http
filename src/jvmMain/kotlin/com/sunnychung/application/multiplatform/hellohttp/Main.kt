@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -45,7 +46,12 @@ fun main() {
         AppContext.UserPreferenceViewModel.setColorTheme(preference.colourTheme)
     }
     application {
-        Window(title = "Hello HTTP", onCloseRequest = ::exitApplication, state = rememberWindowState(width = 1024.dp, height = 768.dp)) {
+        Window(
+            title = "Hello HTTP",
+            onCloseRequest = ::exitApplication,
+            icon = painterResource("image/appicon.svg"),
+            state = rememberWindowState(width = 1024.dp, height = 768.dp)
+        ) {
             window.minimumSize = Dimension(800, 600)
             AppView()
         }
