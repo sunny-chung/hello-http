@@ -63,7 +63,7 @@ fun KeyValueEditorView(
     }
 
     Column(modifier) {
-        if (!isInheritedView) {
+        if (false && !isInheritedView) { // always disable
             Row(modifier = Modifier.padding(8.dp)) {
                 AppTextButton(text = "Switch to Raw Input", onClick = { /* TODO */ })
             }
