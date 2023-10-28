@@ -189,6 +189,7 @@ fun ResponseSizeLabel(modifier: Modifier = Modifier, response: UserResponse) {
 
 @Composable
 fun ResponseEmptyView(modifier: Modifier = Modifier, type: String, isCommunicating: Boolean) {
+    val colours = LocalColor.current
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         AppText(
             text = if (!isCommunicating) {
@@ -197,6 +198,7 @@ fun ResponseEmptyView(modifier: Modifier = Modifier, type: String, isCommunicati
                 "Waiting for response"
             },
             fontSize = LocalFont.current.largeInfoSize,
+            color = if (!isCommunicating) colours.primary else colours.placeholder,
             textAlign = TextAlign.Center
         )
     }
