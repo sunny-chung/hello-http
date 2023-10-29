@@ -4,8 +4,8 @@
 
 This is a cross-platform desktop application for testing HTTP APIs. This is an alternative to Postman, Insomnia REST, etc.
 
-![Screenshot 1](doc/Screenshot 2023-10-28 at 11.09.36 PM.png)
-![Screenshot 2](doc/Screenshot 2023-10-28 at 11.03.52 PM.png)
+![Screenshot 1](doc/screenshot1.png)
+![Screenshot 2](doc/screenshot2.png)
 
 This was made because of the decision these software made to go cloud and some of their imperfects.
 
