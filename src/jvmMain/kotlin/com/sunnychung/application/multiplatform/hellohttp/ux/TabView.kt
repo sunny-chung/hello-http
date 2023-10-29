@@ -4,6 +4,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,9 +29,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.max
 import kotlin.math.min
 
 @Composable
@@ -36,7 +38,17 @@ fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit,
     var lastSelectedIndex by remember { mutableStateOf(-1) }
     val scrollState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope() // needed for scrolling
-    LazyRow(modifier = modifier.background(color = colors.backgroundLight), state = scrollState) {
+    val verticalScrollable = rememberScrollableState { delta ->
+        coroutineScope.launch {
+            scrollState.scrollBy(-delta)
+        }
+        delta
+    }
+    LazyRow(modifier = modifier
+        .background(color = colors.backgroundLight)
+        .scrollable(state = verticalScrollable, orientation = Orientation.Vertical),
+        state = scrollState
+    ) {
         items(count = contents.size) { i ->
             TabItem(
                 isSelected = (selectedIndex == i),
