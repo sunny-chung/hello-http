@@ -7,8 +7,8 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 
-val OBJECT_KEY_REGEX = "(?<!\\\\)(\"(?:[^\"]|\\\\\\\")*?(?<!\\\\)\")\\s*:".toRegex()
-val STRING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(?<!\\\\)(\"(?:[^\"]|\\\\\\\")*?(?<!\\\\)\")".toRegex()
+val OBJECT_KEY_REGEX = "(?<!\\\\)(\".*?(?<!\\\\)\")\\s*:".toRegex()
+val STRING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(?<!\\\\)(\".*?(?<!\\\\)\")".toRegex()
 val NUMBER_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)\\b".toRegex()
 val BOOLEAN_TRUE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(true)\\b".toRegex()
 val BOOLEAN_FALSE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(false)\\b".toRegex()
