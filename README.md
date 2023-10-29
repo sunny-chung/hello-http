@@ -1,5 +1,7 @@
 # Hello HTTP
 
+[![License](https://img.shields.io/github/license/sunny-chung/hello-http)](LICENSE)
+
 This is a cross-platform desktop application for testing HTTP APIs. This is an alternative to Postman, Insomnia REST, etc.
 
 ![Screenshot 1](doc/Screenshot 2023-10-28 at 11.09.36 PM.png)
