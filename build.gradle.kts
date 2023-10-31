@@ -59,6 +59,7 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.2")
             }
         }
     }
