@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -47,8 +48,8 @@ private val TIMESTAMP_COLUMN_WIDTH_DP = 130.dp
 @Composable
 fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) {
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
-//    val scrollState = rememberLazyListState()
-    val scrollState = rememberScrollState()
+    val scrollState = rememberLazyListState()
+//    val scrollState = rememberScrollState()
 
     Box(modifier = modifier) {
         Box(
@@ -65,81 +66,104 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                 .background(LocalColor.current.line)
         )
 
+        var contentWidthInPx by remember { mutableStateOf<Int?>(null) }
+        val textStyle = LocalTextStyle.current.copy(
+            fontSize = LocalFont.current.bodyFontSize,
+            fontFamily = FontFamily.Monospace,
+        )
+        val density = LocalDensity.current
+        val fontFamilyResolver = LocalFontFamilyResolver.current
+
+        val numCharsInALine = if (contentWidthInPx != null) {
+            remember(contentWidthInPx) {
+                Paragraph(
+                    text = "0".repeat(1000),
+                    style = textStyle,
+                    constraints = Constraints(maxWidth = contentWidthInPx!!),
+                    density = density,
+                    fontFamilyResolver = fontFamilyResolver,
+                ).getLineEnd(0)
+            }
+        } else {
+            0
+        }
+        log.d { "numCharsInALine = $numCharsInALine" }
+
         SelectionContainer {
-//            LazyColumn(state = scrollState) {
-//                synchronized(exchange.exchanges) {
-//                    items(items = exchange.exchanges) {
-            Column(modifier = Modifier.verticalScroll(scrollState)) {
+            LazyColumn(state = scrollState) {
                 synchronized(exchange.exchanges) {
+//                    items(items = exchange.exchanges) {
+//            Column(modifier = Modifier.verticalScroll(scrollState)) {
+//                synchronized(exchange.exchanges) {
                         exchange.exchanges.forEachIndexed { index, it ->
-                            // Not using `height(IntrinsicSize.Min)` because it is buggy.
-                            Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                                DisableSelection {
-                                    TimestampColumn(
-                                        createTime = it.instant,
-                                        lastUpdateTime = it.lastUpdateInstant,
-                                        modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
-                                            .padding(end = 1.dp)
-                                    )
-                                    AppText(
-                                        text = when (it.direction) {
-                                            RawExchange.Direction.Outgoing -> "> "
-                                            RawExchange.Direction.Incoming -> "< "
-                                            else -> "= "
-                                        },
-                                        fontFamily = FontFamily.Monospace,
-                                        modifier = Modifier.padding(start = 4.dp)
-                                    )
-                                }
-                                var contentWidthInPx by remember { mutableStateOf<Int?>(null) }
-                                val text = it.detail ?: it.payload?.decodeToString()
-                                ?: it.payloadBuilder!!.toByteArray()
-                                    .decodeToString()
-                                // workaround this Compose bug:
-                                // https://github.com/JetBrains/compose-multiplatform/issues/2420
-                                // FIXME laggy scrolling
-                                val textStyle = LocalTextStyle.current.copy(
-                                    fontSize = LocalFont.current.bodyFontSize,
-                                    fontFamily = FontFamily.Monospace,
-                                )
-                                val density = LocalDensity.current
-                                val fontFamilyResolver = LocalFontFamilyResolver.current
-                                val numCharsInALine = if (contentWidthInPx != null) {
-                                    remember(contentWidthInPx) {
-                                        Paragraph(
-                                            text = "0".repeat(1000),
-                                            style = textStyle,
-                                            constraints = Constraints(maxWidth = contentWidthInPx!!),
-                                            density = density,
-                                            fontFamilyResolver = fontFamilyResolver,
-                                        ).getLineEnd(0)
-                                    }
-                                } else {
-                                    1
-                                }
-                                log.d { "numCharsInALine = $numCharsInALine" }
-                                val textSplitted = if (contentWidthInPx != null) {
-                                    remember(text, numCharsInALine) {
-                                        text.split('\n')
-                                            .flatMap {
-                                                it.chunked(numCharsInALine)
+                            val text = it.detail ?: it.payload?.decodeToString()
+                            ?: it.payloadBuilder!!.toByteArray()
+                                .decodeToString()
+                            
+                            // workaround this Compose bug:
+                            // https://github.com/JetBrains/compose-multiplatform/issues/2420
+                            val textsSplitted = if (contentWidthInPx != null && numCharsInALine > 0) {
+//                                remember(text, numCharsInALine) {
+                                    text.split('\n')
+                                        .flatMap {
+                                            it.chunked(numCharsInALine)
+                                        }
+                                        .withIndex()
+                                        .groupBy { it.index / 100 }
+                                        .map { it.value.joinToString("\n") { it.value } }
+//                                }
+                            } else {
+                                listOf(" ")
+                            }
+                            log.d { "max chars = " + textsSplitted.maxOf { it.length } }
+
+                            textsSplitted.forEachIndexed { textIndex, textChunk ->
+                                item {
+                                    // Not using `height(IntrinsicSize.Min)` because it is buggy.
+                                    Row(modifier = Modifier.padding(
+                                        start = 6.dp,
+                                        end = 6.dp,
+                                        top = if (textIndex == 0) 2.dp else 0.dp,
+                                        bottom = if (textIndex == textsSplitted.lastIndex) 2.dp else 0.dp
+                                    )) {
+                                        DisableSelection {
+                                            if (textIndex == 0) {
+                                                TimestampColumn(
+                                                    createTime = it.instant,
+                                                    lastUpdateTime = it.lastUpdateInstant,
+                                                    modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
+                                                        .padding(end = 1.dp)
+                                                )
+                                                AppText(
+                                                    text = when (it.direction) {
+                                                        RawExchange.Direction.Outgoing -> "> "
+                                                        RawExchange.Direction.Incoming -> "< "
+                                                        else -> "= "
+                                                    },
+                                                    fontFamily = FontFamily.Monospace,
+                                                    modifier = Modifier.padding(start = 4.dp)
+                                                )
+                                            } else {
+                                                Spacer(Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
+                                                    .padding(end = 1.dp))
+                                                AppText(
+                                                    text = "  ",
+                                                    fontFamily = FontFamily.Monospace,
+                                                    modifier = Modifier.padding(start = 4.dp)
+                                                )
                                             }
-                                    }
-                                } else {
-                                    listOf(" ")
-                                }
-                                log.d { "max chars = " + textSplitted.maxOf { it.length } }
-                                Column(modifier = Modifier.weight(1f).onGloballyPositioned {
-                                    contentWidthInPx = it.size.width
-                                }) {
-                                    textSplitted.forEach {
+                                        }
                                         AppText(
-                                            text = it,
-                                            fontFamily = FontFamily.Monospace
+                                            text = textChunk,
+                                            fontFamily = FontFamily.Monospace,
+                                            modifier = Modifier.weight(1f).onGloballyPositioned {
+                                                contentWidthInPx = it.size.width
+                                            },
                                         )
                                     }
                                 }
                             }
+
 //                        }
                     }
                 }
