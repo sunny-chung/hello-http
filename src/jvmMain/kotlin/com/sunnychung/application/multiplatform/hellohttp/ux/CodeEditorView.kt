@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextField
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -55,10 +56,10 @@ fun CodeEditorView(
 
     val themeColours = LocalColor.current
 
-    var textValue by remember { mutableStateOf(TextFieldValue(text = text)) }
-    if (textValue.text != text) {
-        textValue = textValue.copy(text = text)
-    }
+    // Replace "\r\n" by "\n" because to workaround the issue:
+    // https://github.com/JetBrains/compose-multiplatform/issues/3877
+    var textValue by remember(text) { mutableStateOf(TextFieldValue(text = text.replace("\r\n", "\n"))) }
+    log.d { "CodeEditorView recompose" }
 
     fun onPressEnterAddIndent() {
         val cursorPos = textValue.selection.min
@@ -66,6 +67,7 @@ fun CodeEditorView(
 
         log.d { "onPressEnterAddIndent" }
 
+        val text = textValue.text
         var lastLineStart = getLineStart(text, cursorPos)
         var spacesMatch = "^(\\s+)".toRegex().matchAt(text.substring(lastLineStart, cursorPos), 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
@@ -77,6 +79,7 @@ fun CodeEditorView(
     log.v { "cursor at ${textValue.selection}" }
     fun onPressTab(isShiftPressed: Boolean) {
         val selection = textValue.selection
+        val text = textValue.text
         if (selection.length == 0) {
             val cursorPos = selection.min
             val newSpaces = " ".repeat(4)
