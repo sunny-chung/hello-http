@@ -54,9 +54,17 @@ fun main() {
             state = rememberWindowState(width = 1024.dp, height = 560.dp)
         ) {
             with(LocalDensity.current) {
-                window.minimumSize = Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                window.minimumSize = if (isMacOs()) {
+                    Dimension(800, 450)
+                } else {
+                    Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                }
             }
             AppView()
         }
     }
+}
+
+fun isMacOs(): Boolean {
+    return System.getProperty("os.name") == "Mac OS X"
 }
