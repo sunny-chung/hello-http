@@ -75,8 +75,6 @@ fun getGitCommitHash(): String {
 }
 
 tasks.create("createBuildProperties") {
-    dependsOn("jvmProcessResources")
-
     doFirst {
         val file = File("$buildDir/resources/build.properties")
         file.parentFile.mkdirs()
@@ -87,6 +85,10 @@ tasks.create("createBuildProperties") {
             p.store(writer, null)
         }
     }
+}
+
+tasks.getByName("jvmProcessResources") {
+    dependsOn("createBuildProperties")
 }
 
 tasks.getByName("jvmMainClasses") {
