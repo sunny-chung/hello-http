@@ -13,6 +13,7 @@ import com.sunnychung.application.multiplatform.hellohttp.repository.RequestColl
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.UserPreferenceRepository
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.DialogViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ResponseViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.UserPreferenceViewModel
 
 object AppContext {
@@ -33,4 +34,5 @@ object AppContext {
     val DialogViewModel = DialogViewModel()
 //    val EditRequestNameViewModel = EditRequestNameViewModel()
     val UserPreferenceViewModel = UserPreferenceViewModel()
+    val ResponseViewModel = ResponseViewModel()
 }

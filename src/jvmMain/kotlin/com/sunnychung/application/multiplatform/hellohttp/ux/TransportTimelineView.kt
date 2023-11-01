@@ -3,7 +3,6 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,13 +10,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,6 +46,8 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
     val scrollState = rememberLazyListState()
 //    val scrollState = rememberScrollState()
+
+    log.d { "TransportTimelineView recompose" }
 
     Box(modifier = modifier) {
         Box(
@@ -96,10 +94,11 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
 //            Column(modifier = Modifier.verticalScroll(scrollState)) {
 //                synchronized(exchange.exchanges) {
                         exchange.exchanges.forEachIndexed { index, it ->
-                            val text = it.detail ?: it.payload?.decodeToString()
-                            ?: it.payloadBuilder!!.toByteArray()
-                                .decodeToString()
-                            
+                            var text = it.detail ?: it.payload?.decodeToString()
+                            ?: it.payloadBuilder?.toByteArray()
+                                ?.decodeToString() ?: "<Payload Lost>"
+//                            text = text.substring(0 .. minOf(1000, text.length - 1)) + " (${text.length} length)"
+
                             // workaround this Compose bug:
                             // https://github.com/JetBrains/compose-multiplatform/issues/2420
                             val textsSplitted = if (contentWidthInPx != null && numCharsInALine > 0) {
@@ -118,7 +117,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                             log.d { "max chars = " + textsSplitted.maxOf { it.length } }
 
                             textsSplitted.forEachIndexed { textIndex, textChunk ->
-                                item {
+                                item(key = "$index-$textIndex-${textChunk.hashCode()}") {
                                     // Not using `height(IntrinsicSize.Min)` because it is buggy.
                                     Row(modifier = Modifier.padding(
                                         start = 6.dp,

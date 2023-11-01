@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +25,7 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -40,10 +42,16 @@ fun ResponseViewerView(response: UserResponse) {
 
     var selectedTabIndex by remember { mutableStateOf(0) }
 
+    log.d { "ResponseViewerView recompose" }
+
+    val responseViewModel = AppContext.ResponseViewModel
+    responseViewModel.setEnabled(response.isCommunicating)
+    val updateTime by responseViewModel.subscribe()
+
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             StatusLabel(response = response)
-            DurationLabel(response = response)
+            DurationLabel(response = response, updateTime = updateTime)
             ResponseSizeLabel(response = response)
         }
 
@@ -71,7 +79,7 @@ fun ResponseViewerView(response: UserResponse) {
                 }
 
                 ResponseTab.Raw ->
-                    TransportTimelineView(exchange = response.rawExchange, modifier = Modifier.fillMaxSize())
+                    TransportTimelineView(exchange = response.rawExchange.copy(), modifier = Modifier.fillMaxSize())
             }
         }
     }
@@ -162,10 +170,10 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse) {
 }
 
 @Composable
-fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse) {
+fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateTime: KInstant) {
     val startAt = response.startAt ?: return
-    val endAt = response.endAt ?: return
-    val duration = endAt - startAt
+    val timerAt = response.endAt ?: KInstant.now()
+    val duration = timerAt - startAt
     val text = if (duration >= KDuration.of(10, KFixedTimeUnit.Second)) {
         "${"%.1f".format(duration.toMilliseconds() / 1000.0)} s"
     } else {
