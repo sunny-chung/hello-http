@@ -1,0 +1,19 @@
+name: Hello HTTP Github CI/CD
+on:
+  push:
+    tags:
+      - v**
+jobs:
+  build-ubuntu:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+      - run: ./gradlew packageDistributionForCurrentOS
+      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "/Hello HTTP" && mv "Hello HTTP.tar.gz" "../../../../../HelloHTTP-ubuntu-${{ github.ref.name }}.tar.gz" && popd
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: "HelloHTTP-ubuntu-${{ github.ref.name }}.tar.gz"
