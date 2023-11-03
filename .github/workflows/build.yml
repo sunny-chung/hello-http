@@ -12,8 +12,8 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '17'
-      - run: ./gradlew packageDistributionForCurrentOS
-      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "/Hello HTTP" && mv "Hello HTTP.tar.gz" "../../../../../HelloHTTP-ubuntu-${{ github.ref.name }}.tar.gz" && popd
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
+      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref.name }}-ubuntu-${{ runner.arch }}.tar.gz" && popd
       - uses: softprops/action-gh-release@v1
         with:
-          files: "HelloHTTP-ubuntu-${{ github.ref.name }}.tar.gz"
+          files: "HelloHTTP-${{ github.ref.name }}-ubuntu-${{ runner.arch }}.tar.gz"
