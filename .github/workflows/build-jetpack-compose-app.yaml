@@ -1,0 +1,12 @@
+name: Build Jetpack Compose App Distribution
+on:
+  workflow_call:
+jobs:
+  build-jetpack-compose-app:
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
