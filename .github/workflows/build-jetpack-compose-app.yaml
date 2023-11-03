@@ -3,6 +3,7 @@ on:
   workflow_call:
 jobs:
   build-jetpack-compose-app:
+    runs-on: ${{ vars.RUNNER }}
     steps:
       - uses: actions/setup-java@v3
         with:
