@@ -79,7 +79,7 @@ jobs:
           java-version: '17'
       - run: pwd
       - run: git config --global --add safe.directory "$(pwd)"
-      - run: ./gradlew createDistributable packageDistributionForCurrentOS
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS || (cat ./build/compose/logs/createDistributable/* && false)
       - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz" && popd
       - uses: softprops/action-gh-release@v1
         with:
@@ -94,9 +94,9 @@ jobs:
           - arch: armv7
             distro: bullseye
             distro_name: debian
-          - arch: armv7
-            distro: fedora_latest
-            distro_name: fedora
+#          - arch: armv7
+#            distro: fedora_latest
+#            distro_name: fedora
           - arch: aarch64
             distro: bullseye
             distro_name: debian
@@ -107,7 +107,6 @@ jobs:
             distro: fedora_latest
             distro_name: fedora
     steps:
-      - uses: actions/checkout@v4
       - uses: uraimo/run-on-arch-action@v2
         with:
           arch: ${{ matrix.arch }}
@@ -119,8 +118,6 @@ jobs:
           env: |
             artifact_name: HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ matrix.arch }}.tar.gz
           install: |
-            mkdir -p /wd
-            cd /wd
             case "${{ matrix.distro }}" in
               ubuntu*|bullseye)
                 apt-get update -q
@@ -132,6 +129,7 @@ jobs:
             esac
           run: |
             uname -a
+            git clone https://github.com/${{ github.repository }}.git
             ./gradlew createDistributable packageDistributionForCurrentOS
             pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../${artifact_name}" && popd
       - uses: softprops/action-gh-release@v1
