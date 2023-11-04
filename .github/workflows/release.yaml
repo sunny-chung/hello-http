@@ -80,7 +80,9 @@ jobs:
       - run: pwd
       - run: git config --global --add safe.directory "$(pwd)"
       - run: ./gradlew createDistributable packageDistributionForCurrentOS || true
-      - run: cat ./build/compose/logs/createDistributable/*
+      - run: ls -al
+      - run: cat ./build/compose/logs/createDistributable/*out.txt
+      - run: cat ./build/compose/logs/createDistributable/*err.txt
 #      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz" && popd
 #      - uses: softprops/action-gh-release@v1
 #        with:
@@ -92,9 +94,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - arch: armv7
-            distro: bullseye
-            distro_name: debian
+#          - arch: armv7
+#            distro: bullseye
+#            distro_name: debian
 #          - arch: armv7
 #            distro: fedora_latest
 #            distro_name: fedora
@@ -122,7 +124,7 @@ jobs:
             case "${{ matrix.distro }}" in
               ubuntu*|bullseye)
                 apt-get update -q
-                apt-get install -q -y git binutils openjdk-17-jdk
+                apt-get install -q -y git binutils openjdk-17-jdk ca-certificates
                 ;;
               fedora*)
                 dnf -y install which git java-17-openjdk-devel
@@ -130,7 +132,7 @@ jobs:
             esac
           run: |
             uname -a
-            git clone https://github.com/${{ github.repository }}.git project
+            git clone --quiet https://github.com/${{ github.repository }}.git project
             cd project
             sed -i 's/distributionBase=GRADLE_USER_HOME/distributionBase=PROJECT/' ./gradle/wrapper/gradle-wrapper.properties
             ./gradlew createDistributable packageDistributionForCurrentOS
