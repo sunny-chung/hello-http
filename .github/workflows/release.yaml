@@ -103,9 +103,9 @@ jobs:
           - arch: aarch64
             distro: bullseye
             distro_name: debian
-          - arch: aarch64
-            distro: ubuntu20.04
-            distro_name: ubuntu
+#          - arch: aarch64
+#            distro: ubuntu20.04
+#            distro_name: ubuntu
           - arch: aarch64
             distro: fedora_latest
             distro_name: fedora
