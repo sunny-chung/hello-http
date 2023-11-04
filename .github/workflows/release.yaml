@@ -77,6 +77,8 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '17'
+      - run: pwd
+      - run: git config --global --add safe.directory "$(pwd)"
       - run: ./gradlew createDistributable packageDistributionForCurrentOS
       - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz" && popd
       - uses: softprops/action-gh-release@v1
@@ -125,7 +127,7 @@ jobs:
                 apt-get install -q -y git binutils openjdk-17-jdk
                 ;;
               fedora*)
-                dnf -y update
+#                dnf -y update
                 dnf -y install which git java-17-openjdk-devel
                 ;;
             esac
