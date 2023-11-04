@@ -79,7 +79,8 @@ jobs:
           java-version: '17'
       - run: pwd
       - run: git config --global --add safe.directory "$(pwd)"
-      - run: ./gradlew createDistributable packageDistributionForCurrentOS || (cat ./build/compose/logs/createDistributable/* && false)
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS || true
+      - run: cat ./build/compose/logs/createDistributable/* && false
       - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz" && popd
       - uses: softprops/action-gh-release@v1
         with:
@@ -129,7 +130,8 @@ jobs:
             esac
           run: |
             uname -a
-            git clone https://github.com/${{ github.repository }}.git
+            git clone https://github.com/${{ github.repository }}.git project
+            cd project
             ./gradlew createDistributable packageDistributionForCurrentOS
             pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../${artifact_name}" && popd
       - uses: softprops/action-gh-release@v1
