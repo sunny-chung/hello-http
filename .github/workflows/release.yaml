@@ -80,12 +80,12 @@ jobs:
       - run: pwd
       - run: git config --global --add safe.directory "$(pwd)"
       - run: ./gradlew createDistributable packageDistributionForCurrentOS || true
-      - run: cat ./build/compose/logs/createDistributable/* && false
-      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz" && popd
-      - uses: softprops/action-gh-release@v1
-        with:
-          files: "HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz"
-          draft: true
+      - run: cat ./build/compose/logs/createDistributable/*
+#      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz" && popd
+#      - uses: softprops/action-gh-release@v1
+#        with:
+#          files: "HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz"
+#          draft: true
   build-other-linux-other-archs:
     name: Build on ${{ matrix.distro }} ${{ matrix.arch }}
     runs-on: ubuntu-22.04
@@ -132,6 +132,7 @@ jobs:
             uname -a
             git clone https://github.com/${{ github.repository }}.git project
             cd project
+            sed -i 's/distributionBase=GRADLE_USER_HOME/distributionBase=PROJECT/' ./gradle/wrapper/gradle-wrapper.properties
             ./gradlew createDistributable packageDistributionForCurrentOS
             pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../${artifact_name}" && popd
       - uses: softprops/action-gh-release@v1
