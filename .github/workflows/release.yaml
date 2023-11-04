@@ -79,8 +79,9 @@ jobs:
           java-version: '17'
       - run: pwd
       - run: git config --global --add safe.directory "$(pwd)"
+      - run: sed -i 's/©/(c)/' ./build.gradle.kts
       - run: ./gradlew createDistributable packageDistributionForCurrentOS || true
-      - run: ls -al
+      - run: ls -al ./build/compose/logs/createDistributable/
       - run: cat ./build/compose/logs/createDistributable/*out.txt
       - run: cat ./build/compose/logs/createDistributable/*err.txt
 #      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-${{ matrix.distro_name }}-${{ runner.arch }}.tar.gz" && popd
@@ -100,9 +101,9 @@ jobs:
 #          - arch: armv7
 #            distro: fedora_latest
 #            distro_name: fedora
-          - arch: aarch64
-            distro: bullseye
-            distro_name: debian
+#          - arch: aarch64
+#            distro: bullseye
+#            distro_name: debian
 #          - arch: aarch64
 #            distro: ubuntu20.04
 #            distro_name: ubuntu
