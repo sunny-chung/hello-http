@@ -127,7 +127,6 @@ jobs:
                 apt-get install -q -y git binutils openjdk-17-jdk
                 ;;
               fedora*)
-#                dnf -y update
                 dnf -y install which git java-17-openjdk-devel
                 ;;
             esac
