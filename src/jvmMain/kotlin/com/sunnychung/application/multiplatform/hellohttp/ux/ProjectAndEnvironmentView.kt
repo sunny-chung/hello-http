@@ -61,6 +61,15 @@ fun ProjectAndEnvironmentViewV2(
     var dialogTextFieldValue by remember { mutableStateOf("") }
     var dialogIsCreate by remember { mutableStateOf<Boolean>(true) }
 
+    if (selectedProject == null && projects.size == 1) {
+        selectedProject = projects.first()
+        expandedSection = ExpandedSection.Subproject
+    }
+    if (selectedSubproject == null && selectedProject != null && selectedProject!!.subprojects.size == 1) {
+        onSelectSubproject(selectedProject!!.subprojects.first())
+        expandedSection = ExpandedSection.None
+    }
+
     MainWindowDialog(
         key = "ProjectNameAndSubprojectName",
         isEnabled = showDialogType in setOf(EditDialogType.Project, EditDialogType.Subproject),
