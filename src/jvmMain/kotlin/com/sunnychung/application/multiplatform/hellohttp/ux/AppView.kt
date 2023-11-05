@@ -172,7 +172,7 @@ fun AppContentView() {
     log.d { "callDataUpdates $activeCallId ${callDataUpdates?.event}; status = ${response?.isCommunicating}" }
 
     fun loadRequestsForSubproject(subproject: Subproject) {
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Main).launch {
             val r = requestCollectionRepository.readOrCreate(RequestsDI(subprojectId = subproject.id)) { id ->
                 RequestCollection(id = id, requests = mutableListOf())
             }
