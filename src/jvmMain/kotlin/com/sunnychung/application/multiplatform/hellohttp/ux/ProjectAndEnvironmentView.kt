@@ -239,86 +239,95 @@ fun ProjectAndEnvironmentViewV2(
             }
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AppText(text = "Subproject", modifier = Modifier.weight(1f))
-            AppImageButton(
-                resource = "add.svg",
-                size = 24.dp,
-                onClick = {
-                    showDialogType = EditDialogType.Subproject
-                    dialogTextFieldValue = ""
-                    dialogIsCreate = true
-                },
-                enabled = selectedProject != null
-            )
-        }
-        Column(modifier = Modifier.padding(start = 8.dp)) {
-            if (expandedSection == ExpandedSection.Subproject) {
-                val subprojects = selectedProject?.subprojects ?: emptyList()
-                if (subprojects.isEmpty()) {
-                    AppText(
-                        text = "Click to Create a Subproject",
-                        fontSize = LocalFont.current.createLabelSize,
-                        modifier = Modifier
-                            .clickable {
-                                showDialogType = EditDialogType.Subproject
-                                dialogTextFieldValue = ""
-                                dialogIsCreate = true
+        if (selectedProject != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppText(text = "Subproject", modifier = Modifier.weight(1f))
+                AppImageButton(
+                    resource = "add.svg",
+                    size = 24.dp,
+                    onClick = {
+                        showDialogType = EditDialogType.Subproject
+                        dialogTextFieldValue = ""
+                        dialogIsCreate = true
+                    },
+                    enabled = selectedProject != null
+                )
+            }
+            Column(modifier = Modifier.padding(start = 8.dp)) {
+                if (expandedSection == ExpandedSection.Subproject) {
+                    val subprojects = selectedProject?.subprojects ?: emptyList()
+                    if (subprojects.isEmpty()) {
+                        AppText(
+                            text = "Click to Create a Subproject",
+                            fontSize = LocalFont.current.createLabelSize,
+                            modifier = Modifier
+                                .clickable {
+                                    showDialogType = EditDialogType.Subproject
+                                    dialogTextFieldValue = ""
+                                    dialogIsCreate = true
+                                }
+                        )
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(items = subprojects) { it ->
+                                AppText(
+                                    text = it.name,
+                                    hasHoverHighlight = true,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onSelectSubproject(it); /*selectedSubproject = it;*/
+                                            onSelectEnvironment(null)
+                                            expandedSection = ExpandedSection.None
+                                        }
+                                )
                             }
-                    )
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        items(items = subprojects) { it ->
-                            AppText(
-                                text = it.name,
-                                hasHoverHighlight = true,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onSelectSubproject(it); /*selectedSubproject = it;*/
-                                        onSelectEnvironment(null)
-                                        expandedSection = ExpandedSection.None
-                                    }
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    DropDownView(
-                        modifier = Modifier.weight(1f),
-                        selectedItem = selectedSubproject,
-                        items = selectedProject?.subprojects ?: emptyList(),
-                        isLabelFillMaxWidth = true,
-                        onClickItem = {
-                            onSelectSubproject(it); /*selectedSubproject = it;*/
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        DropDownView(
+                            modifier = Modifier.weight(1f),
+                            selectedItem = selectedSubproject,
+                            items = selectedProject?.subprojects ?: emptyList(),
+                            isLabelFillMaxWidth = true,
+                            onClickItem = {
+                                onSelectSubproject(it); /*selectedSubproject = it;*/
+                                onSelectEnvironment(null)
+                                true
+                            }
+                        )
+                        AppImageButton(
+                            resource = "edit.svg",
+                            size = 16.dp,
+                            onClick = {
+                                showDialogType = EditDialogType.Subproject
+                                dialogTextFieldValue = selectedSubproject!!.name
+                                dialogIsCreate = false
+                            }
+                        )
+                        AppDeleteButton {
+                            onDeleteSubproject(selectedSubproject!!)
+                            val anotherSubproject =
+                                selectedProject!!.subprojects.firstOrNull { it.id != selectedSubproject.id }
+                            if (anotherSubproject != null) {
+                                onSelectSubproject(anotherSubproject)
+                            } else {
+                                onSelectSubproject(null)
+                                expandedSection = ExpandedSection.Subproject
+                            }
                             onSelectEnvironment(null)
-                            true
                         }
-                    )
-                    AppImageButton(
-                        resource = "edit.svg",
-                        size = 16.dp,
-                        onClick = {
-                            showDialogType = EditDialogType.Subproject
-                            dialogTextFieldValue = selectedSubproject!!.name
-                            dialogIsCreate = false
-                        }
-                    )
-                    AppDeleteButton {
-                        onDeleteSubproject(selectedSubproject!!)
-                        val anotherSubproject = selectedProject!!.subprojects.firstOrNull { it.id != selectedSubproject.id }
-                        if (anotherSubproject != null) {
-                            onSelectSubproject(anotherSubproject)
-                        } else {
-                            onSelectSubproject(null)
-                            expandedSection = ExpandedSection.Subproject
-                        }
-                        onSelectEnvironment(null)
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
-                Spacer(Modifier.height(8.dp))
             }
         }
 
