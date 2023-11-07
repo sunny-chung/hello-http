@@ -43,6 +43,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
+import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
@@ -400,8 +401,10 @@ fun AppContentView() {
                                     },
                                     onClickSend = {
                                         val (networkRequest, error) = try {
+                                            // original purpose is to catch error thrown during construction of OkHttpRequest
+                                            // after refactor, this purpose may not be valid to put here
                                             Pair(
-                                                requestNonNull.toOkHttpRequest(
+                                                requestNonNull.toHttpRequest(
                                                     exampleId = selectedRequestExampleId!!,
                                                     environment = selectedEnvironment
                                                 ),

@@ -47,12 +47,12 @@ fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environmen
             )
             else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body.expandStringBody() else baseExample.body?.expandStringBody()
         },
+        contentType = selectedExample.contentType,
     )
 }
 
-fun UserRequestTemplate.toOkHttpRequest(exampleId: String, environment: Environment?): Request {
-    val req = toHttpRequest(exampleId, environment)
-    val selectedExample = examples.first { it.id == exampleId }
+fun HttpRequest.toOkHttpRequest(): Request {
+    val req = this
 
     var b = Request.Builder()
         .url(req.url.toHttpUrl()
@@ -66,7 +66,7 @@ fun UserRequestTemplate.toOkHttpRequest(exampleId: String, environment: Environm
             .build())
         .method(
             method = method,
-            body = req.body?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType())
+            body = req.body?.toOkHttpBody(contentType.headerValue?.toMediaType())
         )
 
     req.headers
