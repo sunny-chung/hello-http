@@ -3,17 +3,18 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
 import java.io.FilterInputStream
 import java.io.InputStream
 
-class InspectInputStream(val stream: InputStream, val channel: Channel<Pair<KInstant, ByteArray>>) : FilterInputStream(stream) {
+class InspectInputStream(val stream: InputStream, val channel: MutableSharedFlow<Pair<KInstant, ByteArray>>) : FilterInputStream(stream) {
     override fun read(): Int {
         synchronized(this) {
             log.d { "read1" }
             val b = super.read()
             runBlocking {
-                channel.send(KInstant.now() to byteArrayOf(b.toByte()))
+                channel.emit(KInstant.now() to byteArrayOf(b.toByte()))
             }
             return b
         }
@@ -24,7 +25,7 @@ class InspectInputStream(val stream: InputStream, val channel: Channel<Pair<KIns
             log.d { "read2" }
             val length = super.read(b)
             runBlocking {
-                channel.send(KInstant.now() to b.copyOfRange(0, length))
+                channel.emit(KInstant.now() to b.copyOfRange(0, length))
             }
             return length
         }
@@ -36,7 +37,7 @@ class InspectInputStream(val stream: InputStream, val channel: Channel<Pair<KIns
             val length = super.read(b, off, len)
             if (length > 0) {
                 runBlocking {
-                    channel.send(KInstant.now() to b.copyOfRange(off, off + length))
+                    channel.emit(KInstant.now() to b.copyOfRange(off, off + length))
                 }
             }
             return length

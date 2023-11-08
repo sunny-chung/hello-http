@@ -77,23 +77,18 @@ private val inputStreamSourceConstructor = Class.forName("okio.InputStreamSource
     isAccessible = true
 }
 
-class OkHttpNetworkManager : NetworkManager {
-
-    private val eventSharedFlow = MutableSharedFlow<NetworkEvent>()
-
-    /**
-     * MutableSharedFlow#collectAsState is buggy in Jetpack Compose
-     * Copy to MutableStateFlow to make UI updates
-     */
-    private val eventStateFlow = MutableStateFlow<NetworkEvent?>(null)
-
-    private val callData = ConcurrentHashMap<String, CallData>()
-
+class OkHttpNetworkManager : AbstractNetworkManager() {
     init {
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    fun buildHttpClient(callId: String, sslConfig: SslConfig, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>, responseSize: AtomicInteger): OkHttpClient {
+    fun buildHttpClient(
+        callId: String,
+        sslConfig: SslConfig,
+        outgoingBytesChannel: MutableSharedFlow<Pair<KInstant, ByteArray>>,
+        incomingBytesChannel: MutableSharedFlow<Pair<KInstant, ByteArray>>,
+        responseSize: AtomicInteger
+    ): OkHttpClient {
 
         fun logNetworkEvent(call: Call, event: String) {
             val instant = KInstant.now()
@@ -253,125 +248,33 @@ class OkHttpNetworkManager : NetworkManager {
             .build()
     }
 
-    override fun getCallData(callId: String) = callData[callId]
-
     override fun sendRequest(request: HttpRequest, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, sslConfig: SslConfig): CallData {
         val okHttpRequest = request.toOkHttpRequest()
 
-        val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
-        val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
-        val optionalResponseSize = AtomicInteger()
-
-        val callId = uuidString()
+        val data = createCallData(
+            requestBodySize = okHttpRequest.body?.contentLength()?.toInt(),
+            requestExampleId = requestExampleId,
+            requestId = requestId,
+            subprojectId = subprojectId,
+        )
+        val callId = data.id
 
         val httpClient = buildHttpClient(
             callId = callId,
             sslConfig = sslConfig,
-            outgoingBytesChannel = outgoingBytesChannel,
-            incomingBytesChannel = incomingBytesChannel,
-            responseSize = optionalResponseSize
+            outgoingBytesChannel = data.outgoingBytes as MutableSharedFlow<Pair<KInstant, ByteArray>>,
+            incomingBytesChannel = data.incomingBytes as MutableSharedFlow<Pair<KInstant, ByteArray>>,
+            responseSize = data.optionalResponseSize
         )
 
         val call = NetworkCall(
             id = callId,
             call = httpClient.newCall(okHttpRequest),
-            outgoingBytesChannel = outgoingBytesChannel,
-            incomingBytesChannel = incomingBytesChannel
         )
-        val data = CallData(
-            id = call.id,
-            subprojectId = subprojectId,
-            events = eventSharedFlow.asSharedFlow()
-                .filter { it.callId == call.id }
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
-            eventsStateFlow = eventStateFlow,
-            outgoingBytes = outgoingBytesChannel.receiveAsFlow()
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
-            incomingBytes = incomingBytesChannel.receiveAsFlow()
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
-            optionalResponseSize = optionalResponseSize,
-            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
-        )
-        callData[call.id] = data
-
-        data.events
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    if (true || it.event == "Response completed") { // deadline fighter
-                        data.response.rawExchange.exchanges.forEach {
-                                it.consumePayloadBuilder()
-                            }
-                        } else { // lazy
-                            val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                            lastExchange?.consumePayloadBuilder()
-                        }
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Unspecified,
-                            detail = it.event
-                    )
-                }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
-
-        data.outgoingBytes
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.first,
-                            direction = RawExchange.Direction.Outgoing,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(okHttpRequest.body?.contentLength()?.toInt() ?: 0, it.second.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.second)
-                        }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.second)
-                        lastExchange.lastUpdateInstant = it.first
-                    }
-                    log.v { it.second.decodeToString() }
-                }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
-
-        data.incomingBytes
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.first,
-                            direction = RawExchange.Direction.Incoming,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.second.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.second)
-                        }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.second)
-                        lastExchange.lastUpdateInstant = it.first
-                    }
-                    log.v { it.second.decodeToString() }
-                }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
 
         CoroutineScope(Dispatchers.IO).launch {
             val callData = callData[call.id]!!
-            withTimeout(3000) {
-                while (!callData.isPrepared) {
-                    log.d { "Wait for preparation" }
-                    delay(100)
-                    yield()
-                }
-            }
-            // withTimeout and while(...) guarantee callData is prepared
-            assert(callData.isPrepared)
+            callData.waitForPreparation()
             log.d { "Call ${call.id} is prepared" }
 
             val out = callData.response
@@ -396,14 +299,7 @@ class OkHttpNetworkManager : NetworkManager {
             }
 
             if (!out.isError && postFlightAction != null) {
-                eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Executing Post Flight Actions"))
-                try {
-                    postFlightAction(out)
-                    eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Post Flight Actions Completed"))
-                } catch (e: Throwable) {
-                    out.postFlightErrorMessage = e.message
-                    eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Post Flight Actions Stopped with Error"))
-                }
+                executePostFlightAction(callId, out, postFlightAction)
             }
 
             eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed"))
@@ -415,8 +311,6 @@ class OkHttpNetworkManager : NetworkManager {
 internal class NetworkCall(
     val id: String,
     private val call: Call,
-    val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>,
-    val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>,
 ) : Call by call {
 
     suspend fun await(): Response {
