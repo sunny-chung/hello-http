@@ -6,4 +6,5 @@ data class HttpRequest(
     val headers: List<Pair<String, String>> = mutableListOf(),
     val queryParameters: List<Pair<String, String>> = mutableListOf(),
     val body: UserRequestBody? = null,
+    val contentType: ContentType,
 )

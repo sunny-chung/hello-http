@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -105,7 +106,11 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
 //                                remember(text, numCharsInALine) {
                                     text.split('\n')
                                         .flatMap {
-                                            it.chunked(numCharsInALine)
+                                            if (it.isNotEmpty()) {
+                                                it.chunked(numCharsInALine)
+                                            } else {
+                                                listOf("")
+                                            }
                                         }
                                         .withIndex()
                                         .groupBy { it.index / 100 }

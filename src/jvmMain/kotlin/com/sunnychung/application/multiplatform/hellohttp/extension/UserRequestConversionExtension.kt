@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.extension
 
+import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -7,12 +8,26 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import org.apache.hc.client5.http.entity.UrlEncodedFormEntity
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
+import org.apache.hc.core5.http.NameValuePair
+import org.apache.hc.core5.http.io.entity.FileEntity
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.apache.hc.core5.http.message.BasicClassicHttpRequest
+import org.apache.hc.core5.http.message.BasicNameValuePair
+import org.apache.hc.core5.http.nio.AsyncRequestProducer
+import org.apache.hc.core5.http.nio.entity.AsyncEntityProducers
+import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder
+import org.apache.hc.core5.http.support.BasicRequestBuilder
+import org.apache.hc.core5.net.URIBuilder
+import java.io.File
 import java.net.URLEncoder
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
 fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environment?, resolveVariableMode: UserRequestTemplate.ResolveVariableMode = UserRequestTemplate.ExpandByEnvironment): HttpRequest = withScope(exampleId, environment, resolveVariableMode) {
@@ -47,12 +62,12 @@ fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environmen
             )
             else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body.expandStringBody() else baseExample.body?.expandStringBody()
         },
+        contentType = selectedExample.contentType,
     )
 }
 
-fun UserRequestTemplate.toOkHttpRequest(exampleId: String, environment: Environment?): Request {
-    val req = toHttpRequest(exampleId, environment)
-    val selectedExample = examples.first { it.id == exampleId }
+fun HttpRequest.toOkHttpRequest(): Request {
+    val req = this
 
     var b = Request.Builder()
         .url(req.url.toHttpUrl()
@@ -66,13 +81,73 @@ fun UserRequestTemplate.toOkHttpRequest(exampleId: String, environment: Environm
             .build())
         .method(
             method = method,
-            body = req.body?.toOkHttpBody(selectedExample.contentType.headerValue?.toMediaType())
+            body = req.body?.toOkHttpBody(contentType.headerValue?.toMediaType())
         )
 
     req.headers
         .forEach { b = b.addHeader(it.first, it.second) }
 
     return b.build()
+}
+
+fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
+//    val b = BasicClassicHttpRequest(
+//        method,
+//        URIBuilder(url)
+//            .run {
+//                var b = this
+//                queryParameters
+//                    .forEach { b = b.addParameter(it.first, it.second) }
+//                b
+//            }
+//            .build()
+//    )
+    val b = AsyncRequestBuilder
+        .create(method)
+        .setUri(URIBuilder(url)
+            .run {
+                var b = this
+                queryParameters
+                    .forEach { b = b.addParameter(it.first, it.second) }
+                b
+            }
+            .build())
+    val entity = when (body) {
+        is FileBody -> body.filePath?.let { AsyncEntityProducers.create(File(it), org.apache.hc.core5.http.ContentType.DEFAULT_BINARY) }
+
+        is FormUrlEncodedBody -> AsyncEntityProducers.createUrlEncoded(
+            body.value.map { BasicNameValuePair(it.key, it.value) },
+            Charsets.UTF_8
+        )
+
+        is MultipartBody -> {
+            val entity = MultipartEntityBuilder.create()
+                .run {
+                    var b = this
+                    body.value.forEach {
+                        val part = when (it.valueType) {
+                            FieldValueType.String -> org.apache.hc.client5.http.entity.mime.StringBody(it.value, org.apache.hc.core5.http.ContentType.MULTIPART_FORM_DATA)
+                            FieldValueType.File -> org.apache.hc.client5.http.entity.mime.FileBody(File(it.value))
+                        }
+                        b = b.addPart(it.key, part)
+                    }
+                    b
+                }
+                .build()
+            // TODO memory bomb!
+            AsyncEntityProducers.create(
+                entity.content.readAllBytes(),
+                org.apache.hc.core5.http.ContentType.parse(entity.contentType),
+                *(entity.trailers?.get()?.toTypedArray() ?: emptyArray())
+            )
+        }
+        is StringBody -> AsyncEntityProducers.create(body.value)
+        null -> null
+    }
+    if (entity != null) {
+        b.entity = entity
+    }
+    return Pair(b.build(), entity?.contentLength ?: 0L)
 }
 
 fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?): String {

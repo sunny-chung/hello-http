@@ -43,6 +43,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
+import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
@@ -399,20 +400,11 @@ fun AppContentView() {
                                         updateResponseView()
                                     },
                                     onClickSend = {
-                                        val (networkRequest, error) = try {
-                                            Pair(
-                                                requestNonNull.toOkHttpRequest(
-                                                    exampleId = selectedRequestExampleId!!,
-                                                    environment = selectedEnvironment
-                                                ),
-                                                null
+                                        try {
+                                            val networkRequest = requestNonNull.toHttpRequest(
+                                                exampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment
                                             )
-                                        } catch (e: Throwable) {
-                                            log.w(e) { "Cannot convert request" }
-                                            Pair(null, e)
-                                        }
-
-                                        if (networkRequest != null) {
                                             val (postFlightHeaderVars, postFlightBodyVars) = requestNonNull.getPostFlightVariables(
                                                 exampleId = selectedRequestExampleId!!,
                                                 environment = selectedEnvironment
@@ -490,14 +482,14 @@ fun AppContentView() {
                                             activeCallId = callData.id
                                             persistResponseManager.registerCall(callData.id)
                                             callData.isPrepared = true
-                                        } else {
+                                        } catch (error: Throwable) {
                                             activeCallId = null
                                             response = UserResponse(
                                                 id = uuidString(),
                                                 requestExampleId = selectedRequestExampleId!!,
                                                 requestId = requestNonNull.id,
                                                 isError = true,
-                                                errorMessage = error?.message
+                                                errorMessage = error.message
                                             )
                                         }
                                     },
