@@ -400,22 +400,11 @@ fun AppContentView() {
                                         updateResponseView()
                                     },
                                     onClickSend = {
-                                        val (networkRequest, error) = try {
-                                            // original purpose is to catch error thrown during construction of OkHttpRequest
-                                            // after refactor, this purpose may not be valid to put here
-                                            Pair(
-                                                requestNonNull.toHttpRequest(
-                                                    exampleId = selectedRequestExampleId!!,
-                                                    environment = selectedEnvironment
-                                                ),
-                                                null
+                                        try {
+                                            val networkRequest = requestNonNull.toHttpRequest(
+                                                exampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment
                                             )
-                                        } catch (e: Throwable) {
-                                            log.w(e) { "Cannot convert request" }
-                                            Pair(null, e)
-                                        }
-
-                                        if (networkRequest != null) {
                                             val (postFlightHeaderVars, postFlightBodyVars) = requestNonNull.getPostFlightVariables(
                                                 exampleId = selectedRequestExampleId!!,
                                                 environment = selectedEnvironment
@@ -493,14 +482,14 @@ fun AppContentView() {
                                             activeCallId = callData.id
                                             persistResponseManager.registerCall(callData.id)
                                             callData.isPrepared = true
-                                        } else {
+                                        } catch (error: Throwable) {
                                             activeCallId = null
                                             response = UserResponse(
                                                 id = uuidString(),
                                                 requestExampleId = selectedRequestExampleId!!,
                                                 requestId = requestNonNull.id,
                                                 isError = true,
-                                                errorMessage = error?.message
+                                                errorMessage = error.message
                                             )
                                         }
                                     },
