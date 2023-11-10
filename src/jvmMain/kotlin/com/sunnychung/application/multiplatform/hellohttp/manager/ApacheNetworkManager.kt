@@ -109,7 +109,8 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                     outgoingBytesFlow.emit(KInstant.now() to bytes.copyOfRange(pos, pos + len))
                 }
 //                println(">> " + bytes.copyOfRange(pos, pos + len).decodeToString())
-            }
+            },
+            null
         )
 
         return httpClient
