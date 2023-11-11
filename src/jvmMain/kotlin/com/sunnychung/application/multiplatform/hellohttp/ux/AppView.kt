@@ -524,7 +524,9 @@ fun AppContentView() {
                                             requestCollection!!.requests.replaceIf(update) { it.id == update.id }
                                             requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                                         }
-                                    }
+                                    },
+                                    isConnected = false, // TODO
+                                    onClickConnectDisconnect = {} // TODO
                                 )
                             } ?: RequestEditorEmptyView(
                                 modifier = requestEditorModifier,

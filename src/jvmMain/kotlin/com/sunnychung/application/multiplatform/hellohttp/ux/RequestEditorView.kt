@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -42,6 +43,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -72,6 +74,8 @@ fun RequestEditorView(
     onClickSend: () -> Unit,
     onClickCopyCurl: () -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
+    isConnected: Boolean,
+    onClickConnectDisconnect: (Boolean) -> Unit,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
@@ -169,13 +173,27 @@ fun RequestEditorView(
                 .height(IntrinsicSize.Max),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val options = DropDownMap(
+                listOf("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")
+                    .map { DropDownKeyValue(
+                        key = ProtocolMethod(application = ProtocolApplication.Http, method = it),
+                        displayText = it
+                    ) }
+                + listOf(
+                    DropDownKeyValue(
+                        key = ProtocolMethod(application = ProtocolApplication.WebSocket, method = ""),
+                        displayText = "WebSocket"
+                    )
+                )
+            )
             DropDownView(
-                selectedItem = DropDownValue(request.method),
-                items = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD").map { DropDownValue(it) },
+                selectedItem = options.dropdownables.first { it.key.application == request.application && it.key.method == request.method },
+                items = options.dropdownables,
                 contentView = {
-                    val (text, color) = when (request.application) {
+                    val (text, color) = when (it!!.key.application) {
                         ProtocolApplication.Http -> Pair(
-                            it?.displayText, when (it?.displayText) {
+                            it.displayText,
+                            when (it.displayText) {
                                 "GET" -> colors.httpRequestGet
                                 "POST" -> colors.httpRequestPost
                                 "PUT" -> colors.httpRequestPut
@@ -184,6 +202,7 @@ fun RequestEditorView(
                             }
                         )
 
+                        ProtocolApplication.WebSocket -> Pair("WebSocket", colors.websocketRequest)
                         ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
                         ProtocolApplication.Graphql -> Pair("GQL", colors.graphqlRequest)
                     }
@@ -191,14 +210,16 @@ fun RequestEditorView(
                         text = text.emptyToNull() ?: "--",
                         color = color,
                         isFitContent = true,
-                        textAlign = TextAlign.Center,
+                        textAlign = TextAlign.Left,
                         maxLines = 1,
-                        modifier = Modifier.width(width = 48.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
                     )
                 },
                 onClickItem = {
-                    val newMethod = it.displayText
-                    onRequestModified(request.copy(method = newMethod))
+                    if (request.application != it.key.application) {
+                        selectedRequestTabIndex = 0
+                    }
+                    onRequestModified(request.copyForApplication(application = it.key.application, method = it.key.method))
                     true
                 },
                 modifier = Modifier.fillMaxHeight()
@@ -216,35 +237,55 @@ fun RequestEditorView(
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.background(colors.backgroundButton).width(width = 84.dp).fillMaxHeight()
-            ) {
-                Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { onClickSend() }) {
-                    AppText(
-                        text = "Send",
-                        fontSize = fonts.buttonFontSize,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(start = 4.dp).align(Alignment.Center)
+            if (request.application != ProtocolApplication.WebSocket) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.background(colors.backgroundButton).width(width = 84.dp).fillMaxHeight()
+                ) {
+                    Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { onClickSend() }) {
+                        AppText(
+                            text = "Send",
+                            fontSize = fonts.buttonFontSize,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(start = 4.dp).align(Alignment.Center)
+                        )
+                    }
+                    DropDownView(
+                        iconSize = 24.dp,
+                        items = listOf("Send", "Copy as cURL command").map { DropDownValue(it) },
+                        isShowLabel = false,
+                        onClickItem = {
+                            var isSuccess = true
+                            when (it.displayText) {
+                                "Send" -> onClickSend()
+                                "Copy as cURL command" -> {
+                                    isSuccess = onClickCopyCurl()
+                                }
+                            }
+                            isSuccess
+                        },
+                        arrowPadding = PaddingValues(end = 4.dp),
+                        modifier = Modifier.fillMaxHeight(),
                     )
                 }
-                DropDownView(
-                    iconSize = 24.dp,
-                    items = listOf("Send", "Copy as cURL command").map { DropDownValue(it) },
-                    isShowLabel = false,
-                    onClickItem = {
-                        var isSuccess = true
-                        when (it.displayText) {
-                            "Send" -> onClickSend()
-                            "Copy as cURL command" -> {
-                                isSuccess = onClickCopyCurl()
-                            }
-                        }
-                        isSuccess
-                    },
-                    arrowPadding = PaddingValues(end = 4.dp),
-                    modifier = Modifier.fillMaxHeight(),
-                )
+            } else {
+                val (text, bgColor) = if (isConnected) {
+                    Pair("Disconnect", colors.backgroundStopButton)
+                } else {
+                    Pair("Connect", colors.backgroundButton)
+                }
+                Box(
+                    modifier = Modifier.background(bgColor).fillMaxHeight()
+                        .clickable { onClickConnectDisconnect(!isConnected) }
+                        .padding(horizontal = 10.dp)
+                ) {
+                    AppText(
+                        text = text,
+                        fontSize = fonts.buttonFontSize,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
         }
 //        Spacer(modifier = Modifier.height(4.dp))
@@ -350,334 +391,369 @@ fun RequestEditorView(
             )
         }
 
+        val tabs = if (request.application != ProtocolApplication.WebSocket) {
+            listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
+        } else {
+            listOf(RequestTab.Query, RequestTab.Header)
+        }
+
         TabsView(
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
             selectedIndex = selectedRequestTabIndex,
             onSelectTab = { selectedRequestTabIndex = it },
-            contents = RequestTab.values().map {
-                { AppTabLabel(text = it.name) }
+            contents = tabs.map {
+                { AppTabLabel(text = it.displayText) }
             }
         )
-        when (RequestTab.values()[selectedRequestTabIndex]) {
-            RequestTab.Body -> {
-                val requestBody = selectedExample.body
-                Row(modifier = Modifier.padding(8.dp)) {
-                    AppText("Content Type: ")
-                    DropDownView(
-                        items = ContentType.values().toList(),
-                        selectedItem = selectedContentType,
-                        onClickItem = {
-                            if (selectedContentType == it) return@DropDownView true
-                            selectedContentType = it
-                            val newBody = when (it) {
-                                ContentType.None -> null
-                                ContentType.Json, ContentType.Raw -> StringBody("")
-                                ContentType.Multipart -> MultipartBody(emptyList())
-                                ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
-                                ContentType.BinaryFile -> FileBody(null)
+        Box(
+            modifier = if (request.application != ProtocolApplication.WebSocket) {
+                Modifier.weight(1f)
+            } else {
+                Modifier.weight(0.3f)
+            }.fillMaxWidth()
+        ) {
+            when (tabs[selectedRequestTabIndex]) {
+                RequestTab.Body -> {
+                    val requestBody = selectedExample.body
+                    Row(modifier = Modifier.padding(8.dp)) {
+                        AppText("Content Type: ")
+                        DropDownView(
+                            items = ContentType.values().toList(),
+                            selectedItem = selectedContentType,
+                            onClickItem = {
+                                if (selectedContentType == it) return@DropDownView true
+                                selectedContentType = it
+                                val newBody = when (it) {
+                                    ContentType.None -> null
+                                    ContentType.Json, ContentType.Raw -> StringBody("")
+                                    ContentType.Multipart -> MultipartBody(emptyList())
+                                    ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
+                                    ContentType.BinaryFile -> FileBody(null)
+                                }
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            selectedExample.copy(
+                                                contentType = selectedContentType,
+                                                body = newBody
+                                            )
+                                        )
+                                    )
+                                )
+                                true
                             }
+                        )
+
+                        if (selectedExample.id != baseExample.id && selectedContentType in setOf(
+                                ContentType.Json,
+                                ContentType.Raw,
+                                ContentType.BinaryFile
+                            )
+                        ) {
+                            Spacer(modifier.weight(1f))
+                            AppText("Is Override Base? ")
+                            AppCheckbox(
+                                checked = selectedExample.overrides!!.isOverrideBody,
+                                onCheckedChange = {
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                selectedExample.run {
+                                                    copy(overrides = overrides!!.copy(isOverrideBody = it))
+                                                }
+                                            )
+                                        )
+                                    )
+                                },
+                                size = 16.dp,
+                            )
+                        }
+                    }
+                    val remainModifier = Modifier.fillMaxSize()
+                    when (selectedContentType) {
+                        ContentType.Json, ContentType.Raw ->
+                            if (selectedExample.overrides?.isOverrideBody != false) {
+                                CodeEditorView(
+                                    modifier = remainModifier,
+                                    isReadOnly = false,
+                                    isEnableVariables = true,
+                                    knownVariables = environmentVariableKeys,
+                                    text = (selectedExample.body as? StringBody)?.value ?: "",
+                                    onTextChange = {
+                                        onRequestModified(
+                                            request.copy(
+                                                examples = request.examples.copyWithChange(
+                                                    selectedExample.copy(
+                                                        contentType = selectedContentType,
+                                                        body = StringBody(it)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    },
+                                    transformations = if (selectedContentType == ContentType.Json) {
+                                        listOf(JsonSyntaxHighlightTransformation(colours = colors))
+                                    } else {
+                                        emptyList()
+                                    },
+                                )
+                            } else {
+                                CodeEditorView(
+                                    modifier = remainModifier,
+                                    isReadOnly = true,
+                                    isEnableVariables = true,
+                                    knownVariables = environmentVariableKeys,
+                                    text = (baseExample.body as? StringBody)?.value ?: "",
+                                    onTextChange = {},
+                                    textColor = colors.placeholder,
+                                )
+                            }
+
+                        ContentType.FormUrlEncoded ->
+                            RequestKeyValueEditorView(
+                                value = (requestBody as? FormUrlEncodedBody)?.value,
+                                onValueUpdate = {
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                selectedExample.copy(
+                                                    contentType = selectedContentType,
+                                                    body = FormUrlEncodedBody(it)
+                                                )
+                                            )
+                                        )
+                                    )
+                                },
+                                baseValue = if (selectedExample.id != baseExample.id) (baseExample.body as? FormUrlEncodedBody)?.value else null,
+                                baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
+                                onDisableUpdate = {
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                selectedExample.run {
+                                                    copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
+                                                }
+                                            )
+                                        )
+                                    )
+                                },
+                                knownVariables = environmentVariableKeys,
+                                isSupportFileValue = false,
+                                modifier = remainModifier,
+                            )
+
+                        ContentType.Multipart ->
+                            RequestKeyValueEditorView(
+                                value = (requestBody as? MultipartBody)?.value,
+                                onValueUpdate = {
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                selectedExample.copy(
+                                                    contentType = selectedContentType,
+                                                    body = MultipartBody(it)
+                                                )
+                                            )
+                                        )
+                                    )
+                                },
+                                baseValue = if (selectedExample.id != baseExample.id) (baseExample.body as? MultipartBody)?.value else null,
+                                baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
+                                onDisableUpdate = {
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                selectedExample.run {
+                                                    copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
+                                                }
+                                            )
+                                        )
+                                    )
+                                },
+                                knownVariables = environmentVariableKeys,
+                                isSupportFileValue = true,
+                                modifier = remainModifier,
+                            )
+
+                        ContentType.BinaryFile -> {
+                            BinaryFileInputView(
+                                modifier = remainModifier,
+                                filePath = (selectedExample.body as? FileBody)?.filePath,
+                                onFilePathUpdate = {
+                                    if (it != null) {
+                                        onRequestModified(
+                                            request.copy(
+                                                examples = request.examples.copyWithChange(
+                                                    selectedExample.copy(
+                                                        contentType = selectedContentType,
+                                                        body = FileBody(it)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    }
+                                },
+                            )
+                        }
+
+                        ContentType.None -> {}
+                    }
+                }
+
+                RequestTab.Header ->
+                    RequestKeyValueEditorView(
+                        value = selectedExample.headers,
+                        onValueUpdate = {
                             onRequestModified(
                                 request.copy(
                                     examples = request.examples.copyWithChange(
                                         selectedExample.copy(
-                                            contentType = selectedContentType,
-                                            body = newBody
+                                            headers = it
                                         )
                                     )
                                 )
                             )
-                            true
-                        }
+                        },
+                        baseValue = if (selectedExample.id != baseExample.id) baseExample.headers else null,
+                        baseDisabledIds = selectedExample.overrides?.disabledHeaderIds ?: emptySet(),
+                        onDisableUpdate = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.run {
+                                            copy(overrides = overrides!!.copy(disabledHeaderIds = it))
+                                        }
+                                    )
+                                )
+                            )
+                        },
+                        knownVariables = environmentVariableKeys,
+                        isSupportFileValue = false,
+                        modifier = Modifier.fillMaxWidth(),
                     )
 
-                    if (selectedExample.id != baseExample.id && selectedContentType in setOf(ContentType.Json, ContentType.Raw, ContentType.BinaryFile)) {
-                        Spacer(modifier.weight(1f))
-                        AppText("Is Override Base? ")
-                        AppCheckbox(
-                            checked = selectedExample.overrides!!.isOverrideBody,
-                            onCheckedChange = {
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            selectedExample.run {
-                                                copy(overrides = overrides!!.copy(isOverrideBody = it))
-                                            }
+                RequestTab.Query ->
+                    RequestKeyValueEditorView(
+                        value = selectedExample.queryParameters,
+                        onValueUpdate = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.copy(
+                                            queryParameters = it
                                         )
                                     )
                                 )
-                            },
-                            size = 16.dp,
-                        )
-                    }
-                }
-                val remainModifier = Modifier.weight(1f).fillMaxWidth()
-                when (selectedContentType) {
-                    ContentType.Json, ContentType.Raw ->
-                        if (selectedExample.overrides?.isOverrideBody != false) {
-                            CodeEditorView(
-                                modifier = remainModifier,
-                                isReadOnly = false,
-                                isEnableVariables = true,
-                                knownVariables = environmentVariableKeys,
-                                text = (selectedExample.body as? StringBody)?.value ?: "",
-                                onTextChange = {
-                                    onRequestModified(
-                                        request.copy(
-                                            examples = request.examples.copyWithChange(
-                                                selectedExample.copy(
-                                                    contentType = selectedContentType,
-                                                    body = StringBody(it)
-                                                )
-                                            )
-                                        )
-                                    )
-                                },
-                                transformations = if (selectedContentType == ContentType.Json) {
-                                    listOf(JsonSyntaxHighlightTransformation(colours = colors))
-                                } else {
-                                    emptyList()
-                                },
                             )
-                        } else {
-                            CodeEditorView(
-                                modifier = remainModifier,
-                                isReadOnly = true,
-                                isEnableVariables = true,
-                                knownVariables = environmentVariableKeys,
-                                text = (baseExample.body as? StringBody)?.value ?: "",
-                                onTextChange = {},
-                                textColor = colors.placeholder,
+                        },
+                        baseValue = if (selectedExample.id != baseExample.id) baseExample.queryParameters else null,
+                        baseDisabledIds = selectedExample.overrides?.disabledQueryParameterIds ?: emptySet(),
+                        onDisableUpdate = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.run {
+                                            copy(overrides = overrides!!.copy(disabledQueryParameterIds = it))
+                                        }
+                                    )
+                                )
                             )
-                        }
+                        },
+                        knownVariables = environmentVariableKeys,
+                        isSupportFileValue = false,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
 
-                    ContentType.FormUrlEncoded ->
-                        RequestKeyValueEditorView(
-                            value = (requestBody as? FormUrlEncodedBody)?.value,
-                            onValueUpdate = {
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            selectedExample.copy(
-                                                contentType = selectedContentType,
-                                                body = FormUrlEncodedBody(it)
+                RequestTab.PostFlight -> Column {
+                    AppText(
+                        text = "Update environment variables according to response headers.",
+                        modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
+                    )
+                    RequestKeyValueEditorView(
+                        keyPlaceholder = "Variable",
+                        valuePlaceholder = "Header",
+                        value = selectedExample.postFlight.updateVariablesFromHeader,
+                        onValueUpdate = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.copy(
+                                            postFlight = selectedExample.postFlight.copy(
+                                                updateVariablesFromHeader = it
                                             )
                                         )
                                     )
                                 )
-                            },
-                            baseValue = if (selectedExample.id != baseExample.id) (baseExample.body as? FormUrlEncodedBody)?.value else null,
-                            baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
-                            onDisableUpdate = {
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            selectedExample.run {
-                                                copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
-                                            }
-                                        )
+                            )
+                        },
+                        baseValue = if (selectedExample.id != baseExample.id) baseExample.postFlight.updateVariablesFromHeader else null,
+                        baseDisabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds ?: emptySet(),
+                        onDisableUpdate = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.run {
+                                            copy(overrides = overrides!!.copy(disablePostFlightUpdateVarIds = it))
+                                        }
                                     )
                                 )
-                            },
-                            knownVariables = environmentVariableKeys,
-                            isSupportFileValue = false,
-                            modifier = remainModifier,
-                        )
+                            )
+                        },
+                        knownVariables = environmentVariableKeys,
+                        isSupportFileValue = false,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
 
-                    ContentType.Multipart ->
-                        RequestKeyValueEditorView(
-                            value = (requestBody as? MultipartBody)?.value,
-                            onValueUpdate = {
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            selectedExample.copy(
-                                                contentType = selectedContentType,
-                                                body = MultipartBody(it)
+                    AppText(
+                        text = "Update environment variables according to response bodies.",
+                        modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp)
+                    )
+                    RequestKeyValueEditorView(
+                        keyPlaceholder = "Variable",
+                        valuePlaceholder = "Field's JSON Path",
+                        value = selectedExample.postFlight.updateVariablesFromBody,
+                        onValueUpdate = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.copy(
+                                            postFlight = selectedExample.postFlight.copy(
+                                                updateVariablesFromBody = it
                                             )
                                         )
                                     )
                                 )
-                            },
-                            baseValue = if (selectedExample.id != baseExample.id) (baseExample.body as? MultipartBody)?.value else null,
-                            baseDisabledIds = selectedExample.overrides?.disabledBodyKeyValueIds ?: emptySet(),
-                            onDisableUpdate = {
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            selectedExample.run {
-                                                copy(overrides = overrides!!.copy(disabledBodyKeyValueIds = it))
-                                            }
-                                        )
+                            )
+                        },
+                        baseValue = if (selectedExample.id != baseExample.id) baseExample.postFlight.updateVariablesFromBody else null,
+                        baseDisabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds ?: emptySet(),
+                        onDisableUpdate = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.run {
+                                            copy(overrides = overrides!!.copy(disablePostFlightUpdateVarIds = it))
+                                        }
                                     )
                                 )
-                            },
-                            knownVariables = environmentVariableKeys,
-                            isSupportFileValue = true,
-                            modifier = remainModifier,
-                        )
-
-                    ContentType.BinaryFile -> {
-                        BinaryFileInputView(
-                            modifier = remainModifier,
-                            filePath = (selectedExample.body as? FileBody)?.filePath,
-                            onFilePathUpdate = {
-                                if (it != null) {
-                                    onRequestModified(
-                                        request.copy(
-                                            examples = request.examples.copyWithChange(
-                                                selectedExample.copy(
-                                                    contentType = selectedContentType,
-                                                    body = FileBody(it)
-                                                )
-                                            )
-                                        )
-                                    )
-                                }
-                            },
-                        )
-                    }
-
-                    ContentType.None -> {}
+                            )
+                        },
+                        knownVariables = environmentVariableKeys,
+                        isSupportFileValue = false,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
+        }
 
-            RequestTab.Header ->
-                RequestKeyValueEditorView(
-                    value = selectedExample.headers,
-                    onValueUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.copy(
-                                        headers = it
-                                    )
-                                )
-                            )
-                        )
-                    },
-                    baseValue = if (selectedExample.id != baseExample.id) baseExample.headers else null,
-                    baseDisabledIds = selectedExample.overrides?.disabledHeaderIds ?: emptySet(),
-                    onDisableUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.run {
-                                        copy(overrides = overrides!!.copy(disabledHeaderIds = it))
-                                    }
-                                )
-                            )
-                        )
-                    },
-                    knownVariables = environmentVariableKeys,
-                    isSupportFileValue = false,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-            RequestTab.Query ->
-                RequestKeyValueEditorView(
-                    value = selectedExample.queryParameters,
-                    onValueUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.copy(
-                                        queryParameters = it
-                                    )
-                                )
-                            )
-                        )
-                    },
-                    baseValue = if (selectedExample.id != baseExample.id) baseExample.queryParameters else null,
-                    baseDisabledIds = selectedExample.overrides?.disabledQueryParameterIds ?: emptySet(),
-                    onDisableUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.run {
-                                        copy(overrides = overrides!!.copy(disabledQueryParameterIds = it))
-                                    }
-                                )
-                            )
-                        )
-                    },
-                    knownVariables = environmentVariableKeys,
-                    isSupportFileValue = false,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-            RequestTab.`Post Flight` -> Column {
-                AppText(text = "Update environment variables according to response headers.", modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp))
-                RequestKeyValueEditorView(
-                    keyPlaceholder = "Variable",
-                    valuePlaceholder = "Header",
-                    value = selectedExample.postFlight.updateVariablesFromHeader,
-                    onValueUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.copy(
-                                        postFlight = selectedExample.postFlight.copy(
-                                            updateVariablesFromHeader = it
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    },
-                    baseValue = if (selectedExample.id != baseExample.id) baseExample.postFlight.updateVariablesFromHeader else null,
-                    baseDisabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds ?: emptySet(),
-                    onDisableUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.run {
-                                        copy(overrides = overrides!!.copy(disablePostFlightUpdateVarIds = it))
-                                    }
-                                )
-                            )
-                        )
-                    },
-                    knownVariables = environmentVariableKeys,
-                    isSupportFileValue = false,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                AppText(text = "Update environment variables according to response bodies.", modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp))
-                RequestKeyValueEditorView(
-                    keyPlaceholder = "Variable",
-                    valuePlaceholder = "Field's JSON Path",
-                    value = selectedExample.postFlight.updateVariablesFromBody,
-                    onValueUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.copy(
-                                        postFlight = selectedExample.postFlight.copy(
-                                            updateVariablesFromBody = it
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    },
-                    baseValue = if (selectedExample.id != baseExample.id) baseExample.postFlight.updateVariablesFromBody else null,
-                    baseDisabledIds = selectedExample.overrides?.disablePostFlightUpdateVarIds ?: emptySet(),
-                    onDisableUpdate = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.run {
-                                        copy(overrides = overrides!!.copy(disablePostFlightUpdateVarIds = it))
-                                    }
-                                )
-                            )
-                        )
-                    },
-                    knownVariables = environmentVariableKeys,
-                    isSupportFileValue = false,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+        if (request.application == ProtocolApplication.WebSocket) {
+            WebSocketPayloadEditorView(
+                modifier = Modifier.weight(0.7f).fillMaxWidth(),
+                request = request,
+                onRequestModified = onRequestModified,
+                knownVariables = environmentVariableKeys,
+                isConnected = isConnected,
+            )
         }
     }
 }
@@ -723,6 +799,122 @@ fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFile
     }
 }
 
-private enum class RequestTab {
-    Body, /* Authorization, */ Query, Header, `Post Flight`
+@Composable
+fun WebSocketPayloadEditorView(
+    modifier: Modifier = Modifier,
+    editExampleNameViewModel: EditNameViewModel = remember { EditNameViewModel() },
+    request: UserRequestTemplate,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    knownVariables: Set<String>,
+    isConnected: Boolean,
+) {
+    val colors = LocalColor.current
+
+    var selectedExampleId by remember { mutableStateOf(request.payloadExamples!!.first().id) }
+    var selectedExample = request.payloadExamples!!.firstOrNull { it.id == selectedExampleId }
+
+    fun onSelectExample(example: PayloadExample) {
+        selectedExampleId = example.id
+        selectedExample = example
+    }
+
+    if (selectedExample == null) {
+        onSelectExample(request.payloadExamples.first())
+    }
+
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppText(text = "Payload")
+            Spacer(modifier = Modifier.weight(1f))
+            AppTextButton(text = "Send", isEnabled = isConnected) {}
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            var isEditing = editExampleNameViewModel.isEditing.collectAsState().value
+
+            AppText(text = "Examples: ")
+
+            TabsView(
+                modifier = Modifier.weight(1f).background(color = colors.backgroundLight),
+                selectedIndex = request.payloadExamples!!.indexOfFirst { it.id == selectedExample!!.id },
+                onSelectTab = {
+                    onSelectExample(request.payloadExamples!![it])
+                },
+                onDoubleClickTab = {
+                    onSelectExample(request.payloadExamples!![it])
+                    editExampleNameViewModel.onStartEdit()
+                },
+                contents = (request.payloadExamples ?: emptyList()).mapIndexed { index, it ->
+                    {
+                        val isThisTabEditing = isEditing && selectedExample!!.id == it.id
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = if (!isThisTabEditing) Modifier.padding(8.dp) else Modifier
+                        ) {
+                            LabelOrTextField(
+                                isEditing = isThisTabEditing,
+                                value = it.name,
+                                onValueUpdate = { new ->
+                                    onRequestModified(request.copy(payloadExamples = request.payloadExamples!!.copyWithChange(it.copy(name = new))))
+                                },
+                                editNameViewModel = editExampleNameViewModel,
+                            )
+                            if (!isThisTabEditing && request.payloadExamples.size > 1) {
+                                AppDeleteButton {
+                                    onRequestModified(
+                                        request.copy(payloadExamples = request.payloadExamples.copyWithRemovedIndex(index))
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+
+            AppImageButton(
+                resource = "add.svg",
+                size = 24.dp,
+                onClick = {
+                    val newExample = PayloadExample(
+                        id = uuidString(),
+                        name = "New Payload",
+                        body = "",
+                    )
+                    onRequestModified(
+                        request.copy(payloadExamples = (request.payloadExamples ?: emptyList()) + newExample)
+                    )
+                    onSelectExample(newExample)
+                    editExampleNameViewModel.onStartEdit()
+                },
+                modifier = Modifier.padding(4.dp)
+            )
+        }
+
+        CodeEditorView(
+            modifier = Modifier.weight(1f),
+            isReadOnly = false,
+            isEnableVariables = true,
+            knownVariables = knownVariables,
+            text = selectedExample!!.body,
+            onTextChange = {
+                onRequestModified(
+                    request.copy(
+                        payloadExamples = request.payloadExamples!!.copyWithChange(
+                            selectedExample!!.copy(
+                                body = it
+                            )
+                        )
+                    )
+                )
+            },
+            transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)),
+        )
+    }
 }
+
+private enum class RequestTab(val displayText: String) {
+    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PostFlight("Post Flight")
+}
+
+private data class ProtocolMethod(val application: ProtocolApplication, val method: String)
