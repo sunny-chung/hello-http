@@ -271,97 +271,110 @@ class ApacheNetworkManager : AbstractNetworkManager() {
             out.startAt = KInstant.now()
             out.isCommunicating = true
 
-            val response = suspendCancellableCoroutine<SimpleHttpResponse?> { continuation ->
+            try {
 
-                var result: SimpleHttpResponse? = null
+                val response = suspendCancellableCoroutine<SimpleHttpResponse?> { continuation ->
 
-                httpClient.execute(object : AsyncClientExchangeHandler {
-                    override fun releaseResources() {
-                        println("releaseResources")
-                        producer.releaseResources()
-                        consumer.releaseResources()
-                    }
+                    var result: SimpleHttpResponse? = null
 
-                    override fun updateCapacity(channel: CapacityChannel) {
-                        consumer.updateCapacity(channel)
-                    }
+                    httpClient.execute(object : AsyncClientExchangeHandler {
+                        override fun releaseResources() {
+                            println("releaseResources")
+                            producer.releaseResources()
+                            consumer.releaseResources()
+                        }
 
-                    override fun consume(src: ByteBuffer) {
-                        consumer.consume(src)
-                    }
+                        override fun updateCapacity(channel: CapacityChannel) {
+                            consumer.updateCapacity(channel)
+                        }
 
-                    override fun streamEnd(trailers: MutableList<out Header>?) {
-                        println("streamEnd")
-                        consumer.streamEnd(trailers)
-                        continuation.resume(result, null)
-                    }
+                        override fun consume(src: ByteBuffer) {
+                            consumer.consume(src)
+                        }
 
-                    override fun available(): Int {
-                        return producer.available()
-                    }
+                        override fun streamEnd(trailers: MutableList<out Header>?) {
+                            println("streamEnd")
+                            consumer.streamEnd(trailers)
+                            continuation.resume(result, null)
+                        }
 
-                    override fun produce(channel: DataStreamChannel) {
-                        producer.produce(channel)
-                    }
+                        override fun available(): Int {
+                            return producer.available()
+                        }
 
-                    override fun failed(exception: Exception) {
-                        println("failed ${exception}")
-                        exception.printStackTrace()
-                        consumer.failed(exception)
-                        continuation.cancel(exception)
-                    }
+                        override fun produce(channel: DataStreamChannel) {
+                            producer.produce(channel)
+                        }
 
-                    override fun produceRequest(channel: RequestChannel, context: HttpContext) {
-                        producer.sendRequest(channel, context)
-                    }
+                        override fun failed(exception: Exception) {
+                            println("failed ${exception}")
+                            exception.printStackTrace()
+                            consumer.failed(exception)
+                            continuation.cancel(exception)
+                        }
 
-                    override fun consumeResponse(response: HttpResponse, entityDetails: EntityDetails?, context: HttpContext?) {
-                        println("consumeResponse ${StatusLine(response)}")
-                        out.protocol = ProtocolVersion(
-                            protocol = Protocol.Http,
-                            major = response.version.major,
-                            minor = response.version.minor
-                        )
-                        out.statusCode = response.code
-                        out.statusText = response.reasonPhrase
-                        out.headers = response.headers?.map { it.name to it.value }
-                        consumer.consumeResponse(response, entityDetails, context, object : FutureCallback<SimpleHttpResponse> {
-                            override fun completed(response: SimpleHttpResponse) {
-                                result = response
-                            }
+                        override fun produceRequest(channel: RequestChannel, context: HttpContext) {
+                            producer.sendRequest(channel, context)
+                        }
 
-                            override fun failed(error: Exception) {
+                        override fun consumeResponse(
+                            response: HttpResponse,
+                            entityDetails: EntityDetails?,
+                            context: HttpContext?
+                        ) {
+                            println("consumeResponse ${StatusLine(response)}")
+                            out.protocol = ProtocolVersion(
+                                protocol = Protocol.Http,
+                                major = response.version.major,
+                                minor = response.version.minor
+                            )
+                            out.statusCode = response.code
+                            out.statusText = response.reasonPhrase
+                            out.headers = response.headers?.map { it.name to it.value }
+                            consumer.consumeResponse(
+                                response,
+                                entityDetails,
+                                context,
+                                object : FutureCallback<SimpleHttpResponse> {
+                                    override fun completed(response: SimpleHttpResponse) {
+                                        result = response
+                                    }
 
-                            }
+                                    override fun failed(error: Exception) {
 
-                            override fun cancelled() {
+                                    }
 
-                            }
+                                    override fun cancelled() {
 
-                        })
-                    }
+                                    }
 
-                    override fun consumeInformation(p0: HttpResponse?, p1: HttpContext?) {
-                    }
+                                })
+                        }
 
-                    override fun cancel() {
-                        println("cancel")
-                        continuation.cancel()
-                    }
+                        override fun consumeInformation(p0: HttpResponse?, p1: HttpContext?) {
+                        }
 
-                })
+                        override fun cancel() {
+                            println("cancel")
+                            continuation.cancel()
+                        }
+
+                    })
+                }
+
+                out.statusCode = response?.code
+                out.statusText = response?.reasonPhrase
+                out.headers = response?.headers?.map { it.name to it.value }
+                out.body = response?.bodyBytes
+                out.responseSizeInBytes = out.body?.size?.toLong() ?: 0L
+
+            } catch (e: Throwable) {
+                out.errorMessage = e.message
+                out.isError = true
+            } finally {
+                out.endAt = KInstant.now()
+                out.isCommunicating = false
             }
-
-            out.statusCode = response?.code
-            out.statusText = response?.reasonPhrase
-            out.headers = response?.headers?.map { it.name to it.value }
-            out.body = response?.bodyBytes
-            out.responseSizeInBytes = out.body?.size?.toLong() ?: 0L
-
-            // TODO error handling
-
-            out.endAt = KInstant.now()
-            out.isCommunicating = false
 
             if (!out.isError && postFlightAction != null) {
                 executePostFlightAction(callId, out, postFlightAction)
