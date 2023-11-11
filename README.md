@@ -72,7 +72,6 @@ Automatic backups and import/export were made to provide alternatives when there
 - JSON syntax highlighting
 - Post flight actions
   - update environment variables according to a request field (JSON path) or header
-- Timeline view
 - Transport I/O timeline view
   - DNS lookup, connection and SSL events
   - Raw HTTP/1.1 messages
