@@ -57,8 +57,8 @@ abstract class AbstractNetworkManager : NetworkManager {
     override fun getCallData(callId: String) = callData[callId]
 
     protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String): CallData {
-        val outgoingBytesFlow = MutableSharedFlow<Pair<KInstant, ByteArray>>()
-        val incomingBytesFlow = MutableSharedFlow<Pair<KInstant, ByteArray>>()
+        val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
+        val incomingBytesFlow = MutableSharedFlow<RawPayload>()
         val optionalResponseSize = AtomicInteger()
 
         val callId = uuidString()
@@ -102,20 +102,21 @@ abstract class AbstractNetworkManager : NetworkManager {
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
                     val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
+                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
                         data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.first,
+                            instant = it.instant,
                             direction = RawExchange.Direction.Outgoing,
+                            streamId = if (it is Http2Frame) it.streamId else null,
                             detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(requestBodySize ?: 0, it.second.size + 1 * 1024 * 1024))
+                            payloadBuilder = ByteArrayOutputStream(maxOf(requestBodySize ?: 0, it.payload.size + 1 * 1024 * 1024))
                         ).apply {
-                            payloadBuilder!!.write(it.second)
+                            payloadBuilder!!.write(it.payload)
                         }
                     } else {
-                        lastExchange.payloadBuilder!!.write(it.second)
-                        lastExchange.lastUpdateInstant = it.first
+                        lastExchange.payloadBuilder!!.write(it.payload)
+                        lastExchange.lastUpdateInstant = it.instant
                     }
-                    log.v { it.second.decodeToString() }
+                    log.v { it.payload.decodeToString() }
                 }
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
@@ -124,20 +125,21 @@ abstract class AbstractNetworkManager : NetworkManager {
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
                     val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
+                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
                         data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.first,
+                            instant = it.instant,
                             direction = RawExchange.Direction.Incoming,
+                            streamId = if (it is Http2Frame) it.streamId else null,
                             detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.second.size + 1 * 1024 * 1024))
+                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.payload.size + 1 * 1024 * 1024))
                         ).apply {
-                            payloadBuilder!!.write(it.second)
+                            payloadBuilder!!.write(it.payload)
                         }
                     } else {
-                        lastExchange.payloadBuilder!!.write(it.second)
-                        lastExchange.lastUpdateInstant = it.first
+                        lastExchange.payloadBuilder!!.write(it.payload)
+                        lastExchange.lastUpdateInstant = it.instant
                     }
-                    log.v { it.second.decodeToString() }
+                    log.v { it.payload.decodeToString() }
                 }
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
@@ -156,6 +158,12 @@ abstract class AbstractNetworkManager : NetworkManager {
         }
         // withTimeout and while(...) guarantee callData is prepared
         assert(callData.isPrepared)
+    }
+
+    protected fun CallData.consumePayloads() {
+        response.rawExchange.exchanges.forEach {
+            it.consumePayloadBuilder()
+        }
     }
 
     fun executePostFlightAction(callId: String, out: UserResponse, postFlightAction: ((UserResponse) -> Unit)) {

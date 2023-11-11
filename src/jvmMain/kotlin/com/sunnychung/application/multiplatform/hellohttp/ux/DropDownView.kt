@@ -86,6 +86,17 @@ interface DropDownable {
 
 data class DropDownValue(override val displayText: String) : DropDownable
 
+data class DropDownKeyValue<T>(val key: T, override val displayText: String) : DropDownable
+
+data class DropDownMap<T>(private val values: List<DropDownKeyValue<T>>) {
+    private val mapByKey = values.associateBy { it.key }
+
+    val dropdownables = values
+
+    operator fun get(key: T) = mapByKey[key]
+
+}
+
 enum class DropDownClickableArea {
     All, ArrowOnly
 }

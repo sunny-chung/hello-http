@@ -22,7 +22,8 @@ data class RawExchange(
         val direction: Direction,
         val detail: String?,
         @Transient var payloadBuilder: ByteArrayOutputStream? = null,
-        var payload: ByteArray? = null
+        val streamId: Int? = null,
+        var payload: ByteArray? = null,
     ) {
         fun consumePayloadBuilder() {
             if ((payload?.size ?: 0) < (payloadBuilder?.size() ?: 0)) {

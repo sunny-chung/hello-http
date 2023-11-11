@@ -48,6 +48,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequ
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
@@ -477,6 +478,7 @@ fun AppContentView() {
                                                 requestId = requestNonNull.id,
                                                 subprojectId = selectedSubproject!!.id,
                                                 postFlightAction = postFlightAction,
+                                                httpConfig = selectedEnvironment?.httpConfig ?: HttpConfig(),
                                                 sslConfig = selectedEnvironment?.sslConfig ?: SslConfig(),
                                             )
                                             activeCallId = callData.id

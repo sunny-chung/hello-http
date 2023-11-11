@@ -41,7 +41,7 @@ Automatic backups and import/export were made to provide alternatives when there
 - Selective exports
 
 **Requests and Projects**
-- Firing HTTP/1.1 requests
+- Firing HTTP/1.1 and HTTP/2 requests
   - with HTTP methods:
     - GET
     - POST
@@ -73,7 +73,10 @@ Automatic backups and import/export were made to provide alternatives when there
 - Post flight actions
   - update environment variables according to a request field (JSON path) or header
 - Timeline view
-- Raw transport I/O view (only useful for HTTP/1.1 without compression)
+- Transport I/O timeline view
+  - DNS lookup, connection and SSL events
+  - Raw HTTP/1.1 messages
+  - HTTP/2 decoded frames with push promises
 - Persistence per request example
 
 **Appearance**
@@ -109,7 +112,6 @@ express your desired priorities in the issue tracker.
 - WebSocket
 - GraphQL subscription
 - Custom HTTP methods
-- HTTP/2
 - Searching in response body
 - Filtering JSON response body by JSON path
 - Response JSON folding

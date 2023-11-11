@@ -34,7 +34,7 @@ kotlin {
                 implementation("co.touchlab:kermit:1.0.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.0")
 
-                implementation("io.github.sunny-chung:httpclient5:5.2.1-inspect-patch2")
+                implementation("io.github.sunny-chung:httpclient5:5.2.1-inspect-patch3")
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
                 implementation("io.github.sunny-chung:okhttp:4.11.0-patch-1")
 //                implementation("com.github.sunny-chung:okhttp:patch~4.11.0-SNAPSHOT")

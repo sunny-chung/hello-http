@@ -1,24 +1,24 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.toApacheHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.apache.Http2FrameSerializer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.apache.hc.client5.http.SystemDefaultDnsResolver
-import org.apache.hc.client5.http.async.methods.SimpleHttpRequest
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse
-import org.apache.hc.client5.http.async.methods.SimpleRequestProducer
 import org.apache.hc.client5.http.async.methods.SimpleResponseConsumer
 import org.apache.hc.client5.http.config.TlsConfig
 import org.apache.hc.client5.http.function.ConnectionListener
@@ -26,37 +26,44 @@ import org.apache.hc.client5.http.impl.async.HttpAsyncClients
 import org.apache.hc.client5.http.impl.async.MinimalHttpAsyncClient
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder
 import org.apache.hc.core5.concurrent.FutureCallback
-import org.apache.hc.core5.http.ClassicHttpRequest
 import org.apache.hc.core5.http.EntityDetails
 import org.apache.hc.core5.http.Header
+import org.apache.hc.core5.http.HttpConnection
 import org.apache.hc.core5.http.HttpResponse
 import org.apache.hc.core5.http.config.Http1Config
 import org.apache.hc.core5.http.message.StatusLine
 import org.apache.hc.core5.http.nio.AsyncClientExchangeHandler
+import org.apache.hc.core5.http.nio.AsyncPushConsumer
 import org.apache.hc.core5.http.nio.CapacityChannel
 import org.apache.hc.core5.http.nio.DataStreamChannel
 import org.apache.hc.core5.http.nio.RequestChannel
-import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder
-import org.apache.hc.core5.http.nio.support.BasicRequestProducer
 import org.apache.hc.core5.http.protocol.HttpContext
 import org.apache.hc.core5.http2.HttpVersionPolicy
 import org.apache.hc.core5.http2.config.H2Config
+import org.apache.hc.core5.http2.frame.FrameType
+import org.apache.hc.core5.http2.frame.RawFrame
+import org.apache.hc.core5.http2.hpack.HPackInspectHeader
+import org.apache.hc.core5.http2.impl.nio.H2InspectListener
 import org.apache.hc.core5.reactor.IOReactorConfig
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.security.Principal
 import java.security.cert.Certificate
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 class ApacheNetworkManager : AbstractNetworkManager() {
 
     private fun buildHttpClient(
         callId: String,
+        httpConfig: HttpConfig,
         sslConfig: SslConfig,
-        outgoingBytesFlow: MutableSharedFlow<Pair<KInstant, ByteArray>>,
-        incomingBytesFlow: MutableSharedFlow<Pair<KInstant, ByteArray>>,
+        outgoingBytesFlow: MutableSharedFlow<RawPayload>,
+        incomingBytesFlow: MutableSharedFlow<RawPayload>,
         responseSize: AtomicInteger
     ): MinimalHttpAsyncClient {
+        val http2FrameSerializer = Http2FrameSerializer()
+
         val dnsResolver = object : SystemDefaultDnsResolver() {
             override fun resolve(host: String): Array<InetAddress> {
                 emitEvent(callId, "DNS resolution of domain [$host] started")
@@ -66,12 +73,18 @@ class ApacheNetworkManager : AbstractNetworkManager() {
             }
         }
 
+        val httpVersionPolicy = when (httpConfig.protocolVersion) {
+            HttpConfig.HttpProtocolVersion.Http1Only -> HttpVersionPolicy.FORCE_HTTP_1
+            HttpConfig.HttpProtocolVersion.Http2Only -> HttpVersionPolicy.FORCE_HTTP_2
+            HttpConfig.HttpProtocolVersion.Negotiate, null -> HttpVersionPolicy.NEGOTIATE
+        }
+
         val httpClient = HttpAsyncClients.createMinimal(
             H2Config.DEFAULT,
             Http1Config.DEFAULT,
             IOReactorConfig.DEFAULT,
             PoolingAsyncClientConnectionManagerBuilder.create()
-                .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_1).build())
+                .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
                 .setConnectionListener(object : ConnectionListener {
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
@@ -81,36 +94,102 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                     override fun onTlsUpgraded(
                         protocol: String,
                         cipherSuite: String,
+                        applicationProtocol: String,
                         localPrincipal: Principal?,
                         localCertificates: Array<Certificate>?,
                         peerPrincipal: Principal?,
                         peerCertificates: Array<Certificate>?
                     ) {
-                        emitEvent(callId, "Established TLS upgrade with protocol $protocol and cipher suite $cipherSuite.\n" +
+                        emitEvent(callId, "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite' and application protocol '$applicationProtocol'.\n" +
                                 "\n" +
-                                "Local principal = $localPrincipal\n" +
-                                "Local certificates = ${localCertificates?.firstOrNull()}\n" +
+                                "Client principal = $localPrincipal\n" +
+//                                "Client certificates = ${localCertificates?.firstOrNull()}\n" +
                                 "\n" +
-                                "Remote principal = $peerPrincipal\n" +
-                                "Remote certificates = ${peerCertificates?.firstOrNull()}\n"
+                                "Server principal = $peerPrincipal\n"
+//                                "Server certificates = ${peerCertificates?.firstOrNull()}\n"
                         )
                     }
 
                 })
                 .build(),
             { bytes, pos, len ->
-//                println("<< " + bytes.copyOfRange(pos, pos + len).decodeToString())
+                println("<< " + bytes.copyOfRange(pos, pos + len).decodeToString())
                 runBlocking {
-                    incomingBytesFlow.emit(KInstant.now() to bytes.copyOfRange(pos, pos + len))
+                    incomingBytesFlow.emit(Http1Payload(
+                        instant = KInstant.now(),
+                        payload = bytes.copyOfRange(pos, pos + len)
+                    ))
                 }
             },
             { bytes, pos, len ->
                 runBlocking {
-                    outgoingBytesFlow.emit(KInstant.now() to bytes.copyOfRange(pos, pos + len))
+                    outgoingBytesFlow.emit(Http1Payload(
+                        instant = KInstant.now(),
+                        payload = bytes.copyOfRange(pos, pos + len)
+                    ))
                 }
 //                println(">> " + bytes.copyOfRange(pos, pos + len).decodeToString())
             },
-            null
+            object : H2InspectListener {
+                val suspendedHeaderFrames = ConcurrentHashMap<Int, String>()
+
+                override fun onHeaderInputDecoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
+                    val serialized = http2FrameSerializer.serializeHeaders(headers)
+                    val frameHeader = suspendedHeaderFrames[streamId]!!
+                    suspendedHeaderFrames.remove(streamId)
+                    runBlocking {
+                        incomingBytesFlow.emit(
+                            Http2Frame(
+                                instant = KInstant.now(),
+                                streamId = streamId,
+                                content = "${frameHeader}${serialized}\n",
+                            )
+                        )
+                    }
+                }
+
+                override fun onHeaderOutputEncoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
+                    val serialized = http2FrameSerializer.serializeHeaders(headers)
+                    val frameHeader = suspendedHeaderFrames[streamId]!!
+                    suspendedHeaderFrames.remove(streamId)
+                    runBlocking {
+                        outgoingBytesFlow.emit(
+                            Http2Frame(
+                                instant = KInstant.now(),
+                                streamId = streamId,
+                                content = "${frameHeader}${serialized}\n",
+                            )
+                        )
+                    }
+                }
+
+                override fun onFrameInput(connection: HttpConnection, streamId: Int?, frame: RawFrame) {
+                    processFrame(streamId = streamId, frame = frame, receiverFlow = incomingBytesFlow)
+                }
+
+                override fun onFrameOutput(connection: HttpConnection, streamId: Int?, frame: RawFrame) {
+                    processFrame(streamId = streamId, frame = frame, receiverFlow = outgoingBytesFlow)
+                }
+
+                fun processFrame(streamId: Int?, frame: RawFrame, receiverFlow: MutableSharedFlow<RawPayload>) {
+                    val serialized = http2FrameSerializer.serializeFrame(frame)
+                    val type = FrameType.valueOf(frame.type)
+                    if (type == FrameType.HEADERS) {
+                        suspendedHeaderFrames[streamId!!] = serialized
+                    } else {
+                        runBlocking {
+                            receiverFlow.emit(
+                                Http2Frame(
+                                    instant = KInstant.now(),
+                                    streamId = streamId,
+                                    content = serialized,
+                                )
+                            )
+                        }
+                    }
+                }
+
+            }
         )
 
         return httpClient
@@ -123,6 +202,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
         requestId: String,
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): CallData {
         val (apacheHttpRequest, requestBodySize) = request.toApacheHttpRequest()
@@ -137,12 +217,47 @@ class ApacheNetworkManager : AbstractNetworkManager() {
 
         val httpClient = buildHttpClient(
             callId = callId,
+            httpConfig = httpConfig,
             sslConfig = sslConfig,
-            outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<Pair<KInstant, ByteArray>>,
-            incomingBytesFlow = data.incomingBytes as MutableSharedFlow<Pair<KInstant, ByteArray>>,
+            outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
+            incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
             responseSize = data.optionalResponseSize
         )
         httpClient.start()
+
+        // TODO: Should we remove push promise support completely?
+        httpClient.register("*") {
+            object : AsyncPushConsumer {
+                override fun releaseResources() {
+
+                }
+
+                override fun updateCapacity(capacityChannel: CapacityChannel?) {
+
+                }
+
+                override fun consume(src: ByteBuffer?) {
+
+                }
+
+                override fun streamEnd(trailers: MutableList<out Header>?) {
+
+                }
+
+                override fun consumePromise(
+                    promise: org.apache.hc.core5.http.HttpRequest?,
+                    response: HttpResponse?,
+                    entityDetails: EntityDetails?,
+                    context: HttpContext?
+                ) {
+
+                }
+
+                override fun failed(error: java.lang.Exception) {
+                    error.printStackTrace()
+                }
+            }
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             val callData = callData[callId]!!
@@ -165,7 +280,6 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                         println("releaseResources")
                         producer.releaseResources()
                         consumer.releaseResources()
-                        continuation.resume(result, null)
                     }
 
                     override fun updateCapacity(channel: CapacityChannel) {
@@ -192,6 +306,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
 
                     override fun failed(exception: Exception) {
                         println("failed ${exception}")
+                        exception.printStackTrace()
                         consumer.failed(exception)
                         continuation.cancel(exception)
                     }
@@ -202,12 +317,20 @@ class ApacheNetworkManager : AbstractNetworkManager() {
 
                     override fun consumeResponse(response: HttpResponse, entityDetails: EntityDetails?, context: HttpContext?) {
                         println("consumeResponse ${StatusLine(response)}")
+                        out.protocol = ProtocolVersion(
+                            protocol = Protocol.Http,
+                            major = response.version.major,
+                            minor = response.version.minor
+                        )
+                        out.statusCode = response.code
+                        out.statusText = response.reasonPhrase
+                        out.headers = response.headers?.map { it.name to it.value }
                         consumer.consumeResponse(response, entityDetails, context, object : FutureCallback<SimpleHttpResponse> {
                             override fun completed(response: SimpleHttpResponse) {
                                 result = response
                             }
 
-                            override fun failed(p0: java.lang.Exception?) {
+                            override fun failed(error: Exception) {
 
                             }
 
@@ -243,6 +366,10 @@ class ApacheNetworkManager : AbstractNetworkManager() {
             if (!out.isError && postFlightAction != null) {
                 executePostFlightAction(callId, out, postFlightAction)
             }
+
+            httpClient.close()
+//            httpClient.awaitShutdown(TimeValue.ofSeconds(2))
+            data.consumePayloads()
 
             emitEvent(callId, "Response completed")
         }

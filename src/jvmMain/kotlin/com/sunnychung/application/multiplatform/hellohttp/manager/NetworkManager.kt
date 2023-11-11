@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -18,6 +19,7 @@ interface NetworkManager {
         requestId: String,
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): CallData
 }
@@ -30,8 +32,20 @@ class CallData(
 
     val events: SharedFlow<NetworkEvent>,
     val eventsStateFlow: StateFlow<NetworkEvent?>,
-    val outgoingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
-    val incomingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
+    val outgoingBytes: SharedFlow<RawPayload>,
+    val incomingBytes: SharedFlow<RawPayload>,
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
 )
+
+sealed interface RawPayload {
+    val instant: KInstant
+    val payload: ByteArray
+}
+
+data class Http1Payload(override val instant: KInstant, override val payload: ByteArray) : RawPayload
+
+data class Http2Frame(override val instant: KInstant, val streamId: Int?, val content: String) : RawPayload {
+    override val payload: ByteArray
+        get() = content.encodeToByteArray()
+}

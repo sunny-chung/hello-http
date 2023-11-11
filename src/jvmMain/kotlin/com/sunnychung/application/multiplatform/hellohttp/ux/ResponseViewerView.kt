@@ -79,7 +79,7 @@ fun ResponseViewerView(response: UserResponse) {
                 }
 
                 ResponseTab.Raw ->
-                    TransportTimelineView(exchange = response.rawExchange.copy(), modifier = Modifier.fillMaxSize())
+                    TransportTimelineView(protocol = response.protocol, exchange = response.rawExchange.copy(), modifier = Modifier.fillMaxSize())
             }
         }
     }

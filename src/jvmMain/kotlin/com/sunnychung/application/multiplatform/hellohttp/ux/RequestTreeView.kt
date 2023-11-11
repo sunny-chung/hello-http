@@ -48,7 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeObject
@@ -226,8 +226,8 @@ fun RequestTreeView(
                     }
                 )
             ) {
-                val (text, color) = when (it.protocol) {
-                    Protocol.Http -> Pair(
+                val (text, color) = when (it.application) {
+                    ProtocolApplication.Http -> Pair(
                         it.method, when (it.method) {
                             "GET" -> colors.httpRequestGet
                             "POST" -> colors.httpRequestPost
@@ -237,8 +237,8 @@ fun RequestTreeView(
                         }
                     )
 
-                    Protocol.Grpc -> Pair("gRPC", colors.grpcRequest)
-                    Protocol.Graphql -> Pair("GQL", colors.graphqlRequest)
+                    ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
+                    ProtocolApplication.Graphql -> Pair("GQL", colors.graphqlRequest)
                 }
                 AppText(
                     text = text,
@@ -493,12 +493,12 @@ fun filterTreeObjects(rootObjects: MutableList<TreeObject>, containText: String,
 @Preview
 fun RequestListViewPreview() {
     val dummyRequests = listOf(
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "GET", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "POST", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "PUT", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "DELETE", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Grpc, method = "", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Graphql, method = "POST", url = "", examples = emptyList()),
     )
     RequestTreeView(
         selectedSubproject = Subproject(id = "preview", name = "", treeObjects = dummyRequests.map { TreeRequest(it.id) }.toMutableList(), mutableListOf()),
