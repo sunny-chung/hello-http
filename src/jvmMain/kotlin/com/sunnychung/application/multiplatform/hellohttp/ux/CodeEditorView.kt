@@ -58,7 +58,14 @@ fun CodeEditorView(
 
     // Replace "\r\n" by "\n" because to workaround the issue:
     // https://github.com/JetBrains/compose-multiplatform/issues/3877
-    var textValue by remember(text) { mutableStateOf(TextFieldValue(text = text.replace("\r\n", "\n"))) }
+    fun String.filterForTextField() = replace("\r\n", "\n")
+
+    var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
+    val newText = text.filterForTextField()
+    if (newText != textValue.text) {
+        textValue = textValue.copy(text = newText)
+    }
+
     log.d { "CodeEditorView recompose" }
 
     fun onPressEnterAddIndent() {
