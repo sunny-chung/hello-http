@@ -94,11 +94,11 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                     ) {
                         emitEvent(callId, "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite' and application protocol '$applicationProtocol'.\n" +
                                 "\n" +
-                                "Local principal = $localPrincipal\n" +
-                                "Local certificates = ${localCertificates?.firstOrNull()}\n" +
+                                "Client principal = $localPrincipal\n" +
+//                                "Client certificates = ${localCertificates?.firstOrNull()}\n" +
                                 "\n" +
-                                "Remote principal = $peerPrincipal\n" +
-                                "Remote certificates = ${peerCertificates?.firstOrNull()}\n"
+                                "Server principal = $peerPrincipal\n"
+//                                "Server certificates = ${peerCertificates?.firstOrNull()}\n"
                         )
                     }
 
