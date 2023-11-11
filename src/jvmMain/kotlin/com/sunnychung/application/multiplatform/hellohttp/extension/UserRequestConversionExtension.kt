@@ -1,6 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.extension
 
-import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -13,24 +13,22 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
-import org.apache.hc.client5.http.entity.UrlEncodedFormEntity
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
-import org.apache.hc.core5.http.NameValuePair
-import org.apache.hc.core5.http.io.entity.FileEntity
-import org.apache.hc.core5.http.io.entity.StringEntity
-import org.apache.hc.core5.http.message.BasicClassicHttpRequest
 import org.apache.hc.core5.http.message.BasicNameValuePair
 import org.apache.hc.core5.http.nio.AsyncRequestProducer
 import org.apache.hc.core5.http.nio.entity.AsyncEntityProducers
 import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder
-import org.apache.hc.core5.http.support.BasicRequestBuilder
 import org.apache.hc.core5.net.URIBuilder
 import java.io.File
 import java.net.URLEncoder
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
-fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environment?, resolveVariableMode: UserRequestTemplate.ResolveVariableMode = UserRequestTemplate.ExpandByEnvironment): HttpRequest = withScope(exampleId, environment, resolveVariableMode) {
+fun UserRequestTemplate.toHttpRequest(
+    exampleId: String,
+    environment: Environment?,
+    resolveVariableMode: UserRequestTemplate.ResolveVariableMode = UserRequestTemplate.ExpandByEnvironment,
+    addDefaultUserAgent: Boolean = true
+): HttpRequest = withScope(exampleId, environment, resolveVariableMode) {
 
     fun UserRequestBody.expandStringBody(): UserRequestBody {
         if (this is StringBody) {
@@ -43,7 +41,14 @@ fun UserRequestTemplate.toHttpRequest(exampleId: String, environment: Environmen
         method = method,
         url = url.resolveVariables(),
         headers = getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
-            .map { it.key to it.value },
+            .map { it.key to it.value }
+            .run {
+                if (addDefaultUserAgent && none { it.first.equals("user-agent", ignoreCase = true) }) {
+                    this + Pair("User-Agent", "Hello-HTTP/${AppContext.MetadataManager.version}")
+                } else {
+                    this
+                }
+            },
         queryParameters = getMergedKeyValues({ it.queryParameters }, selectedExample.overrides?.disabledQueryParameterIds)
             .map { it.key to it.value },
         body = when (selectedExample.body) {
