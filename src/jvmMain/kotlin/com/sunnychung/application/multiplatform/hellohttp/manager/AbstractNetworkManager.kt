@@ -1,7 +1,9 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.TrustAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -16,14 +18,16 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
+import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.SSLContext
 
 abstract class AbstractNetworkManager : NetworkManager {
 
@@ -51,6 +55,26 @@ abstract class AbstractNetworkManager : NetworkManager {
                     event = event
                 )
             )
+        }
+    }
+
+    protected fun createSslContext(sslConfig: SslConfig): SSLContext {
+        return SSLContext.getInstance("TLS")
+            .apply {
+                if (sslConfig.isInsecure == true) {
+                    val trustManager = TrustAllSslCertificateManager()
+                    init(null, arrayOf(trustManager), SecureRandom())
+                } else {
+                    init(null, null, SecureRandom())
+                }
+            }
+    }
+
+    protected fun createHostnameVerifier(sslConfig: SslConfig): HostnameVerifier? {
+        if (sslConfig.isInsecure == true) {
+            return HostnameVerifier { _, _ -> true }
+        } else {
+            return null
         }
     }
 

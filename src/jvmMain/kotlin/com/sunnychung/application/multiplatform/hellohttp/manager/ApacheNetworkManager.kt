@@ -25,6 +25,7 @@ import org.apache.hc.client5.http.function.ConnectionListener
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients
 import org.apache.hc.client5.http.impl.async.MinimalHttpAsyncClient
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder
+import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder
 import org.apache.hc.core5.concurrent.FutureCallback
 import org.apache.hc.core5.http.EntityDetails
 import org.apache.hc.core5.http.Header
@@ -86,6 +87,10 @@ class ApacheNetworkManager : AbstractNetworkManager() {
             PoolingAsyncClientConnectionManagerBuilder.create()
                 .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
+                .setTlsStrategy(ClientTlsStrategyBuilder.create()
+                    .setSslContext(createSslContext(sslConfig))
+                    .setHostnameVerifier(createHostnameVerifier(sslConfig))
+                    .build())
                 .setConnectionListener(object : ConnectionListener {
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
                         emitEvent(callId, "Connected to $remoteAddress with $protocolVersion")
