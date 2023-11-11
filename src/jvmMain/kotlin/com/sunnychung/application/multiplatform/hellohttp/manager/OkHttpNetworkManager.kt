@@ -79,10 +79,7 @@ private val inputStreamSourceConstructor = Class.forName("okio.InputStreamSource
 }
 
 class OkHttpNetworkManager : AbstractNetworkManager() {
-    init {
-        eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
-    }
-
+    
     fun buildHttpClient(
         callId: String,
         sslConfig: SslConfig,
