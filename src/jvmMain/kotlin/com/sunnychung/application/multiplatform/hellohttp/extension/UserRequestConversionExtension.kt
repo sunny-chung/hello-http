@@ -112,6 +112,9 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
                 b
             }
             .build())
+
+    headers.forEach { b.addHeader(it.first, it.second) }
+
     val entity = when (body) {
         is FileBody -> body.filePath?.let { AsyncEntityProducers.create(File(it), org.apache.hc.core5.http.ContentType.DEFAULT_BINARY) }
 
