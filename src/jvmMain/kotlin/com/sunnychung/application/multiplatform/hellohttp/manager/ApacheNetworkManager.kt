@@ -86,12 +86,13 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                     override fun onTlsUpgraded(
                         protocol: String,
                         cipherSuite: String,
+                        applicationProtocol: String,
                         localPrincipal: Principal?,
                         localCertificates: Array<Certificate>?,
                         peerPrincipal: Principal?,
                         peerCertificates: Array<Certificate>?
                     ) {
-                        emitEvent(callId, "Established TLS upgrade with protocol $protocol and cipher suite $cipherSuite.\n" +
+                        emitEvent(callId, "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite' and application protocol '$applicationProtocol'.\n" +
                                 "\n" +
                                 "Local principal = $localPrincipal\n" +
                                 "Local certificates = ${localCertificates?.firstOrNull()}\n" +
