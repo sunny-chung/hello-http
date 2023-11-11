@@ -7,6 +7,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import okhttp3.FormBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -21,7 +22,8 @@ import java.io.File
 data class UserRequestTemplate(
     val id: String,
     val name: String = "",
-    val protocol: Protocol = Protocol.Http,
+//    val protocol: Protocol = Protocol.Http, // this field is removed and cannot be reused
+    @Transient val application: ProtocolApplication = ProtocolApplication.Http, // TODO come back and remove @Transient when other application is implemented
     val method: String = "",
     val url: String = "",
 
@@ -102,7 +104,7 @@ data class UserRequestTemplate(
     }
 }
 
-enum class Protocol {
+enum class ProtocolApplication {
     Http, Grpc, Graphql
 }
 

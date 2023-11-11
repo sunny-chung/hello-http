@@ -17,7 +17,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
-import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
@@ -126,7 +126,7 @@ class InsomniaV4Importer {
                 var req = UserRequestTemplate(
                     id = uuidString(),
                     name = it.name,
-                    protocol = Protocol.Http,
+                    application = ProtocolApplication.Http,
                     method = it.method,
                     url = it.url.convertVariables(postFlightBodyVariables),
                     examples = listOf(UserRequestExample(

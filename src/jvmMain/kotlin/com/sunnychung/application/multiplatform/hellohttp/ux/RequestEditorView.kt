@@ -42,7 +42,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
-import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
@@ -173,8 +173,8 @@ fun RequestEditorView(
                 selectedItem = DropDownValue(request.method),
                 items = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD").map { DropDownValue(it) },
                 contentView = {
-                    val (text, color) = when (request.protocol) {
-                        Protocol.Http -> Pair(
+                    val (text, color) = when (request.application) {
+                        ProtocolApplication.Http -> Pair(
                             it?.displayText, when (it?.displayText) {
                                 "GET" -> colors.httpRequestGet
                                 "POST" -> colors.httpRequestPost
@@ -184,8 +184,8 @@ fun RequestEditorView(
                             }
                         )
 
-                        Protocol.Grpc -> Pair("gRPC", colors.grpcRequest)
-                        Protocol.Graphql -> Pair("GQL", colors.graphqlRequest)
+                        ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
+                        ProtocolApplication.Graphql -> Pair("GQL", colors.graphqlRequest)
                     }
                     AppText(
                         text = text.emptyToNull() ?: "--",
