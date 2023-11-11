@@ -1,5 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.network
 
+import com.sunnychung.application.multiplatform.hellohttp.manager.Http1Payload
+import com.sunnychung.application.multiplatform.hellohttp.manager.RawPayload
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -7,12 +9,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
 import java.io.OutputStream
 
-class InspectOutputStream(val stream: OutputStream, val channel: MutableSharedFlow<Pair<KInstant, ByteArray>>) : OutputStream() {
+class InspectOutputStream(val stream: OutputStream, val channel: MutableSharedFlow<RawPayload>) : OutputStream() {
     override fun write(b: Int) {
         synchronized(this) {
             stream.write(b)
             runBlocking {
-                channel.emit(KInstant.now() to byteArrayOf(b.toByte()))
+                channel.emit(Http1Payload(instant = KInstant.now(), payload = byteArrayOf(b.toByte())))
             }
         }
     }
@@ -21,7 +23,7 @@ class InspectOutputStream(val stream: OutputStream, val channel: MutableSharedFl
         synchronized(this) {
             stream.write(b)
             runBlocking {
-                channel.emit(KInstant.now() to b)
+                channel.emit(Http1Payload(instant = KInstant.now(), payload = b))
             }
         }
     }
@@ -30,7 +32,7 @@ class InspectOutputStream(val stream: OutputStream, val channel: MutableSharedFl
         synchronized(this) {
             stream.write(b, off, len)
             runBlocking {
-                channel.emit(KInstant.now() to b.copyOfRange(off, off + len))
+                channel.emit(Http1Payload(instant = KInstant.now(), payload = b.copyOfRange(off, off + len)))
             }
         }
     }

@@ -30,8 +30,20 @@ class CallData(
 
     val events: SharedFlow<NetworkEvent>,
     val eventsStateFlow: StateFlow<NetworkEvent?>,
-    val outgoingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
-    val incomingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
+    val outgoingBytes: SharedFlow<RawPayload>,
+    val incomingBytes: SharedFlow<RawPayload>,
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
 )
+
+sealed interface RawPayload {
+    val instant: KInstant
+    val payload: ByteArray
+}
+
+data class Http1Payload(override val instant: KInstant, override val payload: ByteArray) : RawPayload
+
+data class Http2Frame(override val instant: KInstant, val streamId: Int?, val content: String) : RawPayload {
+    override val payload: ByteArray
+        get() = content.encodeToByteArray()
+}

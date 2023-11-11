@@ -85,8 +85,8 @@ class OkHttpNetworkManager : AbstractNetworkManager() {
     fun buildHttpClient(
         callId: String,
         sslConfig: SslConfig,
-        outgoingBytesChannel: MutableSharedFlow<Pair<KInstant, ByteArray>>,
-        incomingBytesChannel: MutableSharedFlow<Pair<KInstant, ByteArray>>,
+        outgoingBytesChannel: MutableSharedFlow<RawPayload>,
+        incomingBytesChannel: MutableSharedFlow<RawPayload>,
         responseSize: AtomicInteger
     ): OkHttpClient {
 
@@ -262,8 +262,8 @@ class OkHttpNetworkManager : AbstractNetworkManager() {
         val httpClient = buildHttpClient(
             callId = callId,
             sslConfig = sslConfig,
-            outgoingBytesChannel = data.outgoingBytes as MutableSharedFlow<Pair<KInstant, ByteArray>>,
-            incomingBytesChannel = data.incomingBytes as MutableSharedFlow<Pair<KInstant, ByteArray>>,
+            outgoingBytesChannel = data.outgoingBytes as MutableSharedFlow<RawPayload>,
+            incomingBytesChannel = data.incomingBytes as MutableSharedFlow<RawPayload>,
             responseSize = data.optionalResponseSize
         )
 

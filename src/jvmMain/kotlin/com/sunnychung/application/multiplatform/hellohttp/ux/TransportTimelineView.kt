@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -43,12 +44,25 @@ private val DATE_TIME_FORMAT = KDateTimeFormat("HH:mm:ss.lll")
 private val TIMESTAMP_COLUMN_WIDTH_DP = 130.dp
 
 @Composable
-fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) {
+fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersion?, exchange: RawExchange) {
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
     val scrollState = rememberLazyListState()
 //    val scrollState = rememberScrollState()
 
     log.d { "TransportTimelineView recompose" }
+
+    val streamDigits = if (protocol?.isHttp2() == true) {
+        minOf(
+            exchange.exchanges
+                .filter { it.streamId != null }
+                .maxOf { it.streamId!! }
+                .toString()
+                .length,
+            2
+        )
+    } else {
+        0
+    }
 
     Box(modifier = modifier) {
         Box(
@@ -122,7 +136,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                             log.d { "max chars = " + textsSplitted.maxOf { it.length } }
 
                             textsSplitted.forEachIndexed { textIndex, textChunk ->
-                                item(key = "$index-$textIndex-${textChunk.hashCode()}") {
+                                item(key = "$protocol-$index-$textIndex-${textChunk.hashCode()}") {
                                     // Not using `height(IntrinsicSize.Min)` because it is buggy.
                                     Row(modifier = Modifier.padding(
                                         start = 6.dp,
@@ -147,6 +161,14 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                                                     fontFamily = FontFamily.Monospace,
                                                     modifier = Modifier.padding(start = 4.dp)
                                                 )
+                                                // cannot filter by it.direction != RawExchange.Direction.Unspecified
+                                                // otherwise contentWidthInPx keeps changing and causes infinite recompose loops and view overlapping
+                                                if (protocol?.isHttp2() == true) {
+                                                    AppText(
+                                                        text = "{${(it.streamId?.toString() ?: "*")}}".padStart(2 + streamDigits, ' ') + " ",
+                                                        fontFamily = FontFamily.Monospace,
+                                                    )
+                                                }
                                             } else {
                                                 Spacer(Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
                                                     .padding(end = 1.dp))
@@ -155,6 +177,14 @@ fun TransportTimelineView(modifier: Modifier = Modifier, exchange: RawExchange) 
                                                     fontFamily = FontFamily.Monospace,
                                                     modifier = Modifier.padding(start = 4.dp)
                                                 )
+                                                // cannot filter by it.direction != RawExchange.Direction.Unspecified
+                                                // otherwise contentWidthInPx keeps changing and causes infinite recompose loops and view overlapping
+                                                if (protocol?.isHttp2() == true) {
+                                                    AppText(
+                                                        text = " ".repeat("{} ".length + streamDigits),
+                                                        fontFamily = FontFamily.Monospace,
+                                                    )
+                                                }
                                             }
                                         }
                                         AppText(
