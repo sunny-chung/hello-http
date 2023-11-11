@@ -10,10 +10,21 @@ data class Environment(
     val id: String,
     val name: String,
     val variables: MutableList<UserKeyValuePair>,
+    val httpConfig: HttpConfig = HttpConfig(),
     val sslConfig: SslConfig = SslConfig(),
 ) : DropDownable {
     override val displayText: String
         get() = name
+}
+
+@Persisted
+@Serializable
+data class HttpConfig(
+    val protocolVersion: HttpProtocolVersion? = null
+) {
+    enum class HttpProtocolVersion {
+        Http1Only, Http2Only, Negotiate
+    }
 }
 
 @Persisted

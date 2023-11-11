@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
@@ -248,7 +249,7 @@ class OkHttpNetworkManager : AbstractNetworkManager() {
             .build()
     }
 
-    override fun sendRequest(request: HttpRequest, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, sslConfig: SslConfig): CallData {
+    override fun sendRequest(request: HttpRequest, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, httpConfig: HttpConfig, sslConfig: SslConfig): CallData {
         val okHttpRequest = request.toOkHttpRequest()
 
         val data = createCallData(

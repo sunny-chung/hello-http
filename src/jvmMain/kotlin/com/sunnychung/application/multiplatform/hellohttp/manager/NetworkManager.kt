@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -18,6 +19,7 @@ interface NetworkManager {
         requestId: String,
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): CallData
 }

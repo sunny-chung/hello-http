@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.toApacheHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
@@ -55,6 +56,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
 
     private fun buildHttpClient(
         callId: String,
+        httpConfig: HttpConfig,
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
@@ -71,12 +73,18 @@ class ApacheNetworkManager : AbstractNetworkManager() {
             }
         }
 
+        val httpVersionPolicy = when (httpConfig.protocolVersion) {
+            HttpConfig.HttpProtocolVersion.Http1Only -> HttpVersionPolicy.FORCE_HTTP_1
+            HttpConfig.HttpProtocolVersion.Http2Only -> HttpVersionPolicy.FORCE_HTTP_2
+            HttpConfig.HttpProtocolVersion.Negotiate, null -> HttpVersionPolicy.NEGOTIATE
+        }
+
         val httpClient = HttpAsyncClients.createMinimal(
             H2Config.DEFAULT,
             Http1Config.DEFAULT,
             IOReactorConfig.DEFAULT,
             PoolingAsyncClientConnectionManagerBuilder.create()
-                .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(HttpVersionPolicy.FORCE_HTTP_2).build())
+                .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
                 .setConnectionListener(object : ConnectionListener {
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
@@ -194,6 +202,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
         requestId: String,
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): CallData {
         val (apacheHttpRequest, requestBodySize) = request.toApacheHttpRequest()
@@ -208,6 +217,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
 
         val httpClient = buildHttpClient(
             callId = callId,
+            httpConfig = httpConfig,
             sslConfig = sslConfig,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
             incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
