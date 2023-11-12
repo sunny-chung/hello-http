@@ -61,9 +61,20 @@ fun CodeEditorView(
     fun String.filterForTextField() = replace("\r\n", "\n")
 
     var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
+    var cursorDelta by remember { mutableStateOf(0) }
     val newText = text.filterForTextField()
     if (newText != textValue.text) {
+        log.d { "CodeEditorView replace text len ${textValue.text.length} -> ${newText.length}" }
         textValue = textValue.copy(text = newText)
+    }
+    if (cursorDelta > 0) {
+        textValue = textValue.copy(
+            selection = TextRange(
+                textValue.selection.start + cursorDelta,
+                textValue.selection.end + cursorDelta
+            )
+        )
+        cursorDelta = 0
     }
 
     log.d { "CodeEditorView recompose" }
@@ -78,8 +89,9 @@ fun CodeEditorView(
         var lastLineStart = getLineStart(text, cursorPos)
         var spacesMatch = "^(\\s+)".toRegex().matchAt(text.substring(lastLineStart, cursorPos), 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
-        log.d { "onPressEnterAddIndent add ${newSpaces.length} spaces" }
-        textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length))
+        log.d { "onPressEnterAddIndent add ${newSpaces.length} spaces. current cursor $cursorPos" }
+//        textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length)) // no use
+        cursorDelta += newSpaces.length
         onTextChange?.invoke(text.insert(cursorPos, newSpaces))
     }
 
