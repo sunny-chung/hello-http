@@ -88,7 +88,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                 .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
                 .setTlsStrategy(ClientTlsStrategyBuilder.create()
-                    .setSslContext(createSslContext(sslConfig))
+                    .setSslContext(createSslContext(sslConfig).first)
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
                 .setConnectionListener(object : ConnectionListener {

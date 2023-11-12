@@ -105,10 +105,8 @@ class OkHttpNetworkManager : AbstractNetworkManager() {
             .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
             .apply {
                 if (sslConfig.isInsecure == true) {
-                    val trustManager = TrustAllSslCertificateManager()
-                    val sslContext = SSLContext.getInstance("SSL")
-                    sslContext.init(null, arrayOf(trustManager), SecureRandom())
-                    sslSocketFactory(sslContext.socketFactory, trustManager)
+                    val (sslContext, trustManager) = createSslContext(sslConfig)
+                    sslSocketFactory(sslContext.socketFactory, trustManager!!)
                     hostnameVerifier { _, _ -> true }
                 }
             }

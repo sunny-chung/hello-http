@@ -10,7 +10,10 @@ import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputSt
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
 import com.sunnychung.application.multiplatform.hellohttp.util.llog
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import org.apache.hc.core5.net.URIBuilder
 import org.java_websocket.client.DnsResolver
 import org.java_websocket.client.WebSocketClient
@@ -79,6 +82,9 @@ class WebSocketNetworkManager : AbstractNetworkManager() {
         ) {
             init {
                 setDnsResolver(createDnsResolver(callId))
+                if (uri.scheme == "wss" && sslConfig.isInsecure == true) {
+                    setSocketFactory(createSslContext(sslConfig).first.socketFactory)
+                }
             }
 
             override fun wrapInputStream(`is`: InputStream): InputStream {
@@ -139,10 +145,14 @@ class WebSocketNetworkManager : AbstractNetworkManager() {
             }
 
             override fun onError(error: Exception) {
-                out.errorMessage = error.message
-                out.isError = true
-                emitEvent(callId, "Error encountered: ${error.message}")
-                llog.w(error) { "WebSocket error" }
+                // WebSocketClient implementation interrupts the thread executing `onError` very early,
+                // not allowing error escalating completes
+                CoroutineScope(Dispatchers.Default).launch {
+                    out.errorMessage = error.message
+                    out.isError = true
+                    emitEvent(callId, "Error encountered: ${error.message}")
+                    llog.w(error) { "WebSocket error" }
+                }
             }
 
         }

@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
+import javax.net.ssl.X509TrustManager
 
 abstract class AbstractNetworkManager : NetworkManager {
 
@@ -58,14 +59,16 @@ abstract class AbstractNetworkManager : NetworkManager {
         }
     }
 
-    protected fun createSslContext(sslConfig: SslConfig): SSLContext {
+    protected fun createSslContext(sslConfig: SslConfig): Pair<SSLContext, X509TrustManager?> {
         return SSLContext.getInstance("TLS")
-            .apply {
+            .run {
                 if (sslConfig.isInsecure == true) {
                     val trustManager = TrustAllSslCertificateManager()
                     init(null, arrayOf(trustManager), SecureRandom())
+                    Pair(this, trustManager)
                 } else {
                     init(null, null, SecureRandom())
+                    Pair(this, null)
                 }
             }
     }
