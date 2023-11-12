@@ -76,7 +76,8 @@ fun RequestEditorView(
     onClickCopyCurl: () -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     isConnecting: Boolean,
-    onClickConnectDisconnect: (Boolean) -> Unit,
+    onClickConnect: () -> Unit,
+    onClickDisconnect: () -> Unit,
     onClickSendPayload: (String) -> Unit,
 ) {
     val colors = LocalColor.current
@@ -290,7 +291,13 @@ fun RequestEditorView(
                 }
                 Box(
                     modifier = Modifier.background(bgColor).fillMaxHeight()
-                        .clickable { onClickConnectDisconnect(!isConnecting) }
+                        .clickable {
+                            if (!isConnecting) {
+                                onClickConnect()
+                            } else {
+                                onClickDisconnect()
+                            }
+                        }
                         .padding(horizontal = 10.dp)
                 ) {
                     AppText(

@@ -422,17 +422,16 @@ fun AppContentView() {
                                         }
                                     },
                                     isConnecting = networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)?.isCommunicating ?: false,
-                                    onClickConnectDisconnect = { connect ->
-                                        if (connect) {
-                                            networkClientManager.fireRequest(
-                                                request = requestNonNull,
-                                                requestExampleId = selectedRequestExampleId!!,
-                                                environment = selectedEnvironment,
-                                                subprojectId = selectedSubproject!!.id
-                                            )
-                                        } else {
-                                            networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
-                                        }
+                                    onClickConnect = {
+                                        networkClientManager.fireRequest(
+                                            request = requestNonNull,
+                                            requestExampleId = selectedRequestExampleId!!,
+                                            environment = selectedEnvironment,
+                                            subprojectId = selectedSubproject!!.id
+                                        )
+                                    },
+                                    onClickDisconnect = {
+                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
                                     },
                                     onClickSendPayload = { payload ->
                                         networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendPayload(payload) }
