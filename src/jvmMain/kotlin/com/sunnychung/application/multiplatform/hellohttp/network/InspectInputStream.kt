@@ -10,11 +10,11 @@ import kotlinx.coroutines.runBlocking
 import java.io.FilterInputStream
 import java.io.InputStream
 
-class InspectInputStream(val stream: InputStream, val channel: MutableSharedFlow<RawPayload>) : FilterInputStream(stream) {
+class InspectInputStream(val stream: InputStream, val channel: MutableSharedFlow<RawPayload>) : InputStream() {
     override fun read(): Int {
         synchronized(this) {
             log.d { "read1" }
-            val b = super.read()
+            val b = stream.read()
             runBlocking {
                 channel.emit(Http1Payload(instant = KInstant.now(), payload = byteArrayOf(b.toByte())))
             }
@@ -25,7 +25,7 @@ class InspectInputStream(val stream: InputStream, val channel: MutableSharedFlow
     override fun read(b: ByteArray): Int {
         synchronized(this) {
             log.d { "read2" }
-            val length = super.read(b)
+            val length = stream.read(b)
             runBlocking {
                 channel.emit(Http1Payload(instant = KInstant.now(), payload = b.copyOfRange(0, length)))
             }
@@ -36,7 +36,7 @@ class InspectInputStream(val stream: InputStream, val channel: MutableSharedFlow
     override fun read(b: ByteArray, off: Int, len: Int): Int {
         synchronized(this) {
             log.d { "read3 $off $len" }
-            val length = super.read(b, off, len)
+            val length = stream.read(b, off, len)
             if (length > 0) {
                 runBlocking {
                     channel.emit(Http1Payload(instant = KInstant.now(), payload = b.copyOfRange(off, off + length)))
