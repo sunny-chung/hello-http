@@ -396,23 +396,16 @@ fun AppContentView() {
                                         )
                                     },
                                     onClickCopyCurl = {
-                                        val (curl, error) = try {
-                                            Pair(
-                                                requestNonNull.toCurlCommand(
-                                                    exampleId = selectedRequestExampleId!!,
-                                                    environment = selectedEnvironment
-                                                ),
-                                                null
+                                        try {
+                                            val curl = requestNonNull.toCurlCommand(
+                                                exampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment
                                             )
-                                        } catch (e: Throwable) {
-                                            log.w(e) { "Cannot convert request" }
-                                            Pair(null, e)
-                                        }
-                                        log.d { "curl: $curl" }
-                                        if (curl != null) {
+                                            log.d { "curl: $curl" }
                                             clipboardManager.setText(AnnotatedString(curl))
                                             true
-                                        } else {
+                                        } catch (e: Throwable) {
+                                            log.w(e) { "Cannot convert request" }
                                             false
                                         }
                                     },
