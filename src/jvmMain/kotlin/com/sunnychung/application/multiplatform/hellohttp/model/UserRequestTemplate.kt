@@ -7,7 +7,6 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import okhttp3.FormBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -23,17 +22,30 @@ data class UserRequestTemplate(
     val id: String,
     val name: String = "",
 //    val protocol: Protocol = Protocol.Http, // this field is removed and cannot be reused
-    @Transient val application: ProtocolApplication = ProtocolApplication.Http, // TODO come back and remove @Transient when other application is implemented
+    val application: ProtocolApplication = ProtocolApplication.Http,
     val method: String = "",
     val url: String = "",
 
     val examples: List<UserRequestExample> = listOf(UserRequestExample(id = uuidString(), name = "Base")),
+    val payloadExamples: List<PayloadExample>? = null,
 ) {
     init {
         if (method != method.trim().uppercase()) {
             throw IllegalArgumentException("`name` must be in upper case")
         }
     }
+
+    fun copyForApplication(application: ProtocolApplication, method: String) =
+        if (application == ProtocolApplication.WebSocket && payloadExamples.isNullOrEmpty()) {
+            copy(
+                application = application,
+                method = method,
+                payloadExamples = listOf(PayloadExample(id = uuidString(), name = "New Payload", body = ""))
+            )
+        } else {
+            copy(application = application, method = method)
+        }
+
     sealed class ResolveVariableMode
     object ExpandByEnvironment : ResolveVariableMode()
     data class ReplaceAsString(val replacement: String = "{{\$1}}") : ResolveVariableMode()
@@ -105,7 +117,7 @@ data class UserRequestTemplate(
 }
 
 enum class ProtocolApplication {
-    Http, Grpc, Graphql
+    Http, WebSocket, Grpc, Graphql
 }
 
 @Persisted
@@ -132,6 +144,14 @@ data class UserRequestExample(
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     )
 }
+
+@Persisted
+@Serializable
+data class PayloadExample(
+    override val id: String,
+    val name: String,
+    val body: String,
+) : Identifiable
 
 @Persisted
 @Serializable

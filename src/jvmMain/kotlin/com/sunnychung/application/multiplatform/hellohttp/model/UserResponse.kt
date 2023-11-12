@@ -16,6 +16,7 @@ data class UserResponse(
     val requestId: String, // corresponding id of UserRequest
     val requestExampleId: String, // corresponding id of UserRequestExample
     var protocol: ProtocolVersion? = null,
+    var application: ProtocolApplication = ProtocolApplication.Http,
 
     var startAt: KInstantAsLong? = null,
     var endAt: KInstantAsLong? = null,
@@ -29,6 +30,11 @@ data class UserResponse(
     @Transient var postFlightErrorMessage: String? = null,
     var headers: List<Pair<String, String>>? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
+    var payloadExchanges: MutableList<PayloadMessage>? =
+        if (application == ProtocolApplication.WebSocket)
+            Collections.synchronizedList(mutableListOf())
+        else
+            null,
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
     override fun equals(other: Any?): Boolean {

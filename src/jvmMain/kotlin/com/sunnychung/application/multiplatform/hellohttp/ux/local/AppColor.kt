@@ -10,6 +10,7 @@ data class AppColor(
     val backgroundContextMenu: Color,
     val backgroundInputField: Color,
     val backgroundButton: Color,
+    val backgroundStopButton: Color,
     val backgroundDialogOverlay: Color,
     val backgroundTooltip: Color,
     val backgroundHoverDroppable: Color,
@@ -31,6 +32,8 @@ data class AppColor(
     val httpRequestPut: Color,
     val httpRequestDelete: Color,
     val httpRequestOthers: Color,
+
+    val websocketRequest: Color,
 
     val grpcRequest: Color,
     val graphqlRequest: Color,
@@ -70,6 +73,7 @@ fun darkColorScheme(): AppColor = AppColor(
     backgroundContextMenu = Color(red = 0.3f, green = 0.3f, blue = 0.3f),
     backgroundInputField = Color.Black,
     backgroundButton = Color(red = 0f, green = 0f, blue = 0.6f),
+    backgroundStopButton = Color(red = 0.6f, green = 0f, blue = 0f),
     backgroundDialogOverlay = Color.Black.copy(alpha = 0.6f),
     backgroundTooltip = Color(red = 0f, green = 0f, blue = 0.45f),
     backgroundHoverDroppable = Color(0f, 0f, 0.6f),
@@ -89,6 +93,8 @@ fun darkColorScheme(): AppColor = AppColor(
     httpRequestPut = Color(red = 1f, green = 0.5f, blue = 0f),
     httpRequestDelete = Color(red = 0.9f, green = 0.3f, blue = 0.3f),
     httpRequestOthers = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
+
+    websocketRequest = Color(red = 0.6f, green = 0.6f, blue = 0.9f),
 
     grpcRequest = Color(red = 1f, green = 1f, blue = 1f),
     graphqlRequest = Color(red = 204, green = 67, blue = 162),
@@ -124,6 +130,7 @@ fun lightColorScheme(): AppColor = AppColor(
     backgroundContextMenu = Color(red = 0.88f, green = 0.88f, blue = 0.88f),
     backgroundInputField = Color(red = 0.92f, green = 0.92f, blue = 0.92f),
     backgroundButton = Color(red = 0.6f, green = 0.6f, blue = 1f),
+    backgroundStopButton = Color(red = 1f, green = 0.43f, blue = 0.43f),
     backgroundDialogOverlay = Color.Black.copy(alpha = 0.4f),
     backgroundTooltip = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
     backgroundHoverDroppable = Color(0f, 0f, 0.4f),
@@ -143,6 +150,8 @@ fun lightColorScheme(): AppColor = AppColor(
     httpRequestPut = Color(red = 1f, green = 0.5f, blue = 0f),
     httpRequestDelete = Color(red = 0.9f, green = 0.3f, blue = 0.3f),
     httpRequestOthers = Color(red = 0.35f, green = 0.35f, blue = 0.35f),
+
+    websocketRequest = Color(red = 0.3f, green = 0.3f, blue = 0.45f),
 
     grpcRequest = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
     graphqlRequest = Color(red = 204, green = 67, blue = 162),

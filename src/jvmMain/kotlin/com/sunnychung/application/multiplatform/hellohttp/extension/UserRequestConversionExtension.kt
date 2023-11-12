@@ -68,6 +68,7 @@ fun UserRequestTemplate.toHttpRequest(
             else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body.expandStringBody() else baseExample.body?.expandStringBody()
         },
         contentType = selectedExample.contentType,
+        application = application,
     )
 }
 

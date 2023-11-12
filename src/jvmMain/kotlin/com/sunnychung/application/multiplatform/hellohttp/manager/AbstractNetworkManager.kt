@@ -28,8 +28,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
+import javax.net.ssl.X509TrustManager
 
-abstract class AbstractNetworkManager : NetworkManager {
+abstract class AbstractNetworkManager internal constructor(callDataStore: CallDataStore) : NetworkManager {
 
     protected val eventSharedFlow = MutableSharedFlow<NetworkEvent>()
 
@@ -39,7 +40,7 @@ abstract class AbstractNetworkManager : NetworkManager {
      */
     protected val eventStateFlow = MutableStateFlow<NetworkEvent?>(null)
 
-    protected val callData = ConcurrentHashMap<String, CallData>()
+    protected val callData = callDataStore.provideCallDataStore()
 
     init {
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
@@ -58,14 +59,16 @@ abstract class AbstractNetworkManager : NetworkManager {
         }
     }
 
-    protected fun createSslContext(sslConfig: SslConfig): SSLContext {
+    protected fun createSslContext(sslConfig: SslConfig): Pair<SSLContext, X509TrustManager?> {
         return SSLContext.getInstance("TLS")
-            .apply {
+            .run {
                 if (sslConfig.isInsecure == true) {
                     val trustManager = TrustAllSslCertificateManager()
                     init(null, arrayOf(trustManager), SecureRandom())
+                    Pair(this, trustManager)
                 } else {
                     init(null, null, SecureRandom())
+                    Pair(this, null)
                 }
             }
     }
@@ -99,6 +102,7 @@ abstract class AbstractNetworkManager : NetworkManager {
             incomingBytes = incomingBytesFlow,
             optionalResponseSize = optionalResponseSize,
             response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
+            cancel = {}
         )
         callData[callId] = data
 

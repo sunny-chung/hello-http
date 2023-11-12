@@ -6,9 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.defaultScrollbarStyle
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,32 +26,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
-import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
-import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
-import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
-import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
-import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
-import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
-import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -66,7 +53,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorSch
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -137,7 +123,7 @@ fun AppView() {
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun AppContentView() {
-    val networkManager = AppContext.NetworkManager
+    val networkClientManager = AppContext.NetworkClientManager
     val persistResponseManager = AppContext.PersistResponseManager
     val requestCollectionRepository = AppContext.RequestCollectionRepository
     val projectCollectionRepository = AppContext.ProjectCollectionRepository
@@ -155,17 +141,18 @@ fun AppContentView() {
     var requestCollectionState by remember { mutableStateOf<RequestCollection?>(null) }
     var request by remember { mutableStateOf<UserRequestTemplate?>(null) }
     var selectedRequestExampleId by remember { mutableStateOf<String?>(null) }
-    var activeCallId by remember { mutableStateOf<String?>(null) }
 
-    val callDataUpdates by
-        activeCallId?.let { networkManager.getCallData(it) }?.eventsStateFlow
-            ?.onEach { log.d { "callDataUpdates onEach ${it?.event}" } }
-            ?.collectAsState(null) // needed for invalidating compose caches
-            ?: run {
-                log.d { "callDataUpdates no flow" }
-                mutableStateOf(null)
-            }
-    val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
+    // purpose of this variable is to force refresh UI once when there is new request
+    // so that `callDataUpdates` resolves to a new and correct flow.
+    // the value itself is not useful
+    val activeCallId = networkClientManager.subscribeToNewRequests().value // `val xxx by yyy` VS `val xxx = yyy.value`: `.value` is called only if `xxx` is accessed
+
+    val callDataUpdates by networkClientManager.subscribeToRequestExampleCall(selectedRequestExampleId)
+        ?: run {
+            log.d { "callDataUpdates no flow" }
+            mutableStateOf(null)
+        }
+    val activeResponse = networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)
     var response by remember { mutableStateOf<UserResponse?>(null) }
     if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
         response = activeResponse
@@ -401,118 +388,27 @@ fun AppContentView() {
                                         updateResponseView()
                                     },
                                     onClickSend = {
-                                        try {
-                                            val networkRequest = requestNonNull.toHttpRequest(
-                                                exampleId = selectedRequestExampleId!!,
-                                                environment = selectedEnvironment
-                                            )
-                                            val (postFlightHeaderVars, postFlightBodyVars) = requestNonNull.getPostFlightVariables(
-                                                exampleId = selectedRequestExampleId!!,
-                                                environment = selectedEnvironment
-                                            )
-                                            val postFlightEnvironment = selectedEnvironment
-
-                                            val postFlightAction = if (postFlightEnvironment != null && (postFlightHeaderVars.isNotEmpty() || postFlightBodyVars.isNotEmpty())) {
-                                                { resp: UserResponse ->
-                                                    postFlightHeaderVars.forEach { v -> // O(n^2)
-                                                        try {
-                                                            val variable = postFlightEnvironment.variables.firstOrNull { it.key == v.key }
-                                                            val value = resp.headers?.first { it.first == v.value }?.second ?: ""
-                                                            if (variable != null) {
-                                                                variable.value = value
-                                                            } else {
-                                                                postFlightEnvironment.variables += UserKeyValuePair(
-                                                                    id = uuidString(),
-                                                                    key = v.key,
-                                                                    value = value,
-                                                                    valueType = FieldValueType.String,
-                                                                    isEnabled = true
-                                                                )
-                                                            }
-                                                        } catch (e: Throwable) {
-                                                            throw PostflightError(variable = v.key, cause = e)
-                                                        }
-                                                    }
-                                                    if (postFlightBodyVars.isNotEmpty()) {
-                                                        val responseBody = resp.body?.decodeToString()
-                                                        val context = if (resp.headers?.firstOrNull { it.first.equals("content-type", ignoreCase = true) }?.second?.contains("json", ignoreCase = true) == true) {
-                                                            JsonPath.parse(responseBody)
-                                                        } else {
-                                                            null
-                                                        }
-                                                        postFlightBodyVars.forEach { v ->
-                                                            try {
-                                                                val variable = postFlightEnvironment.variables.firstOrNull { it.key == v.key }
-                                                                val value = v.value.let {
-                                                                    if (it == "$") {
-                                                                        responseBody
-                                                                    } else {
-                                                                        context?.read<String>(it)
-                                                                    }
-                                                                } ?: ""
-                                                                if (variable != null) {
-                                                                    variable.value = value
-                                                                } else {
-                                                                    postFlightEnvironment.variables += UserKeyValuePair(
-                                                                        id = uuidString(),
-                                                                        key = v.key,
-                                                                        value = value,
-                                                                        valueType = FieldValueType.String,
-                                                                        isEnabled = true
-                                                                    )
-                                                                }
-                                                            } catch (e: Throwable) {
-                                                                throw PostflightError(variable = v.key, cause = e)
-                                                            }
-                                                        }
-                                                    }
-                                                    projectCollectionRepository.notifyUpdated(ProjectAndEnvironmentsDI())
-                                                }
-                                            } else {
-                                                null
-                                            }
-
-                                            val callData = networkManager.sendRequest(
-                                                request = networkRequest,
-                                                requestExampleId = selectedRequestExampleId!!,
-                                                requestId = requestNonNull.id,
-                                                subprojectId = selectedSubproject!!.id,
-                                                postFlightAction = postFlightAction,
-                                                httpConfig = selectedEnvironment?.httpConfig ?: HttpConfig(),
-                                                sslConfig = selectedEnvironment?.sslConfig ?: SslConfig(),
-                                            )
-                                            activeCallId = callData.id
-                                            persistResponseManager.registerCall(callData.id)
-                                            callData.isPrepared = true
-                                        } catch (error: Throwable) {
-                                            activeCallId = null
-                                            response = UserResponse(
-                                                id = uuidString(),
-                                                requestExampleId = selectedRequestExampleId!!,
-                                                requestId = requestNonNull.id,
-                                                isError = true,
-                                                errorMessage = error.message
-                                            )
-                                        }
+                                        networkClientManager.fireRequest(
+                                            request = requestNonNull,
+                                            requestExampleId = selectedRequestExampleId!!,
+                                            environment = selectedEnvironment,
+                                            subprojectId = selectedSubproject!!.id
+                                        )
+                                    },
+                                    onClickCancel = {
+                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
                                     },
                                     onClickCopyCurl = {
-                                        val (curl, error) = try {
-                                            Pair(
-                                                requestNonNull.toCurlCommand(
-                                                    exampleId = selectedRequestExampleId!!,
-                                                    environment = selectedEnvironment
-                                                ),
-                                                null
+                                        try {
+                                            val curl = requestNonNull.toCurlCommand(
+                                                exampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment
                                             )
-                                        } catch (e: Throwable) {
-                                            log.w(e) { "Cannot convert request" }
-                                            Pair(null, e)
-                                        }
-                                        log.d { "curl: $curl" }
-                                        if (curl != null) {
+                                            log.d { "curl: $curl" }
                                             clipboardManager.setText(AnnotatedString(curl))
                                             true
-                                        } else {
+                                        } catch (e: Throwable) {
+                                            log.w(e) { "Cannot convert request" }
                                             false
                                         }
                                     },
@@ -524,6 +420,21 @@ fun AppContentView() {
                                             requestCollection!!.requests.replaceIf(update) { it.id == update.id }
                                             requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                                         }
+                                    },
+                                    isConnecting = networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)?.isCommunicating ?: false,
+                                    onClickConnect = {
+                                        networkClientManager.fireRequest(
+                                            request = requestNonNull,
+                                            requestExampleId = selectedRequestExampleId!!,
+                                            environment = selectedEnvironment,
+                                            subprojectId = selectedSubproject!!.id
+                                        )
+                                    },
+                                    onClickDisconnect = {
+                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
+                                    },
+                                    onClickSendPayload = { payload ->
+                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendPayload(payload) }
                                     }
                                 )
                             } ?: RequestEditorEmptyView(

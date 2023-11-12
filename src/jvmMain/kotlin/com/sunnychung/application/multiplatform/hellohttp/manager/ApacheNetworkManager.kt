@@ -45,6 +45,7 @@ import org.apache.hc.core5.http2.frame.FrameType
 import org.apache.hc.core5.http2.frame.RawFrame
 import org.apache.hc.core5.http2.hpack.HPackInspectHeader
 import org.apache.hc.core5.http2.impl.nio.H2InspectListener
+import org.apache.hc.core5.io.CloseMode
 import org.apache.hc.core5.reactor.IOReactorConfig
 import java.net.InetAddress
 import java.nio.ByteBuffer
@@ -53,7 +54,7 @@ import java.security.cert.Certificate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class ApacheNetworkManager : AbstractNetworkManager() {
+class ApacheNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
 
     private fun buildHttpClient(
         callId: String,
@@ -88,7 +89,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                 .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
                 .setTlsStrategy(ClientTlsStrategyBuilder.create()
-                    .setSslContext(createSslContext(sslConfig))
+                    .setSslContext(createSslContext(sslConfig).first)
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
                 .setConnectionListener(object : ConnectionListener {
@@ -282,7 +283,7 @@ class ApacheNetworkManager : AbstractNetworkManager() {
 
                     var result: SimpleHttpResponse? = null
 
-                    httpClient.execute(object : AsyncClientExchangeHandler {
+                    val call = httpClient.execute(object : AsyncClientExchangeHandler {
                         override fun releaseResources() {
                             println("releaseResources")
                             producer.releaseResources()
@@ -365,6 +366,13 @@ class ApacheNetworkManager : AbstractNetworkManager() {
                         }
 
                     })
+
+                    data.cancel = {
+                        log.d { "Request to cancel the call" }
+                        val cancelResult = call.cancel() // no use at all
+                        log.d { "Cancel result = $cancelResult" }
+                        httpClient.close(CloseMode.IMMEDIATE)
+                    }
                 }
 
                 out.statusCode = response?.code

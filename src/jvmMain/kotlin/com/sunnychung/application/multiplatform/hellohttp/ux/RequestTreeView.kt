@@ -237,6 +237,7 @@ fun RequestTreeView(
                         }
                     )
 
+                    ProtocolApplication.WebSocket -> Pair("WS", colors.websocketRequest)
                     ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
                     ProtocolApplication.Graphql -> Pair("GQL", colors.graphqlRequest)
                 }

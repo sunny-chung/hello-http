@@ -10,14 +10,14 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 @Composable
-fun AppTextButton(modifier: Modifier = Modifier, text: String, color: Color = LocalColor.current.text, onClick: (() -> Unit)?) {
+fun AppTextButton(modifier: Modifier = Modifier, text: String, color: Color = LocalColor.current.text, isEnabled: Boolean = true, onClick: (() -> Unit)?) {
     AppText(
         text = text,
         color = color,
         modifier = modifier
-            .background(LocalColor.current.backgroundButton)
+            .background(if (isEnabled) LocalColor.current.backgroundButton else LocalColor.current.disabled)
             .run {
-                if (onClick != null) {
+                if (isEnabled && onClick != null) {
                     this.clickable { onClick() }
                 } else {
                     this
