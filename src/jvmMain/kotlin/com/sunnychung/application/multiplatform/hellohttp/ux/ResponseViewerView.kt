@@ -45,6 +45,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 
@@ -420,7 +421,7 @@ fun ResponseStreamView(response: UserResponse) {
                     }
                     Row(modifier = modifier) {
                         AppText(
-                            text = DATE_TIME_FORMAT.format(it.instant),
+                            text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
                             fontFamily = FontFamily.Monospace,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
