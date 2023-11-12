@@ -30,6 +30,10 @@ class PrettifierManager {
             .map { it.prettifier }
             .distinct()
     }
+
+    fun allPrettifiers(): List<Prettifier> {
+        return registrations.map { it.prettifier }.distinct()
+    }
 }
 
 class Prettifier(
