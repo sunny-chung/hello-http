@@ -389,10 +389,10 @@ fun AppContentView() {
                                     },
                                     onClickSend = {
                                         networkClientManager.fireRequest(
-                                            requestNonNull = requestNonNull,
-                                            selectedRequestExampleId = selectedRequestExampleId!!,
-                                            selectedEnvironment = selectedEnvironment,
-                                            selectedSubprojectId = selectedSubproject!!.id
+                                            request = requestNonNull,
+                                            requestExampleId = selectedRequestExampleId!!,
+                                            environment = selectedEnvironment,
+                                            subprojectId = selectedSubproject!!.id
                                         )
                                     },
                                     onClickCopyCurl = {
@@ -422,10 +422,10 @@ fun AppContentView() {
                                     onClickConnectDisconnect = { connect ->
                                         if (connect) {
                                             networkClientManager.fireRequest(
-                                                requestNonNull = requestNonNull,
-                                                selectedRequestExampleId = selectedRequestExampleId!!,
-                                                selectedEnvironment = selectedEnvironment,
-                                                selectedSubprojectId = selectedSubproject!!.id
+                                                request = requestNonNull,
+                                                requestExampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment,
+                                                subprojectId = selectedSubproject!!.id
                                             )
                                         } else {
                                             networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }

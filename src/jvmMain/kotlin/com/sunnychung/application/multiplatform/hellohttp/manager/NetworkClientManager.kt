@@ -54,20 +54,20 @@ class NetworkClientManager : CallDataStore {
 
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
 
-    fun fireRequest(requestNonNull: UserRequestTemplate, selectedRequestExampleId: String, selectedEnvironment: Environment?, selectedSubprojectId: String) {
+    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, subprojectId: String) {
         val callData = try {
-            val networkRequest = requestNonNull.toHttpRequest(
-                exampleId = selectedRequestExampleId!!,
-                environment = selectedEnvironment
+            val networkRequest = request.toHttpRequest(
+                exampleId = requestExampleId,
+                environment = environment
             )
-            val (postFlightHeaderVars, postFlightBodyVars) = requestNonNull.getPostFlightVariables(
-                exampleId = selectedRequestExampleId!!,
-                environment = selectedEnvironment
+            val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(
+                exampleId = requestExampleId,
+                environment = environment
             )
-            val postFlightEnvironment = selectedEnvironment
+            val postFlightEnvironment = environment
 
             val postFlightAction =
-                if (requestNonNull.application != ProtocolApplication.WebSocket &&  postFlightEnvironment != null && (postFlightHeaderVars.isNotEmpty() || postFlightBodyVars.isNotEmpty())) {
+                if (request.application != ProtocolApplication.WebSocket &&  postFlightEnvironment != null && (postFlightHeaderVars.isNotEmpty() || postFlightBodyVars.isNotEmpty())) {
                     { resp: UserResponse ->
                         postFlightHeaderVars.forEach { v -> // O(n^2)
                             try {
@@ -140,21 +140,21 @@ class NetworkClientManager : CallDataStore {
 
             networkManager.sendRequest(
                 request = networkRequest,
-                requestExampleId = selectedRequestExampleId!!,
-                requestId = requestNonNull.id,
-                subprojectId = selectedSubprojectId,
+                requestExampleId = requestExampleId,
+                requestId = request.id,
+                subprojectId = subprojectId,
                 postFlightAction = postFlightAction,
-                httpConfig = selectedEnvironment?.httpConfig ?: HttpConfig(),
-                sslConfig = selectedEnvironment?.sslConfig ?: SslConfig(),
+                httpConfig = environment?.httpConfig ?: HttpConfig(),
+                sslConfig = environment?.sslConfig ?: SslConfig(),
             )
         } catch (error: Throwable) {
             val d = CallData(
                 id = uuidString(),
-                subprojectId = selectedSubprojectId,
+                subprojectId = subprojectId,
                 response = UserResponse(
                     id = uuidString(),
-                    requestExampleId = selectedRequestExampleId!!,
-                    requestId = requestNonNull.id,
+                    requestExampleId = requestExampleId,
+                    requestId = request.id,
                     isError = true,
                     errorMessage = error.message
                 ),
@@ -171,7 +171,7 @@ class NetworkClientManager : CallDataStore {
             callDataMap[d.id] = d
             d
         }
-        val oldCallId = requestExampleToCallMapping.put(selectedRequestExampleId, callData.id)
+        val oldCallId = requestExampleToCallMapping.put(requestExampleId, callData.id)
         if (oldCallId != null) {
             coroutineScope.launch {
                 callDataMap[oldCallId]?.cancel?.invoke()
