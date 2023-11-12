@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/github/license/sunny-chung/hello-http)](LICENSE)
 
-This is a cross-platform desktop application for testing HTTP APIs. This is an alternative to Postman, Insomnia REST, etc.
+This is a cross-platform desktop application for testing HTTP API and WebSocket endpoints. This is an alternative to Postman, Insomnia REST, etc.
 
 ![Screenshot 1](doc/screenshot1.png)
 ![Screenshot 2](doc/screenshot2.png)
@@ -57,8 +57,10 @@ Automatic backups and import/export were made to provide alternatives when there
     - Binary File
     - None
   - with query parameters and headers
+- Connecting and sending payloads to WebSocket endpoints
 - Request management with infinite nested folders
 - Multiple examples (request templates) with 1-level inheritance for each request - handle different scenario of the same API in the same request entry
+- Multiple payload examples for WebSocket requests
 - Multiple subprojects per project, designed for multiple services use
 - Multiple environments (no inheritance) per subproject, in which each one has
   - Environment variables that can be embedded anywhere in the request (type `${{variable-name}}`)
@@ -76,6 +78,7 @@ Automatic backups and import/export were made to provide alternatives when there
   - DNS lookup, connection and SSL events
   - Raw HTTP/1.1 messages
   - HTTP/2 decoded frames with push promises
+- Message stream logs for WebSocket communications
 - Persistence per request example
 
 **Appearance**
@@ -108,7 +111,6 @@ express your desired priorities in the issue tracker.
 
 - GraphQL (except subscription)
 - gRPC (via reflection)
-- WebSocket
 - GraphQL subscription
 - Custom HTTP methods
 - Searching in response body
