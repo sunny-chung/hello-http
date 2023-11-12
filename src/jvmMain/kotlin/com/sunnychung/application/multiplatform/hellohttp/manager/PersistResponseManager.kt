@@ -5,10 +5,13 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponseCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 class PersistResponseManager {
@@ -17,16 +20,29 @@ class PersistResponseManager {
 //    private val networkManager by lazy { AppContext.NetworkManager }
     private val responseCollectionRepository by lazy { AppContext.ResponseCollectionRepository }
     private val requestCollectionRepository by lazy { AppContext.RequestCollectionRepository }
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    fun registerCall(networkManager: NetworkManager, callId: String) {
-        val callData = networkManager.getCallData(callId)!!
+    fun registerCall(callData: CallData) {
         callData.events.onEach {
-            log.d { "PersistResponseManager receives call $callId event ${it.event}" }
-            val documentId = ResponsesDI(subprojectId = callData.subprojectId)
-            val record = loadResponseCollection(documentId)
-            record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response
-            responseCollectionRepository.notifyUpdated(documentId)
-        }.launchIn(CoroutineScope(Dispatchers.IO))
+            log.d { "PersistResponseManager receives call ${callData.id} event ${it.event}" }
+            persistCallResponse(callData)
+        }.launchIn(coroutineScope)
+        if (callData.response.isError) {
+            coroutineScope.launch {
+                persistCallResponse(callData)
+
+                // force refresh UI
+                (callData.eventsStateFlow as MutableStateFlow<NetworkEvent?>).value =
+                    NetworkEvent("", KInstant.now(), "")
+            }
+        }
+    }
+
+    private suspend fun persistCallResponse(callData: CallData) {
+        val documentId = ResponsesDI(subprojectId = callData.subprojectId)
+        val record = loadResponseCollection(documentId)
+        record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response
+        responseCollectionRepository.notifyUpdated(documentId)
     }
 
     /**

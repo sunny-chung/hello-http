@@ -78,7 +78,7 @@ private val inputStreamSourceConstructor = Class.forName("okio.InputStreamSource
     isAccessible = true
 }
 
-class OkHttpNetworkManager : AbstractNetworkManager() {
+class OkHttpNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
     
     fun buildHttpClient(
         callId: String,

@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.ApacheNetworkM
 import com.sunnychung.application.multiplatform.hellohttp.manager.AutoBackupManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.FileManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.MetadataManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.OkHttpNetworkManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistResponseManager
@@ -22,8 +23,9 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.UserPrefe
 object AppContext {
     val MetadataManager = MetadataManager()
     val SingleInstanceProcessService = SingleInstanceProcessService()
-    val NetworkManager: NetworkManager = ApacheNetworkManager() //OkHttpNetworkManager()
-    val WebSocketNetworkManager: NetworkManager = WebSocketNetworkManager()
+    val NetworkClientManager = NetworkClientManager()
+    val NetworkManager: NetworkManager = ApacheNetworkManager(NetworkClientManager) //OkHttpNetworkManager(NetworkClientManager)
+    val WebSocketNetworkManager: NetworkManager = WebSocketNetworkManager(NetworkClientManager)
     val FileManager = FileManager()
     val PersistenceManager = PersistenceManager()
     val PrettifierManager = PrettifierManager()

@@ -25,19 +25,7 @@ import java.net.InetSocketAddress
 import java.net.URI
 import java.nio.ByteBuffer
 
-class WebSocketNetworkManager : AbstractNetworkManager() {
-
-//    fun buildWebSocket(
-//        callId: String,
-//        uri: URI,
-//        headers: List<Pair<String, String>>,
-//        httpConfig: HttpConfig,
-//        sslConfig: SslConfig,
-//        outgoingBytesFlow: MutableSharedFlow<RawPayload>,
-//        incomingBytesFlow: MutableSharedFlow<RawPayload>,
-//    ): WebSocketClient {
-//
-//    }
+class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
 
     fun createDnsResolver(callId: String): DnsResolver {
         return DnsResolver { uri ->
@@ -64,7 +52,7 @@ class WebSocketNetworkManager : AbstractNetworkManager() {
             subprojectId = subprojectId,
         )
         val callId = data.id
-        val uri = URIBuilder(request.url)
+        val uri: URI = URIBuilder(request.url)
             .run {
                 var b = this
                 request.queryParameters

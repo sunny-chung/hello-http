@@ -30,7 +30,7 @@ import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
-abstract class AbstractNetworkManager : NetworkManager {
+abstract class AbstractNetworkManager internal constructor(callDataStore: CallDataStore) : NetworkManager {
 
     protected val eventSharedFlow = MutableSharedFlow<NetworkEvent>()
 
@@ -40,7 +40,7 @@ abstract class AbstractNetworkManager : NetworkManager {
      */
     protected val eventStateFlow = MutableStateFlow<NetworkEvent?>(null)
 
-    protected val callData = ConcurrentHashMap<String, CallData>()
+    protected val callData = callDataStore.provideCallDataStore()
 
     init {
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))

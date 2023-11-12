@@ -53,7 +53,7 @@ import java.security.cert.Certificate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class ApacheNetworkManager : AbstractNetworkManager() {
+class ApacheNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
 
     private fun buildHttpClient(
         callId: String,

@@ -54,7 +54,7 @@ fun ResponseViewerView(response: UserResponse) {
 
     var selectedTabIndex by remember { mutableStateOf(0) }
 
-    log.d { "ResponseViewerView recompose" }
+    log.d { "ResponseViewerView recompose ${response.errorMessage}" }
 
     val responseViewModel = AppContext.ResponseViewModel
     responseViewModel.setEnabled(response.isCommunicating)
@@ -282,6 +282,7 @@ class PrettifierDropDownValue(val name: String, val prettifier: Prettifier?) : D
         get() = name
 }
 
+private val ORIGINAL = "UTF-8 String"
 private val CLIENT_ERROR = "Client Error"
 
 @Composable
@@ -290,6 +291,8 @@ fun BodyViewerView(modifier: Modifier = Modifier, content: ByteArray, errorMessa
     if (selectedView.name !in prettifiers.map { it.name }) {
         selectedView = prettifiers.first()
     }
+
+    log.d { "BodyViewerView recompose" }
 
     Column(modifier = modifier) {
         Row(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -326,8 +329,6 @@ fun BodyViewerView(modifier: Modifier = Modifier, content: ByteArray, errorMessa
 
 @Composable
 fun ResponseBodyView(response: UserResponse) {
-    val ORIGINAL = "UTF-8 String"
-
     val prettifiers = if (!response.isError) {
         val contentType = response.headers
             ?.filter { it.first.lowercase() == "content-type" }
@@ -343,6 +344,8 @@ fun ResponseBodyView(response: UserResponse) {
     } else {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     }
+
+    log.d { "ResponseBodyView recompose" }
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
@@ -369,8 +372,6 @@ private val TYPE_COLUMN_WIDTH_DP = 20.dp
 
 @Composable
 fun ResponseStreamView(response: UserResponse) {
-    val ORIGINAL = "UTF-8 String"
-
     val prettifiers = if (!response.isError) {
         AppContext.PrettifierManager.allPrettifiers()
             .map { PrettifierDropDownValue(it.formatName, it) } +
