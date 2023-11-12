@@ -72,9 +72,10 @@ fun RequestEditorView(
     environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
+    onClickCancel: () -> Unit,
     onClickCopyCurl: () -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
-    isConnected: Boolean,
+    isConnecting: Boolean,
     onClickConnectDisconnect: (Boolean) -> Unit,
     onClickSendPayload: (String) -> Unit,
 ) {
@@ -239,13 +240,24 @@ fun RequestEditorView(
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
             if (request.application != ProtocolApplication.WebSocket) {
+                val (label, backgroundColour) = if (!isConnecting) {
+                    Pair("Send", colors.backgroundButton)
+                } else {
+                    Pair("Cancel", colors.backgroundStopButton)
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.background(colors.backgroundButton).width(width = 84.dp).fillMaxHeight()
+                    modifier = Modifier.background(backgroundColour).width(width = 84.dp).fillMaxHeight()
                 ) {
-                    Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable { onClickSend() }) {
+                    Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable {
+                        if (!isConnecting) {
+                            onClickSend()
+                        } else {
+                            onClickCancel()
+                        }
+                    }) {
                         AppText(
-                            text = "Send",
+                            text = label,
                             fontSize = fonts.buttonFontSize,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(start = 4.dp).align(Alignment.Center)
@@ -253,12 +265,13 @@ fun RequestEditorView(
                     }
                     DropDownView(
                         iconSize = 24.dp,
-                        items = listOf("Send", "Copy as cURL command").map { DropDownValue(it) },
+                        items = listOf(label, "Copy as cURL command").map { DropDownValue(it) },
                         isShowLabel = false,
                         onClickItem = {
                             var isSuccess = true
                             when (it.displayText) {
                                 "Send" -> onClickSend()
+                                "Cancel" -> onClickCancel()
                                 "Copy as cURL command" -> {
                                     isSuccess = onClickCopyCurl()
                                 }
@@ -270,14 +283,14 @@ fun RequestEditorView(
                     )
                 }
             } else {
-                val (text, bgColor) = if (isConnected) {
+                val (text, bgColor) = if (isConnecting) {
                     Pair("Disconnect", colors.backgroundStopButton)
                 } else {
                     Pair("Connect", colors.backgroundButton)
                 }
                 Box(
                     modifier = Modifier.background(bgColor).fillMaxHeight()
-                        .clickable { onClickConnectDisconnect(!isConnected) }
+                        .clickable { onClickConnectDisconnect(!isConnecting) }
                         .padding(horizontal = 10.dp)
                 ) {
                     AppText(
@@ -754,7 +767,7 @@ fun RequestEditorView(
                 onRequestModified = onRequestModified,
                 knownVariables = environmentVariableKeys,
                 onClickSendPayload = onClickSendPayload,
-                isConnected = isConnected,
+                isConnected = isConnecting,
             )
         }
     }

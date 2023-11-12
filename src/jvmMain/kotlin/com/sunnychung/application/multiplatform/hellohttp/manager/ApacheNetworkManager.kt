@@ -45,6 +45,7 @@ import org.apache.hc.core5.http2.frame.FrameType
 import org.apache.hc.core5.http2.frame.RawFrame
 import org.apache.hc.core5.http2.hpack.HPackInspectHeader
 import org.apache.hc.core5.http2.impl.nio.H2InspectListener
+import org.apache.hc.core5.io.CloseMode
 import org.apache.hc.core5.reactor.IOReactorConfig
 import java.net.InetAddress
 import java.nio.ByteBuffer
@@ -282,7 +283,7 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
 
                     var result: SimpleHttpResponse? = null
 
-                    httpClient.execute(object : AsyncClientExchangeHandler {
+                    val call = httpClient.execute(object : AsyncClientExchangeHandler {
                         override fun releaseResources() {
                             println("releaseResources")
                             producer.releaseResources()
@@ -365,6 +366,13 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
                         }
 
                     })
+
+                    data.cancel = {
+                        log.d { "Request to cancel the call" }
+                        val cancelResult = call.cancel() // no use at all
+                        log.d { "Cancel result = $cancelResult" }
+                        httpClient.close(CloseMode.IMMEDIATE)
+                    }
                 }
 
                 out.statusCode = response?.code

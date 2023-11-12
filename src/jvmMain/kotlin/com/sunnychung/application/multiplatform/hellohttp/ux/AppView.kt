@@ -395,6 +395,9 @@ fun AppContentView() {
                                             subprojectId = selectedSubproject!!.id
                                         )
                                     },
+                                    onClickCancel = {
+                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
+                                    },
                                     onClickCopyCurl = {
                                         try {
                                             val curl = requestNonNull.toCurlCommand(
@@ -418,7 +421,7 @@ fun AppContentView() {
                                             requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                                         }
                                     },
-                                    isConnected = networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)?.isCommunicating ?: false,
+                                    isConnecting = networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)?.isCommunicating ?: false,
                                     onClickConnectDisconnect = { connect ->
                                         if (connect) {
                                             networkClientManager.fireRequest(
