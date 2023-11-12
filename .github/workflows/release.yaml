@@ -1,0 +1,62 @@
+name: Hello HTTP Github CI/CD
+on:
+  push:
+    tags:
+      - v**
+permissions:
+  contents: write
+  actions: read
+  checks: read
+  deployments: read
+  id-token: none
+  issues: read
+  discussions: read
+  packages: read
+  pages: read
+  pull-requests: read
+  repository-projects: read
+  security-events: none
+  statuses: read
+jobs:
+  build-ubuntu:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
+      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-ubuntu-${{ runner.arch }}.tar.gz" && popd
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: "HelloHTTP-${{ github.ref_name }}-ubuntu-${{ runner.arch }}.tar.gz"
+          draft: true
+  build-windows:
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
+      - run: pushd ./build/compose/binaries/main/app && dir && tar -acf "app.zip" "Hello HTTP" && move "app.zip" "../../../../../HelloHTTP-${{ github.ref_name }}-windows-${{ runner.arch }}.zip" && popd
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: "HelloHTTP-${{ github.ref_name }}-windows-${{ runner.arch }}.zip"
+          draft: true
+  build-macos:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
+      - run: mv ./build/compose/binaries/main/dmg/*.dmg "./HelloHTTP-${{ github.ref_name }}-macos-${{ runner.arch }}.dmg"
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: "./HelloHTTP-${{ github.ref_name }}-macos-${{ runner.arch }}.dmg"
+          draft: true
