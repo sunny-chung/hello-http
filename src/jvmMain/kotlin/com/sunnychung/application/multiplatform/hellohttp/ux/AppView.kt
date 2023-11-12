@@ -138,6 +138,7 @@ fun AppView() {
 @Composable
 fun AppContentView() {
     val networkManager = AppContext.NetworkManager
+    val webSocketNetworkManager = AppContext.WebSocketNetworkManager
     val persistResponseManager = AppContext.PersistResponseManager
     val requestCollectionRepository = AppContext.RequestCollectionRepository
     val projectCollectionRepository = AppContext.ProjectCollectionRepository
@@ -158,14 +159,14 @@ fun AppContentView() {
     var activeCallId by remember { mutableStateOf<String?>(null) }
 
     val callDataUpdates by
-        activeCallId?.let { networkManager.getCallData(it) }?.eventsStateFlow
+        activeCallId?.let { networkManager.getCallData(it) ?: webSocketNetworkManager.getCallData(it) /* TODO refactor */ }?.eventsStateFlow
             ?.onEach { log.d { "callDataUpdates onEach ${it?.event}" } }
             ?.collectAsState(null) // needed for invalidating compose caches
             ?: run {
                 log.d { "callDataUpdates no flow" }
                 mutableStateOf(null)
             }
-    val activeResponse = activeCallId?.let { networkManager.getCallData(it) }?.response
+    val activeResponse = activeCallId?.let { networkManager.getCallData(it) ?: webSocketNetworkManager.getCallData(it) /* TODO refactor */ }?.response
     var response by remember { mutableStateOf<UserResponse?>(null) }
     if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
         response = activeResponse
@@ -481,8 +482,8 @@ fun AppContentView() {
                                                 httpConfig = selectedEnvironment?.httpConfig ?: HttpConfig(),
                                                 sslConfig = selectedEnvironment?.sslConfig ?: SslConfig(),
                                             )
-                                            activeCallId = callData.id
-                                            persistResponseManager.registerCall(callData.id)
+                                            activeCallId = callData.id // FIXME
+                                            persistResponseManager.registerCall(networkManager, callData.id)
                                             callData.isPrepared = true
                                         } catch (error: Throwable) {
                                             activeCallId = null
@@ -525,8 +526,34 @@ fun AppContentView() {
                                             requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                                         }
                                     },
-                                    isConnected = false, // TODO
-                                    onClickConnectDisconnect = {} // TODO
+                                    isConnected = activeCallId?.let { webSocketNetworkManager.getCallData(it) }?.response?.isCommunicating ?: false,  // FIXME
+                                    onClickConnectDisconnect = { connect ->
+                                        if (connect) {
+                                            val networkRequest = requestNonNull.toHttpRequest(
+                                                exampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment
+                                            )
+
+                                            val callData = webSocketNetworkManager.sendRequest(
+                                                request = networkRequest,
+                                                requestExampleId = selectedRequestExampleId!!,
+                                                requestId = requestNonNull.id,
+                                                subprojectId = selectedSubproject!!.id,
+                                                postFlightAction = null,
+                                                httpConfig = selectedEnvironment?.httpConfig ?: HttpConfig(),
+                                                sslConfig = selectedEnvironment?.sslConfig ?: SslConfig(),
+                                            )
+                                            activeCallId = callData.id // FIXME
+                                            persistResponseManager.registerCall(webSocketNetworkManager, callData.id)
+                                            callData.isPrepared = true
+                                        } else {
+                                            // FIXME
+                                            activeCallId?.let { webSocketNetworkManager.getCallData(it)} ?.cancel?.invoke()
+                                        }
+                                    },
+                                    onClickSendPayload = { payload ->
+                                        activeCallId?.let { webSocketNetworkManager.getCallData(it)} ?.sendPayload?.invoke(payload)
+                                    }
                                 )
                             } ?: RequestEditorEmptyView(
                                 modifier = requestEditorModifier,

@@ -14,11 +14,11 @@ import java.util.concurrent.ConcurrentHashMap
 class PersistResponseManager {
 
 //    private val flows: MutableSet<Flow<NetworkManager.NetworkEvent>> = mutableSetOf()
-    private val networkManager by lazy { AppContext.NetworkManager }
+//    private val networkManager by lazy { AppContext.NetworkManager }
     private val responseCollectionRepository by lazy { AppContext.ResponseCollectionRepository }
     private val requestCollectionRepository by lazy { AppContext.RequestCollectionRepository }
 
-    fun registerCall(callId: String) {
+    fun registerCall(networkManager: NetworkManager, callId: String) {
         val callData = networkManager.getCallData(callId)!!
         callData.events.onEach {
             log.d { "PersistResponseManager receives call $callId event ${it.event}" }

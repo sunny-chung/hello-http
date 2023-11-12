@@ -99,6 +99,7 @@ abstract class AbstractNetworkManager : NetworkManager {
             incomingBytes = incomingBytesFlow,
             optionalResponseSize = optionalResponseSize,
             response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
+            cancel = {}
         )
         callData[callId] = data
 

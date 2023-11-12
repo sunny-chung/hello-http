@@ -41,6 +41,7 @@ kotlin {
                 implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") {
                     exclude(group = "com.squareup.okhttp3", module = "okhttp")
                 }
+                implementation("io.github.sunny-chung:Java-WebSocket:1.5.4-inspect-patch1")
 
                 implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")

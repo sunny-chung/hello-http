@@ -36,6 +36,9 @@ class CallData(
     val incomingBytes: SharedFlow<RawPayload>,
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
+
+    var cancel: () -> Unit,
+    var sendPayload: (String) -> Unit = {},
 )
 
 sealed interface RawPayload {

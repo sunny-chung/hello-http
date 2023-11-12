@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.PersistRespons
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
+import com.sunnychung.application.multiplatform.hellohttp.manager.WebSocketNetworkManager
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
@@ -22,6 +23,7 @@ object AppContext {
     val MetadataManager = MetadataManager()
     val SingleInstanceProcessService = SingleInstanceProcessService()
     val NetworkManager: NetworkManager = ApacheNetworkManager() //OkHttpNetworkManager()
+    val WebSocketNetworkManager: NetworkManager = WebSocketNetworkManager()
     val FileManager = FileManager()
     val PersistenceManager = PersistenceManager()
     val PrettifierManager = PrettifierManager()

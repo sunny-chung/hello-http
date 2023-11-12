@@ -221,13 +221,14 @@ fun DataLabel(
 @Composable
 fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse) {
     val colors = LocalColor.current
-    val (text, backgroundColor) = if (response.isCommunicating) {
+    val (text, backgroundColor) = if (response.isCommunicating && response.statusCode == null) {
         Pair("Communicating", colors.pendingResponseBackground)
     } else if (response.isError) {
         Pair("Error", colors.errorResponseBackground)
     } else when (response.statusCode) {
         null -> return
-        in 100..399 -> Pair("${response.statusCode} ${response.statusText}", colors.successfulResponseBackground)
+        in 100..199 -> Pair("${response.statusCode} ${response.statusText}", colors.pendingResponseBackground)
+        in 200..399 -> Pair("${response.statusCode} ${response.statusText}", colors.successfulResponseBackground)
         else -> Pair("${response.statusCode} ${response.statusText}", colors.errorResponseBackground)
     }
     DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
@@ -412,7 +413,11 @@ fun ResponseStreamView(response: UserResponse) {
 
             LazyColumn(state = scrollState) {
                 items(items = response.payloadExchanges?.reversed() ?: emptyList()) {
-                    Row(modifier = Modifier.clickable { }) {
+                    var modifier: Modifier = Modifier
+                    if (it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData)) {
+                        modifier = modifier.clickable { selectedMessage = it }
+                    }
+                    Row(modifier = modifier) {
                         AppText(
                             text = DATE_TIME_FORMAT.format(it.instant),
                             fontFamily = FontFamily.Monospace,
@@ -431,7 +436,7 @@ fun ResponseStreamView(response: UserResponse) {
                             modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
                         )
                         AppText(
-                            text = it.data?.decodeToString() ?: "",
+                            text = it.data?.decodeToString()?.replace("\\s+".toRegex(), " ") ?: "",
                             maxLines = 1,
                             fontFamily = FontFamily.Monospace,
                             overflow = TextOverflow.Ellipsis,

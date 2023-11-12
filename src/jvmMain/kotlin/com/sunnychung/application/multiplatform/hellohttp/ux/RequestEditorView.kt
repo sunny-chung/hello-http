@@ -76,6 +76,7 @@ fun RequestEditorView(
     onRequestModified: (UserRequestTemplate?) -> Unit,
     isConnected: Boolean,
     onClickConnectDisconnect: (Boolean) -> Unit,
+    onClickSendPayload: (String) -> Unit,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
@@ -752,6 +753,7 @@ fun RequestEditorView(
                 request = request,
                 onRequestModified = onRequestModified,
                 knownVariables = environmentVariableKeys,
+                onClickSendPayload = onClickSendPayload,
                 isConnected = isConnected,
             )
         }
@@ -806,6 +808,7 @@ fun WebSocketPayloadEditorView(
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     knownVariables: Set<String>,
+    onClickSendPayload: (String) -> Unit,
     isConnected: Boolean,
 ) {
     val colors = LocalColor.current
@@ -826,7 +829,9 @@ fun WebSocketPayloadEditorView(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Payload")
             Spacer(modifier = Modifier.weight(1f))
-            AppTextButton(text = "Send", isEnabled = isConnected) {}
+            AppTextButton(text = "Send", isEnabled = isConnected) {
+                onClickSendPayload(selectedExample!!.body)
+            }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
