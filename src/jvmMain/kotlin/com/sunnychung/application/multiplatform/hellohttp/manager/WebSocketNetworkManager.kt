@@ -8,6 +8,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
+import com.sunnychung.application.multiplatform.hellohttp.util.llog
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.apache.hc.core5.net.URIBuilder
@@ -105,7 +106,13 @@ class WebSocketNetworkManager : AbstractNetworkManager() {
             }
 
             override fun onMessage(buffer: ByteBuffer) {
-                out.payloadExchanges!! += PayloadMessage(KInstant.now(), PayloadMessage.Type.IncomingData, buffer.array().copyOfRange(buffer.position(), buffer.limit()))
+                if (buffer.hasRemaining()) {
+                    out.payloadExchanges!! += PayloadMessage(
+                        KInstant.now(),
+                        PayloadMessage.Type.IncomingData,
+                        buffer.array().copyOfRange(buffer.position(), buffer.limit())
+                    )
+                }
             }
 
             override fun send(text: String) {
@@ -135,6 +142,7 @@ class WebSocketNetworkManager : AbstractNetworkManager() {
                 out.errorMessage = error.message
                 out.isError = true
                 emitEvent(callId, "Error encountered: ${error.message}")
+                llog.w(error) { "WebSocket error" }
             }
 
         }

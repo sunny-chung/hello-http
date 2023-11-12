@@ -26,8 +26,10 @@ class InspectInputStream(val stream: InputStream, val channel: MutableSharedFlow
         synchronized(this) {
             log.d { "read2" }
             val length = stream.read(b)
-            runBlocking {
-                channel.emit(Http1Payload(instant = KInstant.now(), payload = b.copyOfRange(0, length)))
+            if (length > 0) {
+                runBlocking {
+                    channel.emit(Http1Payload(instant = KInstant.now(), payload = b.copyOfRange(0, length)))
+                }
             }
             return length
         }
