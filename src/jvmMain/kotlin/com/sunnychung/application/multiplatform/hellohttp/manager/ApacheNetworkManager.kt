@@ -57,6 +57,18 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class ApacheNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
 
+    private data class H2HeaderFrame(val streamId: Int?, var frameHeader: String? = null, var block: String? = null) {
+
+        fun isComplete(): Boolean = frameHeader != null && block != null
+        fun serialize(): String = "${frameHeader}${block}\n"
+
+        fun toHttp2Frame(instant: KInstant = KInstant.now()) = Http2Frame(
+            instant = instant,
+            streamId = streamId,
+            content = serialize(),
+        )
+    }
+
     private fun buildHttpClient(
         callId: String,
         httpConfig: HttpConfig,
@@ -138,51 +150,54 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
 //                println(">> " + bytes.copyOfRange(pos, pos + len).decodeToString())
             },
             object : H2InspectListener {
-                val suspendedHeaderFrames = ConcurrentHashMap<Int, String>()
+                val suspendedHeaderFrames = ConcurrentHashMap<Int, H2HeaderFrame>()
 
                 override fun onHeaderInputDecoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
                     val serialized = http2FrameSerializer.serializeHeaders(headers)
-                    val frameHeader = suspendedHeaderFrames[streamId]!!
+                    val frame = suspendedHeaderFrames[streamId]!!
                     suspendedHeaderFrames.remove(streamId)
+                    frame.block = serialized
                     runBlocking {
-                        incomingBytesFlow.emit(
-                            Http2Frame(
-                                instant = KInstant.now(),
-                                streamId = streamId,
-                                content = "${frameHeader}${serialized}\n",
-                            )
-                        )
+                        incomingBytesFlow.emit(frame.toHttp2Frame())
                     }
                 }
 
                 override fun onHeaderOutputEncoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
+                    log.d { "onHeaderOutputEncoded $streamId" }
                     val serialized = http2FrameSerializer.serializeHeaders(headers)
-                    val frameHeader = suspendedHeaderFrames[streamId]!!
-                    suspendedHeaderFrames.remove(streamId)
-                    runBlocking {
-                        outgoingBytesFlow.emit(
-                            Http2Frame(
-                                instant = KInstant.now(),
-                                streamId = streamId,
-                                content = "${frameHeader}${serialized}\n",
-                            )
-                        )
+                    val frame = suspendedHeaderFrames.getOrPut(streamId) { H2HeaderFrame(streamId = streamId) }
+                    frame.block = serialized
+                    if (frame.isComplete()) { // the execution order of onHeaderOutputEncoded and onFrameOutput is uncertain
+                        suspendedHeaderFrames.remove(streamId)
+                        runBlocking {
+                            outgoingBytesFlow.emit(frame.toHttp2Frame())
+                        }
                     }
                 }
 
                 override fun onFrameInput(connection: HttpConnection, streamId: Int?, frame: RawFrame) {
+                    log.d { "onFrameInput $streamId" }
                     processFrame(streamId = streamId, frame = frame, receiverFlow = incomingBytesFlow)
                 }
 
                 override fun onFrameOutput(connection: HttpConnection, streamId: Int?, frame: RawFrame) {
+                    log.d { "onFrameOutput $streamId" }
                     processFrame(streamId = streamId, frame = frame, receiverFlow = outgoingBytesFlow)
                 }
 
                 fun processFrame(streamId: Int?, frame: RawFrame, receiverFlow: MutableSharedFlow<RawPayload>) {
                     val serialized = http2FrameSerializer.serializeFrame(frame)
                     val type = FrameType.valueOf(frame.type)
+                    log.d { "processFrame $streamId $type" }
                     if (type == FrameType.HEADERS) {
-                        suspendedHeaderFrames[streamId!!] = serialized
+                        val frame = suspendedHeaderFrames.getOrPut(streamId) { H2HeaderFrame(streamId = streamId) }
+                        frame.frameHeader = serialized
+                        if (frame.isComplete()) {
+                            suspendedHeaderFrames.remove(streamId)
+                            runBlocking {
+                                receiverFlow.emit(frame.toHttp2Frame())
+                            }
+                        }
                     } else {
                         runBlocking {
                             receiverFlow.emit(
