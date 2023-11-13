@@ -173,8 +173,14 @@ fun AppContentView() {
 
     fun updateResponseView() {
         response = runBlocking { // should be fast as it is retrieved from memory
-            responseCollectionRepository.read(ResponsesDI(subprojectId = selectedSubproject!!.id))
+            val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
+            val resp = responseCollectionRepository.read(di)
                 ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
+            if (resp != null && resp.isCommunicating && networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)?.isCommunicating != true) {
+                resp.isCommunicating = false
+                responseCollectionRepository.notifyUpdated(di)
+            }
+            resp
         } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
     }
 

@@ -238,7 +238,7 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse) {
 @Composable
 fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateTime: KInstant) {
     val startAt = response.startAt ?: return
-    val timerAt = response.endAt ?: KInstant.now()
+    val timerAt = response.endAt ?: if (response.isCommunicating) KInstant.now() else return
     val duration = timerAt - startAt
     val text = if (duration >= KDuration.of(10, KFixedTimeUnit.Second)) {
         "${"%.1f".format(duration.toMilliseconds() / 1000.0)} s"
