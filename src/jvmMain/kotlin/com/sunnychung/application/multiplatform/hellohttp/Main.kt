@@ -13,7 +13,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.error.MultipleProcessError
-import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
+import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import kotlinx.coroutines.runBlocking
 import net.harawata.appdirs.AppDirsFactory
@@ -63,8 +63,4 @@ fun main() {
             AppView()
         }
     }
-}
-
-fun isMacOs(): Boolean {
-    return System.getProperty("os.name") == "Mac OS X"
 }

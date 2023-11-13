@@ -10,6 +10,10 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.OS
+import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -177,35 +181,42 @@ fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environmen
         b
     }.build().toString()
 
-    var curl = "time curl --verbose"
-    if (environment?.sslConfig?.isInsecure == true) {
-        curl += " \\\n  --insecure"
+    val currentOS = currentOS()
+    val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "
+
+    var curl = ""
+    if (currentOS in setOf(MacOS, LinuxOS)) {
+        curl += "time "
     }
-    curl += " \\\n  --request \"${request.method.escape()}\""
-    curl += " \\\n  --url \"${url.escape()}\""
+    curl += "curl --verbose"
+    if (environment?.sslConfig?.isInsecure == true) {
+        curl += "${newLine}--insecure"
+    }
+    curl += "${newLine}--request \"${request.method.escape()}\""
+    curl += "${newLine}--url \"${url.escape()}\""
     request.headers.forEach {
-        curl += " \\\n  --header \"${it.first.escape()}: ${it.second.escape()}\""
+        curl += "${newLine}--header \"${it.first.escape()}: ${it.second.escape()}\""
     }
     when (request.body) {
         is FormUrlEncodedBody -> {
             request.body.value.forEach {
-                curl += " \\\n  --data-urlencode \"${it.key.urlEncoded().escape()}=${it.value.escape()}\""
+                curl += "${newLine}--data-urlencode \"${it.key.urlEncoded().escape()}=${it.value.escape()}\""
             }
         }
         is MultipartBody -> {
             request.body.value.forEach {
                 when (it.valueType) {
-                    FieldValueType.String -> curl += " \\\n  --form \"${it.key.escape()}=\\\"${it.value.escape().escape()}\\\"\""
-                    FieldValueType.File -> curl += " \\\n  --form \"${it.key.escape()}=@\\\"${it.value.escape().escape()}\\\"\""
+                    FieldValueType.String -> curl += "${newLine}--form \"${it.key.escape()}=\\\"${it.value.escape().escape()}\\\"\""
+                    FieldValueType.File -> curl += "${newLine}--form \"${it.key.escape()}=@\\\"${it.value.escape().escape()}\\\"\""
                 }
             }
         }
         is StringBody -> {
-            curl += " \\\n  --data \"${request.body.value.escape()}\""
+            curl += "${newLine}--data \"${request.body.value.escape()}\""
         }
         is FileBody -> {
             if (request.body.filePath != null) {
-                curl += " \\\n  --data-binary \"@${request.body.filePath}\""
+                curl += "${newLine}--data-binary \"@${request.body.filePath}\""
             }
         }
         null -> {}
