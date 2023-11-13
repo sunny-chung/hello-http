@@ -7,6 +7,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.ContentEncodingDecompressProcessor
 import com.sunnychung.application.multiplatform.hellohttp.network.apache.Http2FrameSerializer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -378,8 +379,16 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
                 out.statusCode = response?.code
                 out.statusText = response?.reasonPhrase
                 out.headers = response?.headers?.map { it.name to it.value }
-                out.body = response?.bodyBytes
-                out.responseSizeInBytes = out.body?.size?.toLong() ?: 0L
+                var bodyBytes = response?.bodyBytes
+                val contentEncoding = out.headers?.firstOrNull { "content-encoding".equals(it.first, ignoreCase = true) }?.second
+                if (contentEncoding != null && bodyBytes != null) {
+                    bodyBytes = ContentEncodingDecompressProcessor().process(
+                        bodyBytes = bodyBytes,
+                        contentEncoding = contentEncoding
+                    )
+                }
+                out.body = bodyBytes
+                out.responseSizeInBytes = response?.bodyBytes?.size?.toLong() ?: 0L
 
             } catch (e: Throwable) {
                 out.errorMessage = e.message
