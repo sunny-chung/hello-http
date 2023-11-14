@@ -235,7 +235,7 @@ fun EnvironmentHttpTabContent(
             val options = DropDownMap(listOf(
                 DropDownKeyValue(HttpConfig.HttpProtocolVersion.Http1Only, "HTTP/1 only"),
                 DropDownKeyValue(HttpConfig.HttpProtocolVersion.Http2Only, "HTTP/2 only"),
-                DropDownKeyValue(HttpConfig.HttpProtocolVersion.Negotiate, "Negotiate"),
+                DropDownKeyValue(HttpConfig.HttpProtocolVersion.Negotiate, "Prefer HTTP/2"),
                 DropDownKeyValue(null, "Default"),
             ))
             DropDownView(
