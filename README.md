@@ -15,13 +15,10 @@ users themselves, for example, users' Dropbox, users' S3, or users' Git reposito
 moment.
 
 ## Status
-This project is *not stable* yet. Testers needed to help making this software safe for mission-critical usage.
 
-Automatic backups and import/export were made to provide alternatives when there are crucial bugs blocking urgent needs.
-
-- **macOS** - Beta
-- **Windows** - Alpha
-- **Linux** - Not tested
+- **macOS** - Stable since v1.2.0
+- **Windows** - Beta
+- **Linux** - Alpha
 
 ## Features
 
@@ -65,6 +62,7 @@ Automatic backups and import/export were made to provide alternatives when there
 - Multiple environments (no inheritance) per subproject, in which each one has
   - Environment variables that can be embedded anywhere in the request (type `${{variable-name}}`)
   - SSL configuration
+  - HTTP protocol preference
 - Functions that can be resolved anywhere in the request:
   - UUID (type `$((uuid))`)
   - Current date-time ISO-8601 string (type `$((now.iso8601))`)
@@ -99,6 +97,7 @@ To build an executable, grab the code, make sure there is a JDK 17+ and git inst
 ```
 
 ## Persistence
+
 All data are saved in a single content root directory. In Hello HTTP, open setting, scroll down and click
 "Open Backup Directory", then go to one level upper. This is the content root directory.
 
