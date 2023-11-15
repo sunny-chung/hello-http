@@ -226,11 +226,22 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse) {
         Pair("Communicating", colors.pendingResponseBackground)
     } else if (response.isError) {
         Pair("Error", colors.errorResponseBackground)
-    } else when (response.statusCode) {
-        null -> return
-        in 100..199 -> Pair("${response.statusCode} ${response.statusText}", colors.pendingResponseBackground)
-        in 200..399 -> Pair("${response.statusCode} ${response.statusText}", colors.successfulResponseBackground)
-        else -> Pair("${response.statusCode} ${response.statusText}", colors.errorResponseBackground)
+    } else {
+        val colour = when (response.application) {
+            ProtocolApplication.WebSocket -> when (response.statusCode) {
+                null -> return
+                101 -> colors.successfulResponseBackground
+                in 100..199 -> colors.pendingResponseBackground
+                else -> colors.errorResponseBackground
+            }
+            else -> when (response.statusCode) {
+                null -> return
+                in 100..199 -> colors.pendingResponseBackground
+                in 200..399 -> colors.successfulResponseBackground
+                else -> colors.errorResponseBackground
+            }
+        }
+        Pair("${response.statusCode} ${response.statusText}", colour)
     }
     DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
 }
