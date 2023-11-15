@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
 import org.apache.hc.core5.net.URIBuilder
 import org.java_websocket.client.DnsResolver
 import org.java_websocket.client.WebSocketClient
+import org.java_websocket.drafts.Draft
+import org.java_websocket.drafts.Draft_6455
+import org.java_websocket.handshake.Handshakedata
 import org.java_websocket.handshake.ServerHandshake
 import java.io.InputStream
 import java.io.OutputStream
@@ -64,8 +67,29 @@ class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : Abst
         out.application = ProtocolApplication.WebSocket
         out.payloadExchanges = mutableListOf()
 
+        val protocolDraft = object : Draft_6455() {
+            override fun translateHandshake(buf: ByteBuffer): Handshakedata {
+                val copy = buf.duplicate()
+                val line = readStringLine(copy)
+                if (line != null) {
+                    val s = line.split(" ", limit = 3)
+                    if (s[0] == "HTTP/1.1") {
+                        out.statusCode = s[1].toIntOrNull()
+                        out.statusText = s[2]
+                    }
+                }
+
+                return super.translateHandshake(buf)
+            }
+
+            override fun copyInstance(): Draft {
+                return this
+            }
+        }
+
         val client = object : WebSocketClient(
             uri,
+            protocolDraft,
             request.headers.toMap(), // TODO allow repeated headers
         ) {
             init {
