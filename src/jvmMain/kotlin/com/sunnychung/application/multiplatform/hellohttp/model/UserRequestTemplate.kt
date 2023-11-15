@@ -1,8 +1,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
-import com.sunnychung.application.multiplatform.hellohttp.constant.UserFunctions
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
+import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
 import kotlinx.serialization.SerialName
@@ -50,22 +50,8 @@ data class UserRequestTemplate(
     object ExpandByEnvironment : ResolveVariableMode()
     data class ReplaceAsString(val replacement: String = "{{\$1}}") : ResolveVariableMode()
 
-    data class Scope(val baseExample: UserRequestExample, val selectedExample: UserRequestExample, val environmentVariables: Map<String, String>, val resolveVariableMode: ResolveVariableMode = ExpandByEnvironment) {
-        fun String.resolveVariables(): String {
-            var s = this
-            when (resolveVariableMode) {
-                is ExpandByEnvironment -> {
-                    environmentVariables.forEach {
-                        s = s.replace("\${{${it.key}}}", it.value)
-                    }
-                    UserFunctions.forEach {
-                        s = s.replace("\$((${it.key}))", it.value.function())
-                    }
-                }
-                is ReplaceAsString -> s = s.replace("\\\$\\{\\{([^{}]+)\\}\\}".toRegex(), resolveVariableMode.replacement)
-            }
-            return s
-        }
+    data class Scope(val baseExample: UserRequestExample, val selectedExample: UserRequestExample, val variableResolver: VariableResolver) {
+        fun String.resolveVariables(): String = variableResolver.resolve(this)
 
         fun getMergedKeyValues(
             propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?,
@@ -92,11 +78,7 @@ data class UserRequestTemplate(
         val baseExample = examples.first()
         val selectedExample = examples.first { it.id == exampleId }
 
-        val environmentVariables = environment?.variables
-            ?.filter { it.isEnabled }
-            ?.associate { it.key to it.value }
-            ?: emptyMap()
-        return Scope(baseExample, selectedExample, environmentVariables, resolveVariableMode).action()
+        return Scope(baseExample, selectedExample, VariableResolver(environment, resolveVariableMode)).action()
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {

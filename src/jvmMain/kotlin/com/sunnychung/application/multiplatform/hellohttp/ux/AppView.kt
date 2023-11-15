@@ -147,12 +147,12 @@ fun AppContentView() {
     // the value itself is not useful
     val activeCallId = networkClientManager.subscribeToNewRequests().value // `val xxx by yyy` VS `val xxx = yyy.value`: `.value` is called only if `xxx` is accessed
 
-    val callDataUpdates by networkClientManager.subscribeToRequestExampleCall(selectedRequestExampleId)
+    val callDataUpdates by selectedRequestExampleId?.let { networkClientManager.subscribeToRequestExampleCall(it) }
         ?: run {
             log.d { "callDataUpdates no flow" }
             mutableStateOf(null)
         }
-    val activeResponse = networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)
+    val activeResponse = selectedRequestExampleId?.let { networkClientManager.getResponseByRequestExampleId(it) }
     var response by remember { mutableStateOf<UserResponse?>(null) }
     if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
         response = activeResponse
@@ -176,7 +176,7 @@ fun AppContentView() {
             val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
             val resp = responseCollectionRepository.read(di)
                 ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
-            if (resp != null && resp.isCommunicating && networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)?.isCommunicating != true) {
+            if (resp != null && resp.isCommunicating && networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId!!)?.isCommunicating != true) {
                 resp.isCommunicating = false
                 responseCollectionRepository.notifyUpdated(di)
             }
@@ -402,7 +402,7 @@ fun AppContentView() {
                                         )
                                     },
                                     onClickCancel = {
-                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
+                                        networkClientManager.cancel(selectedRequestExampleId!!)
                                     },
                                     onClickCopyCurl = {
                                         try {
@@ -427,7 +427,7 @@ fun AppContentView() {
                                             requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                                         }
                                     },
-                                    isConnecting = networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId)?.isCommunicating ?: false,
+                                    isConnecting = selectedRequestExampleId?.let { networkClientManager.getResponseByRequestExampleId(it) }?.isCommunicating ?: false,
                                     onClickConnect = {
                                         networkClientManager.fireRequest(
                                             request = requestNonNull,
@@ -437,10 +437,14 @@ fun AppContentView() {
                                         )
                                     },
                                     onClickDisconnect = {
-                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
+                                        networkClientManager.cancel(selectedRequestExampleId!!)
                                     },
                                     onClickSendPayload = { payload ->
-                                        networkClientManager.getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendPayload(payload) }
+                                        networkClientManager.sendPayload(
+                                            selectedRequestExampleId = selectedRequestExampleId!!,
+                                            payload = payload,
+                                            environment = selectedEnvironment,
+                                        )
                                     }
                                 )
                             } ?: RequestEditorEmptyView(

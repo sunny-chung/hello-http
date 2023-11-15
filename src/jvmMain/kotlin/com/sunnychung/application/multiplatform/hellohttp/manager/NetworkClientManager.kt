@@ -7,6 +7,7 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
@@ -185,18 +186,27 @@ class NetworkClientManager : CallDataStore {
         }
     }
 
-    fun <T> emptySharedFlow() = emptyFlow<T>().shareIn(coroutineScope, SharingStarted.Eagerly)
+    fun sendPayload(selectedRequestExampleId: String, payload: String, environment: Environment?) {
+        val resolvedPayload = VariableResolver(environment).resolve(payload)
+        getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendPayload(resolvedPayload) }
+    }
 
-    fun getCallDataByRequestExampleId(requestExampleId: String?) =
+    fun cancel(selectedRequestExampleId: String) {
+        getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
+    }
+
+    private fun <T> emptySharedFlow() = emptyFlow<T>().shareIn(coroutineScope, SharingStarted.Eagerly)
+
+    private fun getCallDataByRequestExampleId(requestExampleId: String) =
         requestExampleToCallMapping[requestExampleId]
             ?.let { callDataMap[it] }
 
-    fun getResponseByRequestExampleId(requestExampleId: String?) =
+    fun getResponseByRequestExampleId(requestExampleId: String) =
         getCallDataByRequestExampleId(requestExampleId)
             ?.response
 
     @Composable
-    fun subscribeToRequestExampleCall(requestExampleId: String?) =
+    fun subscribeToRequestExampleCall(requestExampleId: String) =
         getCallDataByRequestExampleId(requestExampleId)
             ?.eventsStateFlow
             ?.onEach { log.d { "callDataUpdates onEach ${it?.event}" } }
