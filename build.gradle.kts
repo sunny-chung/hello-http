@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.2.0" // must be in 'x.y.z' for native distributions
+version = "1.2.1-SNAPSHOT" // must be in 'x.y.z' for native distributions
 
 repositories {
     google()
@@ -98,15 +98,24 @@ tasks.getByName("jvmMainClasses") {
 
 compose.desktop {
     application {
+        val distributionVersion = "^(\\d+\\.\\d+\\.\\d+).*".toRegex().matchEntire(project.version.toString())!!.groupValues[1]
+
         mainClass = "com.sunnychung.application.multiplatform.hellohttp.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Hello HTTP"
             vendor = "Sunny Chung"
             copyright = "© 2023 Sunny Chung"
+            packageVersion = distributionVersion
 
             macOS {
                 iconFile.set(project.file("appicon/appicon.icns"))
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>LSMinimumSystemVersion</key>
+                        <string>10</string>
+                    """.trimIndent()
+                }
             }
             windows {
                 iconFile.set(project.file("appicon/appicon.ico"))
