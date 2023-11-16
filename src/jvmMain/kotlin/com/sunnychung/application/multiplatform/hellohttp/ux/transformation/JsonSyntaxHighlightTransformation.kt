@@ -9,12 +9,13 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
-val OBJECT_KEY_REGEX = "(?<!\\\\)(\".*?(?<!\\\\)\")\\s*:".toRegex()
-val STRING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(?<!\\\\)(\".*?(?<!\\\\)\")".toRegex()
-val NUMBER_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)\\b".toRegex()
-val BOOLEAN_TRUE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(true)\\b".toRegex()
-val BOOLEAN_FALSE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(false)\\b".toRegex()
-val NOTHING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(null|undefined)\\b".toRegex()
+val TOKEN_REGEX = "(?<!\\\\)(\".+?(?<!\\\\)\"(?:\\s*:)?)|(?<=[,\\[\\]{}:])\\s*([^,\\s\"\\[\\]{}]+?)\\s*(?=[,\\[\\]{}:])".toRegex()
+val OBJECT_KEY_REGEX = "\".*?(?<!\\\\)\"\\s*:".toRegex()
+val STRING_LITERAL_REGEX = "\".*?(?<!\\\\)\"".toRegex()
+val NUMBER_LITERAL_REGEX = "-?\\d+(?:\\.\\d+)?".toRegex()
+val BOOLEAN_TRUE_LITERAL_REGEX = "true".toRegex()
+val BOOLEAN_FALSE_LITERAL_REGEX = "false".toRegex()
+val NOTHING_LITERAL_REGEX = "null|undefined".toRegex()
 
 class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransformation {
 
@@ -37,21 +38,26 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
         }
 
         val start = KInstant.now()
-        listOf(
+        val subPatterns = listOf(
             OBJECT_KEY_REGEX to objectKeyStyle,
             STRING_LITERAL_REGEX to stringLiteralStyle,
             NUMBER_LITERAL_REGEX to numberLiteralStyle,
             BOOLEAN_TRUE_LITERAL_REGEX to booleanTrueLiteralStyle,
             BOOLEAN_FALSE_LITERAL_REGEX to booleanFalseLiteralStyle,
             NOTHING_LITERAL_REGEX to nothingLiteralStyle,
-        ).forEach { (regex, style) ->
-            regex.findAll(s).forEach { m ->
-                val range = m.groups[1]!!.range
+        )
+
+        TOKEN_REGEX.findAll(s).forEach { m ->
+            val match = (m.groups[1] ?: m.groups[2])!!
+            val range = match.range
+            subPatterns.firstOrNull { (pattern, style) ->
+                pattern.matches(match.value)
+            }?.let { (pattern, style) ->
                 spans += AnnotatedString.Range(style, range.start, range.endInclusive + 1)
             }
         }
         val timeCost = KInstant.now() - start
-        // took 53ms for a 300k-length string
+        // took 40ms for a 300k-length string
         log.d { "JsonSyntaxHighlightTransformation took ${timeCost.millis}ms to process ${s.length}" }
 
         lastTextHash = text.text.hashCode()
