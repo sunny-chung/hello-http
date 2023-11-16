@@ -15,6 +15,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -27,6 +28,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.insomniav4.InsomniaV4
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import java.io.File
 
@@ -50,6 +52,7 @@ class InsomniaV4Importer {
 
         val subprojects = mutableListOf<Subproject>()
         val requestsBySubproject = mutableMapOf<String, MutableList<UserRequestTemplate>>()
+        val requestByInsomniaId = mutableMapOf<String, UserRequestTemplate>()
 
         resources.filter { it["_type"]?.textValue() == "workspace" && it["scope"]?.textValue() == "collection" }
             .map { jsonParser.treeToValue(it, InsomniaV4.Workspace::class.java) }
@@ -118,6 +121,20 @@ class InsomniaV4Importer {
             processFolder(it)
         }
 
+        fun addRequestToSubproject(it: InsomniaV4.Request, req: UserRequestTemplate) {
+            val parent = folderMap[it.parentId]
+            val subproject: Subproject?
+            if (parent != null) {
+                parent.first.childs += TreeRequest(id = req.id)
+                subproject = parent.second
+            } else {
+                subproject = subprojectMap[it.parentId]
+                subproject?.treeObjects?.add(TreeRequest(id = req.id))
+            }
+            requestsBySubproject.getOrPut(subproject?.id ?: "") { mutableListOf() } += req
+            requestByInsomniaId[it.id] = req
+        }
+
         resources.filter { it["_type"]?.textValue() == "request" }
             .map { log.d { it.toString() }; jsonParser.treeToValue(it, InsomniaV4.HttpRequest::class.java) }
             .forEach {
@@ -182,28 +199,8 @@ class InsomniaV4Importer {
                             )
                             else -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
                         },
-                        headers = (it.headers.map { UserKeyValuePair(
-                            id = uuidString(),
-                            key = it.name.convertVariables(postFlightBodyVariables),
-                            value = it.value.convertVariables(postFlightBodyVariables),
-                            valueType = FieldValueType.String,
-                            isEnabled = it.disabled != true,
-                        ) } + (it.authentication.`if` { it.type == "bearer" }?.let { listOf(UserKeyValuePair(
-                            id = uuidString(),
-                            key = "Authorization",
-                            value = "${it.prefix?.convertVariables(postFlightBodyVariables) ?: "Bearer"} ${it.token?.convertVariables(postFlightBodyVariables)}",
-                            valueType = FieldValueType.String,
-                            isEnabled = it.disabled != true,
-                        )) } ?: emptyList())).filterNonEmpty(),
-                        queryParameters = it.parameters.map {
-                            UserKeyValuePair(
-                                id = uuidString(),
-                                key = it.name.convertVariables(postFlightBodyVariables),
-                                value = it.value.convertVariables(postFlightBodyVariables),
-                                valueType = FieldValueType.String,
-                                isEnabled = it.disabled != true,
-                            )
-                        }.filterNonEmpty(),
+                        headers = it.parseHeaders(postFlightBodyVariables),
+                        queryParameters = it.parseQueryParameters(postFlightBodyVariables),
                     ))
                 )
                 req = req.copy(examples = req.examples.map {
@@ -213,16 +210,49 @@ class InsomniaV4Importer {
                         )
                     )
                 })
-                val parent = folderMap[it.parentId]
-                val subproject: Subproject?
-                if (parent != null) {
-                    parent.first.childs += TreeRequest(id = req.id)
-                    subproject = parent.second
-                } else {
-                    subproject = subprojectMap[it.parentId]
-                    subproject?.treeObjects?.add(TreeRequest(id = req.id))
-                }
-                requestsBySubproject.getOrPut(subproject?.id ?: "") { mutableListOf() } += req
+                addRequestToSubproject(it, req)
+            }
+
+        resources.filter { it["_type"]?.textValue() == "websocket_request" }
+            .map { log.d { it.toString() }; jsonParser.treeToValue(it, InsomniaV4.WebSocketRequest::class.java) }
+            .forEach {
+                val postFlightBodyVariables = mutableListOf<UserKeyValuePair>()
+                val req = UserRequestTemplate(
+                    id = uuidString(),
+                    name = it.name,
+                    application = ProtocolApplication.WebSocket,
+                    method = "",
+                    url = it.url.convertVariables(postFlightBodyVariables),
+                    examples = listOf(UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.None,
+                        body = null,
+                        headers = it.parseHeaders(postFlightBodyVariables),
+                        queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                    )),
+                    payloadExamples = mutableListOf(
+                        PayloadExample(
+                            id = uuidString(),
+                            name = "Payload",
+                            body = "",
+                        )
+                    ),
+                )
+                addRequestToSubproject(it, req)
+            }
+
+        resources.filter { it["_type"]?.textValue() == "websocket_payload" }
+            .map { log.d { it.toString() }; jsonParser.treeToValue(it, InsomniaV4.RequestPayload::class.java) }
+            .forEach {
+                (requestByInsomniaId[it.parentId]?.payloadExamples as? MutableList<PayloadExample>)?.replaceIf(
+                    replacement = PayloadExample(
+                        id = uuidString(),
+                        name = it.name,
+                        body = it.value,
+                    ),
+                    condition = { _ -> true },
+                )
             }
 
         val requestCollectionRepository = AppContext.RequestCollectionRepository
@@ -244,6 +274,42 @@ class InsomniaV4Importer {
         )
 
         projectCollectionRepository.notifyUpdated(ProjectAndEnvironmentsDI())
+    }
+
+    fun InsomniaV4.Request.parseHeaders(postFlightBodyVariables: MutableList<UserKeyValuePair>): List<UserKeyValuePair> {
+        return (this.headers.map {
+            UserKeyValuePair(
+                id = uuidString(),
+                key = it.name.convertVariables(postFlightBodyVariables),
+                value = it.value.convertVariables(postFlightBodyVariables),
+                valueType = FieldValueType.String,
+                isEnabled = it.disabled != true,
+            )
+        } + (this.authentication.`if` { it.type == "bearer" }?.let {
+            listOf(
+                UserKeyValuePair(
+                    id = uuidString(),
+                    key = "Authorization",
+                    value = "${it.prefix?.convertVariables(postFlightBodyVariables) ?: "Bearer"} ${
+                        it.token?.convertVariables(postFlightBodyVariables)
+                    }",
+                    valueType = FieldValueType.String,
+                    isEnabled = it.disabled != true,
+                )
+            )
+        } ?: emptyList())).filterNonEmpty()
+    }
+
+    fun InsomniaV4.Request.parseQueryParameters(postFlightBodyVariables: MutableList<UserKeyValuePair>): List<UserKeyValuePair> {
+        return this.parameters.map {
+            UserKeyValuePair(
+                id = uuidString(),
+                key = it.name.convertVariables(postFlightBodyVariables),
+                value = it.value.convertVariables(postFlightBodyVariables),
+                valueType = FieldValueType.String,
+                isEnabled = it.disabled != true,
+            )
+        }.filterNonEmpty()
     }
 
     val INSOMNIA_SAVE_VARIABLE_REGEX = "\\{% savevariable '([^{}%']*)', '([^{}%']*)', '([^{}%']*)', '([^{}%']*)', '([^{}%']*)' %\\}".toRegex()

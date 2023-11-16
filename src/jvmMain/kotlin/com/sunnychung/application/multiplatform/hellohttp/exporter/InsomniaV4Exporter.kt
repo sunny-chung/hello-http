@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
@@ -94,55 +95,91 @@ class InsomniaV4Exporter {
 
         result.addAll(requests.flatMap { req ->
             val convertedParentId = parentIdByRequestId[req.id]!!
-            req.examples.mapIndexed { index, it ->
-                InsomniaV4.HttpRequest(
-                    id = it.id.convertId("req_"),
-                    parentId = convertedParentId,
-                    url = req.url.resolveVariables(),
-                    name = req.name + if (index > 0) {
-                        " (${it.name})"
-                    } else {
-                        ""
-                    },
-                    description = "",
-                    method = req.method,
-                    headers = req.getMergedProperty(index) { it.headers }
-                        .map { it.toInsomniaKeyValue() },
-                    parameters = req.getMergedProperty(index) { it.queryParameters }
-                        .map { it.toInsomniaKeyValue() },
-                    body = when (it.body) {
-                        is FormUrlEncodedBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "application/x-www-form-urlencoded",
-                            text = null,
-                            params = req.getMergedProperty(index) { (it.body as? FormUrlEncodedBody)?.value }
+            when (req.application) {
+                ProtocolApplication.WebSocket -> {
+                    val id = req.id.convertId("ws-req_")
+                    val it = req.payloadExamples!!.first()
+                    listOf(
+                        InsomniaV4.WebSocketRequest(
+                            id = id,
+                            parentId = convertedParentId,
+                            url = req.url.resolveVariables(),
+                            name = req.name,
+                            description = "",
+                            headers = req.getMergedProperty(0) { it.headers }
                                 .map { it.toInsomniaKeyValue() },
+                            parameters = req.getMergedProperty(0) { it.queryParameters }
+                                .map { it.toInsomniaKeyValue() },
+                            authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
+                            type = "websocket_request",
+                        ),
+                        InsomniaV4.RequestPayload(
+                            id = uuidString().convertId("ws-payload_"),
+                            parentId = id,
+                            name = it.name,
+                            value = it.body,
+                            mode = "text/plain",
+                            type = "websocket_payload",
                         )
-                        is MultipartBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "multipart/form-data",
-                            text = null,
-                            params = req.getMergedProperty(index) { (it.body as? MultipartBody)?.value }
-                                .map { it.toInsomniaKeyValue().copy(
-                                    type = if (it.valueType == FieldValueType.File) "file" else null,
-                                    fileName = if (it.valueType == FieldValueType.File) it.value.resolveVariables() else null,
-                                    value = if (it.valueType == FieldValueType.File) "" else it.value.resolveVariables(),
-                                ) },
-                        )
-                        is StringBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "application/json",
-                            text = it.body.value.resolveVariables(),
-                            params = null,
-                        )
-                        is FileBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "application/octet-stream",
-                            text = null,
-                            fileName = it.body.filePath,
-                            params = null,
-                        )
-                        null -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
-                    },
-                    authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
-                    type = "request",
-                )
+                    )
+                }
+
+                else -> req.examples.mapIndexed { index, it ->
+                    InsomniaV4.HttpRequest(
+                        id = it.id.convertId("req_"),
+                        parentId = convertedParentId,
+                        url = req.url.resolveVariables(),
+                        name = req.name + if (index > 0) {
+                            " (${it.name})"
+                        } else {
+                            ""
+                        },
+                        description = "",
+                        method = req.method,
+                        headers = req.getMergedProperty(index) { it.headers }
+                            .map { it.toInsomniaKeyValue() },
+                        parameters = req.getMergedProperty(index) { it.queryParameters }
+                            .map { it.toInsomniaKeyValue() },
+                        body = when (it.body) {
+                            is FormUrlEncodedBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = "application/x-www-form-urlencoded",
+                                text = null,
+                                params = req.getMergedProperty(index) { (it.body as? FormUrlEncodedBody)?.value }
+                                    .map { it.toInsomniaKeyValue() },
+                            )
+
+                            is MultipartBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = "multipart/form-data",
+                                text = null,
+                                params = req.getMergedProperty(index) { (it.body as? MultipartBody)?.value }
+                                    .map {
+                                        it.toInsomniaKeyValue().copy(
+                                            type = if (it.valueType == FieldValueType.File) "file" else null,
+                                            fileName = if (it.valueType == FieldValueType.File) it.value.resolveVariables() else null,
+                                            value = if (it.valueType == FieldValueType.File) "" else it.value.resolveVariables(),
+                                        )
+                                    },
+                            )
+
+                            is StringBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = "application/json",
+                                text = it.body.value.resolveVariables(),
+                                params = null,
+                            )
+
+                            is FileBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = "application/octet-stream",
+                                text = null,
+                                fileName = it.body.filePath,
+                                params = null,
+                            )
+
+                            null -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
+                        },
+                        authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
+                        type = "request",
+                    )
+                }
             }
         })
 
