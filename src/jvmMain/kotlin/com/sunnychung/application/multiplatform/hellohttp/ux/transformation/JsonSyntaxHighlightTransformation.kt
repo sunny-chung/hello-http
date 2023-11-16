@@ -5,7 +5,9 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
 val OBJECT_KEY_REGEX = "(?<!\\\\)(\".*?(?<!\\\\)\")\\s*:".toRegex()
 val STRING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(?<!\\\\)(\".*?(?<!\\\\)\")".toRegex()
@@ -34,6 +36,7 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
             return lastResult!!
         }
 
+        val start = KInstant.now()
         listOf(
             OBJECT_KEY_REGEX to objectKeyStyle,
             STRING_LITERAL_REGEX to stringLiteralStyle,
@@ -47,6 +50,10 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
                 spans += AnnotatedString.Range(style, range.start, range.endInclusive + 1)
             }
         }
+        val timeCost = KInstant.now() - start
+        // took 53ms for a 300k-length string
+        log.d { "JsonSyntaxHighlightTransformation took ${timeCost.millis}ms to process ${s.length}" }
+
         lastTextHash = text.text.hashCode()
         lastResult = TransformedText(AnnotatedString(s, text.spanStyles + spans), OffsetMapping.Identity)
         return lastResult!!
