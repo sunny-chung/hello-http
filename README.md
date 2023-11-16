@@ -66,6 +66,7 @@ moment.
 - Functions that can be resolved anywhere in the request:
   - UUID (type `$((uuid))`)
   - Current date-time ISO-8601 string (type `$((now.iso8601))`)
+  - Current timestamp (type `$((now.epochMills))` or `$((now.epochSeconds))`)
 - Copying as verbose cURL commands
 
 **Response**
