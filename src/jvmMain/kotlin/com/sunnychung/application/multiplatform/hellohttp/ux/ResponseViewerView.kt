@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -298,8 +299,14 @@ private val ORIGINAL = "UTF-8 String"
 private val CLIENT_ERROR = "Client Error"
 
 @Composable
-fun BodyViewerView(modifier: Modifier = Modifier, content: ByteArray, errorMessage: String?, prettifiers: List<PrettifierDropDownValue>) {
-    var selectedView by remember { mutableStateOf(prettifiers.first()) }
+fun BodyViewerView(
+    modifier: Modifier = Modifier,
+    content: ByteArray,
+    errorMessage: String?,
+    prettifiers: List<PrettifierDropDownValue>,
+    selectedPrettifierState: MutableState<PrettifierDropDownValue> = remember { mutableStateOf(prettifiers.first()) }
+) {
+    var selectedView by selectedPrettifierState
     if (selectedView.name !in prettifiers.map { it.name }) {
         selectedView = prettifiers.first()
     }
@@ -384,26 +391,29 @@ private val TYPE_COLUMN_WIDTH_DP = 20.dp
 
 @Composable
 fun ResponseStreamView(response: UserResponse) {
-    val prettifiers = if (!response.isError) {
+    var selectedMessage by remember(response.id) { mutableStateOf<PayloadMessage?>(null) }
+    val prettifiers = if (response.isError) {
+        listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
+    } else if (selectedMessage?.type in setOf(PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected)) {
+        listOf(PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() }))
+    } else {
         AppContext.PrettifierManager.allPrettifiers()
             .map { PrettifierDropDownValue(it.formatName, it) } +
                 PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() })
-    } else {
-        listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     }
-
-    var selectedMessage by remember(response.id) { mutableStateOf<PayloadMessage?>(null) }
-    val detailData = if (selectedMessage?.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData)) {
-        selectedMessage?.data
-    } else {
-        null
-    }
+    val detailData = selectedMessage?.data
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
             modifier = Modifier.weight(0.5f),
             content = detailData ?: byteArrayOf(),
             prettifiers = prettifiers,
+            selectedPrettifierState = remember(
+                when (selectedMessage?.type) {
+                    PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected -> 0
+                    PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData, null -> 1
+                }
+            ) { mutableStateOf(prettifiers.first()) },
             errorMessage = null,
         )
 
@@ -427,9 +437,7 @@ fun ResponseStreamView(response: UserResponse) {
             LazyColumn(state = scrollState) {
                 items(items = response.payloadExchanges?.reversed() ?: emptyList()) {
                     var modifier: Modifier = Modifier
-                    if (it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData)) {
-                        modifier = modifier.clickable { selectedMessage = it }
-                    }
+                    modifier = modifier.clickable { selectedMessage = it }
                     Row(modifier = modifier) {
                         AppText(
                             text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
