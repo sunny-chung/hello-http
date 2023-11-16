@@ -55,6 +55,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIn
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
@@ -91,15 +92,9 @@ fun RequestEditorView(
         onSelectExample(baseExample)
     } // do not use `selectedExampleId` directly, because selectedExample can be changed
 
-    var previousRequest by remember { mutableStateOf("") }
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
-    var selectedContentType by remember { mutableStateOf(selectedExample.contentType) }
-
-    if (previousRequest != request.id) { // any better way to renew cache?
-        selectedContentType = selectedExample.contentType
-        previousRequest = request.id
-    }
+    var selectedContentType by rememberLast(selectedExample.id, request.application) { mutableStateOf(selectedExample.contentType) }
 
     val environmentVariableKeys = environment?.variables?.filter { it.isEnabled }?.map { it.key }?.toSet() ?: emptySet()
 
@@ -184,9 +179,13 @@ fun RequestEditorView(
                     ) }
                 + listOf(
                     DropDownKeyValue(
+                        key = ProtocolMethod(application = ProtocolApplication.Graphql, method = ""),
+                        displayText = "GraphQL"
+                    ),
+                    DropDownKeyValue(
                         key = ProtocolMethod(application = ProtocolApplication.WebSocket, method = ""),
                         displayText = "WebSocket"
-                    )
+                    ),
                 )
             )
             DropDownView(
@@ -207,7 +206,7 @@ fun RequestEditorView(
 
                         ProtocolApplication.WebSocket -> Pair("WebSocket", colors.websocketRequest)
                         ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
-                        ProtocolApplication.Graphql -> Pair("GQL", colors.graphqlRequest)
+                        ProtocolApplication.Graphql -> Pair("GraphQL", colors.graphqlRequest)
                     }
                     AppText(
                         text = text.emptyToNull() ?: "--",
@@ -240,7 +239,7 @@ fun RequestEditorView(
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
-            if (request.application != ProtocolApplication.WebSocket) {
+            if (request.application !in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql)) {
                 val (label, backgroundColour) = if (!isConnecting) {
                     Pair("Send", colors.backgroundButton)
                 } else {
@@ -437,33 +436,35 @@ fun RequestEditorView(
                 RequestTab.Body -> Column {
                     val requestBody = selectedExample.body
                     Row(modifier = Modifier.padding(8.dp)) {
-                        AppText("Content Type: ")
-                        DropDownView(
-                            items = ContentType.values().toList(),
-                            selectedItem = selectedContentType,
-                            onClickItem = {
-                                if (selectedContentType == it) return@DropDownView true
-                                selectedContentType = it
-                                val newBody = when (it) {
-                                    ContentType.None -> null
-                                    ContentType.Json, ContentType.Raw -> StringBody("")
-                                    ContentType.Multipart -> MultipartBody(emptyList())
-                                    ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
-                                    ContentType.BinaryFile -> FileBody(null)
-                                }
-                                onRequestModified(
-                                    request.copy(
-                                        examples = request.examples.copyWithChange(
-                                            selectedExample.copy(
-                                                contentType = selectedContentType,
-                                                body = newBody
+                        if (request.application != ProtocolApplication.Graphql) {
+                            AppText("Content Type: ")
+                            DropDownView(
+                                items = ContentType.values().toList(),
+                                selectedItem = selectedContentType,
+                                onClickItem = {
+                                    if (selectedContentType == it) return@DropDownView true
+                                    selectedContentType = it
+                                    val newBody = when (it) {
+                                        ContentType.None -> null
+                                        ContentType.Json, ContentType.Raw -> StringBody("")
+                                        ContentType.Multipart -> MultipartBody(emptyList())
+                                        ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
+                                        ContentType.BinaryFile -> FileBody(null)
+                                    }
+                                    onRequestModified(
+                                        request.copy(
+                                            examples = request.examples.copyWithChange(
+                                                selectedExample.copy(
+                                                    contentType = selectedContentType,
+                                                    body = newBody
+                                                )
                                             )
                                         )
                                     )
-                                )
-                                true
-                            }
-                        )
+                                    true
+                                }
+                            )
+                        }
 
                         if (selectedExample.id != baseExample.id && selectedContentType in setOf(
                                 ContentType.Json,

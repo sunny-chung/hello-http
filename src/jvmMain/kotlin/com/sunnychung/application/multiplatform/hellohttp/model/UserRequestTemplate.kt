@@ -42,6 +42,16 @@ data class UserRequestTemplate(
                 method = method,
                 payloadExamples = listOf(PayloadExample(id = uuidString(), name = "New Payload", body = ""))
             )
+        } else if (application == ProtocolApplication.Graphql) {
+            copy(
+                application = application,
+                method = method,
+                examples = examples.map {
+                    it.copy(
+                        contentType = ContentType.Raw,
+                    )
+                }
+            )
         } else {
             copy(application = application, method = method)
         }
