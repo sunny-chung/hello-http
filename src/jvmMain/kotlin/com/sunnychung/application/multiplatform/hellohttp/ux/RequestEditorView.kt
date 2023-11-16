@@ -434,7 +434,7 @@ fun RequestEditorView(
             }.fillMaxWidth()
         ) {
             when (tabs[selectedRequestTabIndex]) {
-                RequestTab.Body -> {
+                RequestTab.Body -> Column {
                     val requestBody = selectedExample.body
                     Row(modifier = Modifier.padding(8.dp)) {
                         AppText("Content Type: ")
