@@ -39,6 +39,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplicat
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
@@ -371,6 +372,7 @@ fun ResponseBodyView(response: UserResponse) {
             content = response.body ?: byteArrayOf(),
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
+            selectedPrettifierState = rememberLast(response.requestExampleId) { mutableStateOf(prettifiers.first()) }
         )
 
         if (response.postFlightErrorMessage?.isNotEmpty() == true) {
@@ -409,6 +411,7 @@ fun ResponseStreamView(response: UserResponse) {
             content = detailData ?: byteArrayOf(),
             prettifiers = prettifiers,
             selectedPrettifierState = remember(
+                response.requestExampleId,
                 when (selectedMessage?.type) {
                     PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected -> 0
                     PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData, null -> 1

@@ -10,7 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
 val TOKEN_REGEX = "(?<!\\\\)(\".+?(?<!\\\\)\"(?:\\s*:)?)|(?<=[,\\[\\]{}:])\\s*([^,\\s\"\\[\\]{}]+?)\\s*(?=[,\\[\\]{}:])".toRegex()
-val OBJECT_KEY_REGEX = "\".*?(?<!\\\\)\"\\s*:".toRegex()
+val OBJECT_KEY_REGEX = "(\".*?(?<!\\\\)\")\\s*:".toRegex()
 val STRING_LITERAL_REGEX = "\".*?(?<!\\\\)\"".toRegex()
 val NUMBER_LITERAL_REGEX = "-?\\d+(?:\\.\\d+)?".toRegex()
 val BOOLEAN_TRUE_LITERAL_REGEX = "true".toRegex()
@@ -49,11 +49,15 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
 
         TOKEN_REGEX.findAll(s).forEach { m ->
             val match = (m.groups[1] ?: m.groups[2])!!
-            val range = match.range
             subPatterns.firstOrNull { (pattern, style) ->
-                pattern.matches(match.value)
-            }?.let { (pattern, style) ->
-                spans += AnnotatedString.Range(style, range.start, range.endInclusive + 1)
+                val subMatch = pattern.matchEntire(match.value)
+                if (subMatch != null) {
+                    val range = if (subMatch.groups.size > 1) subMatch.groups[1]!!.range else match.range
+                    spans += AnnotatedString.Range(style, range.start, range.endInclusive + 1)
+                    true
+                } else {
+                    false
+                }
             }
         }
         val timeCost = KInstant.now() - start
