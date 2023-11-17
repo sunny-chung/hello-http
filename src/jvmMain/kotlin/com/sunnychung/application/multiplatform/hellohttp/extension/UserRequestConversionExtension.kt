@@ -1,12 +1,15 @@
 package com.sunnychung.application.multiplatform.hellohttp.extension
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
@@ -14,6 +17,9 @@ import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.OS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
+import graphql.language.OperationDefinition
+import graphql.parser.InvalidSyntaxException
+import graphql.parser.Parser
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -41,7 +47,7 @@ fun UserRequestTemplate.toHttpRequest(
         return this
     }
 
-    HttpRequest(
+    var req = HttpRequest(
         method = method,
         url = url.resolveVariables(),
         headers = getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
@@ -74,6 +80,38 @@ fun UserRequestTemplate.toHttpRequest(
         contentType = selectedExample.contentType,
         application = application,
     )
+
+    if (application == ProtocolApplication.Graphql) {
+        val operationType = try {
+            val document = Parser().parseDocument((req.body as StringBody).value)
+            (document.definitions.firstOrNull() as? OperationDefinition)?.operation
+        } catch (_: InvalidSyntaxException) {
+            null
+        }
+
+        val jsonMapper = jacksonObjectMapper()
+        val body = StringBody(
+            jsonMapper.writeValueAsString(
+                GraphqlRequestBody(query = (req.body as StringBody).value, variables = null /* TODO*/)
+            )
+        )
+        req = if (operationType != OperationDefinition.Operation.SUBSCRIPTION) {
+            req.copy(
+                application = ProtocolApplication.Http,
+                method = "POST",
+                headers = req.headers.filter { !it.first.equals("Content-Type", true) && !it.first.equals("Accept", true) } +
+                        ("Content-Type" to "application/json") +
+                        ("Accept" to "application/graphql-response+json; charset=utf-8, application/json; charset=utf-8"),
+                body = body,
+            )
+        } else {
+            req.copy(
+                body = body,
+            )
+        }
+    }
+
+    req
 }
 
 fun HttpRequest.toOkHttpRequest(): Request {
