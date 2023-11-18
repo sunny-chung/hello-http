@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.java_websocket.handshake.ServerHandshake
+import java.io.IOException
 import java.net.URI
 import java.nio.ByteBuffer
 import kotlin.coroutines.resume
@@ -137,9 +138,8 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
 
                 client.connect()
 
-                delay(2000)
-
-                awaitConnect()
+                val isConnected = awaitConnect()
+                if (!isConnected) throw IOException("Not connected")
                 send(GraphqlWsMessage<Nothing>(type = "connection_init"))
                 var message = awaitNextMessage()
                 if (message.type != "connection_ack") {
