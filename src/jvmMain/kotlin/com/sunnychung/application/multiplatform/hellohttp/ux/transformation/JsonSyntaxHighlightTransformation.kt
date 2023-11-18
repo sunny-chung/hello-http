@@ -54,7 +54,12 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
             subPatterns.firstOrNull { (pattern, style) ->
                 val subMatch = pattern.matchEntire(match.value)
                 if (subMatch != null) {
-                    val range = if (subMatch.groups.size > 1) subMatch.groups[1]!!.range else match.range
+                    val range = if (subMatch.groups.size > 1) {
+                        subMatch.groups[1]!!.range
+                            .let { it.start + match.range.start .. it.endInclusive + match.range.start }
+                    } else {
+                        match.range
+                    }
                     spans += AnnotatedString.Range(style, range.start, range.endInclusive + 1)
                     true
                 } else {
