@@ -7,6 +7,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -174,7 +175,7 @@ class InsomniaV4Exporter {
                                 params = null,
                             )
 
-                            null -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
+                            null, is GraphqlBody /* TODO*/ -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
                         },
                         authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
                         type = "request",

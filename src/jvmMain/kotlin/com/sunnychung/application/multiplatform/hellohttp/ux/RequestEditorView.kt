@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -36,19 +36,21 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
@@ -56,13 +58,14 @@ import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import graphql.language.OperationDefinition
+import graphql.language.OperationDefinition.Operation
 import java.io.File
 
 @Composable
@@ -96,6 +99,12 @@ fun RequestEditorView(
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
     val environmentVariableKeys = environment?.variables?.filter { it.isEnabled }?.map { it.key }?.toSet() ?: emptySet()
+
+    val currentGraphqlOperation = if (request.application == ProtocolApplication.Graphql) {
+        (selectedExample.body as? GraphqlBody)?.getOperation(isThrowError = false)
+    } else {
+        null
+    }
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -174,7 +183,12 @@ fun RequestEditorView(
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
-            if (request.application !in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql)) {
+            if (request.application !in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql)
+                || (request.application == ProtocolApplication.Graphql && currentGraphqlOperation?.operation in setOf(
+                    Operation.QUERY,
+                    Operation.MUTATION
+                ))
+            ) {
                 val (label, backgroundColour) = if (!isConnecting) {
                     Pair("Send", colors.backgroundButton)
                 } else {
@@ -331,11 +345,7 @@ fun RequestEditorView(
                 resource = "add.svg",
                 size = 24.dp,
                 onClick = {
-                    val newExample = UserRequestExample(
-                        id = uuidString(),
-                        name = "New Example",
-                        overrides = UserRequestExample.Overrides(),
-                    )
+                    val newExample = UserRequestExample.create(request.application)
                     onRequestModified(
                         request.copy(examples = request.examples + newExample)
                     )
@@ -373,6 +383,7 @@ fun RequestEditorView(
                     onRequestModified = onRequestModified,
                     selectedExample = selectedExample,
                     environmentVariableKeys = environmentVariableKeys,
+                    currentGraphqlOperation = currentGraphqlOperation,
                 )
 
                 RequestTab.Header ->
@@ -605,6 +616,7 @@ private fun RequestBodyEditor(
     onRequestModified: (UserRequestTemplate?) -> Unit,
     selectedExample: UserRequestExample,
     environmentVariableKeys: Set<String>,
+    currentGraphqlOperation: OperationDefinition?,
 ) {
     val colors = LocalColor.current
     val baseExample = request.examples.first()
@@ -617,7 +629,7 @@ private fun RequestBodyEditor(
             if (request.application != ProtocolApplication.Graphql) {
                 AppText("Content Type: ")
                 DropDownView(
-                    items = ContentType.values().toList(),
+                    items = listOf(ContentType.Json, ContentType.Multipart, ContentType.FormUrlEncoded, ContentType.Raw, ContentType.BinaryFile, ContentType.None),
                     selectedItem = selectedContentType,
                     onClickItem = {
                         if (selectedContentType == it) return@DropDownView true
@@ -628,6 +640,7 @@ private fun RequestBodyEditor(
                             ContentType.Multipart -> MultipartBody(emptyList())
                             ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
                             ContentType.BinaryFile -> FileBody(null)
+                            else -> throw UnsupportedOperationException()
                         }
                         onRequestModified(
                             request.copy(
@@ -642,72 +655,104 @@ private fun RequestBodyEditor(
                         true
                     }
                 )
-            }
-
-            if (selectedExample.id != baseExample.id && selectedContentType in setOf(
-                    ContentType.Json,
-                    ContentType.Raw,
-                    ContentType.BinaryFile
-                )
-            ) {
-                Spacer(Modifier.weight(1f))
-                AppText("Is Override Base? ")
-                AppCheckbox(
-                    checked = selectedExample.overrides!!.isOverrideBody,
-                    onCheckedChange = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.run {
-                                        copy(overrides = overrides!!.copy(isOverrideBody = it))
+            } else {
+                AppText("Operation: ")
+                val body = selectedExample.body as? GraphqlBody
+                val isSelectedOperationValid = body?.getOperation(isThrowError = false) != null
+                AppTooltipArea(
+                    isVisible = !isSelectedOperationValid,
+                    tooltipText = "Invalid operation name or query document syntax.\nClick to correct the operation name.",
+                    delayMillis = 0,
+                ) {
+                    DropDownView(
+                        modifier = if (isSelectedOperationValid) Modifier else Modifier.background(colors.errorResponseBackground),
+                        items = listOf(),
+                        populateItems = {
+                            body?.getAllOperations(isThrowError = false)
+                                ?.map { DropDownValue(it.name ?: "") }
+                                ?.let {
+                                    if (it.size <= 1) {
+                                        listOf(DropDownValue("")) + it
+                                    } else {
+                                        it
                                     }
-                                )
-                            )
-                        )
-                    },
-                    size = 16.dp,
-                )
-            }
-        }
-        val remainModifier = Modifier.fillMaxSize()
-        when (selectedContentType) {
-            ContentType.Json, ContentType.Raw ->
-                if (selectedExample.overrides?.isOverrideBody != false) {
-                    CodeEditorView(
-                        modifier = remainModifier,
-                        isReadOnly = false,
-                        isEnableVariables = true,
-                        knownVariables = environmentVariableKeys,
-                        text = (selectedExample.body as? StringBody)?.value ?: "",
-                        onTextChange = {
+                                }
+                                ?.distinct()
+                                ?: listOf(DropDownValue(""))
+                        },
+                        selectedItem = DropDownValue(body?.operationName ?: ""),
+                        onClickItem = {
                             onRequestModified(
                                 request.copy(
                                     examples = request.examples.copyWithChange(
                                         selectedExample.copy(
                                             contentType = selectedContentType,
-                                            body = StringBody(it)
+                                            body = body!!.copy(
+                                                operationName = it.displayText
+                                            )
                                         )
                                     )
                                 )
                             )
-                        },
-                        transformations = if (selectedContentType == ContentType.Json) {
-                            listOf(JsonSyntaxHighlightTransformation(colours = colors))
-                        } else {
-                            emptyList()
-                        },
-                    )
-                } else {
-                    CodeEditorView(
-                        modifier = remainModifier,
-                        isReadOnly = true,
-                        isEnableVariables = true,
-                        knownVariables = environmentVariableKeys,
-                        text = (baseExample.body as? StringBody)?.value ?: "",
-                        onTextChange = {},
-                        textColor = colors.placeholder,
+                            true
+                        }
                     )
                 }
+            }
+
+            if (selectedExample.id != baseExample.id && selectedContentType in setOf(
+                    ContentType.Json,
+                    ContentType.Raw,
+                    ContentType.BinaryFile,
+                    ContentType.Graphql,
+                )
+            ) {
+                Spacer(Modifier.weight(1f))
+                OverrideCheckboxWithLabel(
+                    selectedExample = selectedExample,
+                    onRequestModified = onRequestModified,
+                    request = request,
+                    translateToValue = { overrides ->
+                        if (selectedContentType != ContentType.Graphql) {
+                            overrides.isOverrideBody
+                        } else {
+                            overrides.isOverrideBodyContent
+                        }
+                    },
+                    translateToNewOverrides = { isChecked, overrides ->
+                        if (selectedContentType != ContentType.Graphql) {
+                            overrides.copy(isOverrideBody = isChecked)
+                        } else {
+                            overrides.copy(isOverrideBodyContent = isChecked)
+                        }
+                    },
+                )
+            }
+        }
+        val remainModifier = Modifier.fillMaxWidth().weight(1f)
+        when (selectedContentType) {
+            ContentType.Json, ContentType.Raw -> {
+                RequestBodyTextEditor(
+                    request = request,
+                    onRequestModified = onRequestModified,
+                    environmentVariableKeys = environmentVariableKeys,
+                    selectedExample = selectedExample,
+                    overridePredicate = { it?.isOverrideBody != false },
+                    translateToText = { (it.body as? StringBody)?.value },
+                    translateTextChangeToNewUserRequestExample = {
+                        selectedExample.copy(
+                            contentType = selectedContentType,
+                            body = StringBody(it)
+                        )
+                    },
+                    transformations = if (selectedContentType == ContentType.Json) {
+                        listOf(JsonSyntaxHighlightTransformation(colours = colors))
+                    } else {
+                        emptyList()
+                    },
+                    modifier = remainModifier,
+                )
+            }
 
             ContentType.FormUrlEncoded ->
                 RequestKeyValueEditorView(
@@ -796,8 +841,133 @@ private fun RequestBodyEditor(
                 )
             }
 
+            ContentType.Graphql -> {
+                RequestBodyTextEditor(
+                    request = request,
+                    onRequestModified = onRequestModified,
+                    environmentVariableKeys = environmentVariableKeys,
+                    selectedExample = selectedExample,
+                    overridePredicate = { it?.isOverrideBodyContent != false },
+                    translateToText = { (it.body as? GraphqlBody)?.document },
+                    translateTextChangeToNewUserRequestExample = {
+                        selectedExample.copy(
+                            body = (selectedExample.body as GraphqlBody).copy(
+                                document = it
+                            )
+                        )
+                    },
+                    transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    modifier = Modifier.fillMaxWidth().weight(0.62f),
+                )
+
+                Row(modifier = Modifier.padding(top = 10.dp, start = 8.dp, bottom = 6.dp)) {
+                    AppText("Variables")
+                    if (selectedExample.id != baseExample.id) {
+                        Spacer(Modifier.weight(1f))
+                        OverrideCheckboxWithLabel(
+                            selectedExample = selectedExample,
+                            onRequestModified = onRequestModified,
+                            request = request,
+                            translateToValue = { overrides -> overrides.isOverrideBodyVariables },
+                            translateToNewOverrides = { isChecked, overrides ->
+                                overrides.copy(isOverrideBodyVariables = isChecked)
+                            },
+                        )
+                    }
+                }
+                RequestBodyTextEditor(
+                    request = request,
+                    onRequestModified = onRequestModified,
+                    environmentVariableKeys = environmentVariableKeys,
+                    selectedExample = selectedExample,
+                    overridePredicate = { it?.isOverrideBodyVariables != false },
+                    translateToText = { (it.body as? GraphqlBody)?.variables },
+                    translateTextChangeToNewUserRequestExample = {
+                        selectedExample.copy(
+                            body = (selectedExample.body as GraphqlBody).copy(
+                                variables = it
+                            )
+                        )
+                    },
+                    transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 200.dp).weight(0.38f),
+                )
+            }
+
             ContentType.None -> {}
         }
+    }
+}
+
+@Composable
+private fun OverrideCheckboxWithLabel(
+    request: UserRequestTemplate,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    selectedExample: UserRequestExample,
+    translateToValue: (UserRequestExample.Overrides) -> Boolean,
+    translateToNewOverrides: (Boolean, UserRequestExample.Overrides) -> UserRequestExample.Overrides,
+) {
+    AppText("Is Override Base? ")
+    AppCheckbox(
+        checked = translateToValue(selectedExample.overrides!!),
+        onCheckedChange = {
+            onRequestModified(
+                request.copy(
+                    examples = request.examples.copyWithChange(
+                        selectedExample.run {
+                            copy(overrides = translateToNewOverrides(it, overrides!!))
+                        }
+                    )
+                )
+            )
+        },
+        size = 16.dp,
+    )
+}
+
+@Composable
+private fun RequestBodyTextEditor(
+    modifier: Modifier,
+    request: UserRequestTemplate,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    environmentVariableKeys: Set<String>,
+    selectedExample: UserRequestExample,
+    overridePredicate: (UserRequestExample.Overrides?) -> Boolean,
+    translateToText: (UserRequestExample) -> String?,
+    translateTextChangeToNewUserRequestExample: (String) -> UserRequestExample,
+    transformations: List<VisualTransformation>,
+) {
+    val colors = LocalColor.current
+    val baseExample = request.examples.first()
+
+    if (overridePredicate(selectedExample.overrides)) {
+        CodeEditorView(
+            modifier = modifier,
+            isReadOnly = false,
+            isEnableVariables = true,
+            knownVariables = environmentVariableKeys,
+            text = translateToText(selectedExample) ?: "",
+            onTextChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            translateTextChangeToNewUserRequestExample(it)
+                        )
+                    )
+                )
+            },
+            transformations = transformations,
+        )
+    } else {
+        CodeEditorView(
+            modifier = modifier,
+            isReadOnly = true,
+            isEnableVariables = true,
+            knownVariables = environmentVariableKeys,
+            text = translateToText(baseExample) ?: "",
+            onTextChange = {},
+            textColor = colors.placeholder, // intended to have no syntax highlighting
+        )
     }
 }
 

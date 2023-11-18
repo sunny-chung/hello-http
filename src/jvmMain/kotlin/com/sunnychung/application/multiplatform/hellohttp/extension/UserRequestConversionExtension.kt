@@ -6,6 +6,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
@@ -17,6 +18,7 @@ import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.OS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import graphql.language.OperationDefinition
 import graphql.parser.InvalidSyntaxException
 import graphql.parser.Parser
@@ -47,10 +49,12 @@ fun UserRequestTemplate.toHttpRequest(
         return this
     }
 
+    val overrides = selectedExample.overrides
+
     var req = HttpRequest(
         method = method,
         url = url.resolveVariables(),
-        headers = getMergedKeyValues({ it.headers }, selectedExample.overrides?.disabledHeaderIds)
+        headers = getMergedKeyValues({ it.headers }, overrides?.disabledHeaderIds)
             .map { it.key to it.value }
             .run {
                 if (addDefaultUserAgent && none { it.first.equals("user-agent", ignoreCase = true) }) {
@@ -59,40 +63,43 @@ fun UserRequestTemplate.toHttpRequest(
                     this
                 }
             },
-        queryParameters = getMergedKeyValues({ it.queryParameters }, selectedExample.overrides?.disabledQueryParameterIds)
+        queryParameters = getMergedKeyValues({ it.queryParameters }, overrides?.disabledQueryParameterIds)
             .map { it.key to it.value },
         body = when (selectedExample.body) {
             null -> null
             is FormUrlEncodedBody -> FormUrlEncodedBody(
                 getMergedKeyValues(
                     propertyGetter = { (it.body as? FormUrlEncodedBody)?.value },
-                    disabledIds = selectedExample.overrides?.disabledBodyKeyValueIds
+                    disabledIds = overrides?.disabledBodyKeyValueIds
                 )
             )
             is MultipartBody -> MultipartBody(
                 getMergedKeyValues(
                     propertyGetter = { (it.body as? MultipartBody)?.value },
-                    disabledIds = selectedExample.overrides?.disabledBodyKeyValueIds
+                    disabledIds = overrides?.disabledBodyKeyValueIds
                 )
             )
-            else -> if (selectedExample.overrides?.isOverrideBody != false) selectedExample.body.expandStringBody() else baseExample.body?.expandStringBody()
+            else -> if (overrides?.isOverrideBody != false) selectedExample.body.expandStringBody() else baseExample.body?.expandStringBody()
         },
         contentType = selectedExample.contentType,
         application = application,
     )
 
     if (application == ProtocolApplication.Graphql) {
-        val operationType = try {
-            val document = Parser().parseDocument((req.body as StringBody).value)
-            (document.definitions.firstOrNull() as? OperationDefinition)?.operation
-        } catch (_: InvalidSyntaxException) {
-            null
-        }
+        val graphqlBody = req.body as GraphqlBody
+        val baseGraphqlBody = baseExample.body as GraphqlBody
+        val operationType = (if (overrides?.isOverrideBodyContent == true) graphqlBody else baseGraphqlBody)
+            .getOperation(isThrowError = false)?.operation
+            ?: OperationDefinition.Operation.QUERY // bypass invalid syntax or operation name, let server throw error. users can test such scenario
 
         val jsonMapper = jacksonObjectMapper()
         val body = StringBody(
             jsonMapper.writeValueAsString(
-                GraphqlRequestBody(query = (req.body as StringBody).value, variables = null /* TODO*/)
+                GraphqlRequestBody(
+                    query = (if (overrides?.isOverrideBodyContent == true) graphqlBody else baseGraphqlBody).document,
+                    variables = jsonMapper.readTree((if (overrides?.isOverrideBodyVariables == true) graphqlBody else baseGraphqlBody).variables),
+                    operationName = graphqlBody.operationName.emptyToNull()
+                )
             )
         )
         req = if (operationType != OperationDefinition.Operation.SUBSCRIPTION) {
@@ -194,6 +201,7 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
         }
         is StringBody -> AsyncEntityProducers.create(body.value)
         null -> null
+        else -> throw UnsupportedOperationException()
     }
     if (entity != null) {
         b.entity = entity
@@ -258,6 +266,7 @@ fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environmen
             }
         }
         null -> {}
+        else -> throw UnsupportedOperationException()
     }
     return curl
 }

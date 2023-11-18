@@ -167,6 +167,7 @@ class NetworkClientManager : CallDataStore {
                 optionalResponseSize = AtomicInteger(0),
                 cancel = {},
             )
+            log.d(error) { "Got error while firing request" }
             // `networkManager.sendRequest` would update callDataMap, but on error nobody updates
             // so manually update here
             callDataMap[d.id] = d

@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 /**
@@ -30,11 +31,12 @@ fun <T: DropDownable> DropDownView(
     iconResource: String = "down-small.svg",
     iconSize: Dp = 16.dp,
     items: List<T>,
+    populateItems: (List<T>) -> List<T> = { it },
     isLabelFillMaxWidth: Boolean = false,
     isShowLabel: Boolean = true,
     contentView: @Composable (RowScope.(T?) -> Unit) = {
         AppText(
-            text = it?.displayText ?: "--",
+            text = it?.displayText.emptyToNull() ?: "--",
             modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier
         )
     },
@@ -52,7 +54,7 @@ fun <T: DropDownable> DropDownView(
         onDismissRequest = { isShowContextMenu = false },
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
-        items.forEach { item ->
+        populateItems(items).forEach { item ->
             Column(modifier = Modifier.clickable {
                 if (onClickItem(item)) {
                     isShowContextMenu = false

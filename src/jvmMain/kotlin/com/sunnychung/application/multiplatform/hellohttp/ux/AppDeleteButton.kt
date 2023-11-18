@@ -44,20 +44,8 @@ fun AppDeleteButton(
     var isShowingConfirmButtonState by remember { mutableStateOf(false) }
     var lastClickInstant by remember { mutableStateOf(KInstant.now()) }
 
-    TooltipArea(
-        tooltip = {
-            Surface(
-                modifier = Modifier.shadow(4.dp),
-                color = colors.backgroundTooltip,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                AppText(text = "Click to Delete", modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp))
-            }
-        },
-        delayMillis = 100,
-        tooltipPlacement = TooltipPlacement.CursorPoint(
-            offset = DpOffset(x = 16.dp, y = 0.dp)
-        )
+    AppTooltipArea(
+        tooltipText = "Click to Delete"
     ) {
         Crossfade(
             targetState = isShowingConfirmButtonState,
