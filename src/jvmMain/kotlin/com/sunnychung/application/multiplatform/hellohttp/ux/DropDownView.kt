@@ -44,7 +44,6 @@ fun <T: DropDownable> DropDownView(
             modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false)
         )
     },
-    clickableArea: DropDownClickableArea = DropDownClickableArea.All,
     arrowPadding: PaddingValues = PaddingValues(0.dp),
     selectedItem: T? = null,
     onClickItem: (T) -> Boolean
@@ -101,8 +100,4 @@ data class DropDownMap<T>(private val values: List<DropDownKeyValue<T>>) {
 
     operator fun get(key: T) = mapByKey[key]
 
-}
-
-enum class DropDownClickableArea {
-    All, ArrowOnly
 }
