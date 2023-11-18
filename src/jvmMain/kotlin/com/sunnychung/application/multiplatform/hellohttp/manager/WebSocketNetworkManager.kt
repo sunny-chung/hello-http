@@ -121,7 +121,7 @@ open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) :
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
                 val appendReason = if (!reason.isNullOrEmpty()) ", reason $reason" else ""
                 out.payloadExchanges!! += PayloadMessage(
-                    out.endAt!!,
+                    KInstant.now(),
                     PayloadMessage.Type.Disconnected,
                     "Connection closed by ${if (remote) "server" else "us"} with code $code$appendReason".encodeToByteArray()
                 )
