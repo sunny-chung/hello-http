@@ -46,6 +46,7 @@ class NetworkClientManager : CallDataStore {
     private val persistResponseManager by lazy { AppContext.PersistResponseManager }
     private val httpNetworkManager by lazy { AppContext.NetworkManager }
     private val webSocketNetworkManager by lazy { AppContext.WebSocketNetworkManager }
+    private val graphqlSubscriptionNetworkManager by lazy { AppContext.GraphqlSubscriptionNetworkManager }
 
     private val callDataMap = ConcurrentHashMap<String, CallData>()
     private val requestExampleToCallMapping = mutableMapOf<String, String>()
@@ -133,10 +134,10 @@ class NetworkClientManager : CallDataStore {
                     null
                 }
 
-            val networkManager = if (networkRequest.application != ProtocolApplication.WebSocket) {
-                httpNetworkManager
-            } else {
-                webSocketNetworkManager
+            val networkManager = when (networkRequest.application) {
+                ProtocolApplication.Graphql -> graphqlSubscriptionNetworkManager
+                ProtocolApplication.WebSocket -> webSocketNetworkManager
+                else -> httpNetworkManager
             }
 
             networkManager.sendRequest(

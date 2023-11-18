@@ -93,13 +93,14 @@ fun UserRequestTemplate.toHttpRequest(
             ?: OperationDefinition.Operation.QUERY // bypass invalid syntax or operation name, let server throw error. users can test such scenario
 
         val jsonMapper = jacksonObjectMapper()
+        val graphqlRequest = GraphqlRequestBody(
+            query = (if (overrides?.isOverrideBodyContent == true) graphqlBody else baseGraphqlBody).document,
+            variables = jsonMapper.readTree((if (overrides?.isOverrideBodyVariables == true) graphqlBody else baseGraphqlBody).variables),
+            operationName = graphqlBody.operationName.emptyToNull()
+        )
         val body = StringBody(
             jsonMapper.writeValueAsString(
-                GraphqlRequestBody(
-                    query = (if (overrides?.isOverrideBodyContent == true) graphqlBody else baseGraphqlBody).document,
-                    variables = jsonMapper.readTree((if (overrides?.isOverrideBodyVariables == true) graphqlBody else baseGraphqlBody).variables),
-                    operationName = graphqlBody.operationName.emptyToNull()
-                )
+                graphqlRequest
             )
         )
         req = if (operationType != OperationDefinition.Operation.SUBSCRIPTION) {
@@ -113,7 +114,17 @@ fun UserRequestTemplate.toHttpRequest(
             )
         } else {
             req.copy(
-                body = body,
+                extra = graphqlRequest,
+                url = URIBuilder(req.url)
+                    .run {
+                        setScheme(when (scheme) {
+                            "http", "ws" -> "ws"
+                            "https", "wss" -> "wss"
+                            else -> throw IllegalArgumentException("Unknown scheme")
+                        })
+                    }
+                    .build()
+                    .toString()
             )
         }
     }
@@ -159,14 +170,7 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
 //    )
     val b = AsyncRequestBuilder
         .create(method)
-        .setUri(URIBuilder(url)
-            .run {
-                var b = this
-                queryParameters
-                    .forEach { b = b.addParameter(it.first, it.second) }
-                b
-            }
-            .build())
+        .setUri(getResolvedUri())
 
     headers.forEach { b.addHeader(it.first, it.second) }
 
@@ -220,12 +224,7 @@ fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environmen
 
     val request = toHttpRequest(exampleId, environment)
 
-    val url = request.url.toHttpUrl().newBuilder().run {
-        var b = this
-        request.queryParameters
-            .forEach { b = b.addQueryParameter(it.first, it.second) }
-        b
-    }.build().toString()
+    val url = request.getResolvedUri().toString()
 
     val currentOS = currentOS()
     val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "

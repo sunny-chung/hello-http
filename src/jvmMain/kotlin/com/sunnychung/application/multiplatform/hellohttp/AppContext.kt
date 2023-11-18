@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp
 import com.sunnychung.application.multiplatform.hellohttp.manager.ApacheNetworkManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.AutoBackupManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.FileManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.GraphqlSubscriptionNetworkManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.MetadataManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkManager
@@ -26,6 +27,7 @@ object AppContext {
     val NetworkClientManager = NetworkClientManager()
     val NetworkManager: NetworkManager = ApacheNetworkManager(NetworkClientManager) //OkHttpNetworkManager(NetworkClientManager)
     val WebSocketNetworkManager: NetworkManager = WebSocketNetworkManager(NetworkClientManager)
+    val GraphqlSubscriptionNetworkManager = GraphqlSubscriptionNetworkManager(NetworkClientManager)
     val FileManager = FileManager()
     val PersistenceManager = PersistenceManager()
     val PrettifierManager = PrettifierManager()
