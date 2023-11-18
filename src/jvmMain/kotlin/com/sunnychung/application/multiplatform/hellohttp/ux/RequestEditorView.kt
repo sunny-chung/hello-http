@@ -61,6 +61,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLas
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.GraphqlQuerySyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
@@ -864,7 +865,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    transformations = listOf(GraphqlQuerySyntaxHighlightTransformation(colours = colors)),
                     modifier = Modifier.fillMaxWidth().weight(0.62f),
                 )
 
