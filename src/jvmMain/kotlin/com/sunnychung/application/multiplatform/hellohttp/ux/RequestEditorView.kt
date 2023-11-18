@@ -626,70 +626,36 @@ private fun RequestBodyEditor(
     Column(modifier = modifier) {
         val requestBody = selectedExample.body
         Row(modifier = Modifier.padding(8.dp)) {
-            if (request.application != ProtocolApplication.Graphql) {
-                AppText("Content Type: ")
-                DropDownView(
-                    items = listOf(ContentType.Json, ContentType.Multipart, ContentType.FormUrlEncoded, ContentType.Raw, ContentType.BinaryFile, ContentType.None),
-                    selectedItem = selectedContentType,
-                    onClickItem = {
-                        if (selectedContentType == it) return@DropDownView true
-                        selectedContentType = it
-                        val newBody = when (it) {
-                            ContentType.None -> null
-                            ContentType.Json, ContentType.Raw -> StringBody("")
-                            ContentType.Multipart -> MultipartBody(emptyList())
-                            ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
-                            ContentType.BinaryFile -> FileBody(null)
-                            else -> throw UnsupportedOperationException()
-                        }
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.copy(
-                                        contentType = selectedContentType,
-                                        body = newBody
-                                    )
-                                )
-                            )
-                        )
-                        true
-                    }
-                )
-            } else {
-                AppText("Operation: ")
-                val body = selectedExample.body as? GraphqlBody
-                val isSelectedOperationValid = body?.getOperation(isThrowError = false) != null
-                AppTooltipArea(
-                    isVisible = !isSelectedOperationValid,
-                    tooltipText = "Invalid operation name or query document syntax.\nClick to correct the operation name.",
-                    delayMillis = 0,
-                ) {
+            Row(modifier = Modifier.weight(1f)) {
+                if (request.application != ProtocolApplication.Graphql) {
+                    AppText("Content Type: ")
                     DropDownView(
-                        modifier = if (isSelectedOperationValid) Modifier else Modifier.background(colors.errorResponseBackground),
-                        items = listOf(),
-                        populateItems = {
-                            body?.getAllOperations(isThrowError = false)
-                                ?.map { DropDownValue(it.name ?: "") }
-                                ?.let {
-                                    if (it.size <= 1) {
-                                        listOf(DropDownValue("")) + it
-                                    } else {
-                                        it
-                                    }
-                                }
-                                ?.distinct()
-                                ?: listOf(DropDownValue(""))
-                        },
-                        selectedItem = DropDownValue(body?.operationName ?: ""),
+                        items = listOf(
+                            ContentType.Json,
+                            ContentType.Multipart,
+                            ContentType.FormUrlEncoded,
+                            ContentType.Raw,
+                            ContentType.BinaryFile,
+                            ContentType.None
+                        ),
+                        selectedItem = selectedContentType,
                         onClickItem = {
+                            if (selectedContentType == it) return@DropDownView true
+                            selectedContentType = it
+                            val newBody = when (it) {
+                                ContentType.None -> null
+                                ContentType.Json, ContentType.Raw -> StringBody("")
+                                ContentType.Multipart -> MultipartBody(emptyList())
+                                ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
+                                ContentType.BinaryFile -> FileBody(null)
+                                else -> throw UnsupportedOperationException()
+                            }
                             onRequestModified(
                                 request.copy(
                                     examples = request.examples.copyWithChange(
                                         selectedExample.copy(
                                             contentType = selectedContentType,
-                                            body = body!!.copy(
-                                                operationName = it.displayText
-                                            )
+                                            body = newBody
                                         )
                                     )
                                 )
@@ -697,6 +663,49 @@ private fun RequestBodyEditor(
                             true
                         }
                     )
+                } else {
+                    AppText("Operation: ")
+                    val body = selectedExample.body as? GraphqlBody
+                    val isSelectedOperationValid = body?.getOperation(isThrowError = false) != null
+                    AppTooltipArea(
+                        isVisible = !isSelectedOperationValid,
+                        tooltipText = "Invalid operation name or query document syntax.\nClick to correct the operation name.",
+                        delayMillis = 0,
+                    ) {
+                        DropDownView(
+                            modifier = if (isSelectedOperationValid) Modifier else Modifier.background(colors.errorResponseBackground),
+                            items = listOf(),
+                            populateItems = {
+                                body?.getAllOperations(isThrowError = false)
+                                    ?.map { DropDownValue(it.name ?: "") }
+                                    ?.let {
+                                        if (it.size <= 1) {
+                                            listOf(DropDownValue("")) + it
+                                        } else {
+                                            it
+                                        }
+                                    }
+                                    ?.distinct()
+                                    ?: listOf(DropDownValue(""))
+                            },
+                            selectedItem = DropDownValue(body?.operationName ?: ""),
+                            onClickItem = {
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            selectedExample.copy(
+                                                contentType = selectedContentType,
+                                                body = body!!.copy(
+                                                    operationName = it.displayText
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                                true
+                            }
+                        )
+                    }
                 }
             }
 
@@ -707,7 +716,6 @@ private fun RequestBodyEditor(
                     ContentType.Graphql,
                 )
             ) {
-                Spacer(Modifier.weight(1f))
                 OverrideCheckboxWithLabel(
                     selectedExample = selectedExample,
                     onRequestModified = onRequestModified,
