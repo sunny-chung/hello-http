@@ -134,7 +134,7 @@ fun RequestEditorView(
                 )
             )
             DropDownView(
-                selectedItem = options.dropdownables.first { it.key.application == request.application && it.key.method == request.method },
+                selectedItem = options.dropdownables.first { it.key.application == request.application && (it.key.method == request.method || it.key.method.isEmpty()) },
                 items = options.dropdownables,
                 contentView = {
                     val (text, color) = when (it!!.key.application) {

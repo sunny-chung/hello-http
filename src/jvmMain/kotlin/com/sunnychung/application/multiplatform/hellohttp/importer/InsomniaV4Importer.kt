@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.importer
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
@@ -14,6 +15,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
@@ -143,10 +146,17 @@ class InsomniaV4Importer {
                 var req = UserRequestTemplate(
                     id = uuidString(),
                     name = it.name,
-                    application = ProtocolApplication.Http,
-                    method = it.method,
+                    application = when (it.body.mimeType) {
+                        "application/graphql" -> ProtocolApplication.Graphql
+                        else -> ProtocolApplication.Http
+                    },
+                    method = when (it.body.mimeType) {
+                        "application/graphql" -> ""
+                        else -> it.method
+                    },
                     url = it.url.convertVariables(postFlightBodyVariables),
-                    examples = listOf(UserRequestExample(
+                    examples = listOf(
+                        UserRequestExample(
                         id = uuidString(),
                         name = "Base",
                         contentType = when (it.body.mimeType) {
@@ -155,6 +165,7 @@ class InsomniaV4Importer {
                             "multipart/form-data" -> ContentType.Multipart
                             "application/x-www-form-urlencoded" -> ContentType.FormUrlEncoded
                             "application/octet-stream" -> ContentType.BinaryFile
+                            "application/graphql" -> ContentType.Graphql
                             else -> ContentType.Raw
                         },
                         body = when (it.body.mimeType) {
@@ -197,6 +208,16 @@ class InsomniaV4Importer {
                             "application/octet-stream" -> FileBody(
                                 filePath = it.body.fileName
                             )
+                            "application/graphql" -> jsonParser.readValue<GraphqlRequestBody>(it.body.text ?: "")
+                                .let {
+                                    GraphqlBody(
+                                        document = it.query,
+                                        variables = jsonParser.writerWithDefaultPrettyPrinter()
+                                            .writeValueAsString(it.variables)
+                                            .let { if (it == "null") "" else it },
+                                        operationName = it.operationName,
+                                    )
+                                }
                             else -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
                         },
                         headers = it.parseHeaders(postFlightBodyVariables),
