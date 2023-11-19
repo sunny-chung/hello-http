@@ -2,39 +2,56 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextField
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
+import kotlinx.coroutines.launch
+import java.util.regex.Pattern
 
 @Composable
 fun CodeEditorView(
@@ -46,15 +63,15 @@ fun CodeEditorView(
     transformations: List<VisualTransformation> = emptyList(),
     isEnableVariables: Boolean = false,
     knownVariables: Set<String> = setOf(),
-    ) {
+) {
     val colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = textColor,
         placeholderColor = LocalColor.current.placeholder,
         cursorColor = LocalColor.current.cursor,
         backgroundColor = LocalColor.current.backgroundInputField
     )
-
     val themeColours = LocalColor.current
+    val coroutineScope = rememberCoroutineScope()
 
     // Replace "\r\n" by "\n" because to workaround the issue:
     // https://github.com/JetBrains/compose-multiplatform/issues/3877
@@ -165,70 +182,263 @@ fun CodeEditorView(
         }
     }
 
-    Box(modifier = modifier) {
-        val scrollState = rememberScrollState()
-//        log.v { "CodeEditorView text=$text" }
-        AppTextField(
-            value = textValue,
-            onValueChange = {
-                onTextChange?.invoke(it.text)
-                textValue = it
-            },
-            visualTransformation = (transformations +
-                    if (isEnableVariables) {
-                        listOf(
-                            EnvironmentVariableTransformation(
-                                themeColors = themeColours,
-                                knownVariables = knownVariables
-                            ),
-                            FunctionTransformation(themeColours),
-                        )
-                    } else {
-                        emptyList()
-                    }).let {
-                if (it.size > 1) {
-                    MultipleVisualTransformation(it)
-                } else if (it.size == 1) {
-                    it.first()
-                } else {
-                    VisualTransformation.None
-                }
-            },
-            readOnly = isReadOnly,
-            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-            colors = colors,
-            modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
-                .run {
-                    if (!isReadOnly) {
-                        this.onPreviewKeyEvent {
-                            if (it.type == KeyEventType.KeyDown) {
-                                when (it.key) {
-                                    Key.Enter -> {
-                                        onPressEnterAddIndent()
-                                        true
-                                    }
-                                    Key.Tab -> {
-                                        onPressTab(it.isShiftPressed)
-                                        true
-                                    }
+    var isSearchVisible by remember { mutableStateOf(false) }
+    var searchText by remember { mutableStateOf("") }
+    var searchOptions by remember { mutableStateOf(SearchOptions(
+        isRegex = false,
+        isCaseSensitive = false,
+        isWholeWord = false
+    )) }
+    val scrollState = rememberScrollState()
+    val searchBarFocusRequester = remember { FocusRequester() }
+    val textFieldFocusRequester = remember { FocusRequester() }
 
-                                    else -> false
-                                }
-                            } else {
-                                false
-                            }
-                        }
-                    } else {
-                        this
-                    }
+    var searchResultViewIndex by remember { mutableStateOf(0) }
+    var lastSearchResultViewIndex by remember { mutableStateOf(0) }
+    var searchResultRanges by rememberLast(searchText, searchOptions) { mutableStateOf<List<IntRange>?>(null) }
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    if (searchText.isNotEmpty() && searchResultRanges == null) {
+        val regexOption = if (searchOptions.isCaseSensitive) setOf() else setOf(RegexOption.IGNORE_CASE)
+        try {
+            val pattern = if (searchOptions.isRegex) {
+                searchText.toRegex(regexOption)
+            } else if (searchOptions.isWholeWord) {
+                "\\b${Pattern.quote(searchText)}\\b".toRegex(regexOption)
+            } else {
+                Pattern.quote(searchText).toRegex(regexOption)
+            }
+            searchResultRanges = pattern.findAll(textValue.text).map { it.range }.sortedBy { it.start }.toList()
+            searchResultViewIndex = 0
+            lastSearchResultViewIndex = -1
+        } catch (_: Throwable) {}
+    }
+    var searchResultSummary = if (!searchResultRanges.isNullOrEmpty()) {
+        "${searchResultViewIndex + 1}/${searchResultRanges?.size}"
+    } else {
+        ""
+    }
+
+    var visualTransformations = transformations +
+            if (isEnableVariables) {
+                listOf(
+                    EnvironmentVariableTransformation(
+                        themeColors = themeColours,
+                        knownVariables = knownVariables
+                    ),
+                    FunctionTransformation(themeColours),
+                )
+            } else {
+                emptyList()
+            }
+
+    if (isSearchVisible) {
+        if (!searchResultRanges.isNullOrEmpty()) {
+            visualTransformations += SearchHighlightTransformation(
+                highlightRanges = searchResultRanges!!,
+                currentIndex = searchResultViewIndex,
+                colours = themeColours,
+            )
+        }
+
+        if (lastSearchResultViewIndex != searchResultViewIndex && textLayoutResult != null && searchResultRanges != null) {
+            lastSearchResultViewIndex = searchResultViewIndex
+            val index = searchResultRanges!!.getOrNull(searchResultViewIndex)?.start
+            index?.let {
+                coroutineScope.launch {
+                    scrollState.animateScrollTo(
+                        textLayoutResult!!.getLineTop(textLayoutResult!!.getLineForOffset(it)).toInt()
+                    )
                 }
+            }
+        }
+    }
+
+    fun onClickSearchNext() {
+        val size = searchResultRanges!!.size
+        if (size < 1) return
+        searchResultViewIndex = (searchResultViewIndex + 1) % size
+    }
+
+    fun onClickSearchPrev() {
+        val size = searchResultRanges!!.size
+        if (size < 1) return
+        searchResultViewIndex = (searchResultViewIndex - 1 + size) % size
+    }
+
+    Column(modifier = modifier.onPreviewKeyEvent {
+        if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        if (it.key == Key.F && (it.isMetaPressed || it.isCtrlPressed)) {
+            isSearchVisible = !isSearchVisible
+            if (!isSearchVisible) {
+                textFieldFocusRequester.requestFocus()
+            } else {
+                lastSearchResultViewIndex = -1 // force scroll
+            }
+            true
+        } else if (it.key == Key.Escape) {
+            isSearchVisible = false
+            textFieldFocusRequester.requestFocus()
+            true
+        } else {
+            false
+        }
+    }) {
+        if (isSearchVisible) {
+            TextSearchBar(
+                text = searchText,
+                onTextChange = { searchText = it },
+                statusText = searchResultSummary,
+                searchOptions = searchOptions,
+                onToggleRegex = { searchOptions = searchOptions.copy(isRegex = it) },
+                onToggleCaseSensitive = { searchOptions = searchOptions.copy(isCaseSensitive = it) },
+                onToggleWholeWord = { searchOptions = searchOptions.copy(isWholeWord = it) },
+                onClickNext = { onClickSearchNext() },
+                onClickPrev = { onClickSearchPrev() },
+                modifier = Modifier.focusRequester(searchBarFocusRequester)
+                    .onPreviewKeyEvent {
+                        if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        if (it.key == Key.Enter) {
+                            if (it.isShiftPressed) {
+                                onClickSearchPrev()
+                            } else if (it.isAltPressed || it.isCtrlPressed) {
+                                // TODO add new line character
+                            } else {
+                                onClickSearchNext()
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    },
+            )
+
+            LaunchedEffect(Unit) {
+                searchBarFocusRequester.requestFocus()
+            }
+        }
+        Box(modifier = Modifier.weight(1f)) {
+//        log.v { "CodeEditorView text=$text" }
+            AppTextField(
+                value = textValue,
+                onValueChange = {
+                    onTextChange?.invoke(it.text)
+                    textValue = it
+                },
+                visualTransformation = visualTransformations.let {
+                    if (it.size > 1) {
+                        MultipleVisualTransformation(it)
+                    } else if (it.size == 1) {
+                        it.first()
+                    } else {
+                        VisualTransformation.None
+                    }
+                },
+                readOnly = isReadOnly,
+                textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+                colors = colors,
+                onTextLayout = { textLayoutResult = it },
+                modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
+                    .focusRequester(textFieldFocusRequester)
+                    .run {
+                        if (!isReadOnly) {
+                            this.onPreviewKeyEvent {
+                                if (it.type == KeyEventType.KeyDown) {
+                                    when (it.key) {
+                                        Key.Enter -> {
+                                            onPressEnterAddIndent()
+                                            true
+                                        }
+
+                                        Key.Tab -> {
+                                            onPressTab(it.isShiftPressed)
+                                            true
+                                        }
+
+                                        else -> false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                        } else {
+                            this
+                        }
+                    }
+            )
+            VerticalScrollbar(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                adapter = rememberScrollbarAdapter(scrollState),
+            )
+        }
+    }
+}
+
+private val SEARCH_OPTION_BUTTON_WIDTH = 20.dp
+
+@Composable
+fun TextSearchBar(
+    modifier: Modifier = Modifier,
+    text: String,
+    onTextChange: (String) -> Unit,
+    statusText: String,
+    searchOptions: SearchOptions,
+    onToggleRegex: (Boolean) -> Unit,
+    onToggleCaseSensitive: (Boolean) -> Unit,
+    onToggleWholeWord: (Boolean) -> Unit,
+    onClickPrev: () -> Unit,
+    onClickNext: () -> Unit,
+) {
+    val textSizes = LocalFont.current
+    Row(modifier = modifier.padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        AppTextField(
+            value = text,
+            onValueChange = onTextChange,
+            textStyle = LocalTextStyle.current.copy(fontSize = textSizes.searchInputSize),
+            maxLines = 1,
+            singleLine = false, // allow '\n'
+            modifier = Modifier.weight(1f),
         )
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd),
-            adapter = rememberScrollbarAdapter(scrollState),
+        AppText(text = statusText, fontSize = textSizes.supplementSize, modifier = Modifier.padding(horizontal = 4.dp))
+        AppTextToggleButton(
+            text = ".*",
+            isSelected = searchOptions.isRegex,
+            onToggle = onToggleRegex,
+            modifier = Modifier.width(SEARCH_OPTION_BUTTON_WIDTH).focusProperties { canFocus = false },
+        )
+        AppTextToggleButton(
+            text = "Aa",
+            isSelected = searchOptions.isCaseSensitive,
+            onToggle = onToggleCaseSensitive,
+            modifier = Modifier.width(SEARCH_OPTION_BUTTON_WIDTH).focusProperties { canFocus = false },
+        )
+        AppTextToggleButton(
+            text = "W",
+            isSelected = searchOptions.isWholeWord,
+            isEnabled = !searchOptions.isRegex,
+            onToggle = onToggleWholeWord,
+            modifier = Modifier.width(SEARCH_OPTION_BUTTON_WIDTH).focusProperties { canFocus = false },
+        )
+        AppTextToggleButton(
+            text = "↑",
+            isSelected = false,
+            onToggle = { onClickPrev() },
+            modifier = Modifier.width(SEARCH_OPTION_BUTTON_WIDTH).focusProperties { canFocus = false },
+        )
+        AppTextToggleButton(
+            text = "↓",
+            isSelected = false,
+            onToggle = { onClickNext() },
+            modifier = Modifier.width(SEARCH_OPTION_BUTTON_WIDTH).focusProperties { canFocus = false },
         )
     }
 }
+
+data class SearchOptions(
+    val isRegex: Boolean,
+    val isCaseSensitive: Boolean,
+    val isWholeWord: Boolean, // ignore if isRegex is true
+)
 
 fun getLineStart(text: String, position: Int): Int {
     for (i in (position - 1) downTo 0) {

@@ -41,7 +41,6 @@ fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit,
         items(count = contents.size) { i ->
             TabItem(
                 isSelected = (selectedIndex == i),
-                key = "$i", // using `i` does not work
                 onClick = {
                     log.d { "Tab onClick $i" }
                     onSelectTab(i)
@@ -148,7 +147,7 @@ fun HorizontalLine(color: Color = LocalColor.current.line) {
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun TabItem(modifier: Modifier = Modifier, key: String, isSelected: Boolean, onClick: () -> Unit, onDoubleClickTab: (() -> Unit)? = null, content: @Composable (() -> Unit)) {
+fun TabItem(modifier: Modifier = Modifier, isSelected: Boolean, onClick: () -> Unit, onDoubleClickTab: (() -> Unit)? = null, content: @Composable (() -> Unit)) {
     val colors = LocalColor.current
     var modifierToUse = modifier
         .background(if (isSelected) colors.backgroundInputField else Color.Transparent)

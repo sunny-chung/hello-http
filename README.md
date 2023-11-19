@@ -84,6 +84,7 @@ moment.
 - Message streaming from WebSocket communications
 - Message streaming from GraphQL subscriptions
 - Persistence per request example
+- Searching in response body
 
 **Appearance**
 - Dark and light theme
@@ -118,7 +119,6 @@ express your desired priorities in the issue tracker.
 
 - gRPC (via reflection)
 - Custom HTTP methods
-- Searching in response body
 - Filtering JSON response body by JSON path
 - Response JSON folding
 - Export to Postman

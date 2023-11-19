@@ -14,6 +14,8 @@ data class AppColor(
     val backgroundDialogOverlay: Color,
     val backgroundTooltip: Color,
     val backgroundHoverDroppable: Color,
+    val backgroundInputFieldHighlight: Color,
+    val backgroundInputFieldHighlightEmphasize: Color,
 
     val primary: Color,
     val bright: Color,
@@ -87,6 +89,8 @@ fun darkColorScheme(): AppColor = AppColor(
     backgroundDialogOverlay = Color.Black.copy(alpha = 0.6f),
     backgroundTooltip = Color(red = 0f, green = 0f, blue = 0.45f),
     backgroundHoverDroppable = Color(0f, 0f, 0.6f),
+    backgroundInputFieldHighlight = Color(red = 0.18f, green = 0.18f, blue = 0.5f),
+    backgroundInputFieldHighlightEmphasize = Color(red = 0.3f, green = 0.3f, blue = 0.78f),
 
     primary = Color(red = 0.8f, green = 0.8f, blue = 1.0f),
     bright = Color.White,
@@ -152,6 +156,8 @@ fun lightColorScheme(): AppColor = AppColor(
     backgroundDialogOverlay = Color.Black.copy(alpha = 0.4f),
     backgroundTooltip = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
     backgroundHoverDroppable = Color(0f, 0f, 0.4f),
+    backgroundInputFieldHighlight = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
+    backgroundInputFieldHighlightEmphasize = Color(red = 0.8f, green = 0.8f, blue = 0.3f),
 
     primary = Color(red = 0.2f, green = 0.2f, blue = 0.3f),
     bright = Color.Black,
