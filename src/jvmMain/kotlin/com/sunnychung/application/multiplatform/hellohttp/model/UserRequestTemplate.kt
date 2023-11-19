@@ -229,7 +229,15 @@ data class UserKeyValuePair(
 
     val valueType: FieldValueType,
     val isEnabled: Boolean
-)
+) {
+    constructor(key: String, value: String): this(
+        id = uuidString(),
+        key = key,
+        value = value,
+        valueType = FieldValueType.String,
+        isEnabled = true,
+    )
+}
 
 enum class FieldValueType {
     String, File

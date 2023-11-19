@@ -8,6 +8,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -20,6 +21,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.insomniav4.InsomniaV4
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -126,6 +128,7 @@ class InsomniaV4Exporter {
                 }
 
                 else -> req.examples.mapIndexed { index, it ->
+                    val baseExample = req.examples.first()
                     InsomniaV4.HttpRequest(
                         id = it.id.convertId("req_"),
                         parentId = convertedParentId,
@@ -136,8 +139,14 @@ class InsomniaV4Exporter {
                             ""
                         },
                         description = "",
-                        method = req.method,
+                        method = if (req.application == ProtocolApplication.Graphql) "POST" else req.method,
                         headers = req.getMergedProperty(index) { it.headers }
+                            .filter { !it.key.equals("Content-Type", true) && !it.key.equals("Accept", true) }
+                            .let {
+                                it +
+                                    UserKeyValuePair(key = "Content-Type", value = "application/json") +
+                                    UserKeyValuePair(key = "Accept", value =  "application/graphql-response+json; charset=utf-8, application/json; charset=utf-8")
+                            }
                             .map { it.toInsomniaKeyValue() },
                         parameters = req.getMergedProperty(index) { it.queryParameters }
                             .map { it.toInsomniaKeyValue() },
@@ -164,7 +173,7 @@ class InsomniaV4Exporter {
 
                             is StringBody -> InsomniaV4.HttpRequest.Body(
                                 mimeType = "application/json",
-                                text = it.body.value.resolveVariables(),
+                                text = it.body.value.resolveVariables(), // FIXME inheritance
                                 params = null,
                             )
 
@@ -175,7 +184,22 @@ class InsomniaV4Exporter {
                                 params = null,
                             )
 
-                            null, is GraphqlBody /* TODO*/ -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
+                            is GraphqlBody -> it.body
+                                .let { body ->
+                                    val jsonMapper = jacksonObjectMapper()
+                                    val graphqlRequest = GraphqlRequestBody(
+                                        query = (if (it.overrides?.isOverrideBodyContent != false) body else baseExample.body as GraphqlBody).document.resolveVariables(),
+                                        variables = jsonMapper.readTree((if (it.overrides?.isOverrideBodyVariables != false) body else baseExample.body as GraphqlBody).variables.resolveVariables()),
+                                        operationName = body.operationName.emptyToNull()
+                                    )
+                                    InsomniaV4.HttpRequest.Body(
+                                        mimeType = "application/graphql",
+                                        text = jsonMapper.writeValueAsString(graphqlRequest),
+                                        params = null,
+                                    )
+                                }
+
+                                null -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
                         },
                         authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
                         type = "request",
