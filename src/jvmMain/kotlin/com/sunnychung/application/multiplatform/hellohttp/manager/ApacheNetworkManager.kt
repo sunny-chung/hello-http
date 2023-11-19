@@ -123,14 +123,17 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
                         peerPrincipal: Principal?,
                         peerCertificates: Array<Certificate>?
                     ) {
-                        emitEvent(callId, "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite' and application protocol '$applicationProtocol'.\n" +
-                                "\n" +
+                        var event = "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite'"
+                        if (applicationProtocol.isNotBlank()) {
+                            event += " and application protocol '$applicationProtocol'"
+                        }
+                        event += ".\n\n" +
                                 "Client principal = $localPrincipal\n" +
 //                                "Client certificates = ${localCertificates?.firstOrNull()}\n" +
                                 "\n" +
                                 "Server principal = $peerPrincipal\n"
 //                                "Server certificates = ${peerCertificates?.firstOrNull()}\n"
-                        )
+                        emitEvent(callId, event)
                     }
 
                 })

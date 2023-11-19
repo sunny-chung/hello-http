@@ -23,6 +23,7 @@ import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.URI
 import java.nio.ByteBuffer
+import javax.net.ssl.HandshakeCompletedEvent
 
 abstract class InspectedWebSocketClient(
     val callId: String,
@@ -69,6 +70,21 @@ abstract class InspectedWebSocketClient(
 
     override fun onConnected(address: InetSocketAddress) {
         emitEvent(callId, "Connected to $address")
+    }
+
+    override fun onSSLHandshakeCompleted(event: HandshakeCompletedEvent) {
+        val protocol = event.session.protocol
+        val cipherSuite = event.cipherSuite
+        val localPrincipal = event.localPrincipal
+        val peerPrincipal = event.peerPrincipal
+        var event = "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite'"
+        event += ".\n\n" +
+                "Client principal = $localPrincipal\n" +
+//                                "Client certificates = ${localCertificates?.firstOrNull()}\n" +
+                "\n" +
+                "Server principal = $peerPrincipal\n"
+//                                "Server certificates = ${peerCertificates?.firstOrNull()}\n"
+        emitEvent(callId, event)
     }
 
     override fun onOpen(handshake: ServerHandshake) {
