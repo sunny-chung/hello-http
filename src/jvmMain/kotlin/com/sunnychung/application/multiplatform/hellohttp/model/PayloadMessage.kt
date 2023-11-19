@@ -1,12 +1,14 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
 
 @Persisted
 @Serializable
 data class PayloadMessage(
+    val id: String = uuidString(),
     val instant: KInstantAsLong,
     val type: Type,
     val data: ByteArray?,

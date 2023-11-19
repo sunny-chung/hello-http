@@ -101,9 +101,10 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
                     super.onClose(code, reason, remote)
                     isConnected.value = false
                     out.payloadExchanges!! += PayloadMessage(
-                        KInstant.now(),
-                        PayloadMessage.Type.Disconnected,
-                        "Disconnected.".encodeToByteArray()
+                        id = uuidString(),
+                        instant = KInstant.now(),
+                        type = PayloadMessage.Type.Disconnected,
+                        data = "Disconnected.".encodeToByteArray()
                     )
                 }
 
@@ -147,9 +148,10 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
                 }
                 emitEvent(callId, "GraphQL WebSocket connection established")
                 out.payloadExchanges!! += PayloadMessage(
-                    KInstant.now(),
-                    PayloadMessage.Type.Connected,
-                    "Connected.".encodeToByteArray()
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.Connected,
+                    data = "Connected.".encodeToByteArray()
                 )
 
                 val operationId = uuidString()
@@ -171,9 +173,10 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
                     when (message.type) {
                         "error" -> {
                             out.payloadExchanges!! += PayloadMessage(
-                                messageTime,
-                                PayloadMessage.Type.IncomingData,
-                                jsonMapper.writeValueAsBytes(GraphqlErrorPayload(message.payload))
+                                id = uuidString(),
+                                instant = messageTime,
+                                type = PayloadMessage.Type.IncomingData,
+                                data = jsonMapper.writeValueAsBytes(GraphqlErrorPayload(message.payload))
                             )
                             isConnectionActive = false
                         }
@@ -185,9 +188,10 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
                         "next" -> {
                             if (message.id == operationId) {
                                 out.payloadExchanges!! += PayloadMessage(
-                                    messageTime,
-                                    PayloadMessage.Type.IncomingData,
-                                    jsonMapper.writeValueAsBytes(message.payload)
+                                    id = uuidString(),
+                                    instant = messageTime,
+                                    type = PayloadMessage.Type.IncomingData,
+                                    data = jsonMapper.writeValueAsBytes(message.payload)
                                 )
                             }
                         }

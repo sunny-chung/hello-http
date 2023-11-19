@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputSt
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectedWebSocketClient
 import com.sunnychung.application.multiplatform.hellohttp.util.llog
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,50 +71,60 @@ open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) :
         ) {
             override fun onOpen(handshake: ServerHandshake) {
                 out.payloadExchanges!! += PayloadMessage(
-                    KInstant.now(),
-                    PayloadMessage.Type.Connected,
-                    "Connected".encodeToByteArray()
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.Connected,
+                    data = "Connected".encodeToByteArray()
                 )
                 super.onOpen(handshake)
             }
 
             override fun onMessage(message: String) {
                 out.payloadExchanges!! += PayloadMessage(
-                    KInstant.now(),
-                    PayloadMessage.Type.IncomingData,
-                    message.encodeToByteArray()
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.IncomingData,
+                    data = message.encodeToByteArray()
                 )
             }
 
             override fun onMessage(buffer: ByteBuffer) {
                 if (buffer.hasRemaining()) {
                     out.payloadExchanges!! += PayloadMessage(
-                        KInstant.now(),
-                        PayloadMessage.Type.IncomingData,
-                        buffer.array().copyOfRange(buffer.position(), buffer.limit())
+                        id = uuidString(),
+                        instant = KInstant.now(),
+                        type = PayloadMessage.Type.IncomingData,
+                        data = buffer.array().copyOfRange(buffer.position(), buffer.limit())
                     )
                 }
             }
 
             override fun send(data: ByteArray) {
-                out.payloadExchanges!! += PayloadMessage(KInstant.now(), PayloadMessage.Type.OutgoingData, data)
+                out.payloadExchanges!! += PayloadMessage(
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.OutgoingData,
+                    data = data
+                )
                 super.send(data)
             }
 
             override fun send(buffer: ByteBuffer) {
                 out.payloadExchanges!! += PayloadMessage(
-                    KInstant.now(),
-                    PayloadMessage.Type.OutgoingData,
-                    buffer.array().copyOfRange(buffer.position(), buffer.limit())
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.OutgoingData,
+                    data = buffer.array().copyOfRange(buffer.position(), buffer.limit())
                 )
                 super.send(buffer)
             }
 
             override fun send(text: String) {
                 out.payloadExchanges!! += PayloadMessage(
-                    KInstant.now(),
-                    PayloadMessage.Type.OutgoingData,
-                    text.encodeToByteArray()
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.OutgoingData,
+                    data = text.encodeToByteArray()
                 )
                 super.send(text)
             }
@@ -121,9 +132,10 @@ open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) :
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
                 val appendReason = if (!reason.isNullOrEmpty()) ", reason $reason" else ""
                 out.payloadExchanges!! += PayloadMessage(
-                    KInstant.now(),
-                    PayloadMessage.Type.Disconnected,
-                    "Connection closed by ${if (remote) "server" else "us"} with code $code$appendReason".encodeToByteArray()
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.Disconnected,
+                    data = "Connection closed by ${if (remote) "server" else "us"} with code $code$appendReason".encodeToByteArray()
                 )
                 super.onClose(code, reason, remote)
             }
