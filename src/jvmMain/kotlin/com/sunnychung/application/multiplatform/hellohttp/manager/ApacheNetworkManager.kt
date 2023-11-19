@@ -106,6 +106,10 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
                 .setConnectionListener(object : ConnectionListener {
+                    override fun onConnectStart(remoteAddress: String) {
+                        emitEvent(callId, "Connecting to $remoteAddress")
+                    }
+
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
                         emitEvent(callId, "Connected to $remoteAddress with $protocolVersion")
                     }
