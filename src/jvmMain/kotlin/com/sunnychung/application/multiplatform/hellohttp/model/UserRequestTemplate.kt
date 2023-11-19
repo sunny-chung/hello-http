@@ -5,6 +5,9 @@ import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
+import graphql.language.OperationDefinition
+import graphql.parser.InvalidSyntaxException
+import graphql.parser.Parser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.FormBody
@@ -41,6 +44,21 @@ data class UserRequestTemplate(
                 application = application,
                 method = method,
                 payloadExamples = listOf(PayloadExample(id = uuidString(), name = "New Payload", body = ""))
+            )
+        } else if (application == ProtocolApplication.Graphql) {
+            copy(
+                application = application,
+                method = method,
+                examples = examples.map {
+                    it.copy(
+                        contentType = ContentType.Graphql,
+                        body = if (it.body is GraphqlBody) it.body else GraphqlBody(
+                            document = "",
+                            variables = "",
+                            operationName = null
+                        )
+                    )
+                }
             )
         } else {
             copy(application = application, method = method)
@@ -120,11 +138,53 @@ data class UserRequestExample(
     data class Overrides(
         val disabledHeaderIds: Set<String> = emptySet(),
         val disabledQueryParameterIds: Set<String> = emptySet(),
-        val isOverrideBody: Boolean = true, // only for raw body and its similar alternatives (e.g. JSON body)
+
+        /**
+         * Only for raw body and JSON body
+         */
+        val isOverrideBody: Boolean = true,
+
+        /**
+         * For GraphQL, whether override the query document
+         */
+        val isOverrideBodyContent: Boolean = true,
+
+        /**
+         * For GraphQL, whether override the input variables
+         */
+        val isOverrideBodyVariables: Boolean = true,
+
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
 
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     )
+
+    companion object {
+        fun create(application: ProtocolApplication): UserRequestExample {
+            return when (application) {
+                ProtocolApplication.Graphql -> {
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "New Example",
+                        overrides = UserRequestExample.Overrides(),
+                        contentType = ContentType.Graphql,
+                        body = GraphqlBody(
+                            document = "",
+                            variables = "",
+                            operationName = null
+                        ),
+                    )
+                }
+                else -> {
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "New Example",
+                        overrides = UserRequestExample.Overrides(),
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Persisted
@@ -152,6 +212,7 @@ enum class ContentType(override val displayText: String, val headerValue: String
     FormUrlEncoded(displayText = "Form URL-Encoded", headerValue = "application/x-www-form-urlencoded"),
     Raw(displayText = "Raw", headerValue = null),
     BinaryFile(displayText = "Binary File", headerValue = null),
+    Graphql(displayText = "GraphQL", headerValue = "application/json"),
     None(displayText = "None", headerValue = null),
 }
 
@@ -168,7 +229,15 @@ data class UserKeyValuePair(
 
     val valueType: FieldValueType,
     val isEnabled: Boolean
-)
+) {
+    constructor(key: String, value: String): this(
+        id = uuidString(),
+        key = key,
+        value = value,
+        valueType = FieldValueType.String,
+        isEnabled = true,
+    )
+}
 
 enum class FieldValueType {
     String, File
@@ -222,5 +291,40 @@ class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
 class FileBody(val filePath: String?) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
         return filePath?.let { File(it).asRequestBody(mediaType) } ?: byteArrayOf().toRequestBody(mediaType)
+    }
+}
+
+@Persisted
+@Serializable
+@SerialName("GraphqlBody")
+data class GraphqlBody(val document: String, val variables: String, val operationName: String?) : UserRequestBody {
+    override fun toOkHttpBody(mediaType: MediaType?): RequestBody = throw NotImplementedError()
+
+    fun getAllOperations(isThrowError: Boolean = false): List<OperationDefinition> {
+        try {
+            val parsedDocument = Parser().parseDocument(document)
+            val operations = parsedDocument.definitions.filterIsInstance<OperationDefinition>()
+            return operations
+        } catch (e: InvalidSyntaxException) {
+            if (isThrowError) throw e
+        }
+        return listOf()
+    }
+
+    fun getOperation(isThrowError: Boolean = false): OperationDefinition? {
+        try {
+            val operations = getAllOperations(isThrowError)
+            val operation = if (operationName?.isNotBlank() == true) {
+                operations.firstOrNull { it.name == operationName }
+                    ?: if (isThrowError) throw IllegalArgumentException("The operation that corresponds to the operation name could not be found.\n\nPlease make sure the operation name exists in the body, or optionally omits if there is only one operation.") else null
+            } else {
+                operations.firstOrNull()
+                    ?: if (isThrowError) throw IllegalArgumentException("Missing operation") else null
+            }
+            return operation
+        } catch (e: InvalidSyntaxException) {
+            if (isThrowError) throw e
+        }
+        return null
     }
 }

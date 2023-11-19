@@ -8,7 +8,9 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
+import com.sunnychung.application.multiplatform.hellohttp.network.InspectedWebSocketClient
 import com.sunnychung.application.multiplatform.hellohttp.util.llog
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +30,7 @@ import java.net.InetSocketAddress
 import java.net.URI
 import java.nio.ByteBuffer
 
-class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
+open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
 
     fun createDnsResolver(callId: String): DnsResolver {
         return DnsResolver { uri ->
@@ -55,119 +57,90 @@ class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : Abst
             subprojectId = subprojectId,
         )
         val callId = data.id
-        val uri: URI = URIBuilder(request.url)
-            .run {
-                var b = this
-                request.queryParameters
-                    .forEach { b = b.addParameter(it.first, it.second) }
-                b
-            }
-            .build()
+        val uri: URI = request.getResolvedUri()
         val out = data.response
         out.application = ProtocolApplication.WebSocket
         out.payloadExchanges = mutableListOf()
 
-        val protocolDraft = object : Draft_6455() {
-            override fun translateHandshake(buf: ByteBuffer): Handshakedata {
-                val copy = buf.duplicate()
-                val line = readStringLine(copy)
-                if (line != null) {
-                    val s = line.split(" ", limit = 3)
-                    if (s[0] == "HTTP/1.1") {
-                        out.statusCode = s[1].toIntOrNull()
-                        out.statusText = s[2]
-                    }
-                }
-
-                return super.translateHandshake(buf)
-            }
-
-            override fun copyInstance(): Draft {
-                return this
-            }
-        }
-
-        val client = object : WebSocketClient(
-            uri,
-            protocolDraft,
-            request.headers.toMap(), // TODO allow repeated headers
+        val client = object : InspectedWebSocketClient(
+            callId = callId,
+            uri = uri,
+            data = data,
+            request = request,
+            emitEvent = { callId, event -> emitEvent(callId = callId, event = event) },
         ) {
-            init {
-                setDnsResolver(createDnsResolver(callId))
-                if (uri.scheme == "wss" && sslConfig.isInsecure == true) {
-                    setSocketFactory(createSslContext(sslConfig).first.socketFactory)
-                }
-            }
-
-            override fun wrapInputStream(`is`: InputStream): InputStream {
-                return InspectInputStream(`is`, data.incomingBytes as MutableSharedFlow<RawPayload>)
-            }
-
-            override fun wrapOutputStream(os: OutputStream): OutputStream {
-                return InspectOutputStream(os, data.outgoingBytes as MutableSharedFlow<RawPayload>)
-            }
-
-            override fun onConnect(address: InetSocketAddress) {
-                emitEvent(callId, "Connected to $address")
-            }
-
             override fun onOpen(handshake: ServerHandshake) {
-                out.statusCode = handshake.httpStatus.toInt()
-                out.statusText = handshake.httpStatusMessage
-                out.headers = handshake.iterateHttpFields().asSequence().map { it to handshake.getFieldValue(it) }.toList()
-                out.payloadExchanges!! += PayloadMessage(KInstant.now(), PayloadMessage.Type.Connected, "Connected".encodeToByteArray())
-                emitEvent(callId, "Connected with WebSocket")
+                out.payloadExchanges!! += PayloadMessage(
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.Connected,
+                    data = "Connected".encodeToByteArray()
+                )
+                super.onOpen(handshake)
             }
 
             override fun onMessage(message: String) {
-                out.payloadExchanges!! += PayloadMessage(KInstant.now(), PayloadMessage.Type.IncomingData, message.encodeToByteArray())
+                out.payloadExchanges!! += PayloadMessage(
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.IncomingData,
+                    data = message.encodeToByteArray()
+                )
             }
 
             override fun onMessage(buffer: ByteBuffer) {
                 if (buffer.hasRemaining()) {
                     out.payloadExchanges!! += PayloadMessage(
-                        KInstant.now(),
-                        PayloadMessage.Type.IncomingData,
-                        buffer.array().copyOfRange(buffer.position(), buffer.limit())
+                        id = uuidString(),
+                        instant = KInstant.now(),
+                        type = PayloadMessage.Type.IncomingData,
+                        data = buffer.array().copyOfRange(buffer.position(), buffer.limit())
                     )
                 }
             }
 
-            override fun send(text: String) {
-                out.payloadExchanges!! += PayloadMessage(KInstant.now(), PayloadMessage.Type.OutgoingData, text.encodeToByteArray())
-                super.send(text)
-            }
-
             override fun send(data: ByteArray) {
-                out.payloadExchanges!! += PayloadMessage(KInstant.now(), PayloadMessage.Type.OutgoingData, data)
+                out.payloadExchanges!! += PayloadMessage(
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.OutgoingData,
+                    data = data
+                )
                 super.send(data)
             }
 
             override fun send(buffer: ByteBuffer) {
-                out.payloadExchanges!! += PayloadMessage(KInstant.now(), PayloadMessage.Type.OutgoingData, buffer.array().copyOfRange(buffer.position(), buffer.limit()))
+                out.payloadExchanges!! += PayloadMessage(
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.OutgoingData,
+                    data = buffer.array().copyOfRange(buffer.position(), buffer.limit())
+                )
                 super.send(buffer)
             }
 
+            override fun send(text: String) {
+                out.payloadExchanges!! += PayloadMessage(
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.OutgoingData,
+                    data = text.encodeToByteArray()
+                )
+                super.send(text)
+            }
+
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
-                out.endAt = KInstant.now()
                 val appendReason = if (!reason.isNullOrEmpty()) ", reason $reason" else ""
-                out.payloadExchanges!! += PayloadMessage(out.endAt!!, PayloadMessage.Type.Disconnected, "Connection closed by ${if (remote) "server" else "us"} with code $code$appendReason".encodeToByteArray())
-                out.isCommunicating = false
-                emitEvent(callId, "WebSocket channel closed by ${if (remote) "server" else "us"} with code $code$appendReason")
+                out.payloadExchanges!! += PayloadMessage(
+                    id = uuidString(),
+                    instant = KInstant.now(),
+                    type = PayloadMessage.Type.Disconnected,
+                    data = "Connection closed by ${if (remote) "server" else "us"} with code $code$appendReason".encodeToByteArray()
+                )
+                super.onClose(code, reason, remote)
             }
-
-            override fun onError(error: Exception) {
-                // WebSocketClient implementation interrupts the thread executing `onError` very early,
-                // not allowing error escalating completes
-                CoroutineScope(Dispatchers.Default).launch {
-                    out.errorMessage = error.message
-                    out.isError = true
-                    emitEvent(callId, "Error encountered: ${error.message}")
-                    llog.w(error) { "WebSocket error" }
-                }
-            }
-
         }
+        configureWebSocketClient(client = client, callId = callId, sslConfig = sslConfig)
 
         out.startAt = KInstant.now()
         out.isCommunicating = true
@@ -177,6 +150,15 @@ class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : Abst
         client.connect()
 
         return data
+    }
+
+    fun configureWebSocketClient(client: WebSocketClient, callId: String, sslConfig: SslConfig) {
+        with (client) {
+            setDnsResolver(createDnsResolver(callId))
+            if (uri.scheme == "wss" && sslConfig.isInsecure == true) {
+                setSocketFactory(createSslContext(sslConfig).first.socketFactory)
+            }
+        }
     }
 
 

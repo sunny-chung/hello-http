@@ -56,12 +56,22 @@ data class AppColor(
 )
 
 data class SyntaxColor(
+    // common of json + graphql query
     val stringLiteral: Color,
     val numberLiteral: Color,
     val booleanTrueLiteral: Color,
     val booleanFalseLiteral: Color,
     val nothingLiteral: Color,
     val objectKey: Color,
+
+    // graphql query only
+    val comment: Color,
+    val keyword: Color,
+    val type: Color,
+    val variable: Color,
+    val field: Color,
+    val directive: Color,
+    val otherName: Color, // operation name or fragment name
 )
 
 val LocalColor = compositionLocalOf { darkColorScheme() }
@@ -120,6 +130,14 @@ fun darkColorScheme(): AppColor = AppColor(
         booleanFalseLiteral = Color(red = 0.9f, green = 0.4f, blue = 0.4f),
         nothingLiteral = Color(red = 0.6f, green = 0.6f, blue = 0.6f),
         objectKey = Color(red = 0.5f, green = 0.7f, blue = 1f),
+
+        comment = Color(red = 0.35f, green = 0.35f, blue = 0.35f),
+        keyword = Color(red = 0.88f, green = 0.34f, blue = 0.12f),
+        type = Color(red = 0.49f, green = 0.6f, blue = 0.88f),
+        variable = Color(red = 0.88f, green = 0.6f, blue = 0.11f),
+        field = Color(red = 0.88f, green = 0.86f, blue = 0.42f),
+        otherName = Color(red = 0.88f, green = 0.78f, blue = 0.49f),
+        directive = Color(red = 0.88f, green = 0.16f, blue = 0.5f),
     ),
 )
 
@@ -171,12 +189,19 @@ fun lightColorScheme(): AppColor = AppColor(
     scrollBarHover = Color(red = 0.4f, green = 0.4f, blue = 0.4f).copy(alpha = 0.50f),
 
     syntaxColor = SyntaxColor(
-//        stringLiteral = Color(red = 0.5f, green = 0.5f, blue = 0f),
         stringLiteral = Color(red = 0.9f, green = 0.45f, blue = 0.12f),
         numberLiteral = Color(red = 0.3f, green = 0.3f, blue = 0.9f),
         booleanTrueLiteral = Color(red = 0f, green = 0.6f, blue = 0f),
         booleanFalseLiteral = Color(red = 1f, green = 0.1f, blue = 0.1f),
         nothingLiteral = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
         objectKey = Color(red = 0.4f, green = 0.4f, blue = 0.6f),
+
+        comment = Color(red = 0.68f, green = 0.68f, blue = 0.68f),
+        keyword = Color(red = 0.25f, green = 0.5f, blue = 0.22f),
+        type = Color(red = 0.3f, green = 0.1f, blue = 0.64f),
+        variable = Color(red = 0.88f, green = 0.35f, blue = 0f),
+        field = Color(red = 0.25f, green = 0.5f, blue = 0.88f),
+        otherName = Color(red = 0.5f, green = 0.3f, blue = 0.1f),
+        directive = Color(red = 0.16f, green = 0.5f, blue = 0.4f),
     ),
 )

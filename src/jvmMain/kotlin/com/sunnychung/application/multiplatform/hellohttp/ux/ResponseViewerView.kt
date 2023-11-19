@@ -393,6 +393,8 @@ private val TYPE_COLUMN_WIDTH_DP = 20.dp
 
 @Composable
 fun ResponseStreamView(response: UserResponse) {
+    val colours = LocalColor.current
+
     var selectedMessage by remember(response.id) { mutableStateOf<PayloadMessage?>(null) }
     val prettifiers = if (response.isError) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
@@ -442,8 +444,14 @@ fun ResponseStreamView(response: UserResponse) {
                     var modifier: Modifier = Modifier
                     modifier = modifier.clickable { selectedMessage = it }
                     Row(modifier = modifier) {
+                        val textColour = if (selectedMessage?.id == it.id) {
+                            colours.highlight
+                        } else {
+                            colours.primary
+                        }
                         AppText(
                             text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
+                            color = textColour,
                             fontFamily = FontFamily.Monospace,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
@@ -455,12 +463,16 @@ fun ResponseStreamView(response: UserResponse) {
                                 PayloadMessage.Type.Connected -> "="
                                 PayloadMessage.Type.Disconnected -> "="
                             },
+                            color = textColour,
                             fontFamily = FontFamily.Monospace,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
                         )
                         AppText(
                             text = it.data?.decodeToString()?.replace("\\s+".toRegex(), " ") ?: "",
+                            color = textColour,
+                            isDisableWordWrap = true,
+                            softWrap = false,
                             maxLines = 1,
                             fontFamily = FontFamily.Monospace,
                             overflow = TextOverflow.Ellipsis,

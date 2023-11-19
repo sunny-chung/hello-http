@@ -31,7 +31,7 @@ data class UserResponse(
     var headers: List<Pair<String, String>>? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
     var payloadExchanges: MutableList<PayloadMessage>? =
-        if (application == ProtocolApplication.WebSocket)
+        if (application in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql))
             Collections.synchronizedList(mutableListOf())
         else
             null,

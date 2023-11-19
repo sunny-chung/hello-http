@@ -16,8 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 /**
@@ -30,15 +32,18 @@ fun <T: DropDownable> DropDownView(
     iconResource: String = "down-small.svg",
     iconSize: Dp = 16.dp,
     items: List<T>,
+    populateItems: (List<T>) -> List<T> = { it },
+    maxLines: Int = 1,
     isLabelFillMaxWidth: Boolean = false,
     isShowLabel: Boolean = true,
     contentView: @Composable (RowScope.(T?) -> Unit) = {
         AppText(
-            text = it?.displayText ?: "--",
-            modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier
+            text = it?.displayText.emptyToNull() ?: "--",
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false)
         )
     },
-    clickableArea: DropDownClickableArea = DropDownClickableArea.All,
     arrowPadding: PaddingValues = PaddingValues(0.dp),
     selectedItem: T? = null,
     onClickItem: (T) -> Boolean
@@ -52,7 +57,7 @@ fun <T: DropDownable> DropDownView(
         onDismissRequest = { isShowContextMenu = false },
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
-        items.forEach { item ->
+        populateItems(items).forEach { item ->
             Column(modifier = Modifier.clickable {
                 if (onClickItem(item)) {
                     isShowContextMenu = false
@@ -95,8 +100,4 @@ data class DropDownMap<T>(private val values: List<DropDownKeyValue<T>>) {
 
     operator fun get(key: T) = mapByKey[key]
 
-}
-
-enum class DropDownClickableArea {
-    All, ArrowOnly
 }

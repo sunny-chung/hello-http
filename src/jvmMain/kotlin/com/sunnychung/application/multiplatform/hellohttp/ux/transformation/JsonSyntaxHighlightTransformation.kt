@@ -9,13 +9,14 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
-val TOKEN_REGEX = "(?<!\\\\)(\".+?(?<!\\\\)\"(?:\\s*:)?)|(?<=[,\\[\\]{}:])\\s*([^,\\s\"\\[\\]{}]+?)\\s*(?=[,\\[\\]{}:])".toRegex()
-val OBJECT_KEY_REGEX = "(\".*?(?<!\\\\)\")\\s*:".toRegex()
-val STRING_LITERAL_REGEX = "\".*?(?<!\\\\)\"".toRegex()
-val NUMBER_LITERAL_REGEX = "-?\\d+(?:\\.\\d+)?".toRegex()
-val BOOLEAN_TRUE_LITERAL_REGEX = "true".toRegex()
-val BOOLEAN_FALSE_LITERAL_REGEX = "false".toRegex()
-val NOTHING_LITERAL_REGEX = "null|undefined".toRegex()
+private val TOKEN_REGEX = "(?<!\\\\)(\".+?(?<!\\\\)\"(?:\\s*:)?)|(?<=[,\\[\\]{}:])\\s*([^,\\s\"\\[\\]{}]+?)\\s*(?=[,\\[\\]{}:])".toRegex()
+
+private val OBJECT_KEY_REGEX = "(\".*?(?<!\\\\)\")\\s*:".toRegex()
+private val STRING_LITERAL_REGEX = "\".*?(?<!\\\\)\"".toRegex()
+private val NUMBER_LITERAL_REGEX = "-?\\d+(?:\\.\\d+)?".toRegex()
+private val BOOLEAN_TRUE_LITERAL_REGEX = "true".toRegex()
+private val BOOLEAN_FALSE_LITERAL_REGEX = "false".toRegex()
+private val NOTHING_LITERAL_REGEX = "null|undefined".toRegex()
 
 class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransformation {
 
@@ -25,6 +26,15 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
     val booleanTrueLiteralStyle = SpanStyle(color = colours.syntaxColor.booleanTrueLiteral)
     val booleanFalseLiteralStyle = SpanStyle(color = colours.syntaxColor.booleanFalseLiteral)
     val nothingLiteralStyle = SpanStyle(color = colours.syntaxColor.nothingLiteral)
+
+    val subPatterns = listOf(
+        OBJECT_KEY_REGEX to objectKeyStyle,
+        STRING_LITERAL_REGEX to stringLiteralStyle,
+        NUMBER_LITERAL_REGEX to numberLiteralStyle,
+        BOOLEAN_TRUE_LITERAL_REGEX to booleanTrueLiteralStyle,
+        BOOLEAN_FALSE_LITERAL_REGEX to booleanFalseLiteralStyle,
+        NOTHING_LITERAL_REGEX to nothingLiteralStyle,
+    )
 
     var lastTextHash: Int? = null
     var lastResult: TransformedText? = null
@@ -38,14 +48,6 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
         }
 
         val start = KInstant.now()
-        val subPatterns = listOf(
-            OBJECT_KEY_REGEX to objectKeyStyle,
-            STRING_LITERAL_REGEX to stringLiteralStyle,
-            NUMBER_LITERAL_REGEX to numberLiteralStyle,
-            BOOLEAN_TRUE_LITERAL_REGEX to booleanTrueLiteralStyle,
-            BOOLEAN_FALSE_LITERAL_REGEX to booleanFalseLiteralStyle,
-            NOTHING_LITERAL_REGEX to nothingLiteralStyle,
-        )
 
         TOKEN_REGEX.findAll(s).forEach { m ->
             val match = (m.groups[1] ?: m.groups[2])!!
