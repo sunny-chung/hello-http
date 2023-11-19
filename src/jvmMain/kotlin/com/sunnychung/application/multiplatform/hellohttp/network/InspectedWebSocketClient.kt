@@ -63,7 +63,11 @@ abstract class InspectedWebSocketClient(
         return InspectOutputStream(os, data.outgoingBytes as MutableSharedFlow<RawPayload>)
     }
 
-    override fun onConnect(address: InetSocketAddress) {
+    override fun onConnectStart(address: InetSocketAddress) {
+        emitEvent(callId, "Connecting to $address")
+    }
+
+    override fun onConnected(address: InetSocketAddress) {
         emitEvent(callId, "Connected to $address")
     }
 
