@@ -136,6 +136,7 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
             try {
                 out.startAt = KInstant.now()
                 out.isCommunicating = true
+                data.status = ConnectionStatus.CONNECTING
 
                 client.connect()
 
@@ -162,6 +163,7 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
                     client.close()
                     messages.close()
                 }
+                data.status = ConnectionStatus.OPEN_FOR_STREAMING
                 send(GraphqlWsMessage(
                     id = operationId,
                     type = "subscribe",
@@ -203,6 +205,7 @@ class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManag
                 emitEvent(callId, "Error: ${e.message}")
             }
             out.isCommunicating = false
+            data.status = ConnectionStatus.DISCONNECTED
             client.close()
         }
 

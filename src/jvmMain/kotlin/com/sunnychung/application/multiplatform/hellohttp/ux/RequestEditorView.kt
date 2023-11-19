@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -81,7 +82,7 @@ fun RequestEditorView(
     onClickCancel: () -> Unit,
     onClickCopyCurl: () -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
-    isConnecting: Boolean,
+    connectionStatus: ConnectionStatus,
     onClickConnect: () -> Unit,
     onClickDisconnect: () -> Unit,
     onClickSendPayload: (String) -> Unit,
@@ -190,7 +191,7 @@ fun RequestEditorView(
                     Operation.MUTATION
                 ))
             ) {
-                val (label, backgroundColour) = if (!isConnecting) {
+                val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                     Pair("Send", colors.backgroundButton)
                 } else {
                     Pair("Cancel", colors.backgroundStopButton)
@@ -200,7 +201,7 @@ fun RequestEditorView(
                     modifier = Modifier.background(backgroundColour).width(width = 84.dp).fillMaxHeight()
                 ) {
                     Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable {
-                        if (!isConnecting) {
+                        if (!connectionStatus.isConnectionActive()) {
                             onClickSend()
                         } else {
                             onClickCancel()
@@ -233,7 +234,7 @@ fun RequestEditorView(
                     )
                 }
             } else {
-                val (text, bgColor) = if (isConnecting) {
+                val (text, bgColor) = if (connectionStatus.isConnectionActive()) {
                     Pair("Disconnect", colors.backgroundStopButton)
                 } else {
                     Pair("Connect", colors.backgroundButton)
@@ -241,7 +242,7 @@ fun RequestEditorView(
                 Box(
                     modifier = Modifier.background(bgColor).fillMaxHeight()
                         .clickable {
-                            if (!isConnecting) {
+                            if (!connectionStatus.isConnectionActive()) {
                                 onClickConnect()
                             } else {
                                 onClickDisconnect()
@@ -540,7 +541,7 @@ fun RequestEditorView(
                 onRequestModified = onRequestModified,
                 knownVariables = environmentVariableKeys,
                 onClickSendPayload = onClickSendPayload,
-                isConnected = isConnecting,
+                connectionStatus = connectionStatus,
             )
         }
     }
@@ -1029,7 +1030,7 @@ fun WebSocketPayloadEditorView(
     onRequestModified: (UserRequestTemplate?) -> Unit,
     knownVariables: Set<String>,
     onClickSendPayload: (String) -> Unit,
-    isConnected: Boolean,
+    connectionStatus: ConnectionStatus,
 ) {
     val colors = LocalColor.current
 
@@ -1049,7 +1050,7 @@ fun WebSocketPayloadEditorView(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Payload")
             Spacer(modifier = Modifier.weight(1f))
-            AppTextButton(text = "Send", isEnabled = isConnected) {
+            AppTextButton(text = "Send", isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING ) {
                 onClickSendPayload(selectedExample!!.body)
             }
         }

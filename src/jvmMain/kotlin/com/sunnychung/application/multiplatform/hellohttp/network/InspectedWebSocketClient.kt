@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallData
+import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.manager.RawPayload
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
@@ -70,13 +71,15 @@ abstract class InspectedWebSocketClient(
         out.statusCode = handshake.httpStatus.toInt()
         out.statusText = handshake.httpStatusMessage
         out.headers = handshake.iterateHttpFields().asSequence().map { it to handshake.getFieldValue(it) }.toList()
+        data.status = ConnectionStatus.CONNECTED
         emitEvent(callId, "Connected with WebSocket")
     }
 
     override fun onClose(code: Int, reason: String?, remote: Boolean) {
         out.endAt = KInstant.now()
-        val appendReason = if (!reason.isNullOrEmpty()) ", reason $reason" else ""
+        data.status = ConnectionStatus.DISCONNECTED
         out.isCommunicating = false
+        val appendReason = if (!reason.isNullOrEmpty()) ", reason $reason" else ""
         emitEvent(callId, "WebSocket channel closed by ${if (remote) "server" else "us"} with code $code$appendReason")
     }
 

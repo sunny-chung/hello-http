@@ -36,6 +36,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollec
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
+import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -176,10 +177,10 @@ fun AppContentView() {
             val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
             val resp = responseCollectionRepository.read(di)
                 ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
-            if (resp != null && resp.isCommunicating && networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId!!)?.isCommunicating != true) {
-                resp.isCommunicating = false
-                responseCollectionRepository.notifyUpdated(di)
-            }
+//            if (resp != null && resp.isCommunicating && networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId!!)?.isCommunicating != true) {
+//                resp.isCommunicating = false
+//                responseCollectionRepository.notifyUpdated(di)
+//            }
             resp
         } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
     }
@@ -427,7 +428,7 @@ fun AppContentView() {
                                             requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
                                         }
                                     },
-                                    isConnecting = selectedRequestExampleId?.let { networkClientManager.getResponseByRequestExampleId(it) }?.isCommunicating ?: false,
+                                    connectionStatus = selectedRequestExampleId?.let { networkClientManager.getStatusByRequestExampleId(it) } ?: ConnectionStatus.DISCONNECTED ,
                                     onClickConnect = {
                                         networkClientManager.fireRequest(
                                             request = requestNonNull,
@@ -461,7 +462,10 @@ fun AppContentView() {
                                     id = "-",
                                     requestId = "-",
                                     requestExampleId = "-"
-                                )
+                                ),
+                                connectionStatus = selectedRequestExampleId
+                                    ?.let(networkClientManager::getStatusByRequestExampleId)
+                                    ?: ConnectionStatus.DISCONNECTED,
                             )
                         }
                     }

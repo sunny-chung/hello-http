@@ -29,6 +29,7 @@ class CallData(
     val id: String,
     val subprojectId: String,
     var isPrepared: Boolean = false,
+    var status: ConnectionStatus = ConnectionStatus.PREPARING,
 
     val events: SharedFlow<NetworkEvent>,
     val eventsStateFlow: StateFlow<NetworkEvent?>,
@@ -44,6 +45,17 @@ class CallData(
 sealed interface RawPayload {
     val instant: KInstant
     val payload: ByteArray
+}
+
+/**
+ * PREPARING --> CONNECTING --> [CONNECTED] --> [OPEN_FOR_STREAMING] --> DISCONNECTED
+ *                                   ^                  |
+ *                                   +------------------+
+ */
+enum class ConnectionStatus {
+    PREPARING, CONNECTING, CONNECTED, OPEN_FOR_STREAMING, DISCONNECTED;
+
+    fun isConnectionActive() = this >= CONNECTING && this < DISCONNECTED
 }
 
 data class Http1Payload(override val instant: KInstant, override val payload: ByteArray) : RawPayload

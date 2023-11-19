@@ -20,7 +20,7 @@ data class UserResponse(
 
     var startAt: KInstantAsLong? = null,
     var endAt: KInstantAsLong? = null,
-    var isCommunicating: Boolean = false,
+    @Transient @Deprecated("Use CallData#status") var isCommunicating: Boolean = false,
     var isError: Boolean = false,
     var statusCode: Int? = null,
     var statusText: String? = null,

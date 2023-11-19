@@ -207,6 +207,11 @@ class NetworkClientManager : CallDataStore {
         getCallDataByRequestExampleId(requestExampleId)
             ?.response
 
+    fun getStatusByRequestExampleId(requestExampleId: String) =
+        getCallDataByRequestExampleId(requestExampleId)
+            ?.status
+            ?: ConnectionStatus.DISCONNECTED
+
     @Composable
     fun subscribeToRequestExampleCall(requestExampleId: String) =
         getCallDataByRequestExampleId(requestExampleId)

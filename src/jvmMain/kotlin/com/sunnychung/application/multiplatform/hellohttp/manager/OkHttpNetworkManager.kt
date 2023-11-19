@@ -276,6 +276,7 @@ class OkHttpNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
             val out = callData.response
             out.startAt = KInstant.now()
             out.isCommunicating = true
+            callData.status = ConnectionStatus.CONNECTING
 
             try {
                 val response = call.await()
@@ -292,6 +293,7 @@ class OkHttpNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
             } finally {
                 out.endAt = KInstant.now()
                 out.isCommunicating = false
+                callData.status = ConnectionStatus.DISCONNECTED
             }
 
             if (!out.isError && postFlightAction != null) {

@@ -6,27 +6,14 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
-import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectedWebSocketClient
-import com.sunnychung.application.multiplatform.hellohttp.util.llog
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.launch
-import org.apache.hc.core5.net.URIBuilder
 import org.java_websocket.client.DnsResolver
 import org.java_websocket.client.WebSocketClient
-import org.java_websocket.drafts.Draft
-import org.java_websocket.drafts.Draft_6455
-import org.java_websocket.handshake.Handshakedata
 import org.java_websocket.handshake.ServerHandshake
-import java.io.InputStream
-import java.io.OutputStream
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.net.URI
 import java.nio.ByteBuffer
 
@@ -77,6 +64,7 @@ open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) :
                     data = "Connected".encodeToByteArray()
                 )
                 super.onOpen(handshake)
+                data.status = ConnectionStatus.OPEN_FOR_STREAMING
             }
 
             override fun onMessage(message: String) {
@@ -145,8 +133,14 @@ open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) :
         out.startAt = KInstant.now()
         out.isCommunicating = true
         data.cancel = { client.close() }
-        data.sendPayload = { client.send(it) }
-
+        data.sendPayload = {
+            try {
+                client.send(it)
+            } catch (e: Throwable) {
+                log.d(e) { "Cannot send payload" }
+            }
+        }
+        data.status = ConnectionStatus.CONNECTING
         client.connect()
 
         return data

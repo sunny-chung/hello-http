@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -52,7 +53,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 
 @Composable
-fun ResponseViewerView(response: UserResponse) {
+fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatus) {
     val colors = LocalColor.current
 
     var selectedTabIndex by remember { mutableStateOf(0) }
@@ -60,12 +61,12 @@ fun ResponseViewerView(response: UserResponse) {
     log.d { "ResponseViewerView recompose ${response.errorMessage}" }
 
     val responseViewModel = AppContext.ResponseViewModel
-    responseViewModel.setEnabled(response.isCommunicating)
+    responseViewModel.setEnabled(connectionStatus.isConnectionActive())
     val updateTime by responseViewModel.subscribe()
 
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-            StatusLabel(response = response)
+            StatusLabel(response = response, connectionStatus = connectionStatus)
             DurationLabel(response = response, updateTime = updateTime)
             ResponseSizeLabel(response = response)
         }
@@ -88,7 +89,7 @@ fun ResponseViewerView(response: UserResponse) {
                 ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
                     ResponseBodyView(response = response)
                 } else {
-                    ResponseEmptyView(type = "body", isCommunicating = response.isCommunicating, modifier = Modifier.fillMaxSize().padding(8.dp))
+                    ResponseEmptyView(type = "body", isCommunicating = connectionStatus.isConnectionActive(), modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
 
                 ResponseTab.Stream -> ResponseStreamView(response)
@@ -96,7 +97,7 @@ fun ResponseViewerView(response: UserResponse) {
                 ResponseTab.Header -> if (response.headers != null) {
                     KeyValueTableView(keyValues = response.headers!!, modifier = Modifier.fillMaxSize().padding(8.dp))
                 } else {
-                    ResponseEmptyView(type = "header", isCommunicating = response.isCommunicating, modifier = Modifier.fillMaxSize().padding(8.dp))
+                    ResponseEmptyView(type = "header", isCommunicating = connectionStatus.isConnectionActive(), modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
 
                 ResponseTab.Raw ->
@@ -139,7 +140,8 @@ fun ResponseViewerViewPreview() {
                     )
                 )
             )
-        }
+        },
+        connectionStatus = ConnectionStatus.DISCONNECTED
     )
 }
 
@@ -157,7 +159,8 @@ fun ResponseViewerViewPreview_EmptyBody() {
             body = null
             headers = listOf("Content-Type" to "application/json")
             rawExchange = RawExchange(mutableListOf())
-        }
+        },
+        connectionStatus = ConnectionStatus.DISCONNECTED
     )
 }
 
@@ -203,7 +206,8 @@ fun WebSocketResponseViewerViewPreview() {
                         data = null
                     ),
                 )
-        }
+        },
+        connectionStatus = ConnectionStatus.OPEN_FOR_STREAMING
     )
 }
 
@@ -222,9 +226,9 @@ fun DataLabel(
 }
 
 @Composable
-fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse) {
+fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectionStatus: ConnectionStatus) {
     val colors = LocalColor.current
-    val (text, backgroundColor) = if (response.isCommunicating && response.statusCode == null) {
+    val (text, backgroundColor) = if (connectionStatus.isConnectionActive() && response.statusCode == null) {
         Pair("Communicating", colors.pendingResponseBackground)
     } else if (response.isError) {
         Pair("Error", colors.errorResponseBackground)

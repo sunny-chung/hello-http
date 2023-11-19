@@ -292,6 +292,7 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
             val out = callData.response
             out.startAt = KInstant.now()
             out.isCommunicating = true
+            data.status = ConnectionStatus.CONNECTING
 
             try {
 
@@ -411,6 +412,7 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
             } finally {
                 out.endAt = KInstant.now()
                 out.isCommunicating = false
+                data.status = ConnectionStatus.DISCONNECTED
             }
 
             if (!out.isError && postFlightAction != null) {
