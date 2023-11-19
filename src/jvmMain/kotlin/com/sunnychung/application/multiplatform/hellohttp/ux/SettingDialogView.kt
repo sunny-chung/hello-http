@@ -198,7 +198,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                         selectedProjectIds.clear()
                         selectedProjectIds.addAll(it.toList())
                     },
-                    modifier = Modifier.fillMaxWidth().height(160.dp).padding(start = 8.dp),
+                    modifier = Modifier.fillMaxWidth().height(160.dp).padding(start = 8.dp, end = 80.dp),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppText(text = "Choose a Format", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
