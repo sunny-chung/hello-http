@@ -88,14 +88,14 @@ fun UserRequestTemplate.toHttpRequest(
     if (application == ProtocolApplication.Graphql) {
         val graphqlBody = req.body as GraphqlBody
         val baseGraphqlBody = baseExample.body as GraphqlBody
-        val operationType = (if (overrides?.isOverrideBodyContent == true) graphqlBody else baseGraphqlBody)
+        val operationType = (if (overrides?.isOverrideBodyContent != false) graphqlBody else baseGraphqlBody)
             .getOperation(isThrowError = false)?.operation
             ?: OperationDefinition.Operation.QUERY // bypass invalid syntax or operation name, let server throw error. users can test such scenario
 
         val jsonMapper = jacksonObjectMapper()
         val graphqlRequest = GraphqlRequestBody(
-            query = (if (overrides?.isOverrideBodyContent == true) graphqlBody else baseGraphqlBody).document,
-            variables = jsonMapper.readTree((if (overrides?.isOverrideBodyVariables == true) graphqlBody else baseGraphqlBody).variables),
+            query = (if (overrides?.isOverrideBodyContent != false) graphqlBody else baseGraphqlBody).document.resolveVariables(),
+            variables = jsonMapper.readTree((if (overrides?.isOverrideBodyVariables == true) graphqlBody else baseGraphqlBody).variables.resolveVariables()),
             operationName = graphqlBody.operationName.emptyToNull()
         )
         val body = StringBody(
