@@ -18,16 +18,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.max
 import kotlin.math.min
 
 @Composable
@@ -40,10 +41,12 @@ fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit,
         items(count = contents.size) { i ->
             TabItem(
                 isSelected = (selectedIndex == i),
+                key = "$i", // using `i` does not work
                 onClick = {
+                    log.d { "Tab onClick $i" }
                     onSelectTab(i)
                 },
-                onDoubleClickTab = onDoubleClickTab?.let { { it(i) } },
+                onDoubleClickTab = onDoubleClickTab?.let { { log.d { "Tab onDoubleClickTab $i" }; it(i) } },
             ) {
                 contents[i]()
             }
@@ -143,17 +146,21 @@ fun HorizontalLine(color: Color = LocalColor.current.line) {
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun TabItem(modifier: Modifier = Modifier, isSelected: Boolean, onClick: () -> Unit, onDoubleClickTab: (() -> Unit)? = null, content: @Composable (() -> Unit)) {
+fun TabItem(modifier: Modifier = Modifier, key: String, isSelected: Boolean, onClick: () -> Unit, onDoubleClickTab: (() -> Unit)? = null, content: @Composable (() -> Unit)) {
     val colors = LocalColor.current
     var modifierToUse = modifier
         .background(if (isSelected) colors.backgroundInputField else Color.Transparent)
     if (onDoubleClickTab != null) {
-        modifierToUse = modifierToUse.combinedClickable(
-            onDoubleClick = onDoubleClickTab,
-            onClick = onClick
-        )
+        modifierToUse = modifierToUse
+            .onPointerEvent(PointerEventType.Press) {
+                onClick()
+            }
+            .combinedClickable(
+                onDoubleClick = onDoubleClickTab,
+                onClick = {} // not using this because there will be a significant delay
+            )
     } else {
         modifierToUse = modifierToUse.clickable { onClick() }
     }

@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -41,13 +42,14 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerButton
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
@@ -56,10 +58,11 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun RequestTreeView(
     selectedSubproject: Subproject,
@@ -217,14 +220,18 @@ fun RequestTreeView(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier.combinedClickable(
-                    onClick = { onSelectRequest(it) },
-                    onDoubleClick = {
-                        selectedTreeObjectId = it.id
+                modifier = modifier
+                    .onPointerEvent(PointerEventType.Press) { _ ->
                         onSelectRequest(it)
-                        editTreeObjectNameViewModel.onStartEdit()
                     }
-                )
+                    .combinedClickable(
+                        onClick = {}, // not using this because there will be a significant delay
+                        onDoubleClick = {
+                            selectedTreeObjectId = it.id
+                            onSelectRequest(it)
+                            editTreeObjectNameViewModel.onStartEdit()
+                        }
+                    )
             ) {
                 val (text, color) = when (it.application) {
                     ProtocolApplication.Http -> Pair(
@@ -279,19 +286,23 @@ fun RequestTreeView(
         ) {
             var modifierToUse = modifier.onClick(
                 matcher = PointerMatcher.Primary,
-                onClick = { onExpandUnexpand(!isExpanded) },
+                onClick = {}, // not using this because there will be a significant delay
                 onDoubleClick = {
                     selectedTreeObjectId = folder.id
                     editTreeObjectNameViewModel.onStartEdit()
                 }
             )
-                .onClick(
-                    matcher = PointerMatcher.mouse(PointerButton.Secondary),
-                    onClick = {
-                        contextMenuAtItemId = folder.id
-                        isShowContextMenu = true
+                .onPointerEvent(PointerEventType.Press) {
+                    when (it.button) {
+                        PointerButton.Primary -> {
+                            onExpandUnexpand(!isExpanded)
+                        }
+                        PointerButton.Secondary -> {
+                            contextMenuAtItemId = folder.id
+                            isShowContextMenu = true
+                        }
                     }
-                )
+                }
                 .droppable(MoveDirection.Inside, folder)
             if (draggingOverDropTarget?.direction == MoveDirection.Inside && draggingOverDropTarget?.item?.id == folder.id) {
                 modifierToUse = modifierToUse.background(colors.backgroundHoverDroppable)
