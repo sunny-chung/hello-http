@@ -413,7 +413,7 @@ fun ResponseStreamView(response: UserResponse) {
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
-            modifier = Modifier.weight(0.5f),
+            modifier = Modifier.weight(0.6f),
             content = detailData ?: byteArrayOf(),
             prettifiers = prettifiers,
             selectedPrettifierState = remember(
@@ -426,7 +426,7 @@ fun ResponseStreamView(response: UserResponse) {
             errorMessage = null,
         )
 
-        Box(modifier = Modifier.weight(0.5f)) {
+        Box(modifier = Modifier.weight(0.4f)) {
             Box(
                 Modifier
                     .width(TIMESTAMP_COLUMN_WIDTH_DP + TYPE_COLUMN_WIDTH_DP)

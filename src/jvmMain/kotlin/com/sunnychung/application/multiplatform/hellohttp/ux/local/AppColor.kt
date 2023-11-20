@@ -90,7 +90,7 @@ fun darkColorScheme(): AppColor = AppColor(
     backgroundTooltip = Color(red = 0f, green = 0f, blue = 0.45f),
     backgroundHoverDroppable = Color(0f, 0f, 0.6f),
     backgroundInputFieldHighlight = Color(red = 0.3f, green = 0.3f, blue = 0.78f),
-    backgroundInputFieldHighlightEmphasize = Color(red = 0.8f, green = 0.48f, blue = 0f),
+    backgroundInputFieldHighlightEmphasize = Color(red = 0.6f, green = 0.38f, blue = 0f),
 
     primary = Color(red = 0.8f, green = 0.8f, blue = 1.0f),
     bright = Color.White,
