@@ -33,12 +33,15 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
@@ -197,6 +200,7 @@ fun CodeEditorView(
     var lastSearchResultViewIndex by remember { mutableStateOf(0) }
     var searchResultRanges by rememberLast(searchText, searchOptions) { mutableStateOf<List<IntRange>?>(null) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var textFieldSize by remember { mutableStateOf<IntSize?>(null) }
 
     if (searchText.isNotEmpty() && searchResultRanges == null) {
         val regexOption = if (searchOptions.isCaseSensitive) setOf() else setOf(RegexOption.IGNORE_CASE)
@@ -241,14 +245,17 @@ fun CodeEditorView(
             )
         }
 
-        if (lastSearchResultViewIndex != searchResultViewIndex && textLayoutResult != null && searchResultRanges != null) {
+        if (lastSearchResultViewIndex != searchResultViewIndex && textLayoutResult != null && textFieldSize != null && searchResultRanges != null) {
             lastSearchResultViewIndex = searchResultViewIndex
             val index = searchResultRanges!!.getOrNull(searchResultViewIndex)?.start
             index?.let {
-                coroutineScope.launch {
-                    scrollState.animateScrollTo(
-                        textLayoutResult!!.getLineTop(textLayoutResult!!.getLineForOffset(it)).toInt()
-                    )
+                val visibleVerticalRange = scrollState.value .. scrollState.value + textFieldSize!!.height
+                val lineIndex = textLayoutResult!!.getLineForOffset(it)
+                val lineVerticalRange = textLayoutResult!!.getLineTop(lineIndex).toInt() .. textLayoutResult!!.getLineBottom(lineIndex).toInt()
+                if (lineVerticalRange !in visibleVerticalRange) {
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(lineVerticalRange.start)
+                    }
                 }
             }
         }
@@ -317,7 +324,7 @@ fun CodeEditorView(
                 searchBarFocusRequester.requestFocus()
             }
         }
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.weight(1f).onGloballyPositioned { textFieldSize = it.size }) {
 //        log.v { "CodeEditorView text=$text" }
             AppTextField(
                 value = textValue,
