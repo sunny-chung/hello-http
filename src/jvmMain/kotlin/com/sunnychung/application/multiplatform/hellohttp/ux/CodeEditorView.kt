@@ -255,13 +255,13 @@ fun CodeEditorView(
     }
 
     fun onClickSearchNext() {
-        val size = searchResultRanges!!.size
+        val size = searchResultRanges?.size ?: 0
         if (size < 1) return
         searchResultViewIndex = (searchResultViewIndex + 1) % size
     }
 
     fun onClickSearchPrev() {
-        val size = searchResultRanges!!.size
+        val size = searchResultRanges?.size ?: 0
         if (size < 1) return
         searchResultViewIndex = (searchResultViewIndex - 1 + size) % size
     }
