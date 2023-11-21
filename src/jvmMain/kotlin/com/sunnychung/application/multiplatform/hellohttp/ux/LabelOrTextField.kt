@@ -37,7 +37,8 @@ fun LabelOrTextField(
 ) {
     if (!isEditing) {
         AppText(
-            text = value.replace(' ', '\u00A0'), // disable breaking by words
+            text = value,
+            isDisableWordWrap = true,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = labelColor,
