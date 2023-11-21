@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/github/license/sunny-chung/hello-http)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](releases)
 
-This is a cross-platform desktop application for testing HTTP API, WebSocket and GraphQL (including subscriptions)
+This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket and GraphQL (including subscriptions)
 endpoints. This is an alternative to Postman, Insomnia REST, etc.
 
 ![Screenshot 1](doc/screenshot1.png)
@@ -85,6 +85,7 @@ moment.
 - Message streaming from GraphQL subscriptions
 - Persistence per request example
 - Searching in response body
+- Automatic gzip / deflate decompression
 
 **Appearance**
 - Dark and light theme
