@@ -1,7 +1,5 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonMapperBuilder
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 class PrettifierManager {

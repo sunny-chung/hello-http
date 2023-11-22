@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -32,6 +33,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
@@ -51,6 +55,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
+import java.io.ByteArrayInputStream
 
 @Composable
 fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatus) {
@@ -303,20 +308,29 @@ class PrettifierDropDownValue(val name: String, val prettifier: Prettifier?) : D
 private val ORIGINAL = "UTF-8 String"
 private val CLIENT_ERROR = "Client Error"
 
+private val jsonEncoder = jacksonObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+
 @Composable
 fun BodyViewerView(
     modifier: Modifier = Modifier,
+    key: Any? = Unit,
     content: ByteArray,
     errorMessage: String?,
     prettifiers: List<PrettifierDropDownValue>,
     selectedPrettifierState: MutableState<PrettifierDropDownValue> = remember { mutableStateOf(prettifiers.first()) }
 ) {
+    val colours = LocalColor.current
+
     var selectedView by selectedPrettifierState
     if (selectedView.name !in prettifiers.map { it.name }) {
         selectedView = prettifiers.first()
     }
 
     log.d { "BodyViewerView recompose" }
+
+    val isEnableJsonPath = selectedView.name.contains("json", ignoreCase = true)
+    var jsonPathExpression by rememberLast(key) { mutableStateOf("") }
+    var isJsonPathError by rememberLast(key) { mutableStateOf(false) }
 
     Column(modifier = modifier) {
         Row(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -326,15 +340,41 @@ fun BodyViewerView(
 
         val modifier = Modifier.fillMaxWidth().weight(1f).padding(vertical = 8.dp)
         if (selectedView.name != CLIENT_ERROR) {
+            var hasError = false
+            var isRaw = true
+            val contentToUse = if (isEnableJsonPath && jsonPathExpression.isNotEmpty()) {
+                try {
+                    val data = JsonPath.read<Any?>(ByteArrayInputStream(content), jsonPathExpression)
+                    log.d { "jsonpath data type ${data.javaClass.name} $data" }
+                    when (data) {
+                        is Map<*, *>, is List<*>, is Set<*> -> { jsonEncoder.writeValueAsBytes(data) }
+                        else -> {
+                            isRaw = false
+                            data.toString().encodeToByteArray()
+                        }
+                    }
+                } catch (_: Throwable) {
+                    hasError = true
+                    content
+                }
+            } else {
+                content
+            }
+            isJsonPathError = hasError
+
             CodeEditorView(
                 isReadOnly = true,
                 text = try {
-                    selectedView.prettifier!!.prettify(content)
+                    if (isRaw) {
+                        selectedView.prettifier!!.prettify(contentToUse)
+                    } else {
+                        contentToUse.decodeToString()
+                    }
                 } catch (e: Throwable) {
-                    content.decodeToString() ?: ""
+                    contentToUse.decodeToString() ?: ""
                 },
                 transformations = if (selectedView.prettifier!!.formatName.contains("JSON")) {
-                    listOf(JsonSyntaxHighlightTransformation(colours = LocalColor.current))
+                    listOf(JsonSyntaxHighlightTransformation(colours = colours))
                 } else {
                     emptyList()
                 },
@@ -344,8 +384,28 @@ fun BodyViewerView(
             CodeEditorView(
                 isReadOnly = true,
                 text = errorMessage ?: "",
-                textColor = LocalColor.current.warning,
+                textColor = colours.warning,
                 modifier = modifier,
+            )
+        }
+        if (isEnableJsonPath) {
+            AppTextFieldWithPlaceholder(
+                value = jsonPathExpression,
+                onValueChange = { jsonPathExpression = it },
+                textColor = if (!isJsonPathError) colours.text else colours.warning,
+                placeholder = {
+                    AppText(
+                        text = "JSON Path, e.g. $.items.length()",
+                        fontFamily = FontFamily.Monospace,
+                        color = colours.placeholder
+                    )
+                },
+                textStyle = LocalTextStyle.current.copy(
+                    fontFamily = FontFamily.Monospace,
+                ),
+                singleLine = true,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -373,6 +433,7 @@ fun ResponseBodyView(response: UserResponse) {
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
+            key = response.id,
             content = response.body ?: byteArrayOf(),
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
