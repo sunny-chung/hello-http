@@ -32,6 +32,7 @@ data class AppColor(
     val httpRequestGet: Color,
     val httpRequestPost: Color,
     val httpRequestPut: Color,
+    val httpRequestPatch: Color,
     val httpRequestDelete: Color,
     val httpRequestOthers: Color,
 
@@ -104,7 +105,8 @@ fun darkColorScheme(): AppColor = AppColor(
 
     httpRequestGet = Color(red = 0f, green = 0.8f, blue = 0f),
     httpRequestPost = Color(red = 0.3f, green = 0.3f, blue = 0.8f),
-    httpRequestPut = Color(red = 1f, green = 0.5f, blue = 0f),
+    httpRequestPut = Color(red = 1f, green = 0.6f, blue = 0f),
+    httpRequestPatch = Color(red = 0.93f, green = 0.45f, blue = 0.2f),
     httpRequestDelete = Color(red = 0.9f, green = 0.3f, blue = 0.3f),
     httpRequestOthers = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
 
@@ -172,6 +174,7 @@ fun lightColorScheme(): AppColor = AppColor(
     httpRequestGet = Color(red = 0f, green = 0.6f, blue = 0f),
     httpRequestPost = Color(red = 0.3f, green = 0.3f, blue = 0.8f),
     httpRequestPut = Color(red = 1f, green = 0.5f, blue = 0f),
+    httpRequestPatch = Color(red = 0.25f, green = 0.5f, blue = 0.22f),
     httpRequestDelete = Color(red = 0.9f, green = 0.3f, blue = 0.3f),
     httpRequestOthers = Color(red = 0.35f, green = 0.35f, blue = 0.35f),
 

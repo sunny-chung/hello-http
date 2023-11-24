@@ -239,6 +239,7 @@ fun RequestTreeView(
                             "GET" -> colors.httpRequestGet
                             "POST" -> colors.httpRequestPost
                             "PUT" -> colors.httpRequestPut
+                            "PATCH" -> colors.httpRequestPatch
                             "DELETE" -> colors.httpRequestDelete
                             else -> colors.httpRequestOthers
                         }
