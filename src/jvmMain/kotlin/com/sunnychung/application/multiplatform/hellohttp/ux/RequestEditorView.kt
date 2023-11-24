@@ -118,7 +118,7 @@ fun RequestEditorView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val options = DropDownMap(
-                listOf("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")
+                listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD")
                     .map { DropDownKeyValue(
                         key = ProtocolMethod(application = ProtocolApplication.Http, method = it),
                         displayText = it
