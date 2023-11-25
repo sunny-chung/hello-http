@@ -116,22 +116,29 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
 
                             // workaround this Compose bug:
                             // https://github.com/JetBrains/compose-multiplatform/issues/2420
-                            val textsSplitted = if (contentWidthInPx != null && numCharsInALine > 0) {
+                            val (textsSplitted, numTextLines) = if (contentWidthInPx != null && numCharsInALine > 0) {
 //                                remember(text, numCharsInALine) {
-                                    text.split('\n')
+                                    val splitted = text.split('\n')
                                         .flatMap {
                                             if (it.isNotEmpty()) {
                                                 it.chunked(numCharsInALine)
                                             } else {
                                                 listOf("")
+                                            }.toMutableList().apply {
+                                                this[lastIndex] += "\n"
                                             }
                                         }
                                         .withIndex()
-                                        .groupBy { it.index / 100 }
-                                        .map { it.value.joinToString("\n") { it.value } }
+//                                        .groupBy { it.index / 100 }
+                                        .groupBy { it.index / 1 } // word wrap breaks maxLines of grouped strings
+
+                                    Pair(
+                                        splitted.map { it.value.joinToString("") { it.value } },
+                                        splitted.map { it.value.size },
+                                    )
 //                                }
                             } else {
-                                listOf(" ")
+                                Pair(listOf(" "), listOf(1))
                             }
                             log.d { "max chars = " + textsSplitted.maxOf { it.length } }
 
@@ -190,6 +197,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
                                         AppText(
                                             text = textChunk,
                                             fontFamily = FontFamily.Monospace,
+                                            maxLines = numTextLines[textIndex],
                                             modifier = Modifier.weight(1f).onGloballyPositioned {
                                                 contentWidthInPx = it.size.width
                                             },
