@@ -32,21 +32,21 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * Structure:
  *
- *                                     +--> ApacheNetworkManager
+ *                                     +--> ApacheHttpTransportClient
  *                                     |
- * AppView --> NetworkClientManager <--+--> WebSocketNetworkManager
+ * AppView --> NetworkClientManager <--+--> WebSocketTransportClient
  *                                     |
  *                                     +--> PersistResponseManager --> Repository
  *
- * There are cyclic dependencies between NetworkClientManager and *NetworkManager
+ * There are cyclic dependencies between NetworkClientManager and *TransportClient
  */
 class NetworkClientManager : CallDataStore {
 
     private val projectCollectionRepository by lazy { AppContext.ProjectCollectionRepository }
     private val persistResponseManager by lazy { AppContext.PersistResponseManager }
-    private val httpNetworkManager by lazy { AppContext.NetworkManager }
-    private val webSocketNetworkManager by lazy { AppContext.WebSocketNetworkManager }
-    private val graphqlSubscriptionNetworkManager by lazy { AppContext.GraphqlSubscriptionNetworkManager }
+    private val httpTransportClient by lazy { AppContext.HttpTransportClient }
+    private val webSocketTransportClient by lazy { AppContext.WebSocketTransportClient }
+    private val graphqlSubscriptionTransportClient by lazy { AppContext.GraphqlSubscriptionTransportClient }
 
     private val callDataMap = ConcurrentHashMap<String, CallData>()
     private val requestExampleToCallMapping = mutableMapOf<String, String>()
@@ -135,9 +135,9 @@ class NetworkClientManager : CallDataStore {
                 }
 
             val networkManager = when (networkRequest.application) {
-                ProtocolApplication.Graphql -> graphqlSubscriptionNetworkManager
-                ProtocolApplication.WebSocket -> webSocketNetworkManager
-                else -> httpNetworkManager
+                ProtocolApplication.Graphql -> graphqlSubscriptionTransportClient
+                ProtocolApplication.WebSocket -> webSocketTransportClient
+                else -> httpTransportClient
             }
 
             networkManager.sendRequest(

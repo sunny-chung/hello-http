@@ -7,10 +7,9 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import okhttp3.Request
 import java.util.concurrent.atomic.AtomicInteger
 
-interface NetworkManager {
+interface TransportClient {
     fun getCallData(callId: String): CallData?
 
     fun sendRequest(

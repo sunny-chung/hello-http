@@ -3,37 +3,19 @@ package com.sunnychung.application.multiplatform.hellohttp.manager
 import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
-import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.okhttp.GzipDecompressionInterceptor
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
 import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
-import com.sunnychung.application.multiplatform.hellohttp.network.TrustAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.yield
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Connection
@@ -49,16 +31,12 @@ import okhttp3.SocketSourceSinkTransformer
 import okhttp3.internal.headersContentLength
 import okio.Sink
 import okio.Source
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
-import java.security.SecureRandom
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import javax.net.ssl.SSLContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.reflect.full.memberFunctions
@@ -78,7 +56,7 @@ private val inputStreamSourceConstructor = Class.forName("okio.InputStreamSource
     isAccessible = true
 }
 
-class OkHttpNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
+class OkHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
     
     fun buildHttpClient(
         callId: String,

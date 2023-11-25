@@ -17,7 +17,7 @@ import java.net.InetAddress
 import java.net.URI
 import java.nio.ByteBuffer
 
-open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
+open class WebSocketTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
     fun createDnsResolver(callId: String): DnsResolver {
         return DnsResolver { uri ->

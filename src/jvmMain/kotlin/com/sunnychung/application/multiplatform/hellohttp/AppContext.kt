@@ -1,18 +1,17 @@
 package com.sunnychung.application.multiplatform.hellohttp
 
-import com.sunnychung.application.multiplatform.hellohttp.manager.ApacheNetworkManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.ApacheHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.manager.AutoBackupManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.FileManager
-import com.sunnychung.application.multiplatform.hellohttp.manager.GraphqlSubscriptionNetworkManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.GraphqlSubscriptionTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.manager.MetadataManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
-import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkManager
-import com.sunnychung.application.multiplatform.hellohttp.manager.OkHttpNetworkManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.TransportClient
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistResponseManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
-import com.sunnychung.application.multiplatform.hellohttp.manager.WebSocketNetworkManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
@@ -25,9 +24,9 @@ object AppContext {
     val MetadataManager = MetadataManager()
     val SingleInstanceProcessService = SingleInstanceProcessService()
     val NetworkClientManager = NetworkClientManager()
-    val NetworkManager: NetworkManager = ApacheNetworkManager(NetworkClientManager) //OkHttpNetworkManager(NetworkClientManager)
-    val WebSocketNetworkManager: NetworkManager = WebSocketNetworkManager(NetworkClientManager)
-    val GraphqlSubscriptionNetworkManager = GraphqlSubscriptionNetworkManager(NetworkClientManager)
+    val HttpTransportClient: TransportClient = ApacheHttpTransportClient(NetworkClientManager) //OkHttpNetworkManager(NetworkClientManager)
+    val WebSocketTransportClient: TransportClient = WebSocketTransportClient(NetworkClientManager)
+    val GraphqlSubscriptionTransportClient = GraphqlSubscriptionTransportClient(NetworkClientManager)
     val FileManager = FileManager()
     val PersistenceManager = PersistenceManager()
     val PrettifierManager = PrettifierManager()

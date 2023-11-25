@@ -55,7 +55,7 @@ import java.security.cert.Certificate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class ApacheNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
+class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
     private data class H2HeaderFrame(val streamId: Int?, var frameHeader: String? = null, var block: String? = null) {
 
