@@ -1,13 +1,11 @@
-package com.sunnychung.application.multiplatform.hellohttp.network
+package com.sunnychung.application.multiplatform.hellohttp.network.util
 
-import com.sunnychung.application.multiplatform.hellohttp.manager.Http1Payload
-import com.sunnychung.application.multiplatform.hellohttp.manager.RawPayload
+import com.sunnychung.application.multiplatform.hellohttp.network.Http1Payload
+import com.sunnychung.application.multiplatform.hellohttp.network.RawPayload
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
-import java.io.FilterInputStream
 import java.io.InputStream
 
 class InspectInputStream(val stream: InputStream, val channel: MutableSharedFlow<RawPayload>) : InputStream() {

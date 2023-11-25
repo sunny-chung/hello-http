@@ -1,10 +1,9 @@
-package com.sunnychung.application.multiplatform.hellohttp.network
+package com.sunnychung.application.multiplatform.hellohttp.network.util
 
-import com.sunnychung.application.multiplatform.hellohttp.manager.CallData
-import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
-import com.sunnychung.application.multiplatform.hellohttp.manager.RawPayload
+import com.sunnychung.application.multiplatform.hellohttp.network.CallData
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.network.RawPayload
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
-import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.llog
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -12,7 +11,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import org.java_websocket.client.DnsResolver
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.drafts.Draft
 import org.java_websocket.drafts.Draft_6455

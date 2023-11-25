@@ -1,4 +1,4 @@
-package com.sunnychung.application.multiplatform.hellohttp.network
+package com.sunnychung.application.multiplatform.hellohttp.network.util
 
 import java.io.ByteArrayInputStream
 import java.io.InputStream

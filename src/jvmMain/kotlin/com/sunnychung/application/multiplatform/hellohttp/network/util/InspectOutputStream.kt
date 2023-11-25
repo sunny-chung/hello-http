@@ -1,10 +1,8 @@
-package com.sunnychung.application.multiplatform.hellohttp.network
+package com.sunnychung.application.multiplatform.hellohttp.network.util
 
-import com.sunnychung.application.multiplatform.hellohttp.manager.Http1Payload
-import com.sunnychung.application.multiplatform.hellohttp.manager.RawPayload
+import com.sunnychung.application.multiplatform.hellohttp.network.Http1Payload
+import com.sunnychung.application.multiplatform.hellohttp.network.RawPayload
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
 import java.io.OutputStream

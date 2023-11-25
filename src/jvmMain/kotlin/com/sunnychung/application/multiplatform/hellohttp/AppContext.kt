@@ -1,17 +1,17 @@
 package com.sunnychung.application.multiplatform.hellohttp
 
-import com.sunnychung.application.multiplatform.hellohttp.manager.ApacheHttpTransportClient
+import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.manager.AutoBackupManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.FileManager
-import com.sunnychung.application.multiplatform.hellohttp.manager.GraphqlSubscriptionTransportClient
+import com.sunnychung.application.multiplatform.hellohttp.network.GraphqlSubscriptionTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.manager.MetadataManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
-import com.sunnychung.application.multiplatform.hellohttp.manager.TransportClient
+import com.sunnychung.application.multiplatform.hellohttp.network.TransportClient
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistResponseManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
-import com.sunnychung.application.multiplatform.hellohttp.manager.WebSocketTransportClient
+import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
