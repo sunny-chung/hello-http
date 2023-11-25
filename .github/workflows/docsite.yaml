@@ -34,8 +34,10 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          brew install doctave/doctave/doctave
-          doctave build --release --allow-failed-checks
+          curl -LO "https://github.com/Doctave/doctave/releases/download/0.4.2/doctave-0.4.2-x86_64-unknown-linux-musl.tar.gz"
+          tar -xzf doctave-0.4.2-x86_64-unknown-linux-musl.tar.gz
+          mv doctave-0.4.2-x86_64-unknown-linux-musl/doctave ./
+          ./doctave build --release --allow-failed-checks
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact
