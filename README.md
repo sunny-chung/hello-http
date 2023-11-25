@@ -1,7 +1,7 @@
 # Hello HTTP
 
 [![License](https://img.shields.io/github/license/sunny-chung/hello-http)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](./releases)
+[![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/releases)
 
 This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket and GraphQL (including subscriptions)
 endpoints. This is an alternative to Postman, Insomnia REST, etc.
