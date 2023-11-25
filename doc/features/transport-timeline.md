@@ -1,10 +1,10 @@
 ---
-title: Response Timeline
+title: Transport Timeline
 ---
 
-# Response Timeline
+# Transport Timeline
 
-Connection events and raw transport data can be viewed real-time in Response Timeline. This is for low-level diagnosis
+Connection events and raw transport data can be viewed real-time in Transport Timeline. This is for low-level diagnosis
 purpose.
 
 Depends on the application protocol, the displayed information may be different. In general, most protocols include:
