@@ -1,14 +1,14 @@
 # Hello HTTP
 
 [![License](https://img.shields.io/github/license/sunny-chung/hello-http)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](releases)
+[![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/releases)
 
 This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket and GraphQL (including subscriptions)
 endpoints. This is an alternative to Postman, Insomnia REST, etc.
 
-![Screenshot 1](doc/screenshot1.png)
-![Screenshot 2](doc/screenshot2.png)
-![Screenshot GraphQL Subscription](doc/screenshot-graphql-subscription.png)
+![Screenshot 1](doc/_include/screenshot1.png)
+![Screenshot 2](doc/_include/screenshot2.png)
+![Screenshot GraphQL Subscription](doc/_include/screenshot-graphql-subscription.png)
 
 This was made because of the decision these software made to go cloud and some of their imperfects.
 
@@ -88,9 +88,10 @@ moment.
 - Searching in response body
 - Automatic gzip / deflate decompression
 
-**Appearance**
+**Appearance and Interactions**
 - Dark and light theme
 - Syntax highlighting for JSON and GraphQL
+- Confirmation is made before executing any delete action
 
 **Others**
 - Best effort to make executables portable. Installation is not mandatory.
