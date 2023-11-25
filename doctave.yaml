@@ -1,0 +1,21 @@
+---
+title: "Hello HTTP - User Manual"
+
+docs_dir: doc
+logo: appicon.png
+
+navigation:
+  - path: doc/features
+    children:
+      - path: doc/features/project-and-request-management.md
+      - path: doc/features/request-examples-and-payload-examples.md
+      - path: doc/features/environments.md
+      - path: doc/features/disable-ssl-verification.md
+      - path: doc/features/functions.md
+      - path: doc/features/post-flight-actions.md
+      - path: doc/features/response-timeline.md
+      - path: doc/features/delete-protection.md
+      - path: doc/features/automatic-backup.md
+      - path: doc/features/data-import-export.md
+  - path: doc/transports
+    children: "*"
