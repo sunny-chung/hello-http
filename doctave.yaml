@@ -19,3 +19,5 @@ navigation:
       - path: doc/features/data-import-export.md
   - path: doc/transports
     children: "*"
+
+base_path: /hello-http
