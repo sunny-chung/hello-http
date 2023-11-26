@@ -15,6 +15,10 @@ data class Subproject(
     var environments: MutableList<Environment>,
     @Transient var uiVersion: String = "", // for UI use only, to make Subproject.equals() returns false
 ) : DropDownable {
+
+    override val key: String
+        get() = id
+
     override val displayText: String
         get() = name
 

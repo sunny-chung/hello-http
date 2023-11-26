@@ -206,7 +206,7 @@ data class PostFlightSpec(
 //    None, Raw, Json, FormData, Multipart
 //}
 
-enum class ContentType(override val displayText: String, val headerValue: String?) : DropDownable {
+enum class ContentType(val displayText: String, val headerValue: String?) {
     Json(displayText = "JSON", headerValue = "application/json"),
     Multipart(displayText = "Multipart Form", headerValue = "multipart/form-data"), // "multipart/form-data; boundary=<generated>"
     FormUrlEncoded(displayText = "Form URL-Encoded", headerValue = "application/x-www-form-urlencoded"),

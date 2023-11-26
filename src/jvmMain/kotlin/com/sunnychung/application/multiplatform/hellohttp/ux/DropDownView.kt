@@ -36,9 +36,10 @@ fun <T: DropDownable> DropDownView(
     maxLines: Int = 1,
     isLabelFillMaxWidth: Boolean = false,
     isShowLabel: Boolean = true,
-    contentView: @Composable (RowScope.(T?) -> Unit) = {
+    contentView: @Composable (RowScope.(it: T?, isLabel: Boolean, isSelected: Boolean) -> Unit) = {it, isLabel, isSelected ->
         AppText(
             text = it?.displayText.emptyToNull() ?: "--",
+            color = if (!isLabel && isSelected) LocalColor.current.highlight else LocalColor.current.primary,
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
             modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false)
@@ -64,7 +65,7 @@ fun <T: DropDownable> DropDownView(
                 }
             }.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth()) {
                 Row {
-                    contentView(item)
+                    contentView(item, false, item.key == selectedItem?.key)
                 }
             }
         }
@@ -79,19 +80,23 @@ fun <T: DropDownable> DropDownView(
         }
     ) {
         if (isShowLabel) {
-            contentView(selectedItem)
+            contentView(selectedItem, true, false)
         }
         AppImage(resource = iconResource, size = iconSize, modifier = Modifier.padding(arrowPadding))
     }
 }
 
 interface DropDownable {
+    val key: Any?
     val displayText: String
 }
 
-data class DropDownValue(override val displayText: String) : DropDownable
+data class DropDownValue(override val displayText: String) : DropDownable {
+    override val key: String
+        get() = displayText
+}
 
-data class DropDownKeyValue<T>(val key: T, override val displayText: String) : DropDownable
+data class DropDownKeyValue<T>(override val key: T, override val displayText: String) : DropDownable
 
 data class DropDownMap<T>(private val values: List<DropDownKeyValue<T>>) {
     private val mapByKey = values.associateBy { it.key }

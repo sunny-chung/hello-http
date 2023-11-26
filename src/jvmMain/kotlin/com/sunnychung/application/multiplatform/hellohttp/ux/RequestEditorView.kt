@@ -39,7 +39,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -52,6 +51,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
@@ -137,7 +137,7 @@ fun RequestEditorView(
             DropDownView(
                 selectedItem = options.dropdownables.first { it.key.application == request.application && (it.key.method == request.method || it.key.method.isEmpty()) },
                 items = options.dropdownables,
-                contentView = {
+                contentView = { it, isLabel, isSelected ->
                     val (text, color) = when (it!!.key.application) {
                         ProtocolApplication.Http -> Pair(
                             it.displayText,
@@ -155,13 +155,20 @@ fun RequestEditorView(
                         ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
                         ProtocolApplication.Graphql -> Pair("GraphQL", colors.graphqlRequest)
                     }
+                    val modifier = if (isLabel) {
+                        Modifier
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .background(if (isSelected) colors.backgroundLight else Color.Transparent)
+                    }
                     AppText(
                         text = text.emptyToNull() ?: "--",
                         color = color,
                         isFitContent = true,
                         textAlign = TextAlign.Left,
                         maxLines = 1,
-                        modifier = Modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
+                        modifier = modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
                     )
                 },
                 onClickItem = {
@@ -640,9 +647,10 @@ private fun RequestBodyEditor(
                             ContentType.Raw,
                             ContentType.BinaryFile,
                             ContentType.None
-                        ),
-                        selectedItem = selectedContentType,
-                        onClickItem = {
+                        ).map { DropDownKeyValue(it, it.displayText) },
+                        selectedItem = DropDownKeyValue(selectedContentType, selectedContentType.displayText),
+                        onClickItem = { item ->
+                            val it = item.key
                             if (selectedContentType == it) return@DropDownView true
                             selectedContentType = it
                             val newBody = when (it) {

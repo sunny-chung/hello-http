@@ -301,6 +301,9 @@ fun ResponseEmptyView(modifier: Modifier = Modifier, type: String, isCommunicati
 }
 
 class PrettifierDropDownValue(val name: String, val prettifier: Prettifier?) : DropDownable {
+    override val key: String
+        get() = name
+
     override val displayText: String
         get() = name
 }
