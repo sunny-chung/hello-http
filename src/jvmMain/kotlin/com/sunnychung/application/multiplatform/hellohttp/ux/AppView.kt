@@ -137,8 +137,9 @@ fun AppContentView() {
     val clipboardManager = LocalClipboardManager.current
 
     val coroutineScope = rememberCoroutineScope()
-    var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
-    var selectedSubprojectState by remember { mutableStateOf<Subproject?>(null) }
+    var selectedSubprojectId by remember { mutableStateOf<String?>(null) }
+    val selectedSubproject by selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null) }
+        ?: mutableStateOf(null)
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
     val requestCollection by requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null) }
@@ -216,8 +217,7 @@ fun AppContentView() {
         } else {
             (selectedSubproject!!.findParentAndItem(parentId).second as TreeFolder).childs += newTreeRequest
         }
-        selectedSubprojectState = selectedSubproject?.deepCopy()
-        projectCollectionRepository.notifyUpdated(projectCollection.id)
+        projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 
         displayRequest(newRequest)
         isParentClearInputFocus = true
@@ -243,7 +243,7 @@ fun AppContentView() {
                         log.d { "projectUpdates $projectUpdates" }
                         ProjectAndEnvironmentViewV2(
                             projects = projectCollection.projects.toList(),
-                            selectedSubproject = selectedSubprojectState,
+                            selectedSubproject = selectedSubproject,
                             selectedEnvironment = selectedEnvironment,
                             onAddProject = {
                                 projectCollection.projects += it
@@ -255,11 +255,8 @@ fun AppContentView() {
                             },
                             onSelectEnvironment = { selectedEnvironment = it },
                             onSelectSubproject = {
-                                selectedSubproject = it
-                                selectedSubprojectState = it
+                                selectedSubprojectId = it?.id
                                 it?.let { loadRequestsForSubproject(it) }
-                                request = null
-                                selectedRequestExampleId = null
                                 response = UserResponse("-", "-", "-")
                             },
                             onUpdateSubproject = {
@@ -269,8 +266,7 @@ fun AppContentView() {
                                     name = it.name
 //                        log.d { "Updated subproject ${environments}" }
                                 }
-                                selectedSubprojectState = selectedSubproject!!.deepCopy()
-                                projectCollectionRepository.notifyUpdated(projectCollection.id)
+                                projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 
                                 selectedEnvironment = it.environments.firstOrNull { it.id == selectedEnvironment?.id }
                             },
@@ -299,7 +295,7 @@ fun AppContentView() {
 
                         if (selectedSubproject != null && requestCollection?.id?.subprojectId == selectedSubproject!!.id) {
                             RequestTreeView(
-                                selectedSubproject = selectedSubprojectState!!,
+                                selectedSubproject = selectedSubproject!!,
 //                    treeObjects = selectedSubprojectState?.treeObjects ?: emptyList(),
                                 requests = requestCollection?.requests?.associateBy { it.id } ?: emptyMap(),
                                 selectedRequest = request,
@@ -316,8 +312,7 @@ fun AppContentView() {
                                     val hasRemoved = requestCollectionRepository.deleteRequest(requestCollection!!.id, delete.id)
                                     if (hasRemoved) {
                                         selectedSubproject?.removeTreeObjectIf { it.id == delete.id }
-                                        selectedSubprojectState = selectedSubproject?.deepCopy()
-                                        projectCollectionRepository.notifyUpdated(projectCollection.id)
+                                        projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 
                                         if (request?.id == delete.id) {
                                             selectedRequestId = null
@@ -337,8 +332,7 @@ fun AppContentView() {
                                     } else {
                                         (selectedSubproject!!.findParentAndItem(parentId).second as TreeFolder).childs += new
                                     }
-                                    selectedSubprojectState = selectedSubproject!!.deepCopy()
-                                    projectCollectionRepository.notifyUpdated(projectCollection.id)
+                                    projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
                                     new
                                 },
                                 onUpdateFolder = { newFolder ->
@@ -348,13 +342,11 @@ fun AppContentView() {
                                     } else {
                                         parent.childs.replaceIf(newFolder) { it.id == newFolder.id }
                                     }
-                                    selectedSubprojectState = selectedSubproject!!.deepCopy()
-                                    projectCollectionRepository.notifyUpdated(projectCollection.id)
+                                    projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
                                 },
                                 onDeleteFolder = { folder ->
                                     selectedSubproject!!.removeTreeObjectIf { it.id == folder.id }
-                                    selectedSubprojectState = selectedSubproject!!.deepCopy()
-                                    projectCollectionRepository.notifyUpdated(projectCollection.id)
+                                    projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
                                 },
                                 onMoveTreeObject = { treeObjectId, direction, destination ->
                                     if (direction == MoveDirection.Inside) {
@@ -362,8 +354,7 @@ fun AppContentView() {
                                     } else {
                                         selectedSubproject!!.moveNear(treeObjectId, direction, destination!!.id)
                                     }
-                                    selectedSubprojectState = selectedSubproject!!.deepCopy()
-                                    projectCollectionRepository.notifyUpdated(projectCollection.id)
+                                    projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
                                 },
                             )
                         }
