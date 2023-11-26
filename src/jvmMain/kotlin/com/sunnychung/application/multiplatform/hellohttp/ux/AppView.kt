@@ -45,9 +45,11 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorScheme
@@ -138,10 +140,17 @@ fun AppContentView() {
     var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
     var selectedSubprojectState by remember { mutableStateOf<Subproject?>(null) }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
-    var requestCollection by remember { mutableStateOf<RequestCollection?>(null) }
-    var requestCollectionState by remember { mutableStateOf<RequestCollection?>(null) }
-    var request by remember { mutableStateOf<UserRequestTemplate?>(null) }
-    var selectedRequestExampleId by remember { mutableStateOf<String?>(null) }
+    var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
+    val requestCollection by requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null) }
+        ?: mutableStateOf(null)
+    var selectedRequestId by rememberLast(requestCollection?.id) { mutableStateOf<String?>(null) }
+    val request by let(requestCollection?.id, selectedRequestId) { di, selectedRequestId ->
+        // collect immediately, or fast typing would lead to race conditions
+        requestCollectionRepository.subscribeLatestRequest(di, selectedRequestId)
+            .collectAsState(null, Dispatchers.Main.immediate)
+    }
+        ?: mutableStateOf(null)
+    var selectedRequestExampleId by rememberLast(request?.id) { mutableStateOf<String?>(request?.examples?.first()?.id) }
 
     // purpose of this variable is to force refresh UI once when there is new request
     // so that `callDataUpdates` resolves to a new and correct flow.
@@ -167,27 +176,22 @@ fun AppContentView() {
                 RequestCollection(id = id, requests = mutableListOf())
             }
             persistResponseManager.loadResponseCollection(ResponsesDI(subprojectId = subproject.id))
-            requestCollection = r
-            requestCollectionState = requestCollection?.copy()
+            requestCollectionDI = RequestsDI(subprojectId = subproject.id)
         }
     }
 
     fun updateResponseView() {
         response = runBlocking { // should be fast as it is retrieved from memory
+            if (selectedSubproject == null || selectedRequestExampleId == null) return@runBlocking null
             val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
             val resp = responseCollectionRepository.read(di)
                 ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
-//            if (resp != null && resp.isCommunicating && networkClientManager.getResponseByRequestExampleId(selectedRequestExampleId!!)?.isCommunicating != true) {
-//                resp.isCommunicating = false
-//                responseCollectionRepository.notifyUpdated(di)
-//            }
             resp
         } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
     }
 
     fun displayRequest(req: UserRequestTemplate) {
-        request = req
-        selectedRequestExampleId = req.examples.first().id
+        selectedRequestId = req.id
         updateResponseView()
     }
 
@@ -204,7 +208,6 @@ fun AppContentView() {
     fun createRequestForCurrentSubproject(parentId: String?): UserRequestTemplate {
         val newRequest = UserRequestTemplate(id = uuidString(), name = "New Request", method = "GET")
         requestCollection!!.requests += newRequest
-        requestCollectionState = requestCollection?.copy()
         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
 
         val newTreeRequest = TreeRequest(id = newRequest.id)
@@ -242,7 +245,6 @@ fun AppContentView() {
                             projects = projectCollection.projects.toList(),
                             selectedSubproject = selectedSubprojectState,
                             selectedEnvironment = selectedEnvironment,
-//                environments = emptyList(),
                             onAddProject = {
                                 projectCollection.projects += it
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
@@ -295,11 +297,11 @@ fun AppContentView() {
                             modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
                         )
 
-                        if (selectedSubproject != null && requestCollectionState?.id?.subprojectId == selectedSubproject!!.id) {
+                        if (selectedSubproject != null && requestCollection?.id?.subprojectId == selectedSubproject!!.id) {
                             RequestTreeView(
                                 selectedSubproject = selectedSubprojectState!!,
 //                    treeObjects = selectedSubprojectState?.treeObjects ?: emptyList(),
-                                requests = requestCollectionState?.requests?.associateBy { it.id } ?: emptyMap(),
+                                requests = requestCollection?.requests?.associateBy { it.id } ?: emptyMap(),
                                 selectedRequest = request,
                                 editTreeObjectNameViewModel = editRequestNameViewModel,
                                 onSelectRequest = { displayRequest(it) },
@@ -307,29 +309,18 @@ fun AppContentView() {
                                     createRequestForCurrentSubproject(parentId = it)
                                 },
                                 onUpdateRequest = { update ->
-                                    // TODO avoid the loop, refactor to use one state only and no duplicated code
-                                    requestCollection!!.requests.replaceIf(update) { it.id == update.id }
-                                    requestCollectionState = requestCollection?.copy()
-                                    requestCollectionRepository.notifyUpdated(requestCollection!!.id)
-
-                                    if (request?.id == update.id) {
-                                        request = update.copy()
-                                    }
+                                    requestCollectionRepository.updateRequest(requestCollection!!.id, update)
                                 },
                                 onDeleteRequest = { delete ->
                                     // TODO avoid the loop, refactor to use one state only and no duplicated code
-                                    val hasRemoved = requestCollection!!.requests.removeIf { it.id == delete.id }
+                                    val hasRemoved = requestCollectionRepository.deleteRequest(requestCollection!!.id, delete.id)
                                     if (hasRemoved) {
-                                        requestCollectionState = requestCollection?.copy()
-                                        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
-
                                         selectedSubproject?.removeTreeObjectIf { it.id == delete.id }
                                         selectedSubprojectState = selectedSubproject?.deepCopy()
                                         projectCollectionRepository.notifyUpdated(projectCollection.id)
 
                                         if (request?.id == delete.id) {
-                                            request = null
-                                            selectedRequestExampleId = null
+                                            selectedRequestId = null
                                         }
                                     }
                                 },
@@ -422,10 +413,7 @@ fun AppContentView() {
                                     onRequestModified = {
                                         log.d { "onRequestModified" }
                                         it?.let { update ->
-                                            request = update
-                                            // TODO avoid the loop, refactor to use one state only and no duplicated code
-                                            requestCollection!!.requests.replaceIf(update) { it.id == update.id }
-                                            requestCollectionRepository.notifyUpdated(RequestsDI(subprojectId = selectedSubproject!!.id))
+                                            requestCollectionRepository.updateRequest(requestCollection!!.id, update)
                                         }
                                     },
                                     connectionStatus = selectedRequestExampleId?.let { networkClientManager.getStatusByRequestExampleId(it) } ?: ConnectionStatus.DISCONNECTED ,

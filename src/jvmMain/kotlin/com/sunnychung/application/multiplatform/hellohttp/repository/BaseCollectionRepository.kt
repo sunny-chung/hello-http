@@ -14,9 +14,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
@@ -30,6 +34,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>(private val serializer: KSerializer<T>) {
 
     private val persistenceManager by lazy { AppContext.PersistenceManager }
+    protected val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     private val updates = ConcurrentLinkedQueue<ID>()
     private val timerFlow = flow {
@@ -41,6 +46,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
     }
 
     private val publishUpdates = MutableSharedFlow<Pair<ID, String>>()
+    private val publishNonPersistedUpdates = MutableSharedFlow<Pair<ID, String>>()
 
     init {
         timerFlow //.takeWhile { updates.isNotEmpty() }
@@ -56,7 +62,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
                     }
                 }
             }
-            .launchIn(CoroutineScope(Dispatchers.IO))
+            .launchIn(coroutineScope)
     }
 
     /**
@@ -131,6 +137,9 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
 
     open fun notifyUpdated(identifier: ID) {
         updates += identifier
+        coroutineScope.launch {
+            publishNonPersistedUpdates.emit(Pair(identifier, uuidString()))
+        }
     }
 
     open suspend fun delete(identifier: ID) {
@@ -144,4 +153,13 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
     }
 
     open fun subscribeUpdates(): SharedFlow<Pair<ID, String>> = publishUpdates
+
+    open fun subscribeUnfilteredUpdates(): SharedFlow<Pair<ID, String>> = publishNonPersistedUpdates
+
+    open fun subscribeLatestCollection(di: ID): Flow<T> = publishNonPersistedUpdates
+        .onSubscription {
+            emit(Pair(di, uuidString()))
+        }
+        .filter { it.first == di }
+        .map { read(di)!! }
 }
