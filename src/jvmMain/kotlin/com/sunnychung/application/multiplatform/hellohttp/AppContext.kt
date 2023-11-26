@@ -11,6 +11,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.PersistRespons
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
+import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
@@ -27,6 +28,7 @@ object AppContext {
     val HttpTransportClient: TransportClient = ApacheHttpTransportClient(NetworkClientManager) //OkHttpNetworkManager(NetworkClientManager)
     val WebSocketTransportClient: TransportClient = WebSocketTransportClient(NetworkClientManager)
     val GraphqlSubscriptionTransportClient = GraphqlSubscriptionTransportClient(NetworkClientManager)
+    val GrpcTransportClient = GrpcTransportClient(NetworkClientManager)
     val FileManager = FileManager()
     val PersistenceManager = PersistenceManager()
     val PrettifierManager = PrettifierManager()

@@ -10,6 +10,7 @@ import graphql.parser.InvalidSyntaxException
 import graphql.parser.Parser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import okhttp3.FormBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -28,6 +29,7 @@ data class UserRequestTemplate(
     val application: ProtocolApplication = ProtocolApplication.Http,
     val method: String = "",
     val url: String = "",
+    val grpc: UserGrpcRequest? = null,
 
     val examples: List<UserRequestExample> = listOf(UserRequestExample(id = uuidString(), name = "Base")),
     val payloadExamples: List<PayloadExample>? = null,
@@ -119,6 +121,14 @@ data class UserRequestTemplate(
 enum class ProtocolApplication {
     Http, WebSocket, Grpc, Graphql
 }
+
+@Persisted
+@Serializable
+data class UserGrpcRequest(
+    val apiSpecId: String = "",
+    val service: String = "",
+    val method: String = "",
+)
 
 @Persisted
 @Serializable

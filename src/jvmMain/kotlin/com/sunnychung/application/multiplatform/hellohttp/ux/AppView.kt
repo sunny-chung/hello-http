@@ -39,7 +39,9 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlComman
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
+import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
@@ -56,6 +58,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorSch
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -138,12 +141,10 @@ fun AppContentView() {
 
     val coroutineScope = rememberCoroutineScope()
     var selectedSubprojectId by remember { mutableStateOf<String?>(null) }
-    val selectedSubproject by selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null) }
-        ?: mutableStateOf(null)
+    val selectedSubproject = selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null).value?.first }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
-    val requestCollection by requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null) }
-        ?: mutableStateOf(null)
+    val requestCollection = requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null).value?.first }
     var selectedRequestId by rememberLast(requestCollection?.id) { mutableStateOf<String?>(null) }
     val request by let(requestCollection?.id, selectedRequestId) { di, selectedRequestId ->
         // collect immediately, or fast typing would lead to race conditions
@@ -169,7 +170,15 @@ fun AppContentView() {
         response = activeResponse
     }
 
+    var forceRecompose by remember { mutableStateOf("") }
+    val needThisForForceRecomposeToWork = forceRecompose
+
     log.d { "callDataUpdates $activeCallId ${callDataUpdates?.event}; status = ${response?.isCommunicating}" }
+
+    fun forceUpdateUI() {
+        forceRecompose = uuidString()
+        log.d { "forceUpdateUI $forceRecompose" }
+    }
 
     fun loadRequestsForSubproject(subproject: Subproject) {
         CoroutineScope(Dispatchers.Main).launch {
@@ -372,6 +381,7 @@ fun AppContentView() {
                                     selectedExampleId = selectedRequestExampleId!!,
                                     editExampleNameViewModel = editExampleNameViewModel,
                                     environment = selectedEnvironment,
+                                    grpcApiSpecs = selectedSubproject?.grpcApiSpecs ?: emptyList(),
                                     onSelectExample = {
                                         selectedRequestExampleId = it.id
                                         updateResponseView()
@@ -425,7 +435,37 @@ fun AppContentView() {
                                             payload = payload,
                                             environment = selectedEnvironment,
                                         )
-                                    }
+                                    },
+                                    onClickFetchApiSpec = {
+                                        if (requestNonNull.application == ProtocolApplication.Grpc) {
+                                            networkClientManager.fetchGrpcApiSpec(
+                                                url = requestNonNull.url,
+                                                environment = selectedEnvironment,
+                                                subprojectId = selectedSubprojectId!!
+                                            )
+                                            forceUpdateUI() // load the "Connecting" icon
+                                        }
+                                    },
+                                    onClickCancelFetchApiSpec = {
+                                        if (requestNonNull.application == ProtocolApplication.Grpc) {
+                                            networkClientManager.cancelFetchingGrpcApiSpec(
+                                                url = requestNonNull.url,
+                                                subprojectId = selectedSubprojectId!!
+                                            )
+                                        }
+                                    },
+                                    isFetchingApiSpec = run {
+                                        val r = if (requestNonNull.application == ProtocolApplication.Grpc) {
+                                            networkClientManager.subscribeGrpcApiSpecFetchingStatus(
+                                                url = requestNonNull.url,
+                                                subprojectId = selectedSubprojectId!!
+                                            ).collectAsState().value
+                                        } else {
+                                            false
+                                        }
+                                        log.d { "isFetchingApiSpec = $r" }
+                                        r
+                                    },
                                 )
                             } ?: RequestEditorEmptyView(
                                 modifier = requestEditorModifier,

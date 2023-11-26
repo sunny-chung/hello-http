@@ -18,12 +18,16 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
+import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.upsert
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
@@ -45,18 +49,22 @@ import java.util.concurrent.atomic.AtomicInteger
 class NetworkClientManager : CallDataStore {
 
     private val projectCollectionRepository by lazy { AppContext.ProjectCollectionRepository }
+    private val requestCollectionRepository by lazy { AppContext.RequestCollectionRepository }
     private val persistResponseManager by lazy { AppContext.PersistResponseManager }
     private val httpTransportClient by lazy { AppContext.HttpTransportClient }
     private val webSocketTransportClient by lazy { AppContext.WebSocketTransportClient }
     private val graphqlSubscriptionTransportClient by lazy { AppContext.GraphqlSubscriptionTransportClient }
+    private val grpcTransportClient by lazy { AppContext.GrpcTransportClient }
 
     private val callDataMap = ConcurrentHashMap<String, CallData>()
+    private val liteCallDataMap = ConcurrentHashMap<String, LiteCallData>()
     private val requestExampleToCallMapping = mutableMapOf<String, String>()
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    private val subprojectHostToLiteCallMapping = mutableMapOf<String, String>()
 
     private val callIdFlow = MutableStateFlow<String?>(null)
 
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
+    override fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData> = liteCallDataMap
 
     fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, subprojectId: String) {
         val callData = try {
@@ -178,7 +186,7 @@ class NetworkClientManager : CallDataStore {
         }
         val oldCallId = requestExampleToCallMapping.put(requestExampleId, callData.id)
         if (oldCallId != null) {
-            coroutineScope.launch {
+            CoroutineScope(Dispatchers.IO).launch {
                 callDataMap[oldCallId]?.cancel?.invoke()
                 callDataMap.remove(oldCallId)
             }
@@ -199,7 +207,7 @@ class NetworkClientManager : CallDataStore {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
     }
 
-    private fun <T> emptySharedFlow() = emptyFlow<T>().shareIn(coroutineScope, SharingStarted.Eagerly)
+    private fun <T> emptySharedFlow() = emptyFlow<T>().shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly)
 
     private fun getCallDataByRequestExampleId(requestExampleId: String) =
         requestExampleToCallMapping[requestExampleId]
@@ -223,8 +231,77 @@ class NetworkClientManager : CallDataStore {
 
     @Composable
     fun subscribeToNewRequests() = callIdFlow.collectAsState(null)
+
+    private fun createLiteCallData(): LiteCallData {
+        return LiteCallData(
+            id = uuidString(),
+            isConnecting = MutableStateFlow(false),
+            cancel = {},
+        )
+    }
+
+    private fun liteCallKey(url: String, subprojectId: String) = "$subprojectId|${hostFromUrl(url)}"
+
+    fun fetchGrpcApiSpec(url: String, environment: Environment?, subprojectId: String): LiteCallData {
+        val call = createLiteCallData()
+        call.cancel = { call.isConnecting.value = false }
+        liteCallDataMap[call.id] = call
+
+        val key = liteCallKey(url, subprojectId)
+        val oldCallId = subprojectHostToLiteCallMapping.put(key, call.id)
+
+        call.isConnecting.value = true
+        // Don't reuse coroutineScope
+        // https://stackoverflow.com/questions/59996928/coroutinescope-cannot-be-reused-after-an-exception-thrown
+        val job = CoroutineScope(Dispatchers.IO).launch {
+            if (oldCallId != null) {
+                liteCallDataMap[oldCallId]?.cancel?.invoke()
+                liteCallDataMap.remove(oldCallId)
+            }
+
+            val apiSpec = try {
+                grpcTransportClient.fetchServiceSpec(
+                    url,
+                    environment?.sslConfig ?: SslConfig()
+                )
+            } finally {
+                call.isConnecting.value = false
+            }
+            val subproject = projectCollectionRepository.readSubproject(ProjectAndEnvironmentsDI(), subprojectId)
+            subproject.grpcApiSpecs.upsert(apiSpec, condition = { it.name == apiSpec.name }, update = { old, new -> new.copy(id = old.id) })
+            log.d { "after fetch grpc api spec" }
+            projectCollectionRepository.updateSubproject(ProjectAndEnvironmentsDI(), subproject)
+        }
+        call.cancel = {
+            job.cancel(null)
+            call.isConnecting.value = false
+        }
+
+        return call
+    }
+
+    fun isFetchingGrpcApiSpec(url: String, subprojectId: String) =
+        subprojectHostToLiteCallMapping[liteCallKey(url, subprojectId)]
+            ?.let { liteCallDataMap[it] }
+            ?.isConnecting
+            ?.value
+            ?: false
+
+    fun subscribeGrpcApiSpecFetchingStatus(url: String, subprojectId: String): StateFlow<Boolean> =
+        subprojectHostToLiteCallMapping[liteCallKey(url, subprojectId)]
+            ?.let { liteCallDataMap[it] }
+            ?.isConnecting
+            ?: MutableStateFlow(false)
+
+    fun cancelFetchingGrpcApiSpec(url: String, subprojectId: String) {
+        subprojectHostToLiteCallMapping[liteCallKey(url, subprojectId)]
+            ?.let { liteCallDataMap[it] }
+            ?.let { it.cancel() }
+    }
+
 }
 
 internal interface CallDataStore {
     fun provideCallDataStore(): ConcurrentHashMap<String, CallData>
+    fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData>
 }

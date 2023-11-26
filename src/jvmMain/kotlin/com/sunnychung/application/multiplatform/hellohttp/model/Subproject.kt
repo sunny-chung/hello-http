@@ -13,6 +13,7 @@ data class Subproject(
     var name: String,
     val treeObjects: MutableList<TreeObject>,
     var environments: MutableList<Environment>,
+    val grpcApiSpecs: MutableList<GrpcApiSpec> = mutableListOf(),
     @Transient var uiVersion: String = "", // for UI use only, to make Subproject.equals() returns false
 ) : DropDownable {
 

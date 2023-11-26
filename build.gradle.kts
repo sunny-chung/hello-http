@@ -44,6 +44,17 @@ kotlin {
                 implementation("io.github.sunny-chung:Java-WebSocket:1.5.4-inspect-patch2")
                 implementation("com.graphql-java:graphql-java:21.3")
 
+                // grpc
+                val grpcVersion = "1.59.0"
+                runtimeOnly("io.grpc:grpc-netty-shaded:$grpcVersion")
+                implementation("io.grpc:grpc-protobuf:$grpcVersion")
+//    implementation("io.grpc:grpc-stub:$grpcVersion")
+                implementation("io.grpc:grpc-services:$grpcVersion")
+                implementation("io.grpc:grpc-kotlin-stub:1.4.1")
+                compileOnly("org.apache.tomcat:annotations-api:6.0.53")
+                implementation("com.google.protobuf:protobuf-java-util:3.25.1")
+                implementation("com.google.protobuf:protobuf-kotlin:3.25.1")
+
                 implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
                 implementation("com.jayway.jsonpath:json-path:2.8.0")

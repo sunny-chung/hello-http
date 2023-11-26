@@ -112,7 +112,7 @@ fun darkColorScheme(): AppColor = AppColor(
 
     websocketRequest = Color(red = 0.6f, green = 0.6f, blue = 0.9f),
 
-    grpcRequest = Color(red = 1f, green = 1f, blue = 1f),
+    grpcRequest = Color(red = 0.9f, green = 0.9f, blue = 0.9f),
     graphqlRequest = Color(red = 204, green = 67, blue = 162),
 
     variableTextColor = Color.Yellow,

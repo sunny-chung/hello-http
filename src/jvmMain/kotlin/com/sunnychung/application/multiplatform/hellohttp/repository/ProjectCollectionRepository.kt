@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectCollection
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,23 +29,28 @@ class ProjectCollectionRepository : BaseCollectionRepository<ProjectCollection, 
         }
     }
 
-    fun subscribeLatestSubproject(di: ProjectAndEnvironmentsDI, subprojectId: String): Flow<Subproject?> = publishNonPersistedSubprojectUpdates
+    suspend fun readSubproject(di: ProjectAndEnvironmentsDI, subprojectId: String): Subproject {
+        fun find(projects: List<Project>): Subproject { // O(n*m)
+            for (it in projects) {
+                val subp = it.subprojects.firstOrNull {
+                    it.id == subprojectId
+                }
+                if (subp != null) {
+                    return subp
+                }
+            }
+            throw NoSuchElementException()
+        }
+        return find(read(di)!!.projects)
+    }
+
+    fun subscribeLatestSubproject(di: ProjectAndEnvironmentsDI, subprojectId: String): Flow<Pair<Subproject?, String>> = publishNonPersistedSubprojectUpdates
         .onSubscription {
-            emit(Pair(subprojectId, uuidString()))
+            emit(Pair(subprojectId, "onSub"))
         }
         .filter { it.first == subprojectId }
         .map {
-            fun find(projects: List<Project>): Subproject { // O(n*m)
-                for (it in projects) {
-                    val subp = it.subprojects.firstOrNull {
-                        it.id == subprojectId
-                    }
-                    if (subp != null) {
-                        return subp
-                    }
-                }
-                throw NoSuchElementException()
-            }
-            find(read(di)!!.projects)
+            log.d { "re-read subproject" }
+            readSubproject(di, subprojectId) to it.second
         }
 }

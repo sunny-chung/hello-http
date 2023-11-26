@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -38,20 +39,24 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
@@ -76,6 +81,7 @@ fun RequestEditorView(
     request: UserRequestTemplate,
     selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
+    grpcApiSpecs: List<GrpcApiSpec>,
     environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
@@ -86,6 +92,9 @@ fun RequestEditorView(
     onClickConnect: () -> Unit,
     onClickDisconnect: () -> Unit,
     onClickSendPayload: (String) -> Unit,
+    onClickFetchApiSpec: () -> Unit,
+    onClickCancelFetchApiSpec: () -> Unit,
+    isFetchingApiSpec: Boolean,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
@@ -127,6 +136,10 @@ fun RequestEditorView(
                     DropDownKeyValue(
                         key = ProtocolMethod(application = ProtocolApplication.Graphql, method = ""),
                         displayText = "GraphQL"
+                    ),
+                    DropDownKeyValue(
+                        key = ProtocolMethod(application = ProtocolApplication.Grpc, method = ""),
+                        displayText = "gRPC"
                     ),
                     DropDownKeyValue(
                         key = ProtocolMethod(application = ProtocolApplication.WebSocket, method = ""),
@@ -267,6 +280,27 @@ fun RequestEditorView(
                 }
             }
         }
+        if (request.application == ProtocolApplication.Grpc) {
+            if (request.grpc?.apiSpecId.emptyToNull() == null && grpcApiSpecs.isNotEmpty()) {
+                val name = hostFromUrl(request.url)
+                grpcApiSpecs.firstOrNull { it.name == name }
+                    ?.let { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(apiSpecId = it.id))) }
+            }
+            RequestServiceMethodSelector(
+                modifier = Modifier.fillMaxWidth(),
+                service = request.grpc?.service ?: "",
+                method = request.grpc?.method ?: "",
+                onSelectService = { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(service = it))) },
+                onSelectMethod = { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(method = it))) },
+                apiSpec = grpcApiSpecs.firstOrNull { it.id == request.grpc?.apiSpecId },
+                onSelectApiSpec = { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(apiSpecId = it))) },
+                apiSpecList = grpcApiSpecs,
+                onClickFetchApiSpec = onClickFetchApiSpec,
+                onClickCancelFetchApiSpec = onClickCancelFetchApiSpec,
+                isFetchingApiSpec = isFetchingApiSpec,
+            )
+        }
+
 //        Spacer(modifier = Modifier.height(4.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -551,6 +585,104 @@ fun RequestEditorView(
                 onClickSendPayload = onClickSendPayload,
                 connectionStatus = connectionStatus,
             )
+        }
+    }
+}
+
+@Composable
+private fun RequestServiceMethodSelector(
+    modifier: Modifier = Modifier,
+    service: String,
+    onSelectService: (String) -> Unit,
+    method: String,
+    onSelectMethod: (String) -> Unit,
+    apiSpec: GrpcApiSpec?,
+    onSelectApiSpec: (String) -> Unit,
+    apiSpecList: List<GrpcApiSpec>,
+    onClickFetchApiSpec: () -> Unit,
+    onClickCancelFetchApiSpec: () -> Unit,
+    isFetchingApiSpec: Boolean,
+) {
+    val serviceList = apiSpec?.methods
+        ?.map {
+            it.serviceFullName
+        }
+        ?.distinct()
+        ?.sorted()
+        ?: emptyList()
+
+    fun getMethodList(service: String) =
+        apiSpec?.methods
+            ?.filter {
+                it.serviceFullName == service
+            }
+            ?.sortedBy { it.methodName }
+            ?: emptyList()
+
+    val methodList = getMethodList(service)
+
+    if (service.isEmpty() && serviceList.isNotEmpty()) {
+        val firstService = serviceList.first()
+        onSelectService(firstService)
+
+        // don't update method at this moment, or changes in `onSelectMethod` would overwrite that in `onSelectService`
+//        getMethodList(firstService)
+//            .firstOrNull()
+//            ?.let { onSelectMethod(it.methodName) }
+    } else if (method.isEmpty() && methodList.isNotEmpty()) {
+        onSelectMethod(methodList.first().methodName)
+    }
+
+    Row(modifier = modifier.height(IntrinsicSize.Max)) {
+        DropDownView(
+            items = apiSpecList.map { DropDownKeyValue(it.id, it.name) },
+            selectedItem = DropDownKeyValue(apiSpec?.id ?: "", apiSpec?.name ?: ""),
+            onClickItem = { onSelectApiSpec(it.key); true },
+            isLabelFillMaxWidth = true,
+            modifier = Modifier.weight(0.2f).padding(vertical = 4.dp).fillMaxHeight(),
+        )
+        DropDownView(
+            items = serviceList.map { DropDownValue(it) },
+            selectedItem = DropDownValue(service),
+            onClickItem = { onSelectService(it.displayText); true },
+            isLabelFillMaxWidth = true,
+            contentView = { it, isLabel, isSelected ->
+                AppText(
+                    text = if (isLabel) it?.displayText?.split('.')?.last().emptyToNull() ?: "--" else it!!.displayText,
+                    color = if (!isLabel && isSelected) LocalColor.current.highlight else LocalColor.current.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            },
+            modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
+        )
+        DropDownView(
+            items = methodList.map { DropDownValue(it.methodName) },
+            selectedItem = DropDownValue(method),
+            onClickItem = { onSelectMethod(it.displayText); true },
+            isLabelFillMaxWidth = true,
+            modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
+        )
+
+        if (!isFetchingApiSpec) {
+            AppTooltipArea(tooltipText = "Fetch gRPC API Spec") {
+                AppImageButton(
+                    resource = "download-list.svg",
+                    size = 24.dp,
+                    onClick = onClickFetchApiSpec,
+                    modifier = Modifier.padding(4.dp),
+                )
+            }
+        } else {
+            AppTooltipArea(tooltipText = "Cancel fetching gRPC API Spec") {
+                AppImageButton(
+                    resource = "close.svg",
+                    size = 24.dp,
+                    onClick = onClickCancelFetchApiSpec,
+                    modifier = Modifier.padding(4.dp),
+                )
+            }
         }
     }
 }

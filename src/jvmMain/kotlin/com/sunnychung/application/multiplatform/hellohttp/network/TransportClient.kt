@@ -5,6 +5,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.atomic.AtomicInteger
@@ -39,6 +40,12 @@ class CallData(
 
     var cancel: () -> Unit,
     var sendPayload: (String) -> Unit = {},
+)
+
+class LiteCallData(
+    val id: String,
+    var isConnecting: MutableStateFlow<Boolean>,
+    var cancel: () -> Unit,
 )
 
 sealed interface RawPayload {

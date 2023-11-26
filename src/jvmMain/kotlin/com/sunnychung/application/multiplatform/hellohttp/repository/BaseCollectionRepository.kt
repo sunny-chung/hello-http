@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>(private val serializer: KSerializer<T>) {
 
     private val persistenceManager by lazy { AppContext.PersistenceManager }
-    protected val coroutineScope = CoroutineScope(Dispatchers.IO)
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     private val updates = ConcurrentLinkedQueue<ID>()
     private val timerFlow = flow {
@@ -156,10 +156,10 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
 
     open fun subscribeUnfilteredUpdates(): SharedFlow<Pair<ID, String>> = publishNonPersistedUpdates
 
-    open fun subscribeLatestCollection(di: ID): Flow<T> = publishNonPersistedUpdates
+    open fun subscribeLatestCollection(di: ID): Flow<Pair<T, String>> = publishNonPersistedUpdates
         .onSubscription {
-            emit(Pair(di, uuidString()))
+            emit(Pair(di, "onSub"))
         }
         .filter { it.first == di }
-        .map { read(di)!! }
+        .map { read(di)!! to it.second }
 }

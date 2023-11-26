@@ -39,7 +39,7 @@ class RequestCollectionRepository : BaseCollectionRepository<RequestCollection, 
             val hasRemoved = collection.requests.removeIf { it.id == requestId }
             if (hasRemoved) {
                 notifyUpdated(di)
-                coroutineScope.launch { // deadlock if not emit in another scope
+                CoroutineScope(Dispatchers.Main).launch { // deadlock if not emit in another scope
                     publishNonPersistedRequestUpdates.emit(requestId to null)
                 }
             }
