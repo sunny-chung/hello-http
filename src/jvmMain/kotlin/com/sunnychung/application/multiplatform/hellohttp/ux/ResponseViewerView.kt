@@ -63,7 +63,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
 
     var selectedTabIndex by remember { mutableStateOf(0) }
 
-    log.d { "ResponseViewerView recompose ${response.errorMessage}" }
+    log.d { "ResponseViewerView recompose ${response.requestExampleId} ${response.errorMessage}" }
 
     val responseViewModel = AppContext.ResponseViewModel
     responseViewModel.setEnabled(connectionStatus.isConnectionActive())

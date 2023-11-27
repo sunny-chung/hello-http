@@ -146,13 +146,20 @@ fun AppContentView() {
     var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
     val requestCollection = requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null).value?.first }
     var selectedRequestId by rememberLast(requestCollection?.id) { mutableStateOf<String?>(null) }
-    val request by let(requestCollection?.id, selectedRequestId) { di, selectedRequestId ->
+    val request = let(requestCollection?.id, selectedRequestId) { di, selectedRequestId ->
         // collect immediately, or fast typing would lead to race conditions
         requestCollectionRepository.subscribeLatestRequest(di, selectedRequestId)
-            .collectAsState(null, Dispatchers.Main.immediate)
+            .collectAsState(null, Dispatchers.Main.immediate).value
+    }?.let {
+        // Bug: https://issuetracker.google.com/issues/205590513
+//        if (it.id == selectedRequestId) {
+            it
+//        } else {
+//            null
+//        }
     }
-        ?: mutableStateOf(null)
     var selectedRequestExampleId by rememberLast(request?.id) { mutableStateOf<String?>(request?.examples?.first()?.id) }
+    log.d { "selectedRequestId=$selectedRequestId request=${request?.id} selectedRequestExampleId=$selectedRequestExampleId" }
 
     // purpose of this variable is to force refresh UI once when there is new request
     // so that `callDataUpdates` resolves to a new and correct flow.
@@ -165,10 +172,18 @@ fun AppContentView() {
             mutableStateOf(null)
         }
     val activeResponse = selectedRequestExampleId?.let { networkClientManager.getResponseByRequestExampleId(it) }
-    var response by remember { mutableStateOf<UserResponse?>(null) }
-    if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
-        response = activeResponse
-    }
+//    var response by remember { mutableStateOf<UserResponse?>(null) }
+//    if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
+//        response = activeResponse
+//    }
+    val response = runBlocking { // should be fast as it is retrieved from memory
+        if (selectedSubproject == null || selectedRequestExampleId == null) return@runBlocking null
+        val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
+        val resp = responseCollectionRepository.read(di)
+            ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
+        log.d { "updateResponseView $selectedRequestExampleId" }
+        resp
+    } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
 
     var forceRecompose by remember { mutableStateOf("") }
     val needThisForForceRecomposeToWork = forceRecompose
@@ -191,17 +206,19 @@ fun AppContentView() {
     }
 
     fun updateResponseView() {
-        response = runBlocking { // should be fast as it is retrieved from memory
-            if (selectedSubproject == null || selectedRequestExampleId == null) return@runBlocking null
-            val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
-            val resp = responseCollectionRepository.read(di)
-                ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
-            resp
-        } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
+//        response = runBlocking { // should be fast as it is retrieved from memory
+//            if (selectedSubproject == null || selectedRequestExampleId == null) return@runBlocking null
+//            val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
+//            val resp = responseCollectionRepository.read(di)
+//                ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
+//            log.d { "updateResponseView $selectedRequestExampleId" }
+//            resp
+//        } ?: UserResponse(id = "-", requestExampleId = "-", requestId = "-")
     }
 
     fun displayRequest(req: UserRequestTemplate) {
         selectedRequestId = req.id
+//        selectedRequestExampleId = req.examples.first().id // this line is needed because `updateResponseView()` depends on its immediate result
         updateResponseView()
     }
 
@@ -266,7 +283,7 @@ fun AppContentView() {
                             onSelectSubproject = {
                                 selectedSubprojectId = it?.id
                                 it?.let { loadRequestsForSubproject(it) }
-                                response = UserResponse("-", "-", "-")
+//                                response = UserResponse("-", "-", "-")
                             },
                             onUpdateSubproject = {
                                 assert(it.id == selectedSubproject!!.id)
