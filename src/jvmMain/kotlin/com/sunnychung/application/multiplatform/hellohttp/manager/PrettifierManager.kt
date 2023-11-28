@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 
 class PrettifierManager {
     private val registrations: MutableSet<PrettifierRegistration> = mutableSetOf()
@@ -22,7 +23,11 @@ class PrettifierManager {
         )
     }
 
-    fun matchPrettifiers(contentType: String): List<Prettifier> {
+    fun matchPrettifiers(application: ProtocolApplication, contentType: String): List<Prettifier> {
+        if (application == ProtocolApplication.Grpc) { // TODO refactor to a better logical structure
+            return matchPrettifiers(ProtocolApplication.Http, "application/json")
+        }
+
         return registrations
             .filter { it.contentTypeRegex.matches(contentType) }
             .map { it.prettifier }

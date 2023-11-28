@@ -62,6 +62,18 @@ data class UserRequestTemplate(
                     )
                 }
             )
+        } else if (application == ProtocolApplication.Grpc) {
+            copy(
+                application = application,
+                method = method,
+                examples = examples.map {
+                    it.copy(
+                        contentType = ContentType.Json,
+                        body = if (it.body is StringBody) it.body else StringBody("")
+                    )
+                },
+                grpc = UserGrpcRequest()
+            )
         } else {
             copy(application = application, method = method)
         }

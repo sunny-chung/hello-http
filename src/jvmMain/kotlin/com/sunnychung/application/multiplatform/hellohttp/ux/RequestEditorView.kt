@@ -400,10 +400,10 @@ fun RequestEditorView(
             )
         }
 
-        val tabs = if (request.application != ProtocolApplication.WebSocket) {
-            listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
-        } else {
-            listOf(RequestTab.Query, RequestTab.Header)
+        val tabs = when (request.application) {
+            ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header)
+            ProtocolApplication.Grpc -> listOf(RequestTab.Body, RequestTab.Header, RequestTab.PostFlight)
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
         }
 
         TabsView(
@@ -771,41 +771,45 @@ private fun RequestBodyEditor(
             Row(modifier = Modifier.weight(1f)) {
                 if (request.application != ProtocolApplication.Graphql) {
                     AppText("Content Type: ")
-                    DropDownView(
-                        items = listOf(
-                            ContentType.Json,
-                            ContentType.Multipart,
-                            ContentType.FormUrlEncoded,
-                            ContentType.Raw,
-                            ContentType.BinaryFile,
-                            ContentType.None
-                        ).map { DropDownKeyValue(it, it.displayText) },
-                        selectedItem = DropDownKeyValue(selectedContentType, selectedContentType.displayText),
-                        onClickItem = { item ->
-                            val it = item.key
-                            if (selectedContentType == it) return@DropDownView true
-                            selectedContentType = it
-                            val newBody = when (it) {
-                                ContentType.None -> null
-                                ContentType.Json, ContentType.Raw -> StringBody("")
-                                ContentType.Multipart -> MultipartBody(emptyList())
-                                ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
-                                ContentType.BinaryFile -> FileBody(null)
-                                else -> throw UnsupportedOperationException()
-                            }
-                            onRequestModified(
-                                request.copy(
-                                    examples = request.examples.copyWithChange(
-                                        selectedExample.copy(
-                                            contentType = selectedContentType,
-                                            body = newBody
+                    if (request.application != ProtocolApplication.Grpc) {
+                        DropDownView(
+                            items = listOf(
+                                ContentType.Json,
+                                ContentType.Multipart,
+                                ContentType.FormUrlEncoded,
+                                ContentType.Raw,
+                                ContentType.BinaryFile,
+                                ContentType.None
+                            ).map { DropDownKeyValue(it, it.displayText) },
+                            selectedItem = DropDownKeyValue(selectedContentType, selectedContentType.displayText),
+                            onClickItem = { item ->
+                                val it = item.key
+                                if (selectedContentType == it) return@DropDownView true
+                                selectedContentType = it
+                                val newBody = when (it) {
+                                    ContentType.None -> null
+                                    ContentType.Json, ContentType.Raw -> StringBody("")
+                                    ContentType.Multipart -> MultipartBody(emptyList())
+                                    ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
+                                    ContentType.BinaryFile -> FileBody(null)
+                                    else -> throw UnsupportedOperationException()
+                                }
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            selectedExample.copy(
+                                                contentType = selectedContentType,
+                                                body = newBody
+                                            )
                                         )
                                     )
                                 )
-                            )
-                            true
-                        }
-                    )
+                                true
+                            }
+                        )
+                    } else {
+                        AppText(selectedContentType.displayText)
+                    }
                 } else {
                     AppText("Operation: ")
                     val body = selectedExample.body as? GraphqlBody

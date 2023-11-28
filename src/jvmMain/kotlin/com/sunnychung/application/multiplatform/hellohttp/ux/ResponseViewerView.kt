@@ -63,7 +63,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
 
     var selectedTabIndex by remember { mutableStateOf(0) }
 
-    log.d { "ResponseViewerView recompose ${response.requestExampleId} ${response.errorMessage}" }
+    log.d { "ResponseViewerView recompose ${response.requestExampleId} $connectionStatus ${response.errorMessage}" }
 
     val responseViewModel = AppContext.ResponseViewModel
     responseViewModel.setEnabled(connectionStatus.isConnectionActive())
@@ -72,7 +72,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             StatusLabel(response = response, connectionStatus = connectionStatus)
-            DurationLabel(response = response, updateTime = updateTime)
+            DurationLabel(response = response, updateTime = updateTime, connectionStatus = connectionStatus)
             ResponseSizeLabel(response = response)
         }
 
@@ -235,14 +235,16 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectio
     val colors = LocalColor.current
     val (text, backgroundColor) = if (connectionStatus.isConnectionActive() && response.statusCode == null) {
         Pair("Communicating", colors.pendingResponseBackground)
-    } else if (response.isError) {
-        Pair("Error", colors.errorResponseBackground)
-    } else {
+    } else if (response.statusCode != null || !response.statusText.isNullOrEmpty()) {
         val colour = when (response.application) {
             ProtocolApplication.WebSocket -> when (response.statusCode) {
                 null -> return
                 101 -> colors.successfulResponseBackground
                 in 100..199 -> colors.pendingResponseBackground
+                else -> colors.errorResponseBackground
+            }
+            ProtocolApplication.Grpc -> when (response.statusCode) {
+                0, null -> colors.successfulResponseBackground
                 else -> colors.errorResponseBackground
             }
             else -> when (response.statusCode) {
@@ -252,15 +254,21 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectio
                 else -> colors.errorResponseBackground
             }
         }
-        Pair("${response.statusCode} ${response.statusText}", colour)
+        Pair("${response.statusCode ?: ""} ${response.statusText}".trim(), colour)
+    } else if (response.isError) {
+        Pair("Error", colors.errorResponseBackground)
+    } else {
+        Pair("", colors.errorResponseBackground)
     }
-    DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
+    if (text.isNotEmpty()) {
+        DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
+    }
 }
 
 @Composable
-fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateTime: KInstant) {
+fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateTime: KInstant, connectionStatus: ConnectionStatus) {
     val startAt = response.startAt ?: return
-    val timerAt = response.endAt ?: if (response.isCommunicating) KInstant.now() else return
+    val timerAt = response.endAt ?: if (connectionStatus.isConnectionActive()) KInstant.now() else return
     val duration = timerAt - startAt
     val text = if (duration >= KDuration.of(10, KFixedTimeUnit.Second)) {
         "${"%.1f".format(duration.toMilliseconds() / 1000.0)} s"
@@ -422,7 +430,7 @@ fun ResponseBodyView(response: UserResponse) {
             ?.map { it.second }
             ?.firstOrNull()
         if (contentType != null) {
-            AppContext.PrettifierManager.matchPrettifiers(contentType)
+            AppContext.PrettifierManager.matchPrettifiers(response.application, contentType)
         } else {
             emptyList()
         }

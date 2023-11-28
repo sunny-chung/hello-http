@@ -6,6 +6,7 @@ import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
+import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestExtra
 import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -71,7 +73,15 @@ class NetworkClientManager : CallDataStore {
             val networkRequest = request.toHttpRequest(
                 exampleId = requestExampleId,
                 environment = environment
-            )
+            ).run {
+                if (request.application == ProtocolApplication.Grpc) {
+                    val apiSpec = runBlocking { projectCollectionRepository.readSubproject(ProjectAndEnvironmentsDI(), subprojectId) }
+                        .grpcApiSpecs.first { it.id == request.grpc!!.apiSpecId }
+                    copy(extra = (extra as GrpcRequestExtra).copy(apiSpec = apiSpec))
+                } else {
+                    this
+                }
+            }
             val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(
                 exampleId = requestExampleId,
                 environment = environment
@@ -147,6 +157,7 @@ class NetworkClientManager : CallDataStore {
             val networkManager = when (networkRequest.application) {
                 ProtocolApplication.Graphql -> graphqlSubscriptionTransportClient
                 ProtocolApplication.WebSocket -> webSocketTransportClient
+                ProtocolApplication.Grpc -> grpcTransportClient
                 else -> httpTransportClient
             }
 

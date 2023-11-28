@@ -8,10 +8,12 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
@@ -127,10 +129,19 @@ fun UserRequestTemplate.toHttpRequest(
                     .toString()
             )
         }
+    } else if (application == ProtocolApplication.Grpc) {
+        req = req.copy(extra = GrpcRequestExtra(
+            destination = grpc!!
+        ))
     }
 
     req
 }
+
+data class GrpcRequestExtra(
+    val destination: UserGrpcRequest,
+    val apiSpec: GrpcApiSpec? = null,
+)
 
 fun HttpRequest.toOkHttpRequest(): Request {
     val req = this
