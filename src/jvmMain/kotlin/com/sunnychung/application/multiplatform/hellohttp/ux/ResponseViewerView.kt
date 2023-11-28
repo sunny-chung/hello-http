@@ -475,17 +475,18 @@ private val TYPE_COLUMN_WIDTH_DP = 20.dp
 fun ResponseStreamView(response: UserResponse) {
     val colours = LocalColor.current
 
-    var selectedMessage by remember(response.id) { mutableStateOf<PayloadMessage?>(null) }
-    val prettifiers = if ((response.isError && selectedMessage == null) || selectedMessage?.type == PayloadMessage.Type.Error) {
+    var selectedMessage by rememberLast(response.id) { mutableStateOf<PayloadMessage?>(null) }
+    val displayMessage = selectedMessage ?: response.payloadExchanges?.lastOrNull { it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.Error) } // last -> largest timestamp
+    val prettifiers = if ((response.isError && displayMessage == null) || displayMessage?.type == PayloadMessage.Type.Error) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
-    } else if (selectedMessage?.type in setOf(PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected)) {
+    } else if (displayMessage?.type in setOf(PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected)) {
         listOf(PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() }))
     } else {
         AppContext.PrettifierManager.allPrettifiers()
             .map { PrettifierDropDownValue(it.formatName, it) } +
                 PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() })
     }
-    val detailData = selectedMessage?.data
+    val detailData = displayMessage?.data
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
@@ -494,7 +495,7 @@ fun ResponseStreamView(response: UserResponse) {
             prettifiers = prettifiers,
             selectedPrettifierState = remember(
                 response.requestExampleId,
-                when (selectedMessage?.type) { // categorize prettifiers as cache keys
+                when (displayMessage?.type) { // categorize prettifiers as cache keys
                     PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected -> 0
                     PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData, null -> 1
                     PayloadMessage.Type.Error -> 2
@@ -525,7 +526,7 @@ fun ResponseStreamView(response: UserResponse) {
                     var modifier: Modifier = Modifier
                     modifier = modifier.clickable { selectedMessage = it }
                     Row(modifier = modifier) {
-                        val textColour = if (selectedMessage?.id == it.id) {
+                        val textColour = if (displayMessage?.id == it.id) {
                             colours.highlight
                         } else {
                             colours.primary
