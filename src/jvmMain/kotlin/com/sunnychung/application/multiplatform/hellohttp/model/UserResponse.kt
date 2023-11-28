@@ -25,12 +25,12 @@ data class UserResponse(
     var statusCode: Int? = null,
     var statusText: String? = null,
     var responseSizeInBytes: Long? = null,
-    var body: ByteArray? = null,
+    var body: ByteArray? = null, // original bytes are stored, EXCEPT gRPC
     var errorMessage: String? = null,
     @Transient var postFlightErrorMessage: String? = null,
     var headers: List<Pair<String, String>>? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
-    var payloadExchanges: MutableList<PayloadMessage>? =
+    var payloadExchanges: MutableList<PayloadMessage>? = // null = not support streaming; empty list = streaming without data
         if (application in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql))
             Collections.synchronizedList(mutableListOf())
         else

@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -92,6 +95,7 @@ fun RequestEditorView(
     onClickConnect: () -> Unit,
     onClickDisconnect: () -> Unit,
     onClickSendPayload: (String) -> Unit,
+    onClickCompleteStream: () -> Unit,
     onClickFetchApiSpec: () -> Unit,
     onClickCancelFetchApiSpec: () -> Unit,
     isFetchingApiSpec: Boolean,
@@ -116,6 +120,12 @@ fun RequestEditorView(
     } else {
         null
     }
+    val currentGrpcMethod = grpcApiSpecs.firstOrNull { it.id == request.grpc?.apiSpecId }
+        ?.methods
+        ?.firstOrNull { it.serviceFullName == request.grpc?.service && it.methodName == request.grpc?.method }
+    val hasPayloadEditor = (request.application == ProtocolApplication.WebSocket
+            || (request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true)
+            )
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -402,7 +412,10 @@ fun RequestEditorView(
 
         val tabs = when (request.application) {
             ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header)
-            ProtocolApplication.Grpc -> listOf(RequestTab.Body, RequestTab.Header, RequestTab.PostFlight)
+            ProtocolApplication.Grpc -> listOfNotNull(
+                if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
+                RequestTab.Header, RequestTab.PostFlight
+            )
             else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
         }
 
@@ -415,7 +428,7 @@ fun RequestEditorView(
             }
         )
         Box(
-            modifier = if (request.application != ProtocolApplication.WebSocket) {
+            modifier = if (!hasPayloadEditor) {
                 Modifier.weight(1f)
             } else {
                 Modifier.weight(0.3f)
@@ -494,7 +507,7 @@ fun RequestEditorView(
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                RequestTab.PostFlight -> Column {
+                RequestTab.PostFlight -> Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     AppText(
                         text = "Update environment variables according to response headers.",
                         modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
@@ -531,7 +544,7 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
 
                     AppText(
@@ -570,19 +583,21 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
                 }
             }
         }
 
-        if (request.application == ProtocolApplication.WebSocket) {
-            WebSocketPayloadEditorView(
+        if (hasPayloadEditor) {
+            StreamingPayloadEditorView(
                 modifier = Modifier.weight(0.7f).fillMaxWidth(),
                 request = request,
                 onRequestModified = onRequestModified,
+                hasCompleteButton = request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true,
                 knownVariables = environmentVariableKeys,
                 onClickSendPayload = onClickSendPayload,
+                onClickCompleteStream = onClickCompleteStream,
                 connectionStatus = connectionStatus,
             )
         }
@@ -1168,13 +1183,15 @@ fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFile
 }
 
 @Composable
-fun WebSocketPayloadEditorView(
+fun StreamingPayloadEditorView(
     modifier: Modifier = Modifier,
     editExampleNameViewModel: EditNameViewModel = remember { EditNameViewModel() },
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
+    hasCompleteButton: Boolean,
     knownVariables: Set<String>,
     onClickSendPayload: (String) -> Unit,
+    onClickCompleteStream: () -> Unit,
     connectionStatus: ConnectionStatus,
 ) {
     val colors = LocalColor.current
@@ -1197,6 +1214,15 @@ fun WebSocketPayloadEditorView(
             Spacer(modifier = Modifier.weight(1f))
             AppTextButton(text = "Send", isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING ) {
                 onClickSendPayload(selectedExample!!.body)
+            }
+            if (hasCompleteButton) {
+                AppTextButton(
+                    text = "Complete",
+                    isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING,
+                    modifier = Modifier.padding(start = 4.dp),
+                ) {
+                    onClickCompleteStream()
+                }
             }
         }
 

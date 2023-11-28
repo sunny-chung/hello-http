@@ -453,6 +453,11 @@ fun AppContentView() {
                                             environment = selectedEnvironment,
                                         )
                                     },
+                                    onClickCompleteStream = {
+                                        networkClientManager.sendEndOfStream(
+                                            selectedRequestExampleId = selectedRequestExampleId!!,
+                                        )
+                                    },
                                     onClickFetchApiSpec = {
                                         if (requestNonNull.application == ProtocolApplication.Grpc) {
                                             networkClientManager.fetchGrpcApiSpec(

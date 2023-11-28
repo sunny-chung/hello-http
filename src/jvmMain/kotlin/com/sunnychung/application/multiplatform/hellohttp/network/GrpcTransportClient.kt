@@ -12,6 +12,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
@@ -39,13 +40,16 @@ import io.grpc.reflection.v1alpha.ServerReflectionGrpc
 import io.grpc.reflection.v1alpha.ServerReflectionRequest
 import io.grpc.reflection.v1alpha.ServerReflectionResponse
 import io.grpc.stub.ClientCalls
+import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.net.URI
 import java.util.Collections
@@ -161,12 +165,15 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     .build()
 
                 val typeRegistry = TypeRegistry.newBuilder().add(fileDescriptor.messageTypes).build()
-                val grpcRequest = DynamicMessage.newBuilder(methodDescriptor0.inputType)
-                    .apply {
-                        JsonFormat.parser().usingTypeRegistry(typeRegistry)
-                            .merge((request.body as StringBody).value, this)
-                    }
-                    .build()
+                val jsonParser = JsonFormat.parser().usingTypeRegistry(typeRegistry)
+
+                fun buildGrpcRequest(json: String): DynamicMessage {
+                    return DynamicMessage.newBuilder(methodDescriptor0.inputType)
+                        .apply {
+                            jsonParser.merge(json, this)
+                        }
+                        .build()
+                }
 
                 call.waitForPreparation()
                 out.startAt = KInstant.now()
@@ -174,34 +181,119 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                 emitEvent(call.id, "Connecting to ${hostFromUrl(request.url)}")
 
-                val (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
+                var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
                 try {
-                    call.cancel = {
-                        responseObserver.onCompleted()
-                        channel0.shutdown()
+                    val cancel = {
+                        try {
+                            responseObserver.onCompleted()
+                        } catch (_: Throwable) {}
+                        try {
+                            channel0.shutdown()
+                        } catch (_: Throwable) {}
                         call.status = ConnectionStatus.DISCONNECTED
                     }
+                    call.cancel = cancel
 
-                    ClientCalls.asyncUnaryCall(
-                        channel.newCall(grpcMethodDescriptor, CallOptions.DEFAULT),
-                        grpcRequest,
-                        responseObserver
-                    )
-                    val response = responseFlow.last()
-
-                    val responseJson = JsonFormat.printer()
+                    val grpcCall = channel.newCall(grpcMethodDescriptor, CallOptions.DEFAULT)
+                    val jsonPrinter = JsonFormat.printer()
                         .usingTypeRegistry(typeRegistry)
                         .includingDefaultValueFields()
-                        .print(response)
 
-                    log.d { "Response = $responseJson" }
+                    if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
+                        out.payloadExchanges = mutableListOf()
+                    }
+
+                    fun setStreamError(e: Throwable) {
+                        if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
+                            out.payloadExchanges!! += PayloadMessage(
+                                instant = KInstant.now(),
+                                type = PayloadMessage.Type.Error,
+                                data = (e.message?.let { "Error: $it" } ?: "Error").encodeToByteArray()
+                            )
+                        } else {
+                            out.errorMessage = e.message
+                        }
+                        out.isError = true
+                    }
+
+                    responseFlow = responseFlow.onEach {
+                        try {
+                            val responseJsonData = jsonPrinter.print(it).encodeToByteArray()
+                            if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
+                                out.payloadExchanges!! += PayloadMessage(
+                                    instant = KInstant.now(),
+                                    type = PayloadMessage.Type.IncomingData,
+                                    data = responseJsonData
+                                )
+                            } else {
+                                out.body = responseJsonData
+                            }
+                            log.d { "Response = ${responseJsonData.decodeToString()}" }
+                        } catch (e: Throwable) {
+                            setStreamError(e)
+                            call.cancel()
+                        }
+                    }
+
+                    fun buildSendPayloadFunction(requestObserver: StreamObserver<DynamicMessage>): (String) -> Unit {
+                        return {
+                            try {
+                                val request = buildGrpcRequest(it)
+                                out.payloadExchanges!! += PayloadMessage(
+                                    instant = KInstant.now(),
+                                    type = PayloadMessage.Type.OutgoingData,
+                                    data = it.encodeToByteArray()
+                                )
+                                requestObserver.onNext(request)
+                            } catch (e: Throwable) {
+                                setStreamError(e)
+                                call.cancel()
+                            }
+                        }
+                    }
+
+                    fun buildSendEndOfStream(requestObserver: StreamObserver<DynamicMessage>): () -> Unit {
+                        return {
+                            try {
+                                requestObserver.onCompleted()
+                            } catch (e: Throwable) {
+                                setStreamError(e)
+                                call.cancel()
+                            }
+                        }
+                    }
+
+                    if (!methodDescriptor0.isClientStreaming && !methodDescriptor0.isServerStreaming) {
+                        ClientCalls.asyncUnaryCall(
+                            grpcCall,
+                            buildGrpcRequest((request.body as StringBody).value),
+                            responseObserver
+                        )
+                    } else if (methodDescriptor0.isClientStreaming && !methodDescriptor0.isServerStreaming) {
+                        val requestObserver = ClientCalls.asyncClientStreamingCall(
+                            grpcCall, responseObserver
+                        )
+                        call.sendPayload = buildSendPayloadFunction(requestObserver)
+                        call.sendEndOfStream = buildSendEndOfStream(requestObserver)
+                        call.cancel = {
+                            try {
+                                call.sendEndOfStream()
+                            } catch (_: Throwable) {}
+                            cancel()
+                        }
+                        call.status = ConnectionStatus.OPEN_FOR_STREAMING
+                    } else {
+                        TODO()
+                    }
+
+                    responseFlow.collect()
 
                     emitEvent(call.id, "Received response message") // TODO better events?
 
-                    out.body = responseJson.encodeToByteArray()
-
                     out.endAt = KInstant.now()
-                    out.statusText = "No error"
+                    if (!out.isError) {
+                        out.statusText = "No error"
+                    }
                     call.status = ConnectionStatus.DISCONNECTED
 
                     if (!out.isError && postFlightAction != null) {
@@ -227,6 +319,13 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     log.d(e) { "Grpc Error" }
                 } finally {
                     channel0.shutdownNow()
+                    if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
+                        out.payloadExchanges!! += PayloadMessage(
+                            instant = KInstant.now(),
+                            type = PayloadMessage.Type.Disconnected,
+                            data = "Disconnected.".encodeToByteArray(),
+                        )
+                    }
 
                     call.consumePayloads()
                     emitEvent(call.id, "Response completed")

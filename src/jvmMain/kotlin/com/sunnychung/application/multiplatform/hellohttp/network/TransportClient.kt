@@ -40,6 +40,7 @@ class CallData(
 
     var cancel: () -> Unit,
     var sendPayload: (String) -> Unit = {},
+    var sendEndOfStream: () -> Unit = {},
 )
 
 class LiteCallData(

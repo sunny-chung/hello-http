@@ -11,10 +11,10 @@ data class PayloadMessage(
     val id: String = uuidString(),
     val instant: KInstantAsLong,
     val type: Type,
-    val data: ByteArray?,
+    val data: ByteArray?, // original bytes are stored, EXCEPT gRPC
 ) {
     enum class Type {
-        IncomingData, OutgoingData, Connected, Disconnected
+        IncomingData, OutgoingData, Connected, Disconnected, Error
     }
 
     override fun equals(other: Any?): Boolean {

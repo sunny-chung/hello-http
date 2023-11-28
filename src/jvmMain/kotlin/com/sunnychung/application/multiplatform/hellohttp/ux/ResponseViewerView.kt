@@ -76,7 +76,11 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
             ResponseSizeLabel(response = response)
         }
 
-        val tabs = if (response.application == ProtocolApplication.WebSocket && response.statusCode == 101) {
+        val tabs = if (
+            // TODO these conditions are poorly written. any better semantics?
+            (response.application == ProtocolApplication.WebSocket && response.statusCode == 101)
+            || (response.application == ProtocolApplication.Grpc && response.payloadExchanges != null)
+        ) {
             listOf(ResponseTab.Stream, ResponseTab.Header, ResponseTab.Raw)
         } else {
             listOf(ResponseTab.Body, ResponseTab.Header, ResponseTab.Raw)
@@ -394,7 +398,7 @@ fun BodyViewerView(
         } else {
             CodeEditorView(
                 isReadOnly = true,
-                text = errorMessage ?: "",
+                text = errorMessage ?: content.decodeToString(),
                 textColor = colours.warning,
                 modifier = modifier,
             )
@@ -472,7 +476,7 @@ fun ResponseStreamView(response: UserResponse) {
     val colours = LocalColor.current
 
     var selectedMessage by remember(response.id) { mutableStateOf<PayloadMessage?>(null) }
-    val prettifiers = if (response.isError) {
+    val prettifiers = if ((response.isError && selectedMessage == null) || selectedMessage?.type == PayloadMessage.Type.Error) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     } else if (selectedMessage?.type in setOf(PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected)) {
         listOf(PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() }))
@@ -490,9 +494,10 @@ fun ResponseStreamView(response: UserResponse) {
             prettifiers = prettifiers,
             selectedPrettifierState = remember(
                 response.requestExampleId,
-                when (selectedMessage?.type) {
+                when (selectedMessage?.type) { // categorize prettifiers as cache keys
                     PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected -> 0
                     PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData, null -> 1
+                    PayloadMessage.Type.Error -> 2
                 }
             ) { mutableStateOf(prettifiers.first()) },
             errorMessage = null,
@@ -538,6 +543,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 PayloadMessage.Type.OutgoingData -> ">"
                                 PayloadMessage.Type.Connected -> "="
                                 PayloadMessage.Type.Disconnected -> "="
+                                PayloadMessage.Type.Error -> "x"
                             },
                             color = textColour,
                             fontFamily = FontFamily.Monospace,

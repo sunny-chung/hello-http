@@ -214,6 +214,10 @@ class NetworkClientManager : CallDataStore {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendPayload(resolvedPayload) }
     }
 
+    fun sendEndOfStream(selectedRequestExampleId: String) {
+        getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendEndOfStream() }
+    }
+
     fun cancel(selectedRequestExampleId: String) {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
     }

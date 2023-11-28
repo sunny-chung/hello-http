@@ -72,7 +72,8 @@ data class UserRequestTemplate(
                         body = if (it.body is StringBody) it.body else StringBody("")
                     )
                 },
-                grpc = UserGrpcRequest()
+                grpc = grpc ?: UserGrpcRequest(),
+                payloadExamples = payloadExamples ?: listOf(PayloadExample(id = uuidString(), name = "New Payload", body = "")),
             )
         } else {
             copy(application = application, method = method)
