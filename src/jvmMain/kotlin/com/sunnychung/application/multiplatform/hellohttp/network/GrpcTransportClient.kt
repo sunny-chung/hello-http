@@ -181,6 +181,19 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                 emitEvent(call.id, "Connecting to ${hostFromUrl(request.url)}")
 
+                fun setStreamError(e: Throwable) {
+                    if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
+                        out.payloadExchanges!! += PayloadMessage(
+                            instant = KInstant.now(),
+                            type = PayloadMessage.Type.Error,
+                            data = (e.message?.let { "Error: $it" } ?: "Error").encodeToByteArray()
+                        )
+                    } else {
+                        out.errorMessage = e.message
+                    }
+                    out.isError = true
+                }
+
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
                 try {
                     val cancel = {
@@ -201,19 +214,6 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                     if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
                         out.payloadExchanges = mutableListOf()
-                    }
-
-                    fun setStreamError(e: Throwable) {
-                        if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
-                            out.payloadExchanges!! += PayloadMessage(
-                                instant = KInstant.now(),
-                                type = PayloadMessage.Type.Error,
-                                data = (e.message?.let { "Error: $it" } ?: "Error").encodeToByteArray()
-                            )
-                        } else {
-                            out.errorMessage = e.message
-                        }
-                        out.isError = true
                     }
 
                     responseFlow = responseFlow.onEach {
@@ -282,6 +282,12 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                             cancel()
                         }
                         call.status = ConnectionStatus.OPEN_FOR_STREAMING
+                    } else if (!methodDescriptor0.isClientStreaming && methodDescriptor0.isServerStreaming) {
+                        ClientCalls.asyncServerStreamingCall(
+                            grpcCall,
+                            buildGrpcRequest((request.body as StringBody).value),
+                            responseObserver
+                        )
                     } else {
                         TODO()
                     }
@@ -305,16 +311,14 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                     out.statusCode = e.status.code.value()
                     out.statusText = e.status.code.name
-                    out.errorMessage = e.message
-                    out.isError = true
+                    setStreamError(e)
 
                     log.d(e) { "Grpc Status Error" }
                 } catch (e: Throwable) {
                     out.endAt = KInstant.now()
                     call.status = ConnectionStatus.DISCONNECTED
 
-                    out.errorMessage = e.message
-                    out.isError = true
+                    setStreamError(e)
 
                     log.d(e) { "Grpc Error" }
                 } finally {
