@@ -101,6 +101,12 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
             try {
 
+                call.waitForPreparation()
+                out.startAt = KInstant.now()
+                out.application = ProtocolApplication.Grpc
+
+                emitEvent(call.id, "Connecting to ${hostFromUrl(request.url)}")
+
                 val channel0 = buildChannel(uri, sslConfig) // blocking call
                 val channel = ClientInterceptors.intercept(channel0, object : ClientInterceptor {
                     override fun <ReqT : Any?, RespT : Any?> interceptCall(
@@ -174,12 +180,6 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                         }
                         .build()
                 }
-
-                call.waitForPreparation()
-                out.startAt = KInstant.now()
-                out.application = ProtocolApplication.Grpc
-
-                emitEvent(call.id, "Connecting to ${hostFromUrl(request.url)}")
 
                 fun setStreamError(e: Throwable) {
                     if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
@@ -263,16 +263,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                         }
                     }
 
-                    if (!methodDescriptor0.isClientStreaming && !methodDescriptor0.isServerStreaming) {
-                        ClientCalls.asyncUnaryCall(
-                            grpcCall,
-                            buildGrpcRequest((request.body as StringBody).value),
-                            responseObserver
-                        )
-                    } else if (methodDescriptor0.isClientStreaming && !methodDescriptor0.isServerStreaming) {
-                        val requestObserver = ClientCalls.asyncClientStreamingCall(
-                            grpcCall, responseObserver
-                        )
+                    fun initiateClientStreamableCall(requestObserver: StreamObserver<DynamicMessage>) {
                         call.sendPayload = buildSendPayloadFunction(requestObserver)
                         call.sendEndOfStream = buildSendEndOfStream(requestObserver)
                         call.cancel = {
@@ -281,15 +272,33 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                             } catch (_: Throwable) {}
                             cancel()
                         }
+                        // actually, at this stage it could be not yet connected
                         call.status = ConnectionStatus.OPEN_FOR_STREAMING
+                        emitEvent(call.id, "Created a channel for streaming")
+                    }
+
+                    if (!methodDescriptor0.isClientStreaming && !methodDescriptor0.isServerStreaming) {
+                        ClientCalls.asyncUnaryCall(
+                            grpcCall,
+                            buildGrpcRequest((request.body as StringBody).value),
+                            responseObserver
+                        )
+                    } else if (methodDescriptor0.isClientStreaming && !methodDescriptor0.isServerStreaming) {
+                        initiateClientStreamableCall(ClientCalls.asyncClientStreamingCall(
+                            grpcCall, responseObserver
+                        ))
                     } else if (!methodDescriptor0.isClientStreaming && methodDescriptor0.isServerStreaming) {
                         ClientCalls.asyncServerStreamingCall(
                             grpcCall,
                             buildGrpcRequest((request.body as StringBody).value),
                             responseObserver
                         )
+                    } else if (methodDescriptor0.isClientStreaming && methodDescriptor0.isServerStreaming) {
+                        initiateClientStreamableCall(ClientCalls.asyncBidiStreamingCall(
+                            grpcCall, responseObserver
+                        ))
                     } else {
-                        TODO()
+                        throw IllegalStateException("This condition should not be reached")
                     }
 
                     responseFlow.collect()
