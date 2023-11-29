@@ -45,6 +45,7 @@ import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2FrameLogger.Direct
 import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2Headers
 import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2Settings
 import io.grpc.netty.shaded.io.netty.handler.logging.LogLevel
+import io.grpc.netty.shaded.io.netty.util.AsciiString
 import io.grpc.protobuf.ProtoUtils
 import io.grpc.reflection.v1alpha.ServerReflectionGrpc
 import io.grpc.reflection.v1alpha.ServerReflectionRequest
@@ -73,6 +74,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         callId: String, uri: URI, sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>?,
         incomingBytesFlow: MutableSharedFlow<RawPayload>?,
+        out: UserResponse?
     ): ManagedChannel {
         return (ManagedChannelBuilder.forAddress(uri.host, uri.port))
             .apply {
@@ -164,6 +166,18 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                     headers.joinToString("\n") { "${it.key}: ${it.value}" }
                                 }"
                             )
+
+                            if (out != null && headers.contains(AsciiString("grpc-status"))) {
+                                try {
+                                    val status = headers.get(AsciiString("grpc-status")).toString().toIntOrNull()
+                                    status?.let { status ->
+                                        out.statusCode = status
+                                        out.statusText = Status.fromCodeValue(status).code.name
+                                    }
+                                } catch (e: Throwable) {
+                                    log.w(e) { "Cannot parse grpc status code" }
+                                }
+                            }
                         }
 
                         override fun logHeaders(
@@ -369,7 +383,8 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     uri = uri,
                     sslConfig = sslConfig,
                     outgoingBytesFlow = call.outgoingBytes as MutableSharedFlow<RawPayload>,
-                    incomingBytesFlow = call.incomingBytes as MutableSharedFlow<RawPayload>
+                    incomingBytesFlow = call.incomingBytes as MutableSharedFlow<RawPayload>,
+                    out = out,
                 ) // blocking call
                 val channel = ClientInterceptors.intercept(channel0, object : ClientInterceptor {
                     override fun <ReqT : Any?, RespT : Any?> interceptCall(
@@ -569,7 +584,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     emitEvent(call.id, "Received response message") // TODO better events?
 
                     out.endAt = KInstant.now()
-                    if (!out.isError) {
+                    if (!out.isError && out.statusCode == null && out.statusText == null) {
                         out.statusText = "No error"
                     }
                     call.status = ConnectionStatus.DISCONNECTED
@@ -628,7 +643,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         sslConfig: SslConfig
     ): GrpcApiSpec {
         val uri = URI.create(url)
-        val channel = buildChannel("", uri, sslConfig, null, null)
+        val channel = buildChannel("", uri, sslConfig, null, null, null)
         try {
             return fetchServiceSpec("${uri.host}:${uri.port}", channel)
         } finally {
