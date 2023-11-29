@@ -19,6 +19,8 @@ repositories {
     mavenLocal()
 }
 
+val grpcVersion = "1.59.1"
+
 kotlin {
     jvm {
         jvmToolchain(11)
@@ -45,8 +47,9 @@ kotlin {
                 implementation("com.graphql-java:graphql-java:21.3")
 
                 // grpc
-                val grpcVersion = "1.59.0"
-                runtimeOnly("io.grpc:grpc-netty-shaded:$grpcVersion")
+//                runtimeOnly("io.grpc:grpc-netty-shaded:$grpcVersion-patch1")
+                implementation("io.grpc:grpc-netty-shaded:$grpcVersion-patch1")
+//                implementation("io.grpc:grpc-netty:$grpcVersion-patch1")
                 implementation("io.grpc:grpc-protobuf:$grpcVersion")
 //    implementation("io.grpc:grpc-stub:$grpcVersion")
                 implementation("io.grpc:grpc-services:$grpcVersion")
@@ -54,6 +57,7 @@ kotlin {
                 compileOnly("org.apache.tomcat:annotations-api:6.0.53")
                 implementation("com.google.protobuf:protobuf-java-util:3.25.1")
                 implementation("com.google.protobuf:protobuf-kotlin:3.25.1")
+
 
                 implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
@@ -74,6 +78,20 @@ kotlin {
                 implementation(kotlin("test"))
                 implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.2")
             }
+        }
+    }
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.grpc" && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
+            if (requested.version == grpcVersion) {
+                useVersion("$grpcVersion-patch1")
+                because("transport inspection")
+            }
+        } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
+            useVersion(grpcVersion)
+            because("not built")
         }
     }
 }

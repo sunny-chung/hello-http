@@ -13,11 +13,14 @@ import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
+import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.flowAndStreamObserver
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -26,7 +29,6 @@ import io.grpc.Channel
 import io.grpc.ClientCall
 import io.grpc.ClientInterceptor
 import io.grpc.ClientInterceptors
-import io.grpc.ForwardingClientCall
 import io.grpc.ForwardingClientCall.SimpleForwardingClientCall
 import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener
 import io.grpc.ManagedChannel
@@ -35,6 +37,14 @@ import io.grpc.Metadata
 import io.grpc.MethodDescriptor
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
+import io.grpc.netty.shaded.io.netty.buffer.ByteBuf
+import io.grpc.netty.shaded.io.netty.channel.ChannelHandlerContext
+import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2Flags
+import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2FrameLogger
+import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2FrameLogger.Direction
+import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2Headers
+import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2Settings
+import io.grpc.netty.shaded.io.netty.handler.logging.LogLevel
 import io.grpc.protobuf.ProtoUtils
 import io.grpc.reflection.v1alpha.ServerReflectionGrpc
 import io.grpc.reflection.v1alpha.ServerReflectionRequest
@@ -43,22 +53,268 @@ import io.grpc.stub.ClientCalls
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.apache.hc.core5.http2.H2Error
 import java.net.URI
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 class GrpcTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
-    fun buildChannel(uri: URI, sslConfig: SslConfig): ManagedChannel {
-        return ManagedChannelBuilder.forAddress(uri.host, uri.port)
+    fun buildChannel(
+        callId: String, uri: URI, sslConfig: SslConfig,
+        outgoingBytesFlow: MutableSharedFlow<RawPayload>?,
+        incomingBytesFlow: MutableSharedFlow<RawPayload>?,
+    ): ManagedChannel {
+        return (ManagedChannelBuilder.forAddress(uri.host, uri.port))
+            .apply {
+                if (outgoingBytesFlow != null && incomingBytesFlow != null) {
+                    fun emitFrame(direction: Direction, streamId: Int?, content: String) = runBlocking {
+                        when (direction) {
+                            Direction.OUTBOUND -> outgoingBytesFlow
+                            Direction.INBOUND -> incomingBytesFlow
+                        }.emit(Http2Frame(
+                            instant = KInstant.now(),
+                            streamId = streamId?.takeIf { it >= 1 },
+                            content = content
+                        ))
+                    }
+
+                    fun serializeFlags(flags: Map<String, Boolean>): String {
+                        return flags.filter { it.value }
+                            .keys
+                            .joinToString(separator = " ")
+                            .emptyToNull()
+                            ?: "-"
+                    }
+
+                    frameLogger(object : Http2FrameLogger(LogLevel.DEBUG) {
+                        override fun logSettings(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            settings: Http2Settings
+                        ) {
+                            emitFrame(
+                                direction,
+                                null,
+                                "Frame: SETTINGS; flags: -\n" +
+                                        settings.map { "${http2SettingKey(it.key)}: ${it.value}" }.joinToString("\n")
+                            )
+                        }
+
+                        override fun logSettingsAck(direction: Direction, ctx: ChannelHandlerContext) {
+                            emitFrame(
+                                direction,
+                                null,
+                                "Frame: SETTINGS; flags: ACK"
+                            )
+                        }
+
+                        override fun logWindowsUpdate(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            streamId: Int,
+                            windowSizeIncrement: Int
+                        ) {
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: WINDOW_UPDATE\nIncrement $windowSizeIncrement"
+                            )
+                        }
+
+                        override fun logPing(direction: Direction, ctx: ChannelHandlerContext, data: Long) {
+                            emitFrame(
+                                direction,
+                                null,
+                                "Frame: PING; flags: -\nData: $data"
+                            )
+                        }
+
+                        override fun logPingAck(direction: Direction, ctx: ChannelHandlerContext, data: Long) {
+                            emitFrame(
+                                direction,
+                                null,
+                                "Frame: PING; flags: ACK\nData: $data"
+                            )
+                        }
+
+                        override fun logHeaders(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            streamId: Int,
+                            headers: Http2Headers,
+                            padding: Int,
+                            endStream: Boolean
+                        ) {
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: HEADERS; flags: ${
+                                    serializeFlags(mapOf("END_STREAM" to endStream))
+                                }\n${
+                                    headers.joinToString("\n") { "${it.key}: ${it.value}" }
+                                }"
+                            )
+                        }
+
+                        override fun logHeaders(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            streamId: Int,
+                            headers: Http2Headers,
+                            streamDependency: Int,
+                            weight: Short,
+                            exclusive: Boolean,
+                            padding: Int,
+                            endStream: Boolean
+                        ) {
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: HEADERS; streamDependency: $streamDependency; weight: $weight; flags: ${
+                                    serializeFlags(mapOf("EXCLUSIVE" to exclusive, "END_STREAM" to endStream))
+                                }\n${
+                                    headers.joinToString("\n") { "${it.key}: ${it.value}" }
+                                }"
+                            )
+                        }
+
+                        override fun logData(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            streamId: Int,
+                            data: ByteBuf,
+                            padding: Int,
+                            endStream: Boolean
+                        ) {
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: DATA; flags: ${
+                                    serializeFlags(mapOf("END_STREAM" to endStream))
+                                }; length: ${data.readableBytes()}\n${
+                                    data.serialize()
+                                }"
+                            )
+                        }
+
+                        override fun logPushPromise(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            streamId: Int,
+                            promisedStreamId: Int,
+                            headers: Http2Headers,
+                            padding: Int
+                        ) {
+                            // actually gRPC won't have this
+
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: PUSH_PROMISE; promisedStreamId: $promisedStreamId\n${
+                                    headers.joinToString("\n") { "${it.key}: ${it.value}" }
+                                }"
+                            )
+                        }
+
+                        override fun logRstStream(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            streamId: Int,
+                            errorCode: Long
+                        ) {
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: RST_STREAM\n" +
+                                "Code ${serializeErrorCode(errorCode)}"
+                            )
+                        }
+
+                        override fun logGoAway(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            lastStreamId: Int,
+                            errorCode: Long,
+                            debugData: ByteBuf
+                        ) {
+                            emitFrame(
+                                direction,
+                                null,
+                                "Frame: GOAWAY; length: ${debugData.readableBytes()}\n" +
+                                        "Last stream $lastStreamId\n" +
+                                        "Code ${serializeErrorCode(errorCode)}\n" +
+                                        debugData.serialize()
+                            )
+                        }
+
+                        override fun logPriority(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            streamId: Int,
+                            streamDependency: Int,
+                            weight: Short,
+                            exclusive: Boolean
+                        ) {
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: PRIORITY; streamDependency: $streamDependency; weight: $weight; flags: ${
+                                    serializeFlags(mapOf("EXCLUSIVE" to exclusive))
+                                }"
+                            )
+                        }
+
+                        override fun logUnknownFrame(
+                            direction: Direction,
+                            ctx: ChannelHandlerContext,
+                            frameType: Byte,
+                            streamId: Int,
+                            flags: Http2Flags,
+                            data: ByteBuf
+                        ) {
+                            emitFrame(
+                                direction,
+                                streamId,
+                                "Frame: Unknown (0x${Integer.toHexString(frameType.toInt())}); flags: $flags; length: ${data.readableBytes()}\n${
+                                    data.serialize()
+                                }"
+                            )
+                        }
+
+                        fun ByteBuf.serialize(): String {
+                            val bytes = ByteArray(readableBytes())
+                            getBytes(readerIndex(), bytes)
+                            return bytes.decodeToString()
+                        }
+
+                        fun serializeErrorCode(errorCode: Long): String {
+                            return H2Error.getByCode(errorCode.toInt())?.name ?: "0x${Integer.toHexString(errorCode.toInt())}"
+                        }
+
+                        fun http2SettingKey(key: Char): String {
+                            return when (key) {
+                                '\u0001' -> "HEADER_TABLE_SIZE"
+                                '\u0002' -> "ENABLE_PUSH"
+                                '\u0003' -> "MAX_CONCURRENT_STREAMS"
+                                '\u0004' -> "INITIAL_WINDOW_SIZE"
+                                '\u0005' -> "MAX_FRAME_SIZE"
+                                '\u0006' -> "MAX_HEADER_LIST_SIZE"
+                                else -> "0x" + Integer.toHexString(key.code)
+                            }
+                        }
+                    })
+                }
+            }
             .disableRetry()
             .apply {
                 if (sslConfig.isInsecure == true) {
@@ -104,10 +360,17 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 call.waitForPreparation()
                 out.startAt = KInstant.now()
                 out.application = ProtocolApplication.Grpc
+                out.protocol = ProtocolVersion(Protocol.Http, 2, 0)
 
                 emitEvent(call.id, "Connecting to ${hostFromUrl(request.url)}")
 
-                val channel0 = buildChannel(uri, sslConfig) // blocking call
+                val channel0 = buildChannel(
+                    callId = call.id,
+                    uri = uri,
+                    sslConfig = sslConfig,
+                    outgoingBytesFlow = call.outgoingBytes as MutableSharedFlow<RawPayload>,
+                    incomingBytesFlow = call.incomingBytes as MutableSharedFlow<RawPayload>
+                ) // blocking call
                 val channel = ClientInterceptors.intercept(channel0, object : ClientInterceptor {
                     override fun <ReqT : Any?, RespT : Any?> interceptCall(
                         method: MethodDescriptor<ReqT, RespT>,
@@ -365,7 +628,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         sslConfig: SslConfig
     ): GrpcApiSpec {
         val uri = URI.create(url)
-        val channel = buildChannel(uri, sslConfig)
+        val channel = buildChannel("", uri, sslConfig, null, null)
         try {
             return fetchServiceSpec("${uri.host}:${uri.port}", channel)
         } finally {
