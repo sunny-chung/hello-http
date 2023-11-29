@@ -145,7 +145,7 @@ fun AppContentView() {
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
     val requestCollection = requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null).value?.first }
-    var selectedRequestId by rememberLast(requestCollection?.id) { mutableStateOf<String?>(null) }
+    var selectedRequestId by rememberLast(selectedSubprojectId) { mutableStateOf<String?>(null) }
     val request = let(requestCollection?.id, selectedRequestId) { di, selectedRequestId ->
         // collect immediately, or fast typing would lead to race conditions
         requestCollectionRepository.subscribeLatestRequest(di, selectedRequestId)
@@ -159,7 +159,7 @@ fun AppContentView() {
 //        }
     }
     var selectedRequestExampleId by rememberLast(request?.id) { mutableStateOf<String?>(request?.examples?.first()?.id) }
-    log.d { "selectedRequestId=$selectedRequestId request=${request?.id} selectedRequestExampleId=$selectedRequestExampleId" }
+    log.d { "selectedSubprojectId=$selectedSubprojectId selectedRequestId=$selectedRequestId request=${request?.id} selectedRequestExampleId=$selectedRequestExampleId" }
 
     // purpose of this variable is to force refresh UI once when there is new request
     // so that `callDataUpdates` resolves to a new and correct flow.
@@ -477,10 +477,11 @@ fun AppContentView() {
                                         }
                                     },
                                     isFetchingApiSpec = run {
+                                        val selectedSubprojectId = selectedSubprojectId ?: return@run false
                                         val r = if (requestNonNull.application == ProtocolApplication.Grpc) {
                                             networkClientManager.subscribeGrpcApiSpecFetchingStatus(
                                                 url = requestNonNull.url,
-                                                subprojectId = selectedSubprojectId!!
+                                                subprojectId = selectedSubprojectId
                                             ).collectAsState().value
                                         } else {
                                             false
