@@ -37,6 +37,8 @@ import io.grpc.Metadata
 import io.grpc.MethodDescriptor
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
+import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.netty.shaded.io.netty.buffer.ByteBuf
 import io.grpc.netty.shaded.io.netty.channel.ChannelHandlerContext
 import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2Flags
@@ -76,8 +78,19 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         incomingBytesFlow: MutableSharedFlow<RawPayload>?,
         out: UserResponse?
     ): ManagedChannel {
-        return (ManagedChannelBuilder.forAddress(uri.host, uri.port))
+        return (ManagedChannelBuilder.forAddress(uri.host, uri.port) as NettyChannelBuilder)
             .apply {
+                if (uri.scheme in setOf("http", "grpc")) {
+                    usePlaintext();
+                } else {
+                    if (sslConfig.isInsecure == true) {
+                        log.d { "Insecure gRPC" }
+                        GrpcSslContexts.forClient()
+                            .trustManager(createSslContext(sslConfig).second)
+                            .build()
+                            .let { sslContext(it) }
+                    }
+                }
                 if (outgoingBytesFlow != null && incomingBytesFlow != null) {
                     fun emitFrame(direction: Direction, streamId: Int?, content: String) = runBlocking {
                         when (direction) {
@@ -330,11 +343,6 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 }
             }
             .disableRetry()
-            .apply {
-                if (sslConfig.isInsecure == true) {
-                    usePlaintext()
-                }
-            }
             .build()
     }
 
