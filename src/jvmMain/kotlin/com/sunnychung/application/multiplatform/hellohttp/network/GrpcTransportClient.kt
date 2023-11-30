@@ -31,6 +31,7 @@ import io.grpc.ClientInterceptor
 import io.grpc.ClientInterceptors
 import io.grpc.ForwardingClientCall.SimpleForwardingClientCall
 import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener
+import io.grpc.GrpcChannelListener
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import io.grpc.Metadata
@@ -41,6 +42,7 @@ import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.netty.shaded.io.netty.buffer.ByteBuf
 import io.grpc.netty.shaded.io.netty.channel.ChannelHandlerContext
+import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2CodecUtil
 import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2Flags
 import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2FrameLogger
 import io.grpc.netty.shaded.io.netty.handler.codec.http2.Http2FrameLogger.Direction
@@ -66,9 +68,11 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.hc.core5.http2.H2Error
+import java.net.SocketAddress
 import java.net.URI
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import javax.net.ssl.SSLSession
 
 class GrpcTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
@@ -112,11 +116,19 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     }
 
                     frameLogger(object : Http2FrameLogger(LogLevel.DEBUG) {
+                        var isFirstSettingFrame = true
+
                         override fun logSettings(
                             direction: Direction,
                             ctx: ChannelHandlerContext,
                             settings: Http2Settings
                         ) {
+                            if (isFirstSettingFrame) {
+                                // TODO log the bytes directly in netty ChannelOutboundInvoker#write
+                                emitFrame(direction, null, Http2CodecUtil.connectionPrefaceBuf().serialize())
+                                isFirstSettingFrame = false
+                            }
+
                             emitFrame(
                                 direction,
                                 null,
@@ -342,6 +354,36 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     })
                 }
             }
+            .channelListener(object : GrpcChannelListener {
+                override fun onDnsStartResolve(host: String?) {
+                    emitEvent(callId, "DNS resolution of domain [$host] started")
+                }
+
+                override fun onDnsResolved(addresses: List<SocketAddress>) {
+                    emitEvent(callId, "DNS resolved to $addresses")
+                    emitEvent(callId, "Connecting to the host") // TODO can the actual host be grabbed?
+                }
+
+                override fun onChannelActive() {
+                    emitEvent(callId, "HTTP/2 channel established.")
+                }
+
+                override fun onChannelInactive() {
+                    emitEvent(callId, "Channel closed.")
+                }
+
+                override fun onTlsHandshakeComplete(session: SSLSession, applicationProtocol: String?) {
+                    var event = "Established TLS upgrade with protocol '${session.protocol}', cipher suite '${session.cipherSuite}'"
+                    if (!applicationProtocol.isNullOrBlank()) {
+                        event += " and application protocol '$applicationProtocol'"
+                    }
+                    event += ".\n\n" +
+                            "Client principal = ${session.localPrincipal}\n" +
+                            "Server principal = ${session.peerPrincipal}\n"
+                    emitEvent(callId, event)
+                }
+
+            })
             .disableRetry()
             .build()
     }
@@ -383,8 +425,6 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 out.startAt = KInstant.now()
                 out.application = ProtocolApplication.Grpc
                 out.protocol = ProtocolVersion(Protocol.Http, 2, 0)
-
-                emitEvent(call.id, "Connecting to ${hostFromUrl(request.url)}")
 
                 val channel0 = buildChannel(
                     callId = call.id,
@@ -478,6 +518,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                         out.errorMessage = e.message
                     }
                     out.isError = true
+                    emitEvent(call.id, "Encountered error - ${e.message}")
                 }
 
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
