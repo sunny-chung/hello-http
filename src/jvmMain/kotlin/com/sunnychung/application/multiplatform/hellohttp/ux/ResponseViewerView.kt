@@ -522,45 +522,47 @@ fun ResponseStreamView(response: UserResponse) {
             val scrollState = rememberLazyListState()
 
             LazyColumn(state = scrollState) {
-                items(items = response.payloadExchanges?.reversed() ?: emptyList()) {
-                    var modifier: Modifier = Modifier
-                    modifier = modifier.clickable { selectedMessage = it }
-                    Row(modifier = modifier) {
-                        val textColour = if (displayMessage?.id == it.id) {
-                            colours.highlight
-                        } else {
-                            colours.primary
+                synchronized(response.payloadExchanges ?: Any()) {
+                    items(items = response.payloadExchanges?.reversed() ?: emptyList()) {
+                        var modifier: Modifier = Modifier
+                        modifier = modifier.clickable { selectedMessage = it }
+                        Row(modifier = modifier) {
+                            val textColour = if (displayMessage?.id == it.id) {
+                                colours.highlight
+                            } else {
+                                colours.primary
+                            }
+                            AppText(
+                                text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
+                                color = textColour,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
+                            )
+                            AppText(
+                                text = when (it.type) {
+                                    PayloadMessage.Type.IncomingData -> "<"
+                                    PayloadMessage.Type.OutgoingData -> ">"
+                                    PayloadMessage.Type.Connected -> "="
+                                    PayloadMessage.Type.Disconnected -> "="
+                                    PayloadMessage.Type.Error -> "x"
+                                },
+                                color = textColour,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
+                            )
+                            AppText(
+                                text = it.data?.decodeToString()?.replace("\\s+".toRegex(), " ") ?: "",
+                                color = textColour,
+                                isDisableWordWrap = true,
+                                softWrap = false,
+                                maxLines = 1,
+                                fontFamily = FontFamily.Monospace,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
+                            )
                         }
-                        AppText(
-                            text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
-                            color = textColour,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
-                        )
-                        AppText(
-                            text = when (it.type) {
-                                PayloadMessage.Type.IncomingData -> "<"
-                                PayloadMessage.Type.OutgoingData -> ">"
-                                PayloadMessage.Type.Connected -> "="
-                                PayloadMessage.Type.Disconnected -> "="
-                                PayloadMessage.Type.Error -> "x"
-                            },
-                            color = textColour,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
-                        )
-                        AppText(
-                            text = it.data?.decodeToString()?.replace("\\s+".toRegex(), " ") ?: "",
-                            color = textColour,
-                            isDisableWordWrap = true,
-                            softWrap = false,
-                            maxLines = 1,
-                            fontFamily = FontFamily.Monospace,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
-                        )
                     }
                 }
             }
