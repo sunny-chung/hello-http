@@ -13,6 +13,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierMana
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
 import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
+import com.sunnychung.application.multiplatform.hellohttp.repository.ApiSpecificationCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
@@ -38,6 +39,7 @@ object AppContext {
     val RequestCollectionRepository = RequestCollectionRepository()
     val ProjectCollectionRepository = ProjectCollectionRepository()
     val ResponseCollectionRepository = ResponseCollectionRepository()
+    val ApiSpecificationCollectionRepository = ApiSpecificationCollectionRepository()
     val UserPreferenceRepository = UserPreferenceRepository()
 
     val DialogViewModel = DialogViewModel()

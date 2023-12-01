@@ -39,10 +39,12 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 fun ProjectAndEnvironmentViewV2(
     modifier: Modifier = Modifier,
     projects: List<Project>,
+    selectedProject: Project?,
     selectedSubproject: Subproject?,
     selectedEnvironment: Environment?,
     onAddProject: (Project) -> Unit,
     onAddSubproject: (project: Project, newSubproject: Subproject) -> Unit,
+    onSelectProject: (Project?) -> Unit,
     onSelectSubproject: (Subproject?) -> Unit,
 //    environments: List<Environment>,
     onSelectEnvironment: (Environment?) -> Unit,
@@ -54,15 +56,13 @@ fun ProjectAndEnvironmentViewV2(
     val colors = LocalColor.current
 
     var expandedSection by remember { mutableStateOf(ExpandedSection.Project) }
-    var selectedProject by remember { mutableStateOf<Project?>(null) }
-//    var selectedSubproject by remember { mutableStateOf<Subproject?>(null) }
 
     var showDialogType by remember { mutableStateOf(EditDialogType.None) }
     var dialogTextFieldValue by remember { mutableStateOf("") }
     var dialogIsCreate by remember { mutableStateOf<Boolean>(true) }
 
     if (selectedProject == null && projects.size == 1) {
-        selectedProject = projects.first()
+        onSelectProject(projects.first())
         expandedSection = ExpandedSection.Subproject
     }
     if (selectedSubproject == null && selectedProject != null && selectedProject!!.subprojects.size == 1) {
@@ -87,11 +87,11 @@ fun ProjectAndEnvironmentViewV2(
                         if (selectedProject == null) {
                             expandedSection = ExpandedSection.Subproject
                         }
-                        selectedProject = project
+                        onSelectProject(project)
                     } else {
                         val updated = selectedProject!!.copy(name = dialogTextFieldValue)
                         onUpdateProject(updated)
-                        selectedProject = updated
+                        onSelectProject(updated)
                     }
                 }
                 EditDialogType.Subproject -> {
@@ -193,7 +193,7 @@ fun ProjectAndEnvironmentViewV2(
                                 hasHoverHighlight = true,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { selectedProject = it; expandedSection = ExpandedSection.Subproject }
+                                    .clickable { onSelectProject(it); expandedSection = ExpandedSection.Subproject }
                             )
                         }
                     }
@@ -207,7 +207,7 @@ fun ProjectAndEnvironmentViewV2(
                         selectedItem = selectedProject,
                         isLabelFillMaxWidth = true,
                         onClickItem = {
-                            selectedProject = it
+                            onSelectProject(it)
                             onSelectSubproject(null)
                             onSelectEnvironment(null)
                             true
@@ -226,9 +226,9 @@ fun ProjectAndEnvironmentViewV2(
                         onDeleteProject(selectedProject!!)
                         val anotherProject = projects.firstOrNull { it.id != selectedProject!!.id }
                         if (anotherProject != null) {
-                            selectedProject = anotherProject
+                            onSelectProject(anotherProject)
                         } else {
-                            selectedProject = null
+                            onSelectProject(null)
                             expandedSection = ExpandedSection.Project
                         }
                         onSelectSubproject(null)
@@ -366,10 +366,12 @@ private enum class EditDialogType {
 fun ProjectAndEnvironmentViewV2Preview() {
     ProjectAndEnvironmentViewV2(
         projects = listOf(Project(id = "p1", name = "Project A", mutableListOf(Subproject("a1", "Subproject A1", mutableListOf(), mutableListOf()), Subproject("a2", "Subproject A2", mutableListOf(), mutableListOf()))), Project(id = "p2", name = "Project B", mutableListOf()), Project(id = "p3", name = "Project C", mutableListOf())),
+        selectedProject = null,
         selectedSubproject = null,
         selectedEnvironment = null,
 //        environments = listOf(Environment(name = "Environment A", id = "A", variables = emptyList()), Environment(name = "Environment B", id = "B", variables = emptyList()), Environment(name = "Environment C", id = "C", variables = emptyList())),
         onSelectEnvironment = {},
+        onSelectProject = {},
         onSelectSubproject = {},
         onAddProject = {},
         onAddSubproject = {_, _ ->},

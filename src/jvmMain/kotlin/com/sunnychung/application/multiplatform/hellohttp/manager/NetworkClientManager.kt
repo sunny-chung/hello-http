@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecCollection
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestExtra
@@ -52,6 +54,7 @@ class NetworkClientManager : CallDataStore {
 
     private val projectCollectionRepository by lazy { AppContext.ProjectCollectionRepository }
     private val requestCollectionRepository by lazy { AppContext.RequestCollectionRepository }
+    private val apiSpecificationCollectionRepository by lazy { AppContext.ApiSpecificationCollectionRepository }
     private val persistResponseManager by lazy { AppContext.PersistResponseManager }
     private val httpTransportClient by lazy { AppContext.HttpTransportClient }
     private val webSocketTransportClient by lazy { AppContext.WebSocketTransportClient }
@@ -68,14 +71,14 @@ class NetworkClientManager : CallDataStore {
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
     override fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData> = liteCallDataMap
 
-    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, subprojectId: String) {
+    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String) {
         val callData = try {
             val networkRequest = request.toHttpRequest(
                 exampleId = requestExampleId,
                 environment = environment
             ).run {
                 if (request.application == ProtocolApplication.Grpc) {
-                    val apiSpec = runBlocking { projectCollectionRepository.readSubproject(ProjectAndEnvironmentsDI(), subprojectId) }
+                    val apiSpec = runBlocking { apiSpecificationCollectionRepository.read(ApiSpecDI(projectId)) }!!
                         .grpcApiSpecs.first { it.id == request.grpc!!.apiSpecId }
                     copy(extra = (extra as GrpcRequestExtra).copy(apiSpec = apiSpec))
                 } else {
@@ -257,7 +260,7 @@ class NetworkClientManager : CallDataStore {
 
     private fun liteCallKey(url: String, subprojectId: String) = "$subprojectId|${hostFromUrl(url)}"
 
-    fun fetchGrpcApiSpec(url: String, environment: Environment?, subprojectId: String): LiteCallData {
+    fun fetchGrpcApiSpec(url: String, environment: Environment?, projectId: String, subprojectId: String): LiteCallData {
         val call = createLiteCallData()
         call.cancel = { call.isConnecting.value = false }
         liteCallDataMap[call.id] = call
@@ -283,9 +286,14 @@ class NetworkClientManager : CallDataStore {
                 call.isConnecting.value = false
             }
             val subproject = projectCollectionRepository.readSubproject(ProjectAndEnvironmentsDI(), subprojectId)
-            subproject.grpcApiSpecs.upsert(apiSpec, condition = { it.name == apiSpec.name }, update = { old, new -> new.copy(id = old.id) })
+            val apiSpecDI = ApiSpecDI(projectId)
+            val apiSpecCollection = apiSpecificationCollectionRepository.readOrCreate(apiSpecDI) { ApiSpecCollection(id = apiSpecDI) }
+            val apiSpecToSave = apiSpecCollection.grpcApiSpecs.upsert(apiSpec, condition = { it.name == apiSpec.name }, update = { old, new -> new.copy(id = old.id) })
+            apiSpecificationCollectionRepository.notifyUpdated(apiSpecDI)
+            if (subproject.grpcApiSpecIds.add(apiSpecToSave.id)) {
+                projectCollectionRepository.updateSubproject(ProjectAndEnvironmentsDI(), subproject)
+            }
             log.d { "after fetch grpc api spec" }
-            projectCollectionRepository.updateSubproject(ProjectAndEnvironmentsDI(), subproject)
         }
         call.cancel = {
             job.cancel(null)

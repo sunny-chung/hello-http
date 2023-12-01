@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
@@ -41,6 +42,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
+import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
@@ -134,12 +136,14 @@ fun AppContentView() {
     val requestCollectionRepository = AppContext.RequestCollectionRepository
     val projectCollectionRepository = AppContext.ProjectCollectionRepository
     val responseCollectionRepository = AppContext.ResponseCollectionRepository
+    val apiSpecificationCollectionRepository = AppContext.ApiSpecificationCollectionRepository
     val projectCollection = remember {
         runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
     }
     val clipboardManager = LocalClipboardManager.current
 
     val coroutineScope = rememberCoroutineScope()
+    var selectedProject by remember { mutableStateOf<Project?>(null) }
     var selectedSubprojectId by remember { mutableStateOf<String?>(null) }
     val selectedSubproject = selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null).value?.first }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
@@ -160,6 +164,11 @@ fun AppContentView() {
     }
     var selectedRequestExampleId by rememberLast(request?.id) { mutableStateOf<String?>(request?.examples?.first()?.id) }
     log.d { "selectedSubprojectId=$selectedSubprojectId selectedRequestId=$selectedRequestId request=${request?.id} selectedRequestExampleId=$selectedRequestExampleId" }
+
+    val projectApiSpecCollection = selectedProject?.let { apiSpecificationCollectionRepository.subscribeLatestCollection(
+        ApiSpecDI(it.id)
+    ).collectAsState(null).value?.first }
+    val projectGrpcSpecs = projectApiSpecCollection?.grpcApiSpecs?.associateBy { it.id }
 
     // purpose of this variable is to force refresh UI once when there is new request
     // so that `callDataUpdates` resolves to a new and correct flow.
@@ -269,6 +278,7 @@ fun AppContentView() {
                         log.d { "projectUpdates $projectUpdates" }
                         ProjectAndEnvironmentViewV2(
                             projects = projectCollection.projects.toList(),
+                            selectedProject = selectedProject,
                             selectedSubproject = selectedSubproject,
                             selectedEnvironment = selectedEnvironment,
                             onAddProject = {
@@ -280,6 +290,7 @@ fun AppContentView() {
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
                             },
                             onSelectEnvironment = { selectedEnvironment = it },
+                            onSelectProject = { selectedProject = it },
                             onSelectSubproject = {
                                 selectedSubprojectId = it?.id
                                 it?.let { loadRequestsForSubproject(it) }
@@ -398,7 +409,9 @@ fun AppContentView() {
                                     selectedExampleId = selectedRequestExampleId!!,
                                     editExampleNameViewModel = editExampleNameViewModel,
                                     environment = selectedEnvironment,
-                                    grpcApiSpecs = selectedSubproject?.grpcApiSpecs ?: emptyList(),
+                                    grpcApiSpecs = selectedSubproject?.grpcApiSpecIds?.mapNotNull {
+                                        projectGrpcSpecs?.get(it)
+                                    } ?: emptyList(),
                                     onSelectExample = {
                                         selectedRequestExampleId = it.id
                                         updateResponseView()
@@ -408,6 +421,7 @@ fun AppContentView() {
                                             request = requestNonNull,
                                             requestExampleId = selectedRequestExampleId!!,
                                             environment = selectedEnvironment,
+                                            projectId = selectedProject!!.id,
                                             subprojectId = selectedSubproject!!.id
                                         )
                                     },
@@ -440,6 +454,7 @@ fun AppContentView() {
                                             request = requestNonNull,
                                             requestExampleId = selectedRequestExampleId!!,
                                             environment = selectedEnvironment,
+                                            projectId = selectedProject!!.id,
                                             subprojectId = selectedSubproject!!.id
                                         )
                                     },
@@ -463,6 +478,7 @@ fun AppContentView() {
                                             networkClientManager.fetchGrpcApiSpec(
                                                 url = requestNonNull.url,
                                                 environment = selectedEnvironment,
+                                                projectId = selectedProject!!.id,
                                                 subprojectId = selectedSubprojectId!!
                                             )
                                             forceUpdateUI() // load the "Connecting" icon

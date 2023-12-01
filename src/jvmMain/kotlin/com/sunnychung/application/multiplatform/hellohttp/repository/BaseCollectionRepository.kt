@@ -156,10 +156,10 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
 
     open fun subscribeUnfilteredUpdates(): SharedFlow<Pair<ID, String>> = publishNonPersistedUpdates
 
-    open fun subscribeLatestCollection(di: ID): Flow<Pair<T, String>> = publishNonPersistedUpdates
+    open fun subscribeLatestCollection(di: ID): Flow<Pair<T?, String>> = publishNonPersistedUpdates
         .onSubscription {
             emit(Pair(di, "onSub"))
         }
         .filter { it.first == di }
-        .map { read(di)!! to it.second }
+        .map { read(di) to it.second }
 }
