@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -72,7 +73,7 @@ fun ProjectAndEnvironmentViewV2(
 
     MainWindowDialog(
         key = "ProjectNameAndSubprojectName",
-        isEnabled = showDialogType in setOf(EditDialogType.Project, EditDialogType.Subproject),
+        isEnabled = showDialogType in setOf(EditDialogType.Project),
         onDismiss = { showDialogType = EditDialogType.None }) {
         val focusRequester = remember { FocusRequester() }
 
@@ -147,6 +148,18 @@ fun ProjectAndEnvironmentViewV2(
         LaunchedEffect(Unit) {
             focusRequester.requestFocus()
         }
+    }
+
+    MainWindowDialog(
+        key = "Subproject",
+        isEnabled = showDialogType in setOf(EditDialogType.Subproject),
+        onDismiss = { showDialogType = EditDialogType.None }
+    ) {
+        SubprojectEditorDialogView(
+            projectId = selectedProject!!.id,
+            subprojectId = selectedSubproject!!.id,
+            modifier = Modifier.padding(12.dp).fillMaxSize(),
+        )
     }
 
     MainWindowDialog(

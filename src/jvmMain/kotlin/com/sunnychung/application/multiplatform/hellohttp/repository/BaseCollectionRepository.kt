@@ -137,7 +137,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
 
     open fun notifyUpdated(identifier: ID) {
         updates += identifier
-        coroutineScope.launch {
+        CoroutineScope(Dispatchers.Main.immediate).launch {
             publishNonPersistedUpdates.emit(Pair(identifier, uuidString()))
         }
     }
