@@ -154,7 +154,7 @@ fun ProjectAndEnvironmentViewV2(
         isEnabled = showDialogType in setOf(EditDialogType.Environment),
         onDismiss = { showDialogType = EditDialogType.None }
     ) {
-        SubprojectEnvironmentsEditorView(
+        SubprojectEnvironmentsEditorDialogView(
             subproject = selectedSubproject!!,
             onSubprojectUpdate = { onUpdateSubproject(it) },
             initialEnvironment = selectedEnvironment,
