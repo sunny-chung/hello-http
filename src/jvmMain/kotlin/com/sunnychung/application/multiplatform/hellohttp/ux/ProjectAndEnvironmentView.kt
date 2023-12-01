@@ -308,12 +308,16 @@ fun ProjectAndEnvironmentViewV2(
                             resource = "edit.svg",
                             size = 16.dp,
                             onClick = {
+                                selectedSubproject ?: return@AppImageButton
+
                                 showDialogType = EditDialogType.Subproject
                                 dialogTextFieldValue = selectedSubproject!!.name
                                 dialogIsCreate = false
                             }
                         )
                         AppDeleteButton {
+                            selectedSubproject ?: return@AppDeleteButton
+
                             onDeleteSubproject(selectedSubproject!!)
                             val anotherSubproject =
                                 selectedProject!!.subprojects.firstOrNull { it.id != selectedSubproject.id }
