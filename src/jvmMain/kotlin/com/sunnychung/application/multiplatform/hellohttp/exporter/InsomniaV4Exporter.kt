@@ -141,11 +141,20 @@ class InsomniaV4Exporter {
                         description = "",
                         method = if (req.application == ProtocolApplication.Graphql) "POST" else req.method,
                         headers = req.getMergedProperty(index) { it.headers }
-                            .filter { !it.key.equals("Content-Type", true) && !it.key.equals("Accept", true) }
                             .let {
-                                it +
-                                    UserKeyValuePair(key = "Content-Type", value = "application/json") +
-                                    UserKeyValuePair(key = "Accept", value =  "application/graphql-response+json; charset=utf-8, application/json; charset=utf-8")
+                                if (req.application == ProtocolApplication.Graphql) {
+                                    it.filter { !it.key.equals("Content-Type", true) && !it.key.equals("Accept", true) }
+                                        .let {
+                                            it +
+                                                UserKeyValuePair(key = "Content-Type", value = "application/json") +
+                                                UserKeyValuePair(
+                                                    key = "Accept",
+                                                    value = "application/graphql-response+json; charset=utf-8, application/json; charset=utf-8"
+                                                )
+                                        }
+                                } else {
+                                    it
+                                }
                             }
                             .map { it.toInsomniaKeyValue() },
                         parameters = req.getMergedProperty(index) { it.queryParameters }
