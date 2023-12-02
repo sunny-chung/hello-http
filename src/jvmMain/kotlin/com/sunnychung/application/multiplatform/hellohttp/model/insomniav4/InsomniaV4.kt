@@ -19,9 +19,9 @@ object InsomniaV4 {
         val url: String
         val name: String
         val description: String
-        val parameters: List<HttpRequest.KeyValue>
-        val headers: List<HttpRequest.KeyValue>
-        val authentication: HttpRequest.Authentication
+        val parameters: List<HttpRequest.KeyValue>? // null if gRPC
+        val headers: List<HttpRequest.KeyValue>? // can be null if gRPC
+        val authentication: HttpRequest.Authentication? // can be null if gRPC
         val type: String
     }
 
@@ -31,11 +31,13 @@ object InsomniaV4 {
         override val url: String,
         override val name: String,
         override val description: String,
-        val method: String,
+        val method: String?, // null if gRPC
         val body: Body,
-        override val parameters: List<KeyValue>,
-        override val headers: List<KeyValue>,
-        override val authentication: Authentication,
+        override val parameters: List<KeyValue>?, // null if gRPC
+        override val headers: List<KeyValue>?, // can be null if gRPC
+        override val authentication: Authentication?, // can be null if gRPC
+        val protoMethodName: String? = null, // for gRPC only
+        val protoFileId: String? = null, // for gRPC only
         @JsonProperty("_type") override val type: String,
     ) : Request {
         data class Body(

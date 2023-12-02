@@ -188,10 +188,10 @@ fun KeyValueEditorView(
                     if (it != null) {
                         if (isSupportFileValue && !isInheritedView) {
                             DropDownView(
-                                items = ValueType.values().toList(),
+                                items = ValueType.values().map { DropDownKeyValue(it, it.displayText) }.toList(),
                                 isShowLabel = false,
                                 onClickItem = { v ->
-                                    val valueType = when (v) {
+                                    val valueType = when (v.key) {
                                         ValueType.Text -> FieldValueType.String
                                         ValueType.File -> FieldValueType.File
                                     }
@@ -234,9 +234,9 @@ fun KeyValueEditorView(
     }
 }
 
-private enum class ValueType(override val displayText: String) : DropDownable {
-    Text("Text"),
-    File("File")
+private enum class ValueType(val displayText: String) {
+    Text(displayText = "Text"),
+    File(displayText = "File")
 }
 
 private enum class FocusPosition {

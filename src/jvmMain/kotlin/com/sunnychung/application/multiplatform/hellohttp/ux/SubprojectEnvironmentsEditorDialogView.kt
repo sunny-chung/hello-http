@@ -39,7 +39,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 @Composable
-fun SubprojectEnvironmentsEditorView(
+fun SubprojectEnvironmentsEditorDialogView(
     modifier: Modifier = Modifier,
     subproject: Subproject,
     initialEnvironment: Environment?,

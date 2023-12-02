@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.exporter
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -34,7 +35,7 @@ class InsomniaV4Exporter {
 
     suspend fun exportToFile(project: Project, file: File) {
         val resources = project.subprojects.flatMap {
-            exportSubproject(it)
+            exportSubproject(project, it)
         }
 
         val metadataManager = AppContext.MetadataManager
@@ -48,7 +49,7 @@ class InsomniaV4Exporter {
         jsonWriter.writeValue(file, document)
     }
 
-    suspend fun exportSubproject(subproject: Subproject): List<Any> {
+    suspend fun exportSubproject(project: Project, subproject: Subproject): List<Any> {
         var result = mutableListOf<Any>()
         val parentIdByRequestId = mutableMapOf<String, String>() // (original id, converted parentId)
 
@@ -96,6 +97,10 @@ class InsomniaV4Exporter {
             ?.filter { parentIdByRequestId.containsKey(it.id) }
             ?: emptyList()
 
+        val grpcMethods = AppContext.ApiSpecificationCollectionRepository.read(ApiSpecDI(project.id))
+            ?.grpcApiSpecs
+            ?.associate { it.id to it.methods.associateBy { "${it.serviceFullName}/${it.methodName}" } }
+
         result.addAll(requests.flatMap { req ->
             val convertedParentId = parentIdByRequestId[req.id]!!
             when (req.application) {
@@ -141,11 +146,20 @@ class InsomniaV4Exporter {
                         description = "",
                         method = if (req.application == ProtocolApplication.Graphql) "POST" else req.method,
                         headers = req.getMergedProperty(index) { it.headers }
-                            .filter { !it.key.equals("Content-Type", true) && !it.key.equals("Accept", true) }
                             .let {
-                                it +
-                                    UserKeyValuePair(key = "Content-Type", value = "application/json") +
-                                    UserKeyValuePair(key = "Accept", value =  "application/graphql-response+json; charset=utf-8, application/json; charset=utf-8")
+                                if (req.application == ProtocolApplication.Graphql) {
+                                    it.filter { !it.key.equals("Content-Type", true) && !it.key.equals("Accept", true) }
+                                        .let {
+                                            it +
+                                                UserKeyValuePair(key = "Content-Type", value = "application/json") +
+                                                UserKeyValuePair(
+                                                    key = "Accept",
+                                                    value = "application/graphql-response+json; charset=utf-8, application/json; charset=utf-8"
+                                                )
+                                        }
+                                } else {
+                                    it
+                                }
                             }
                             .map { it.toInsomniaKeyValue() },
                         parameters = req.getMergedProperty(index) { it.queryParameters }
@@ -172,7 +186,10 @@ class InsomniaV4Exporter {
                             )
 
                             is StringBody -> InsomniaV4.HttpRequest.Body(
-                                mimeType = "application/json",
+                                mimeType = when (req.application) {
+                                    ProtocolApplication.Grpc -> null
+                                    else -> "application/json"
+                                },
                                 text = it.body.value.resolveVariables(), // FIXME inheritance
                                 params = null,
                             )
@@ -203,7 +220,33 @@ class InsomniaV4Exporter {
                         },
                         authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
                         type = "request",
-                    )
+                    ).let {
+                        if (req.application == ProtocolApplication.Grpc) {
+                            var r = it.copy(
+                                id = "g${it.id}",
+                                type = "grpc_request",
+                                protoMethodName = if (req.grpc?.service?.isNotEmpty() == true && req.grpc?.method?.isNotEmpty() == true) {
+                                    "/${req.grpc.service}/${req.grpc.method}"
+                                } else "",
+                                protoFileId = "",
+                            )
+                            if (req.grpc?.service?.isNotEmpty() == true && req.grpc?.method?.isNotEmpty() == true) {
+                                val method = grpcMethods?.get(req.grpc.apiSpecId)?.get("${req.grpc.service}/${req.grpc.method}")
+                                if (method != null && method.isClientStreaming) {
+                                    r = r.copy(
+                                        body = InsomniaV4.HttpRequest.Body(
+                                            text = req.payloadExamples?.firstOrNull()?.body ?: r.body.text,
+                                            mimeType = null,
+                                            params = null,
+                                        )
+                                    )
+                                }
+                            }
+                            r
+                        } else {
+                            it
+                        }
+                    }
                 }
             }
         })

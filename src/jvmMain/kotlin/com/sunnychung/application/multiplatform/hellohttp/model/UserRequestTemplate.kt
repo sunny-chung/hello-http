@@ -10,6 +10,7 @@ import graphql.parser.InvalidSyntaxException
 import graphql.parser.Parser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import okhttp3.FormBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -28,6 +29,7 @@ data class UserRequestTemplate(
     val application: ProtocolApplication = ProtocolApplication.Http,
     val method: String = "",
     val url: String = "",
+    val grpc: UserGrpcRequest? = null,
 
     val examples: List<UserRequestExample> = listOf(UserRequestExample(id = uuidString(), name = "Base")),
     val payloadExamples: List<PayloadExample>? = null,
@@ -59,6 +61,19 @@ data class UserRequestTemplate(
                         )
                     )
                 }
+            )
+        } else if (application == ProtocolApplication.Grpc) {
+            copy(
+                application = application,
+                method = method,
+                examples = examples.map {
+                    it.copy(
+                        contentType = ContentType.Json,
+                        body = if (it.body is StringBody) it.body else StringBody("")
+                    )
+                },
+                grpc = grpc ?: UserGrpcRequest(),
+                payloadExamples = payloadExamples ?: listOf(PayloadExample(id = uuidString(), name = "New Payload", body = "")),
             )
         } else {
             copy(application = application, method = method)
@@ -119,6 +134,14 @@ data class UserRequestTemplate(
 enum class ProtocolApplication {
     Http, WebSocket, Grpc, Graphql
 }
+
+@Persisted
+@Serializable
+data class UserGrpcRequest(
+    val apiSpecId: String = "",
+    val service: String = "",
+    val method: String = "",
+)
 
 @Persisted
 @Serializable
@@ -206,7 +229,7 @@ data class PostFlightSpec(
 //    None, Raw, Json, FormData, Multipart
 //}
 
-enum class ContentType(override val displayText: String, val headerValue: String?) : DropDownable {
+enum class ContentType(val displayText: String, val headerValue: String?) {
     Json(displayText = "JSON", headerValue = "application/json"),
     Multipart(displayText = "Multipart Form", headerValue = "multipart/form-data"), // "multipart/form-data; boundary=<generated>"
     FormUrlEncoded(displayText = "Form URL-Encoded", headerValue = "application/x-www-form-urlencoded"),

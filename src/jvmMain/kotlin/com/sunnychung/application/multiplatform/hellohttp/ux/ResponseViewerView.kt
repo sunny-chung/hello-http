@@ -37,7 +37,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
-import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -63,7 +63,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
 
     var selectedTabIndex by remember { mutableStateOf(0) }
 
-    log.d { "ResponseViewerView recompose ${response.errorMessage}" }
+    log.d { "ResponseViewerView recompose ${response.requestExampleId} $connectionStatus ${response.errorMessage}" }
 
     val responseViewModel = AppContext.ResponseViewModel
     responseViewModel.setEnabled(connectionStatus.isConnectionActive())
@@ -72,11 +72,15 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             StatusLabel(response = response, connectionStatus = connectionStatus)
-            DurationLabel(response = response, updateTime = updateTime)
+            DurationLabel(response = response, updateTime = updateTime, connectionStatus = connectionStatus)
             ResponseSizeLabel(response = response)
         }
 
-        val tabs = if (response.application == ProtocolApplication.WebSocket && response.statusCode == 101) {
+        val tabs = if (
+            // TODO these conditions are poorly written. any better semantics?
+            (response.application == ProtocolApplication.WebSocket && response.statusCode == 101)
+            || (response.application == ProtocolApplication.Grpc && response.payloadExchanges != null)
+        ) {
             listOf(ResponseTab.Stream, ResponseTab.Header, ResponseTab.Raw)
         } else {
             listOf(ResponseTab.Body, ResponseTab.Header, ResponseTab.Raw)
@@ -235,14 +239,16 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectio
     val colors = LocalColor.current
     val (text, backgroundColor) = if (connectionStatus.isConnectionActive() && response.statusCode == null) {
         Pair("Communicating", colors.pendingResponseBackground)
-    } else if (response.isError) {
-        Pair("Error", colors.errorResponseBackground)
-    } else {
+    } else if (response.statusCode != null || !response.statusText.isNullOrEmpty()) {
         val colour = when (response.application) {
             ProtocolApplication.WebSocket -> when (response.statusCode) {
                 null -> return
                 101 -> colors.successfulResponseBackground
                 in 100..199 -> colors.pendingResponseBackground
+                else -> colors.errorResponseBackground
+            }
+            ProtocolApplication.Grpc -> when (response.statusCode) {
+                0, null -> colors.successfulResponseBackground
                 else -> colors.errorResponseBackground
             }
             else -> when (response.statusCode) {
@@ -252,15 +258,21 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectio
                 else -> colors.errorResponseBackground
             }
         }
-        Pair("${response.statusCode} ${response.statusText}", colour)
+        Pair("${response.statusCode ?: ""} ${response.statusText}".trim(), colour)
+    } else if (response.isError) {
+        Pair("Error", colors.errorResponseBackground)
+    } else {
+        Pair("", colors.errorResponseBackground)
     }
-    DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
+    if (text.isNotEmpty()) {
+        DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
+    }
 }
 
 @Composable
-fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateTime: KInstant) {
+fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateTime: KInstant, connectionStatus: ConnectionStatus) {
     val startAt = response.startAt ?: return
-    val timerAt = response.endAt ?: if (response.isCommunicating) KInstant.now() else return
+    val timerAt = response.endAt ?: if (connectionStatus.isConnectionActive()) KInstant.now() else return
     val duration = timerAt - startAt
     val text = if (duration >= KDuration.of(10, KFixedTimeUnit.Second)) {
         "${"%.1f".format(duration.toMilliseconds() / 1000.0)} s"
@@ -301,6 +313,9 @@ fun ResponseEmptyView(modifier: Modifier = Modifier, type: String, isCommunicati
 }
 
 class PrettifierDropDownValue(val name: String, val prettifier: Prettifier?) : DropDownable {
+    override val key: String
+        get() = name
+
     override val displayText: String
         get() = name
 }
@@ -383,7 +398,7 @@ fun BodyViewerView(
         } else {
             CodeEditorView(
                 isReadOnly = true,
-                text = errorMessage ?: "",
+                text = errorMessage ?: content.decodeToString(),
                 textColor = colours.warning,
                 modifier = modifier,
             )
@@ -419,7 +434,7 @@ fun ResponseBodyView(response: UserResponse) {
             ?.map { it.second }
             ?.firstOrNull()
         if (contentType != null) {
-            AppContext.PrettifierManager.matchPrettifiers(contentType)
+            AppContext.PrettifierManager.matchPrettifiers(response.application, contentType)
         } else {
             emptyList()
         }
@@ -460,17 +475,18 @@ private val TYPE_COLUMN_WIDTH_DP = 20.dp
 fun ResponseStreamView(response: UserResponse) {
     val colours = LocalColor.current
 
-    var selectedMessage by remember(response.id) { mutableStateOf<PayloadMessage?>(null) }
-    val prettifiers = if (response.isError) {
+    var selectedMessage by rememberLast(response.id) { mutableStateOf<PayloadMessage?>(null) }
+    val displayMessage = selectedMessage ?: response.payloadExchanges?.lastOrNull { it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.Error) } // last -> largest timestamp
+    val prettifiers = if ((response.isError && displayMessage == null) || displayMessage?.type == PayloadMessage.Type.Error) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
-    } else if (selectedMessage?.type in setOf(PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected)) {
+    } else if (displayMessage?.type in setOf(PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected)) {
         listOf(PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() }))
     } else {
         AppContext.PrettifierManager.allPrettifiers()
             .map { PrettifierDropDownValue(it.formatName, it) } +
                 PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() })
     }
-    val detailData = selectedMessage?.data
+    val detailData = displayMessage?.data
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
@@ -479,9 +495,10 @@ fun ResponseStreamView(response: UserResponse) {
             prettifiers = prettifiers,
             selectedPrettifierState = remember(
                 response.requestExampleId,
-                when (selectedMessage?.type) {
+                when (displayMessage?.type) { // categorize prettifiers as cache keys
                     PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected -> 0
                     PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData, null -> 1
+                    PayloadMessage.Type.Error -> 2
                 }
             ) { mutableStateOf(prettifiers.first()) },
             errorMessage = null,
@@ -505,44 +522,47 @@ fun ResponseStreamView(response: UserResponse) {
             val scrollState = rememberLazyListState()
 
             LazyColumn(state = scrollState) {
-                items(items = response.payloadExchanges?.reversed() ?: emptyList()) {
-                    var modifier: Modifier = Modifier
-                    modifier = modifier.clickable { selectedMessage = it }
-                    Row(modifier = modifier) {
-                        val textColour = if (selectedMessage?.id == it.id) {
-                            colours.highlight
-                        } else {
-                            colours.primary
+                synchronized(response.payloadExchanges ?: Any()) {
+                    items(items = response.payloadExchanges?.reversed() ?: emptyList()) {
+                        var modifier: Modifier = Modifier
+                        modifier = modifier.clickable { selectedMessage = it }
+                        Row(modifier = modifier) {
+                            val textColour = if (displayMessage?.id == it.id) {
+                                colours.highlight
+                            } else {
+                                colours.primary
+                            }
+                            AppText(
+                                text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
+                                color = textColour,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
+                            )
+                            AppText(
+                                text = when (it.type) {
+                                    PayloadMessage.Type.IncomingData -> "<"
+                                    PayloadMessage.Type.OutgoingData -> ">"
+                                    PayloadMessage.Type.Connected -> "="
+                                    PayloadMessage.Type.Disconnected -> "="
+                                    PayloadMessage.Type.Error -> "x"
+                                },
+                                color = textColour,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
+                            )
+                            AppText(
+                                text = it.data?.decodeToString()?.replace("\\s+".toRegex(), " ") ?: "",
+                                color = textColour,
+                                isDisableWordWrap = true,
+                                softWrap = false,
+                                maxLines = 1,
+                                fontFamily = FontFamily.Monospace,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
+                            )
                         }
-                        AppText(
-                            text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
-                            color = textColour,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
-                        )
-                        AppText(
-                            text = when (it.type) {
-                                PayloadMessage.Type.IncomingData -> "<"
-                                PayloadMessage.Type.OutgoingData -> ">"
-                                PayloadMessage.Type.Connected -> "="
-                                PayloadMessage.Type.Disconnected -> "="
-                            },
-                            color = textColour,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
-                        )
-                        AppText(
-                            text = it.data?.decodeToString()?.replace("\\s+".toRegex(), " ") ?: "",
-                            color = textColour,
-                            isDisableWordWrap = true,
-                            softWrap = false,
-                            maxLines = 1,
-                            fontFamily = FontFamily.Monospace,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
-                        )
                     }
                 }
             }

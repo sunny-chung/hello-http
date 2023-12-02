@@ -339,7 +339,9 @@ fun RequestTreeView(
                 val modifier = Modifier.defaultMinSize(minHeight = 28.dp).padding(start = leftPadding)
                 when (obj) {
                     is TreeRequest -> {
-                        RequestLeafView(modifier, requests[obj.id]!!)
+                        requests[obj.id]?.let { request ->
+                            RequestLeafView(modifier, request)
+                        }
                     }
 
                     is TreeFolder -> {

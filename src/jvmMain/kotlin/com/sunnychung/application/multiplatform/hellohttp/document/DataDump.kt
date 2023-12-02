@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.document
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.DocumentRoot
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -24,5 +25,6 @@ data class DataDump(
         // jackson-cbor doesn't support maps with non-primitive keys
         val requests: List<Pair<RequestsDI, List<UserRequestTemplate>>>,
         val responses: List<Pair<ResponsesDI, MutableMap<String, UserResponse>>>,
+        val apiSpecs: List<Pair<ApiSpecDI, ApiSpecCollection>> = mutableListOf(),
     )
 }

@@ -1,4 +1,4 @@
-package com.sunnychung.application.multiplatform.hellohttp.network
+package com.sunnychung.application.multiplatform.hellohttp.network.util
 
 import java.net.Socket
 import java.security.cert.X509Certificate

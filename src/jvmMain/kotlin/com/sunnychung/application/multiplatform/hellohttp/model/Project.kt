@@ -11,6 +11,10 @@ data class Project(
     val name: String,
     val subprojects: MutableList<Subproject>
 ) : DropDownable {
+
+    override val key: String
+        get() = id
+
     override val displayText: String
         get() = name
 }

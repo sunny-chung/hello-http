@@ -1,10 +1,11 @@
-package com.sunnychung.application.multiplatform.hellohttp.manager
+package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sunnychung.application.multiplatform.hellohttp.error.ProtocolError
+import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
@@ -14,14 +15,13 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.payload.GraphqlErrorPayload
 import com.sunnychung.application.multiplatform.hellohttp.model.payload.GraphqlWsMessage
-import com.sunnychung.application.multiplatform.hellohttp.network.InspectedWebSocketClient
+import com.sunnychung.application.multiplatform.hellohttp.network.util.InspectedWebSocketClient
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filterNotNull
@@ -37,7 +37,7 @@ import java.nio.ByteBuffer
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class GraphqlSubscriptionNetworkManager(networkClientManager: NetworkClientManager) : WebSocketNetworkManager(networkClientManager) {
+class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientManager) : WebSocketTransportClient(networkClientManager) {
 
     override fun sendRequest(
         request: HttpRequest,

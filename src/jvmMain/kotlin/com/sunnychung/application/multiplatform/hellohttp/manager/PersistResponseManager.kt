@@ -4,6 +4,8 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponseCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
+import com.sunnychung.application.multiplatform.hellohttp.network.CallData
+import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope

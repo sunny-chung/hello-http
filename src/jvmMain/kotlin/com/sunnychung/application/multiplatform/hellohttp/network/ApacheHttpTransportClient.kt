@@ -1,13 +1,14 @@
-package com.sunnychung.application.multiplatform.hellohttp.manager
+package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.toApacheHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.network.ContentEncodingDecompressProcessor
+import com.sunnychung.application.multiplatform.hellohttp.network.util.ContentEncodingDecompressProcessor
 import com.sunnychung.application.multiplatform.hellohttp.network.apache.Http2FrameSerializer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -55,7 +56,7 @@ import java.security.cert.Certificate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class ApacheNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
+class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
     private data class H2HeaderFrame(val streamId: Int?, var frameHeader: String? = null, var block: String? = null) {
 
@@ -141,18 +142,22 @@ class ApacheNetworkManager(networkClientManager: NetworkClientManager) : Abstrac
             { bytes, pos, len ->
                 println("<< " + bytes.copyOfRange(pos, pos + len).decodeToString())
                 runBlocking {
-                    incomingBytesFlow.emit(Http1Payload(
-                        instant = KInstant.now(),
-                        payload = bytes.copyOfRange(pos, pos + len)
-                    ))
+                    incomingBytesFlow.emit(
+                        Http1Payload(
+                            instant = KInstant.now(),
+                            payload = bytes.copyOfRange(pos, pos + len)
+                        )
+                    )
                 }
             },
             { bytes, pos, len ->
                 runBlocking {
-                    outgoingBytesFlow.emit(Http1Payload(
-                        instant = KInstant.now(),
-                        payload = bytes.copyOfRange(pos, pos + len)
-                    ))
+                    outgoingBytesFlow.emit(
+                        Http1Payload(
+                            instant = KInstant.now(),
+                            payload = bytes.copyOfRange(pos, pos + len)
+                        )
+                    )
                 }
 //                println(">> " + bytes.copyOfRange(pos, pos + len).decodeToString())
             },

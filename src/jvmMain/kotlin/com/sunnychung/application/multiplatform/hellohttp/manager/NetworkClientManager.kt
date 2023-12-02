@@ -4,64 +4,88 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecCollection
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
+import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestExtra
 import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.CallData
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
+import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.upsert
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Structure:
  *
- *                                     +--> ApacheNetworkManager
+ *                                     +--> ApacheHttpTransportClient
  *                                     |
- * AppView --> NetworkClientManager <--+--> WebSocketNetworkManager
+ * AppView --> NetworkClientManager <--+--> WebSocketTransportClient
  *                                     |
  *                                     +--> PersistResponseManager --> Repository
  *
- * There are cyclic dependencies between NetworkClientManager and *NetworkManager
+ * There are cyclic dependencies between NetworkClientManager and *TransportClient
  */
 class NetworkClientManager : CallDataStore {
 
     private val projectCollectionRepository by lazy { AppContext.ProjectCollectionRepository }
+    private val requestCollectionRepository by lazy { AppContext.RequestCollectionRepository }
+    private val apiSpecificationCollectionRepository by lazy { AppContext.ApiSpecificationCollectionRepository }
     private val persistResponseManager by lazy { AppContext.PersistResponseManager }
-    private val httpNetworkManager by lazy { AppContext.NetworkManager }
-    private val webSocketNetworkManager by lazy { AppContext.WebSocketNetworkManager }
-    private val graphqlSubscriptionNetworkManager by lazy { AppContext.GraphqlSubscriptionNetworkManager }
+    private val httpTransportClient by lazy { AppContext.HttpTransportClient }
+    private val webSocketTransportClient by lazy { AppContext.WebSocketTransportClient }
+    private val graphqlSubscriptionTransportClient by lazy { AppContext.GraphqlSubscriptionTransportClient }
+    private val grpcTransportClient by lazy { AppContext.GrpcTransportClient }
 
     private val callDataMap = ConcurrentHashMap<String, CallData>()
+    private val liteCallDataMap = ConcurrentHashMap<String, LiteCallData>()
     private val requestExampleToCallMapping = mutableMapOf<String, String>()
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    private val subprojectHostToLiteCallMapping = mutableMapOf<String, String>()
 
     private val callIdFlow = MutableStateFlow<String?>(null)
 
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
+    override fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData> = liteCallDataMap
 
-    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, subprojectId: String) {
+    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String) {
         val callData = try {
             val networkRequest = request.toHttpRequest(
                 exampleId = requestExampleId,
                 environment = environment
-            )
+            ).run {
+                if (request.application == ProtocolApplication.Grpc) {
+                    val apiSpec = runBlocking { apiSpecificationCollectionRepository.read(ApiSpecDI(projectId)) }!!
+                        .grpcApiSpecs.first { it.id == request.grpc!!.apiSpecId }
+                    copy(extra = (extra as GrpcRequestExtra).copy(apiSpec = apiSpec))
+                } else {
+                    this
+                }
+            }
             val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(
                 exampleId = requestExampleId,
                 environment = environment
@@ -91,8 +115,12 @@ class NetworkClientManager : CallDataStore {
                             }
                         }
                         if (postFlightBodyVars.isNotEmpty()) {
-                            val responseBody = resp.body?.decodeToString()
-                            val context = if (resp.headers?.firstOrNull {
+                            val responseBody = if (resp.isStreaming()) {
+                                resp.payloadExchanges?.filter { it.type == PayloadMessage.Type.IncomingData }?.lastOrNull()?.data?.decodeToString()
+                            } else {
+                                resp.body?.decodeToString()
+                            }
+                            val context = if (resp.application == ProtocolApplication.Grpc || resp.headers?.firstOrNull {
                                     it.first.equals(
                                         "content-type",
                                         ignoreCase = true
@@ -135,9 +163,10 @@ class NetworkClientManager : CallDataStore {
                 }
 
             val networkManager = when (networkRequest.application) {
-                ProtocolApplication.Graphql -> graphqlSubscriptionNetworkManager
-                ProtocolApplication.WebSocket -> webSocketNetworkManager
-                else -> httpNetworkManager
+                ProtocolApplication.Graphql -> graphqlSubscriptionTransportClient
+                ProtocolApplication.WebSocket -> webSocketTransportClient
+                ProtocolApplication.Grpc -> grpcTransportClient
+                else -> httpTransportClient
             }
 
             networkManager.sendRequest(
@@ -176,7 +205,7 @@ class NetworkClientManager : CallDataStore {
         }
         val oldCallId = requestExampleToCallMapping.put(requestExampleId, callData.id)
         if (oldCallId != null) {
-            coroutineScope.launch {
+            CoroutineScope(Dispatchers.IO).launch {
                 callDataMap[oldCallId]?.cancel?.invoke()
                 callDataMap.remove(oldCallId)
             }
@@ -193,11 +222,15 @@ class NetworkClientManager : CallDataStore {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendPayload(resolvedPayload) }
     }
 
+    fun sendEndOfStream(selectedRequestExampleId: String) {
+        getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendEndOfStream() }
+    }
+
     fun cancel(selectedRequestExampleId: String) {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
     }
 
-    private fun <T> emptySharedFlow() = emptyFlow<T>().shareIn(coroutineScope, SharingStarted.Eagerly)
+    private fun <T> emptySharedFlow() = emptyFlow<T>().shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly)
 
     private fun getCallDataByRequestExampleId(requestExampleId: String) =
         requestExampleToCallMapping[requestExampleId]
@@ -221,8 +254,86 @@ class NetworkClientManager : CallDataStore {
 
     @Composable
     fun subscribeToNewRequests() = callIdFlow.collectAsState(null)
+
+    private fun createLiteCallData(): LiteCallData {
+        return LiteCallData(
+            id = uuidString(),
+            isConnecting = MutableStateFlow(false),
+            cancel = {},
+        )
+    }
+
+    private fun liteCallKey(url: String, subprojectId: String) = "$subprojectId|${hostFromUrl(url)}"
+
+    fun fetchGrpcApiSpec(url: String, environment: Environment?, projectId: String, subprojectId: String): LiteCallData {
+        val call = createLiteCallData()
+        call.cancel = { call.isConnecting.value = false }
+        liteCallDataMap[call.id] = call
+
+        val key = liteCallKey(url, subprojectId)
+        val oldCallId = subprojectHostToLiteCallMapping.put(key, call.id)
+
+        call.isConnecting.value = true
+        // Don't reuse coroutineScope
+        // https://stackoverflow.com/questions/59996928/coroutinescope-cannot-be-reused-after-an-exception-thrown
+        val job = CoroutineScope(Dispatchers.IO).launch {
+            if (oldCallId != null) {
+                liteCallDataMap[oldCallId]?.cancel?.invoke()
+                liteCallDataMap.remove(oldCallId)
+            }
+
+            val apiSpec = try {
+                grpcTransportClient.fetchServiceSpec(
+                    url,
+                    environment?.sslConfig ?: SslConfig()
+                )
+            } finally {
+                call.isConnecting.value = false
+            }
+            val subproject = projectCollectionRepository.readSubproject(ProjectAndEnvironmentsDI(), subprojectId)
+            val apiSpecDI = ApiSpecDI(projectId)
+            val apiSpecCollection = apiSpecificationCollectionRepository.readOrCreate(apiSpecDI) { ApiSpecCollection(id = apiSpecDI) }
+            val apiSpecToSave = apiSpecCollection.grpcApiSpecs.upsert(
+                entity = apiSpec,
+                condition = { it.id in subproject.grpcApiSpecIds && it.name == apiSpec.name },
+                update = { old, new -> new.copy(id = old.id) }
+            )
+            apiSpecificationCollectionRepository.notifyUpdated(apiSpecDI)
+            if (subproject.grpcApiSpecIds.add(apiSpecToSave.id)) {
+                projectCollectionRepository.updateSubproject(ProjectAndEnvironmentsDI(), subproject)
+            }
+            log.d { "after fetch grpc api spec" }
+        }
+        call.cancel = {
+            job.cancel(null)
+            call.isConnecting.value = false
+        }
+
+        return call
+    }
+
+    fun isFetchingGrpcApiSpec(url: String, subprojectId: String) =
+        subprojectHostToLiteCallMapping[liteCallKey(url, subprojectId)]
+            ?.let { liteCallDataMap[it] }
+            ?.isConnecting
+            ?.value
+            ?: false
+
+    fun subscribeGrpcApiSpecFetchingStatus(url: String, subprojectId: String): StateFlow<Boolean> =
+        subprojectHostToLiteCallMapping[liteCallKey(url, subprojectId)]
+            ?.let { liteCallDataMap[it] }
+            ?.isConnecting
+            ?: MutableStateFlow(false)
+
+    fun cancelFetchingGrpcApiSpec(url: String, subprojectId: String) {
+        subprojectHostToLiteCallMapping[liteCallKey(url, subprojectId)]
+            ?.let { liteCallDataMap[it] }
+            ?.let { it.cancel() }
+    }
+
 }
 
 internal interface CallDataStore {
     fun provideCallDataStore(): ConcurrentHashMap<String, CallData>
+    fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData>
 }

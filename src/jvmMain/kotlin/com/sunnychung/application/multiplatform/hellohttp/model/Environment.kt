@@ -13,6 +13,10 @@ data class Environment(
     val httpConfig: HttpConfig = HttpConfig(),
     val sslConfig: SslConfig = SslConfig(),
 ) : DropDownable {
+
+    override val key: String
+        get() = id
+
     override val displayText: String
         get() = name
 }

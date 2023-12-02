@@ -1,9 +1,10 @@
-package com.sunnychung.application.multiplatform.hellohttp.manager
+package com.sunnychung.application.multiplatform.hellohttp.network
 
+import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.network.TrustAllSslCertificateManager
+import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -24,13 +25,12 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
 import java.security.SecureRandom
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
-abstract class AbstractNetworkManager internal constructor(callDataStore: CallDataStore) : NetworkManager {
+abstract class AbstractTransportClient internal constructor(callDataStore: CallDataStore) : TransportClient {
 
     protected val eventSharedFlow = MutableSharedFlow<NetworkEvent>()
 

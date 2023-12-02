@@ -59,9 +59,9 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
         minOf(
             exchange.exchanges
                 .filter { it.streamId != null }
-                .maxOf { it.streamId!! }
-                .toString()
-                .length,
+                .maxOfOrNull { it.streamId!! }
+                ?.toString()
+                ?.length ?: 1,
             2
         )
     } else {

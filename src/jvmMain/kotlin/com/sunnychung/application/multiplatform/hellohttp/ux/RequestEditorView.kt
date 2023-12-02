@@ -14,9 +14,13 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -38,20 +43,24 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.sunnychung.application.multiplatform.hellohttp.manager.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
@@ -76,6 +85,7 @@ fun RequestEditorView(
     request: UserRequestTemplate,
     selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
+    grpcApiSpecs: List<GrpcApiSpec>,
     environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
@@ -86,6 +96,10 @@ fun RequestEditorView(
     onClickConnect: () -> Unit,
     onClickDisconnect: () -> Unit,
     onClickSendPayload: (String) -> Unit,
+    onClickCompleteStream: () -> Unit,
+    onClickFetchApiSpec: () -> Unit,
+    onClickCancelFetchApiSpec: () -> Unit,
+    isFetchingApiSpec: Boolean,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
@@ -107,6 +121,12 @@ fun RequestEditorView(
     } else {
         null
     }
+    val currentGrpcMethod = grpcApiSpecs.firstOrNull { it.id == request.grpc?.apiSpecId }
+        ?.methods
+        ?.firstOrNull { it.serviceFullName == request.grpc?.service && it.methodName == request.grpc?.method }
+    val hasPayloadEditor = (request.application == ProtocolApplication.WebSocket
+            || (request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true)
+            )
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -129,6 +149,10 @@ fun RequestEditorView(
                         displayText = "GraphQL"
                     ),
                     DropDownKeyValue(
+                        key = ProtocolMethod(application = ProtocolApplication.Grpc, method = ""),
+                        displayText = "gRPC"
+                    ),
+                    DropDownKeyValue(
                         key = ProtocolMethod(application = ProtocolApplication.WebSocket, method = ""),
                         displayText = "WebSocket"
                     ),
@@ -137,7 +161,7 @@ fun RequestEditorView(
             DropDownView(
                 selectedItem = options.dropdownables.first { it.key.application == request.application && (it.key.method == request.method || it.key.method.isEmpty()) },
                 items = options.dropdownables,
-                contentView = {
+                contentView = { it, isLabel, isSelected ->
                     val (text, color) = when (it!!.key.application) {
                         ProtocolApplication.Http -> Pair(
                             it.displayText,
@@ -155,13 +179,20 @@ fun RequestEditorView(
                         ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
                         ProtocolApplication.Graphql -> Pair("GraphQL", colors.graphqlRequest)
                     }
+                    val modifier = if (isLabel) {
+                        Modifier
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .background(if (isSelected) colors.backgroundLight else Color.Transparent)
+                    }
                     AppText(
                         text = text.emptyToNull() ?: "--",
                         color = color,
                         isFitContent = true,
                         textAlign = TextAlign.Left,
                         maxLines = 1,
-                        modifier = Modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
+                        modifier = modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
                     )
                 },
                 onClickItem = {
@@ -186,44 +217,70 @@ fun RequestEditorView(
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
-            if (request.application !in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql)
-                || (request.application == ProtocolApplication.Graphql && currentGraphqlOperation?.operation in setOf(
+
+            val isOneOffRequest = when (request.application) {
+                ProtocolApplication.WebSocket -> false
+                ProtocolApplication.Graphql -> currentGraphqlOperation?.operation in setOf(
                     Operation.QUERY,
                     Operation.MUTATION
-                ))
-            ) {
-                val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
-                    Pair("Send", colors.backgroundButton)
-                } else {
-                    Pair("Cancel", colors.backgroundStopButton)
+                )
+                ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
+                else -> true
+            }
+            val isEnableButton = when (connectionStatus.isConnectionActive()) {
+                true -> true
+                false -> when (request.application) {
+                    ProtocolApplication.Grpc -> currentGrpcMethod != null
+                    else -> true
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.background(backgroundColour).width(width = 84.dp).fillMaxHeight()
-                ) {
-                    Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable {
-                        if (!connectionStatus.isConnectionActive()) {
-                            onClickSend()
+            }
+            val dropdownItems: List<String> = when (request.application) {
+                ProtocolApplication.WebSocket -> emptyList()
+                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
+                ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
+                else -> listOf("Copy as cURL command")
+            }
+            val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
+                Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
+            } else {
+                Pair(if (isOneOffRequest) "Cancel" else "Disconnect", colors.backgroundStopButton)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.background(backgroundColour).width(IntrinsicSize.Max).widthIn(min = 84.dp).fillMaxHeight()
+            ) {
+                Box(modifier = Modifier.fillMaxHeight().weight(1f)
+                    .run {
+                        if (isEnableButton) {
+                            clickable {
+                                if (!connectionStatus.isConnectionActive()) {
+                                    onClickSend()
+                                } else {
+                                    onClickCancel()
+                                }
+                            }
                         } else {
-                            onClickCancel()
+                            this
                         }
-                    }) {
-                        AppText(
-                            text = label,
-                            fontSize = fonts.buttonFontSize,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(start = 4.dp).align(Alignment.Center)
-                        )
                     }
+                    .padding(start = 10.dp, end = if (dropdownItems.isNotEmpty()) 4.dp else 10.dp)
+                ) {
+                    AppText(
+                        text = label,
+                        color = if (isEnableButton) colors.primary else colors.disabled,
+                        fontSize = fonts.buttonFontSize,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                if (dropdownItems.isNotEmpty()) {
                     DropDownView(
                         iconSize = 24.dp,
-                        items = listOf(label, "Copy as cURL command").map { DropDownValue(it) },
+                        items = dropdownItems.map { DropDownValue(it) },
                         isShowLabel = false,
                         onClickItem = {
                             var isSuccess = true
                             when (it.displayText) {
-                                "Send" -> onClickSend()
-                                "Cancel" -> onClickCancel()
                                 "Copy as cURL command" -> {
                                     isSuccess = onClickCopyCurl()
                                 }
@@ -234,32 +291,29 @@ fun RequestEditorView(
                         modifier = Modifier.fillMaxHeight(),
                     )
                 }
-            } else {
-                val (text, bgColor) = if (connectionStatus.isConnectionActive()) {
-                    Pair("Disconnect", colors.backgroundStopButton)
-                } else {
-                    Pair("Connect", colors.backgroundButton)
-                }
-                Box(
-                    modifier = Modifier.background(bgColor).fillMaxHeight()
-                        .clickable {
-                            if (!connectionStatus.isConnectionActive()) {
-                                onClickConnect()
-                            } else {
-                                onClickDisconnect()
-                            }
-                        }
-                        .padding(horizontal = 10.dp)
-                ) {
-                    AppText(
-                        text = text,
-                        fontSize = fonts.buttonFontSize,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
             }
         }
+        if (request.application == ProtocolApplication.Grpc) {
+            if (request.grpc?.apiSpecId.emptyToNull() == null && grpcApiSpecs.isNotEmpty()) {
+                val name = hostFromUrl(request.url)
+                grpcApiSpecs.firstOrNull { it.name == name }
+                    ?.let { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(apiSpecId = it.id))) }
+            }
+            RequestServiceMethodSelector(
+                modifier = Modifier.fillMaxWidth(),
+                service = request.grpc?.service ?: "",
+                method = request.grpc?.method ?: "",
+                onSelectService = { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(service = it))) },
+                onSelectMethod = { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(method = it))) },
+                apiSpec = grpcApiSpecs.firstOrNull { it.id == request.grpc?.apiSpecId },
+                onSelectApiSpec = { onRequestModified(request.copy(grpc = (request.grpc ?: UserGrpcRequest()).copy(apiSpecId = it))) },
+                apiSpecList = grpcApiSpecs,
+                onClickFetchApiSpec = onClickFetchApiSpec,
+                onClickCancelFetchApiSpec = onClickCancelFetchApiSpec,
+                isFetchingApiSpec = isFetchingApiSpec,
+            )
+        }
+
 //        Spacer(modifier = Modifier.height(4.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -359,10 +413,13 @@ fun RequestEditorView(
             )
         }
 
-        val tabs = if (request.application != ProtocolApplication.WebSocket) {
-            listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
-        } else {
-            listOf(RequestTab.Query, RequestTab.Header)
+        val tabs = when (request.application) {
+            ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header)
+            ProtocolApplication.Grpc -> listOfNotNull(
+                if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
+                RequestTab.Header, RequestTab.PostFlight
+            )
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
         }
 
         TabsView(
@@ -374,7 +431,7 @@ fun RequestEditorView(
             }
         )
         Box(
-            modifier = if (request.application != ProtocolApplication.WebSocket) {
+            modifier = if (!hasPayloadEditor) {
                 Modifier.weight(1f)
             } else {
                 Modifier.weight(0.3f)
@@ -453,7 +510,7 @@ fun RequestEditorView(
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                RequestTab.PostFlight -> Column {
+                RequestTab.PostFlight -> Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     AppText(
                         text = "Update environment variables according to response headers.",
                         modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
@@ -490,7 +547,7 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
 
                     AppText(
@@ -529,21 +586,121 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
                 }
             }
         }
 
-        if (request.application == ProtocolApplication.WebSocket) {
-            WebSocketPayloadEditorView(
+        if (hasPayloadEditor) {
+            StreamingPayloadEditorView(
                 modifier = Modifier.weight(0.7f).fillMaxWidth(),
                 request = request,
                 onRequestModified = onRequestModified,
+                hasCompleteButton = request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true,
                 knownVariables = environmentVariableKeys,
                 onClickSendPayload = onClickSendPayload,
+                onClickCompleteStream = onClickCompleteStream,
                 connectionStatus = connectionStatus,
             )
+        }
+    }
+}
+
+@Composable
+private fun RequestServiceMethodSelector(
+    modifier: Modifier = Modifier,
+    service: String,
+    onSelectService: (String) -> Unit,
+    method: String,
+    onSelectMethod: (String) -> Unit,
+    apiSpec: GrpcApiSpec?,
+    onSelectApiSpec: (String) -> Unit,
+    apiSpecList: List<GrpcApiSpec>,
+    onClickFetchApiSpec: () -> Unit,
+    onClickCancelFetchApiSpec: () -> Unit,
+    isFetchingApiSpec: Boolean,
+) {
+    val serviceList = apiSpec?.methods
+        ?.map {
+            it.serviceFullName
+        }
+        ?.distinct()
+        ?.sorted()
+        ?: emptyList()
+
+    fun getMethodList(service: String) =
+        apiSpec?.methods
+            ?.filter {
+                it.serviceFullName == service
+            }
+            ?.sortedBy { it.methodName }
+            ?: emptyList()
+
+    val methodList = getMethodList(service)
+
+    if (service.isEmpty() && serviceList.isNotEmpty()) {
+        val firstService = serviceList.first()
+        onSelectService(firstService)
+
+        // don't update method at this moment, or changes in `onSelectMethod` would overwrite that in `onSelectService`
+//        getMethodList(firstService)
+//            .firstOrNull()
+//            ?.let { onSelectMethod(it.methodName) }
+    } else if (method.isEmpty() && methodList.isNotEmpty()) {
+        onSelectMethod(methodList.first().methodName)
+    }
+
+    Row(modifier = modifier.height(IntrinsicSize.Max)) {
+        DropDownView(
+            items = apiSpecList.map { DropDownKeyValue(it.id, it.name) },
+            selectedItem = DropDownKeyValue(apiSpec?.id ?: "", apiSpec?.name ?: ""),
+            onClickItem = { onSelectApiSpec(it.key); true },
+            isLabelFillMaxWidth = true,
+            modifier = Modifier.weight(0.2f).padding(vertical = 4.dp).fillMaxHeight(),
+        )
+        DropDownView(
+            items = serviceList.map { DropDownValue(it) },
+            selectedItem = DropDownValue(service),
+            onClickItem = { onSelectService(it.displayText); true },
+            isLabelFillMaxWidth = true,
+            contentView = { it, isLabel, isSelected ->
+                AppText(
+                    text = if (isLabel) it?.displayText?.split('.')?.last().emptyToNull() ?: "--" else it!!.displayText,
+                    color = if (!isLabel && isSelected) LocalColor.current.highlight else LocalColor.current.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            },
+            modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
+        )
+        DropDownView(
+            items = methodList.map { DropDownValue(it.methodName) },
+            selectedItem = DropDownValue(method),
+            onClickItem = { onSelectMethod(it.displayText); true },
+            isLabelFillMaxWidth = true,
+            modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
+        )
+
+        if (!isFetchingApiSpec) {
+            AppTooltipArea(tooltipText = "Fetch gRPC API Spec") {
+                AppImageButton(
+                    resource = "download-list.svg",
+                    size = 24.dp,
+                    onClick = onClickFetchApiSpec,
+                    modifier = Modifier.padding(4.dp),
+                )
+            }
+        } else {
+            AppTooltipArea(tooltipText = "Cancel fetching gRPC API Spec") {
+                AppImageButton(
+                    resource = "close.svg",
+                    size = 24.dp,
+                    onClick = onClickCancelFetchApiSpec,
+                    modifier = Modifier.padding(4.dp),
+                )
+            }
         }
     }
 }
@@ -632,40 +789,45 @@ private fun RequestBodyEditor(
             Row(modifier = Modifier.weight(1f)) {
                 if (request.application != ProtocolApplication.Graphql) {
                     AppText("Content Type: ")
-                    DropDownView(
-                        items = listOf(
-                            ContentType.Json,
-                            ContentType.Multipart,
-                            ContentType.FormUrlEncoded,
-                            ContentType.Raw,
-                            ContentType.BinaryFile,
-                            ContentType.None
-                        ),
-                        selectedItem = selectedContentType,
-                        onClickItem = {
-                            if (selectedContentType == it) return@DropDownView true
-                            selectedContentType = it
-                            val newBody = when (it) {
-                                ContentType.None -> null
-                                ContentType.Json, ContentType.Raw -> StringBody("")
-                                ContentType.Multipart -> MultipartBody(emptyList())
-                                ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
-                                ContentType.BinaryFile -> FileBody(null)
-                                else -> throw UnsupportedOperationException()
-                            }
-                            onRequestModified(
-                                request.copy(
-                                    examples = request.examples.copyWithChange(
-                                        selectedExample.copy(
-                                            contentType = selectedContentType,
-                                            body = newBody
+                    if (request.application != ProtocolApplication.Grpc) {
+                        DropDownView(
+                            items = listOf(
+                                ContentType.Json,
+                                ContentType.Multipart,
+                                ContentType.FormUrlEncoded,
+                                ContentType.Raw,
+                                ContentType.BinaryFile,
+                                ContentType.None
+                            ).map { DropDownKeyValue(it, it.displayText) },
+                            selectedItem = DropDownKeyValue(selectedContentType, selectedContentType.displayText),
+                            onClickItem = { item ->
+                                val it = item.key
+                                if (selectedContentType == it) return@DropDownView true
+                                selectedContentType = it
+                                val newBody = when (it) {
+                                    ContentType.None -> null
+                                    ContentType.Json, ContentType.Raw -> StringBody("")
+                                    ContentType.Multipart -> MultipartBody(emptyList())
+                                    ContentType.FormUrlEncoded -> FormUrlEncodedBody(emptyList())
+                                    ContentType.BinaryFile -> FileBody(null)
+                                    else -> throw UnsupportedOperationException()
+                                }
+                                onRequestModified(
+                                    request.copy(
+                                        examples = request.examples.copyWithChange(
+                                            selectedExample.copy(
+                                                contentType = selectedContentType,
+                                                body = newBody
+                                            )
                                         )
                                     )
                                 )
-                            )
-                            true
-                        }
-                    )
+                                true
+                            }
+                        )
+                    } else {
+                        AppText(selectedContentType.displayText)
+                    }
                 } else {
                     AppText("Operation: ")
                     val body = selectedExample.body as? GraphqlBody
@@ -1024,13 +1186,15 @@ fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFile
 }
 
 @Composable
-fun WebSocketPayloadEditorView(
+fun StreamingPayloadEditorView(
     modifier: Modifier = Modifier,
     editExampleNameViewModel: EditNameViewModel = remember { EditNameViewModel() },
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
+    hasCompleteButton: Boolean,
     knownVariables: Set<String>,
     onClickSendPayload: (String) -> Unit,
+    onClickCompleteStream: () -> Unit,
     connectionStatus: ConnectionStatus,
 ) {
     val colors = LocalColor.current
@@ -1053,6 +1217,15 @@ fun WebSocketPayloadEditorView(
             Spacer(modifier = Modifier.weight(1f))
             AppTextButton(text = "Send", isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING ) {
                 onClickSendPayload(selectedExample!!.body)
+            }
+            if (hasCompleteButton) {
+                AppTextButton(
+                    text = "Complete",
+                    isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING,
+                    modifier = Modifier.padding(start = 4.dp),
+                ) {
+                    onClickCompleteStream()
+                }
             }
         }
 

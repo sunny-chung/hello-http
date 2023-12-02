@@ -1,12 +1,13 @@
-package com.sunnychung.application.multiplatform.hellohttp.manager
+package com.sunnychung.application.multiplatform.hellohttp.network
 
+import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.network.InspectedWebSocketClient
+import com.sunnychung.application.multiplatform.hellohttp.network.util.InspectedWebSocketClient
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -17,7 +18,7 @@ import java.net.InetAddress
 import java.net.URI
 import java.nio.ByteBuffer
 
-open class WebSocketNetworkManager(networkClientManager: NetworkClientManager) : AbstractNetworkManager(networkClientManager) {
+open class WebSocketTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
     fun createDnsResolver(callId: String): DnsResolver {
         return DnsResolver { uri ->
