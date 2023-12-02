@@ -36,6 +36,8 @@ object InsomniaV4 {
         override val parameters: List<KeyValue>,
         override val headers: List<KeyValue>,
         override val authentication: Authentication,
+        val protoMethodName: String? = null, // for gRPC only
+        val protoFileId: String? = null, // for gRPC only
         @JsonProperty("_type") override val type: String,
     ) : Request {
         data class Body(
