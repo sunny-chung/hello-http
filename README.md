@@ -92,6 +92,7 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
 - Message streaming from gRPC communications
 - Persistence per request example
 - Searching in response body
+- Filtering JSON response body by JSON path
 - Automatic gzip / deflate decompression
 
 **Appearance and Interactions**
@@ -111,7 +112,7 @@ make a sponsorship if you admire Hello HTTP.
 
 To build an executable, grab the code, make sure there is a JDK 17+ and git installed, and run:
 ```shell
-./gradlew createDistributable
+./gradlew createDistributable packageDistributionForCurrentOS
 ```
 
 ## Persistence
@@ -127,7 +128,6 @@ Following features are on the TODO list (not in order). Feel free to raise featu
 express your desired priorities in the issue tracker.
 
 - Custom HTTP methods
-- Filtering JSON response body by JSON path
 - Response JSON folding
 - Export to Postman
 - Duplicating requests
