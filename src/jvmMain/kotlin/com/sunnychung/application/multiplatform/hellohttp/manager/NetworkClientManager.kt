@@ -288,7 +288,11 @@ class NetworkClientManager : CallDataStore {
             val subproject = projectCollectionRepository.readSubproject(ProjectAndEnvironmentsDI(), subprojectId)
             val apiSpecDI = ApiSpecDI(projectId)
             val apiSpecCollection = apiSpecificationCollectionRepository.readOrCreate(apiSpecDI) { ApiSpecCollection(id = apiSpecDI) }
-            val apiSpecToSave = apiSpecCollection.grpcApiSpecs.upsert(apiSpec, condition = { it.name == apiSpec.name }, update = { old, new -> new.copy(id = old.id) })
+            val apiSpecToSave = apiSpecCollection.grpcApiSpecs.upsert(
+                entity = apiSpec,
+                condition = { it.id in subproject.grpcApiSpecIds && it.name == apiSpec.name },
+                update = { old, new -> new.copy(id = old.id) }
+            )
             apiSpecificationCollectionRepository.notifyUpdated(apiSpecDI)
             if (subproject.grpcApiSpecIds.add(apiSpecToSave.id)) {
                 projectCollectionRepository.updateSubproject(ProjectAndEnvironmentsDI(), subproject)
