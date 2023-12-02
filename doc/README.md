@@ -1,6 +1,6 @@
 # Hello HTTP
 
-[![Github Repository](github-mark) GitHub Repository](https://github.com/sunny-chung/hello-http)
+[![Github Repository](github-mark.png) GitHub Repository](https://github.com/sunny-chung/hello-http)
 
 [![License](https://img.shields.io/github/license/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/releases)
