@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.exporter
 
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.DataDump
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
@@ -34,6 +35,12 @@ class DataDumpExporter {
                 val doc = AppContext.ResponseCollectionRepository.read(id) ?: return@mapNotNull null
                 Pair(id, doc.responsesByRequestExampleId)
             }
+        val apiSpecs = projects
+            .mapNotNull {
+                val id = ApiSpecDI(projectId = it.id)
+                val doc = AppContext.ApiSpecificationCollectionRepository.read(id) ?: return@mapNotNull null
+                Pair(id, doc)
+            }
 
         val dump = DataDump(
             schemaVersion = schemaVersion,
@@ -42,6 +49,7 @@ class DataDumpExporter {
                 projects = projects,
                 requests = requests,
                 responses = responses,
+                apiSpecs = apiSpecs,
             ),
         )
         val bytes = codec.encodeToByteArray(dump)
