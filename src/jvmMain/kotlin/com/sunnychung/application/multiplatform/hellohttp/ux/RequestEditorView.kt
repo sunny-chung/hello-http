@@ -227,6 +227,13 @@ fun RequestEditorView(
                 ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
                 else -> true
             }
+            val isEnableButton = when (connectionStatus.isConnectionActive()) {
+                true -> true
+                false -> when (request.application) {
+                    ProtocolApplication.Grpc -> currentGrpcMethod != null
+                    else -> true
+                }
+            }
             val dropdownItems: List<String> = when (request.application) {
                 ProtocolApplication.WebSocket -> emptyList()
                 ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
@@ -243,17 +250,24 @@ fun RequestEditorView(
                 modifier = Modifier.background(backgroundColour).width(IntrinsicSize.Max).widthIn(min = 84.dp).fillMaxHeight()
             ) {
                 Box(modifier = Modifier.fillMaxHeight().weight(1f)
-                    .clickable {
-                        if (!connectionStatus.isConnectionActive()) {
-                            onClickSend()
+                    .run {
+                        if (isEnableButton) {
+                            clickable {
+                                if (!connectionStatus.isConnectionActive()) {
+                                    onClickSend()
+                                } else {
+                                    onClickCancel()
+                                }
+                            }
                         } else {
-                            onClickCancel()
+                            this
                         }
                     }
                     .padding(start = 10.dp, end = if (dropdownItems.isNotEmpty()) 4.dp else 10.dp)
                 ) {
                     AppText(
                         text = label,
+                        color = if (isEnableButton) colors.primary else colors.disabled,
                         fontSize = fonts.buttonFontSize,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.align(Alignment.Center)
