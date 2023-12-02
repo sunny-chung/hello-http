@@ -82,9 +82,17 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         incomingBytesFlow: MutableSharedFlow<RawPayload>?,
         out: UserResponse?
     ): ManagedChannel {
-        return (ManagedChannelBuilder.forAddress(uri.host, uri.port) as NettyChannelBuilder)
+        val uri0 = uri.let {
+            val uriString = it.toString()
+            if (!uriString.contains("://")) {
+                URI.create("grpcs://$uriString")
+            } else {
+                it
+            }
+        }
+        return (ManagedChannelBuilder.forAddress(uri0.host, uri0.port) as NettyChannelBuilder)
             .apply {
-                if (uri.scheme in setOf("http", "grpc")) {
+                if (uri0.scheme in setOf("http", "grpc")) {
                     usePlaintext();
                 } else {
                     if (sslConfig.isInsecure == true) {

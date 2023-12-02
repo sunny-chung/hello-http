@@ -26,6 +26,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
@@ -152,7 +153,7 @@ class InsomniaV4Importer {
                     },
                     method = when (it.body.mimeType) {
                         "application/graphql" -> ""
-                        else -> it.method
+                        else -> it.method ?: ""
                     },
                     url = it.url.convertVariables(postFlightBodyVariables),
                     examples = listOf(
@@ -234,6 +235,54 @@ class InsomniaV4Importer {
                 addRequestToSubproject(it, req)
             }
 
+        resources.filter { it["_type"]?.textValue() == "grpc_request" }
+            .map { log.d { it.toString() }; jsonParser.treeToValue(it, InsomniaV4.HttpRequest::class.java) }
+            .forEach {
+                val postFlightBodyVariables = mutableListOf<UserKeyValuePair>()
+
+                var req = UserRequestTemplate(
+                    id = uuidString(),
+                    name = it.name,
+                    application = ProtocolApplication.Grpc,
+                    method = "",
+                    url = it.url.convertVariables(postFlightBodyVariables),
+                    examples = listOf(
+                        UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Json,
+                        body = StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: ""),
+                        headers = it.parseHeaders(postFlightBodyVariables),
+                        queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                    )),
+                    payloadExamples = listOf(
+                        PayloadExample(
+                            id = uuidString(),
+                            name = "Payload 1",
+                            body = it.body.text?.convertVariables(postFlightBodyVariables) ?: "",
+                        )
+                    ),
+                )
+                val grpcServiceMethodSplitted = it.protoMethodName?.split('/') ?: emptyList()
+                if (grpcServiceMethodSplitted.size == 3) {
+                    req = req.copy(
+                        grpc = UserGrpcRequest(
+                            service = grpcServiceMethodSplitted[1],
+                            method = grpcServiceMethodSplitted[2],
+                        )
+                    )
+                }
+
+                req = req.copy(examples = req.examples.map {
+                    it.copy(
+                        postFlight = PostFlightSpec(
+                            updateVariablesFromBody = postFlightBodyVariables
+                        )
+                    )
+                })
+                addRequestToSubproject(it, req)
+            }
+
         resources.filter { it["_type"]?.textValue() == "websocket_request" }
             .map { log.d { it.toString() }; jsonParser.treeToValue(it, InsomniaV4.WebSocketRequest::class.java) }
             .forEach {
@@ -255,7 +304,7 @@ class InsomniaV4Importer {
                     payloadExamples = mutableListOf(
                         PayloadExample(
                             id = uuidString(),
-                            name = "Payload",
+                            name = "Payload 1",
                             body = "",
                         )
                     ),
@@ -298,7 +347,7 @@ class InsomniaV4Importer {
     }
 
     fun InsomniaV4.Request.parseHeaders(postFlightBodyVariables: MutableList<UserKeyValuePair>): List<UserKeyValuePair> {
-        return (this.headers.map {
+        return ((this.headers ?: emptyList()).map {
             UserKeyValuePair(
                 id = uuidString(),
                 key = it.name.convertVariables(postFlightBodyVariables),
@@ -306,7 +355,7 @@ class InsomniaV4Importer {
                 valueType = FieldValueType.String,
                 isEnabled = it.disabled != true,
             )
-        } + (this.authentication.`if` { it.type == "bearer" }?.let {
+        } + (this.authentication.`if` { it?.type == "bearer" }?.let {
             listOf(
                 UserKeyValuePair(
                     id = uuidString(),
@@ -322,7 +371,7 @@ class InsomniaV4Importer {
     }
 
     fun InsomniaV4.Request.parseQueryParameters(postFlightBodyVariables: MutableList<UserKeyValuePair>): List<UserKeyValuePair> {
-        return this.parameters.map {
+        return (this.parameters ?: emptyList()).map {
             UserKeyValuePair(
                 id = uuidString(),
                 key = it.name.convertVariables(postFlightBodyVariables),
