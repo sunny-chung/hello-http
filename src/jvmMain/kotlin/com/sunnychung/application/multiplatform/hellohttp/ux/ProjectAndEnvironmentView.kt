@@ -73,7 +73,7 @@ fun ProjectAndEnvironmentViewV2(
 
     MainWindowDialog(
         key = "ProjectNameAndSubprojectName",
-        isEnabled = showDialogType in setOf(EditDialogType.Project),
+        isEnabled = showDialogType in setOf(EditDialogType.Project, EditDialogType.CreateSubproject),
         onDismiss = { showDialogType = EditDialogType.None }) {
         val focusRequester = remember { FocusRequester() }
 
@@ -95,7 +95,7 @@ fun ProjectAndEnvironmentViewV2(
                         onSelectProject(updated)
                     }
                 }
-                EditDialogType.Subproject -> {
+                EditDialogType.CreateSubproject -> {
                     if (dialogIsCreate) {
                         val subproject = Subproject(
                             id = uuidString(),
@@ -113,8 +113,7 @@ fun ProjectAndEnvironmentViewV2(
                         onUpdateSubproject(updated)
                     }
                 }
-                EditDialogType.Environment -> TODO()
-                EditDialogType.None -> {}
+                else -> {}
             }
             showDialogType = EditDialogType.None
         }
@@ -151,8 +150,8 @@ fun ProjectAndEnvironmentViewV2(
     }
 
     MainWindowDialog(
-        key = "Subproject",
-        isEnabled = showDialogType in setOf(EditDialogType.Subproject),
+        key = "EditSubproject",
+        isEnabled = showDialogType in setOf(EditDialogType.EditSubproject),
         onDismiss = { showDialogType = EditDialogType.None }
     ) {
         SubprojectEditorDialogView(
@@ -259,7 +258,7 @@ fun ProjectAndEnvironmentViewV2(
                     resource = "add.svg",
                     size = 24.dp,
                     onClick = {
-                        showDialogType = EditDialogType.Subproject
+                        showDialogType = EditDialogType.CreateSubproject
                         dialogTextFieldValue = ""
                         dialogIsCreate = true
                     },
@@ -275,7 +274,7 @@ fun ProjectAndEnvironmentViewV2(
                             fontSize = LocalFont.current.createLabelSize,
                             modifier = Modifier
                                 .clickable {
-                                    showDialogType = EditDialogType.Subproject
+                                    showDialogType = EditDialogType.CreateSubproject
                                     dialogTextFieldValue = ""
                                     dialogIsCreate = true
                                 }
@@ -323,7 +322,7 @@ fun ProjectAndEnvironmentViewV2(
                             onClick = {
                                 selectedSubproject ?: return@AppImageButton
 
-                                showDialogType = EditDialogType.Subproject
+                                showDialogType = EditDialogType.EditSubproject
                                 dialogTextFieldValue = selectedSubproject!!.name
                                 dialogIsCreate = false
                             }
@@ -375,7 +374,7 @@ private enum class ExpandedSection {
 }
 
 private enum class EditDialogType {
-    Project, Subproject, Environment, None
+    Project, CreateSubproject, EditSubproject, Environment, None
 }
 
 @Composable
