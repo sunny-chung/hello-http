@@ -263,9 +263,19 @@ fun AppContentView() {
 
     // TODO refactor to a better location
     fun deleteSubprojectRelatedData(subproject: Subproject) {
-        coroutineScope.launch {
+        CoroutineScope(Dispatchers.IO).launch {
             requestCollectionRepository.delete(RequestsDI(subprojectId = subproject.id))
             responseCollectionRepository.delete(ResponsesDI(subprojectId = subproject.id))
+        }
+    }
+
+    // TODO refactor to a better location
+    fun deleteProjectRelatedData(project: Project) {
+        CoroutineScope(Dispatchers.IO).launch {
+            project.subprojects.forEach {
+                deleteSubprojectRelatedData(it)
+            }
+            apiSpecificationCollectionRepository.delete(ApiSpecDI(projectId = project.id))
         }
     }
 
@@ -314,9 +324,7 @@ fun AppContentView() {
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
                             },
                             onDeleteProject = { project ->
-                                project.subprojects.forEach {
-                                    deleteSubprojectRelatedData(it)
-                                }
+                                deleteProjectRelatedData(project)
 
                                 projectCollection.projects.removeIf { it.id == project.id }
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
