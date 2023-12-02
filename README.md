@@ -4,8 +4,8 @@
 [![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/releases)
 [![Website](https://img.shields.io/badge/website-Hello%20HTTP-yellow)](https://sunny-chung.github.io/hello-http/)
 
-This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket and GraphQL (including subscriptions)
-endpoints. This is an alternative to Postman, Insomnia REST, etc.
+This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket, GraphQL (including
+subscriptions) and gRPC endpoints. This is an alternative to Postman, Insomnia REST, etc.
 
 ![Screenshot 1](doc/_include/screenshot1.png)
 ![Screenshot 2](doc/_include/screenshot2.png)
@@ -63,7 +63,7 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
     - Binary File
     - None
   - with query parameters and headers
-- Connecting and sending payloads to WebSocket endpoints
+- Connecting and sending payloads to WebSocket and gRPC endpoints
 - GraphQL queries, mutations and subscriptions
 - Request management with infinite nested folders
 - Different kinds of requests can coexist in the same folder
@@ -89,6 +89,7 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
   - HTTP/2 decoded frames with push promises
 - Message streaming from WebSocket communications
 - Message streaming from GraphQL subscriptions
+- Message streaming from gRPC communications
 - Persistence per request example
 - Searching in response body
 - Automatic gzip / deflate decompression
@@ -125,7 +126,6 @@ Clearing this directory would reset the application.
 Following features are on the TODO list (not in order). Feel free to raise feature requests or
 express your desired priorities in the issue tracker.
 
-- gRPC (via reflection)
 - Custom HTTP methods
 - Filtering JSON response body by JSON path
 - Response JSON folding
