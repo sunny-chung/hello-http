@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Surface
@@ -216,44 +217,56 @@ fun RequestEditorView(
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
-            if (request.application !in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql)
-                || (request.application == ProtocolApplication.Graphql && currentGraphqlOperation?.operation in setOf(
+
+            val isOneOffRequest = when (request.application) {
+                ProtocolApplication.WebSocket -> false
+                ProtocolApplication.Graphql -> currentGraphqlOperation?.operation in setOf(
                     Operation.QUERY,
                     Operation.MUTATION
-                ))
+                )
+                ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
+                else -> true
+            }
+            val dropdownItems: List<String> = when (request.application) {
+                ProtocolApplication.WebSocket -> emptyList()
+                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
+                ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
+                else -> listOf("Copy as cURL command")
+            }
+            val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
+                Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
+            } else {
+                Pair(if (isOneOffRequest) "Cancel" else "Disconnect", colors.backgroundStopButton)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.background(backgroundColour).width(IntrinsicSize.Max).widthIn(min = 84.dp).fillMaxHeight()
             ) {
-                val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
-                    Pair("Send", colors.backgroundButton)
-                } else {
-                    Pair("Cancel", colors.backgroundStopButton)
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.background(backgroundColour).width(width = 84.dp).fillMaxHeight()
-                ) {
-                    Box(modifier = Modifier.fillMaxHeight().weight(1f).clickable {
+                Box(modifier = Modifier.fillMaxHeight().weight(1f)
+                    .clickable {
                         if (!connectionStatus.isConnectionActive()) {
                             onClickSend()
                         } else {
                             onClickCancel()
                         }
-                    }) {
-                        AppText(
-                            text = label,
-                            fontSize = fonts.buttonFontSize,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(start = 4.dp).align(Alignment.Center)
-                        )
                     }
+                    .padding(start = 10.dp, end = if (dropdownItems.isNotEmpty()) 4.dp else 10.dp)
+                ) {
+                    AppText(
+                        text = label,
+                        fontSize = fonts.buttonFontSize,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                if (dropdownItems.isNotEmpty()) {
                     DropDownView(
                         iconSize = 24.dp,
-                        items = listOf(label, "Copy as cURL command").map { DropDownValue(it) },
+                        items = dropdownItems.map { DropDownValue(it) },
                         isShowLabel = false,
                         onClickItem = {
                             var isSuccess = true
                             when (it.displayText) {
-                                "Send" -> onClickSend()
-                                "Cancel" -> onClickCancel()
                                 "Copy as cURL command" -> {
                                     isSuccess = onClickCopyCurl()
                                 }
@@ -262,30 +275,6 @@ fun RequestEditorView(
                         },
                         arrowPadding = PaddingValues(end = 4.dp),
                         modifier = Modifier.fillMaxHeight(),
-                    )
-                }
-            } else {
-                val (text, bgColor) = if (connectionStatus.isConnectionActive()) {
-                    Pair("Disconnect", colors.backgroundStopButton)
-                } else {
-                    Pair("Connect", colors.backgroundButton)
-                }
-                Box(
-                    modifier = Modifier.background(bgColor).fillMaxHeight()
-                        .clickable {
-                            if (!connectionStatus.isConnectionActive()) {
-                                onClickConnect()
-                            } else {
-                                onClickDisconnect()
-                            }
-                        }
-                        .padding(horizontal = 10.dp)
-                ) {
-                    AppText(
-                        text = text,
-                        fontSize = fonts.buttonFontSize,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
             }
