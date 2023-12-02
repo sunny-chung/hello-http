@@ -76,4 +76,6 @@ data class UserResponse(
         return result
     }
 
+    fun isStreaming() = payloadExchanges != null
+
 }

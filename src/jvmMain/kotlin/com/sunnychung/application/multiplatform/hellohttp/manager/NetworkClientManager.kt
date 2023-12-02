@@ -14,6 +14,7 @@ import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolve
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -114,8 +115,12 @@ class NetworkClientManager : CallDataStore {
                             }
                         }
                         if (postFlightBodyVars.isNotEmpty()) {
-                            val responseBody = resp.body?.decodeToString()
-                            val context = if (resp.headers?.firstOrNull {
+                            val responseBody = if (resp.isStreaming()) {
+                                resp.payloadExchanges?.filter { it.type == PayloadMessage.Type.IncomingData }?.lastOrNull()?.data?.decodeToString()
+                            } else {
+                                resp.body?.decodeToString()
+                            }
+                            val context = if (resp.application == ProtocolApplication.Grpc || resp.headers?.firstOrNull {
                                     it.first.equals(
                                         "content-type",
                                         ignoreCase = true

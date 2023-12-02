@@ -571,6 +571,10 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                             setStreamError(e)
                             call.cancel()
                         }
+
+                        if (postFlightAction != null) {
+                            executePostFlightAction(call.id, out, postFlightAction)
+                        }
                     }
 
                     fun buildSendPayloadFunction(requestObserver: StreamObserver<DynamicMessage>): (String) -> Unit {
