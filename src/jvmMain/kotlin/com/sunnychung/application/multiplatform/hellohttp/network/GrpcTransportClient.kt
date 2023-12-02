@@ -527,6 +527,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     }
                     out.isError = true
                     emitEvent(call.id, "Encountered error - ${e.message}")
+                    log.d(e) { "gRPC stream error" }
                 }
 
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
@@ -588,12 +589,16 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     }
 
                     fun buildSendEndOfStream(requestObserver: StreamObserver<DynamicMessage>): () -> Unit {
+                        var hasInvokedCancelDueToError = false
                         return {
                             try {
                                 requestObserver.onCompleted()
                             } catch (e: Throwable) {
-                                setStreamError(e)
-                                call.cancel()
+                                if (!hasInvokedCancelDueToError) {
+                                    hasInvokedCancelDueToError = true
+                                    setStreamError(e)
+                                    call.cancel()
+                                }
                             }
                         }
                     }
