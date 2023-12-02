@@ -137,7 +137,7 @@ class NetworkClientManager : CallDataStore {
                                         if (it == "$") {
                                             responseBody
                                         } else {
-                                            context?.read<String>(it)
+                                            context?.read<Any?>(it)?.toString()
                                         }
                                     } ?: ""
                                     if (variable != null) {

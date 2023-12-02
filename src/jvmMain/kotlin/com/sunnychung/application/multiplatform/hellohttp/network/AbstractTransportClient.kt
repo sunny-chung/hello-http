@@ -201,7 +201,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             emitEvent(callId, "Post Flight Actions Completed")
         } catch (e: Throwable) {
             out.postFlightErrorMessage = e.message
-            emitEvent(callId, "Post Flight Actions Stopped with Error")
+            emitEvent(callId, "Post Flight Actions Stopped with Error -- ${e.message}")
         }
     }
 }
