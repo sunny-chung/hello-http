@@ -48,7 +48,7 @@ kotlin {
 
                 // grpc
 //                runtimeOnly("io.grpc:grpc-netty-shaded:$grpcVersion-patch1")
-                implementation("io.grpc:grpc-netty-shaded:$grpcVersion-patch1")
+                implementation("io.github.sunny-chung:grpc-netty-shaded:$grpcVersion-patch1")
 //                implementation("io.grpc:grpc-netty:$grpcVersion-patch1")
                 implementation("io.grpc:grpc-protobuf:$grpcVersion")
 //    implementation("io.grpc:grpc-stub:$grpcVersion")
@@ -84,9 +84,9 @@ kotlin {
 
 configurations.all {
     resolutionStrategy.eachDependency {
-        if (requested.group == "io.grpc" && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
+        if (requested.group in setOf("io.github.sunny-chung", "io.grpc") && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
             if (requested.version == grpcVersion) {
-                useVersion("$grpcVersion-patch1")
+                useTarget("io.github.sunny-chung:${requested.name}:$grpcVersion-patch1")
                 because("transport inspection")
             }
         } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
