@@ -104,16 +104,16 @@ fun AppView() {
                         modifier = Modifier
                             .border(1.dp, color = colors.highlight)
                             .background(colors.background)
-                            .padding(40.dp)
-                            .align(
-                                Alignment.Center
-                            )
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
                             ) {
                                 // no-op
                             }
+                            .padding(40.dp)
+                            .align(
+                                Alignment.Center
+                            )
                             .sizeIn(maxWidth = 480.dp, maxHeight = 300.dp)
                     ) {
                         dialog.content()
