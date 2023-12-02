@@ -533,13 +533,15 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
                 try {
                     val cancel = {
-                        try {
-                            responseObserver.onCompleted()
-                        } catch (_: Throwable) {}
-                        try {
-                            channel0.shutdown()
-                        } catch (_: Throwable) {}
-                        call.status = ConnectionStatus.DISCONNECTED
+                        if (call.status.isConnectionActive()) {
+                            try {
+                                responseObserver.onCompleted()
+                            } catch (_: Throwable) {}
+                            try {
+                                channel0.shutdown()
+                            } catch (_: Throwable) {}
+                            call.status = ConnectionStatus.DISCONNECTED
+                        }
                     }
                     call.cancel = cancel
 
@@ -607,10 +609,12 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                         call.sendPayload = buildSendPayloadFunction(requestObserver)
                         call.sendEndOfStream = buildSendEndOfStream(requestObserver)
                         call.cancel = {
-                            try {
-                                call.sendEndOfStream()
-                            } catch (_: Throwable) {}
-                            cancel()
+                            if (call.status.isConnectionActive()) {
+                                try {
+                                    call.sendEndOfStream()
+                                } catch (_: Throwable) {}
+                                cancel()
+                            }
                         }
                         // actually, at this stage it could be not yet connected
                         call.status = ConnectionStatus.OPEN_FOR_STREAMING
