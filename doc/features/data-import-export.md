@@ -34,12 +34,13 @@ Hello HTTP data dump exports or imports everything supported, so it is not on th
 |---------------------------------------|------------------------------------|------------------------------------|---------------------|-------------------------------------|
 | Request folder & Subproject structure | ✔︎                                 | ✔︎                                 | ✔︎                  | Subprojects are exported as folders |
 | HTTP & REST requests                  | ✔︎                                 | ✔︎                                 | ✔︎                  | ✔︎                                  |
+| Request Authorization                 | Only bearer tokens                 | Export as headers                  | Only bearer tokens  | Export as headers                   |
 | Request Documentation                 | N/A                                | N/A                                | N/A                 | N/A                                 |
 | WebSocket                             | ✔︎                                 | Only the first payload is exported | ✕                   | ✕                                   |
-| GraphQL queries & mutations           | ✔︎                                 | ✔︎                                 | TODO                | Operation name is not exported      |
+| GraphQL queries & mutations           | ✔︎                                 | ✔︎                                 | ✔︎                  | Operation name is not exported      |
 | GraphQL subscriptions                 | ✔︎                                 | Only the first payload is exported | ✕                   | ✕                                   |
 | gRPC (via Reflection)                 | Service Definition is not imported | Service Definition is not exported | ✕                   | ✕                                   |
 | gRPC (via `.proto` files)             | N/A                                | N/A                                | ✕                   | ✕                                   |
 
-`N/A` means that feature is not available in Hello HTTP.
+`N/A` means that feature has no equivalent in Hello HTTP.
 

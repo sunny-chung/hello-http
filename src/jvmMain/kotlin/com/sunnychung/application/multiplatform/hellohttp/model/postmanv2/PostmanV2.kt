@@ -34,7 +34,7 @@ object PostmanV2 {
     )
 
     data class Item(
-        val id: String,
+        val id: String?, // id is not exported from Postman
         val name: String,
         val item: List<Item>? = null,
         val request: Request? = null,
