@@ -171,7 +171,7 @@ fun AppContentView() {
     val coroutineScope = rememberCoroutineScope()
     var selectedProject by remember { mutableStateOf<Project?>(null) }
     var selectedSubprojectId by remember { mutableStateOf<String?>(null) }
-    val selectedSubproject = selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null).value?.first }
+    val selectedSubproject = selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null, Dispatchers.Main.immediate).value?.first }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
     val requestCollection = requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null).value?.first }
