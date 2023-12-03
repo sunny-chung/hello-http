@@ -42,6 +42,7 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
     - Postman
   - Export to
     - Insomnia
+    - Postman
     - (make feature requests for more destinations)
 - Selective exports
 
@@ -129,7 +130,6 @@ express your desired priorities in the issue tracker.
 
 - Custom HTTP methods
 - Response JSON folding
-- Export to Postman
 - Duplicating requests
 - Copy buttons in response
 - Binary response view

@@ -23,9 +23,9 @@ call, and invoke them.
 ![gRPC Demo](../grpc.gif)
 
 ## Using Plaintext or TLS protocols
-To use the plaintext protocol, use `http://` or `grpc://` schemas in the URL.
+To use the plaintext protocol, use `http://` or `grpc://` schemes in the URL.
 
-To use the TLS protocol, use `https://` or `grpcs://` schemas in the URL.
+To use the TLS protocol, use `https://` or `grpcs://` schemes in the URL.
 
 SSL setting can be configured in the [Environment setting](../features/environments).
 

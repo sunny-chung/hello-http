@@ -31,6 +31,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.exporter.DataDumpExporter
 import com.sunnychung.application.multiplatform.hellohttp.exporter.InsomniaV4Exporter
+import com.sunnychung.application.multiplatform.hellohttp.exporter.PostmanV2MultiFileExporter
 import com.sunnychung.application.multiplatform.hellohttp.extension.`if`
 import com.sunnychung.application.multiplatform.hellohttp.importer.DataDumpImporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.InsomniaV4Importer
@@ -103,7 +104,7 @@ enum class ImportFormat {
 }
 
 enum class ExportFormat {
-    `Hello HTTP Data Dump`, `Insomnia v4 JSON (One File per Project)`
+    `Hello HTTP Data Dump`, `Insomnia v4 JSON (One File per Project)`, `Postman v2 Data Dump (One File per Project or Env)`
 }
 
 @Composable
@@ -208,12 +209,19 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                         onClickItem = { exportFileFormat = ExportFormat.valueOf(it.displayText); true },
                     )
                 }
+                if (exportFileFormat == ExportFormat.`Postman v2 Data Dump (One File per Project or Env)`) {
+                    AppText(
+                        text = "WARNING: Postman can only import plain HTTP and GraphQL APIs, i.e. WebSockets, GraphQL subscriptions and gRPC are not supported.",
+                        color = colors.highlight
+                    )
+                }
                 AppTextButton(
                     text = "Export",
                     onClick = {
                         when (exportFileFormat) {
                             ExportFormat.`Hello HTTP Data Dump` -> isShowFileDialog = true
                             ExportFormat.`Insomnia v4 JSON (One File per Project)` -> isShowDirectoryPicker = true
+                            ExportFormat.`Postman v2 Data Dump (One File per Project or Env)` -> isShowDirectoryPicker = true
                         }
                     }
                 )
@@ -224,24 +232,42 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                 isShowDirectoryPicker = false
 
                 dir?.let { File(dir) }?.`if` { it.isDirectory }
-                    ?.takeIf { exportFileFormat == ExportFormat.`Insomnia v4 JSON (One File per Project)` }
                     ?.let { dirFile ->
                         // TODO suspend instead of runBlocking
-                        runBlocking {
-                            val exporter = InsomniaV4Exporter()
-                            val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
-                            AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
-                                .projects
-                                .filter { it.id in selectedProjectIds }
-                                .forEach {
-                                    val exportFile = File(
-                                        dirFile,
-                                        "${it.name.replace("[\\s\\p{Punct}]".toRegex(), "-")}_$dateTimeString.json"
-                                    )
-                                    exporter.exportToFile(it, exportFile)
-                                }
+                        val hasDoneSomthing = when (exportFileFormat) {
+                            ExportFormat.`Insomnia v4 JSON (One File per Project)` -> runBlocking {
+                                val exporter = InsomniaV4Exporter()
+                                val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
+                                AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
+                                    .projects
+                                    .filter { it.id in selectedProjectIds }
+                                    .forEach {
+                                        val exportFile = File(
+                                            dirFile,
+                                            "${it.name.replace("[\\s\\p{Punct}]".toRegex(), "-")}_$dateTimeString.json"
+                                        )
+                                        exporter.exportToFile(it, exportFile)
+                                    }
+                                true
+                            }
+
+                            ExportFormat.`Postman v2 Data Dump (One File per Project or Env)` -> runBlocking {
+                                val exporter = PostmanV2MultiFileExporter()
+                                val projects = AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
+                                    .projects
+                                    .filter { it.id in selectedProjectIds }
+
+                                exporter.exportToFile(projects, dirFile)
+
+                                true
+                            }
+
+                            else -> false
                         }
-                        closeDialog()
+
+                        if (hasDoneSomthing) {
+                            closeDialog()
+                        }
                     }
             }
             if (isShowFileDialog) {
