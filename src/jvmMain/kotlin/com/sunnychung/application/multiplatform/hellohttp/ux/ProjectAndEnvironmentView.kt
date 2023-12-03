@@ -64,10 +64,15 @@ fun ProjectAndEnvironmentViewV2(
     var dialogIsCreate by remember { mutableStateOf<Boolean>(true) }
 
     if (selectedProject == null && projects.size == 1) {
-        onSelectProject(projects.first())
+        // invoking `onSelectProject()` directly doesn't trigger recomposition
+        // what is worse, manually re-assigning the value would not trigger recomposition as well
+        LaunchedEffect(projects.first().id) {
+            onSelectProject(projects.first())
+        }
         expandedSection = ExpandedSection.Subproject
     }
     if (selectedSubproject == null && selectedProject != null && selectedProject!!.subprojects.size == 1) {
+        // but this works
         onSelectSubproject(selectedProject!!.subprojects.first())
         expandedSection = ExpandedSection.None
     }
