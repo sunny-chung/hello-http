@@ -116,6 +116,8 @@ To build an executable, grab the code, make sure there is a JDK 17+ and git inst
 ./gradlew createDistributable packageDistributionForCurrentOS
 ```
 
+The build will be available at `$projectDir/build/compose/binaries/main/app`.
+
 ## Persistence
 
 All data are saved in a single content root directory. In Hello HTTP, open setting, scroll down and click

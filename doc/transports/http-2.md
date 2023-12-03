@@ -7,7 +7,8 @@ title: HTTP/2
 ![Setting](../http-protocol-version.png)
 
 By default, Hello HTTP will try to upgrade to HTTP/2 whenever possible. This behaviour can be changed in
-the [Environment setting](../features/environments).
+the [Environment setting](../features/environments). This setting has no effect to WebSocket, GraphQL subscriptions and
+gRPC connections, which require a specific HTTP version to run.
 
 ## Transport Timeline
 
