@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
+import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -224,15 +225,15 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
     return Pair(b.build(), entity?.contentLength ?: 0L)
 }
 
+private fun String.escape(): String {
+    return replace("\\", "\\\\").replace("\"", "\\\"")
+}
+
+private fun String.urlEncoded(): String {
+    return URLEncoder.encode(this, StandardCharsets.UTF_8)
+}
+
 fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?): String {
-    fun String.escape(): String {
-        return replace("\\", "\\\\").replace("\"", "\\\"")
-    }
-
-    fun String.urlEncoded(): String {
-        return URLEncoder.encode(this, StandardCharsets.UTF_8)
-    }
-
     val request = toHttpRequest(exampleId, environment)
 
     val url = request.getResolvedUri().toString()
@@ -279,4 +280,36 @@ fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environmen
         else -> throw UnsupportedOperationException()
     }
     return curl
+}
+
+fun UserRequestTemplate.toGrpcurlCommand(exampleId: String, environment: Environment?, payloadExampleId: String, method: GrpcMethod): String {
+    val request = toHttpRequest(exampleId, environment)
+
+    val uri = request.getResolvedUri()
+
+    val currentOS = currentOS()
+    val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "
+
+    var cmd = "grpcurl -v"
+
+    val isTlsConnection = uri.scheme !in setOf("http", "grpc")
+    if (isTlsConnection && environment?.sslConfig?.isInsecure == true) {
+        cmd += "${newLine}-insecure"
+    } else if (!isTlsConnection) {
+        cmd += "${newLine}-plaintext"
+    }
+    request.headers.forEach {
+        cmd += "${newLine}-H \"${it.first.escape()}: ${it.second.escape()}\""
+    }
+    val payload = if (!method.isClientStreaming) {
+        (request.body as StringBody).value
+    } else {
+        payloadExamples!!.first { it.id == payloadExampleId }.body
+    }
+    cmd += "${newLine}-format json"
+    cmd += "${newLine}-d \"${payload.escape()}\""
+
+    cmd += "${newLine}${uri.host}:${uri.port}"
+    cmd += "${newLine}${grpc!!.service}/${grpc!!.method}"
+    return cmd
 }

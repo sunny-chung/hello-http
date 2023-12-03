@@ -46,6 +46,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollec
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
+import com.sunnychung.application.multiplatform.hellohttp.extension.toGrpcurlCommand
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
@@ -474,6 +475,17 @@ fun AppContentView() {
                                             log.w(e) { "Cannot convert request" }
                                             false
                                         }
+                                    },
+                                    onClickCopyGrpcurl = { payloadExampleId, grpcMethod ->
+                                        val cmd = requestNonNull.toGrpcurlCommand(
+                                            exampleId = selectedRequestExampleId!!,
+                                            environment = selectedEnvironment,
+                                            payloadExampleId = payloadExampleId,
+                                            method = grpcMethod,
+                                        )
+                                        log.d { "grpcurl: $cmd" }
+                                        clipboardManager.setText(AnnotatedString(cmd))
+                                        true
                                     },
                                     onRequestModified = {
                                         log.d { "onRequestModified" }

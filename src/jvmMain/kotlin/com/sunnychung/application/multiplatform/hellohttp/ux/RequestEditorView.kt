@@ -51,6 +51,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
+import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -91,6 +92,7 @@ fun RequestEditorView(
     onClickSend: () -> Unit,
     onClickCancel: () -> Unit,
     onClickCopyCurl: () -> Boolean,
+    onClickCopyGrpcurl: (selectedPayloadExampleId: String, method: GrpcMethod) -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     connectionStatus: ConnectionStatus,
     onClickConnect: () -> Unit,
@@ -127,6 +129,7 @@ fun RequestEditorView(
     val hasPayloadEditor = (request.application == ProtocolApplication.WebSocket
             || (request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true)
             )
+    var selectedPayloadExampleId by remember { mutableStateOf(request.payloadExamples?.firstOrNull()?.id) }
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -283,6 +286,14 @@ fun RequestEditorView(
                             when (it.displayText) {
                                 "Copy as cURL command" -> {
                                     isSuccess = onClickCopyCurl()
+                                }
+                                "Copy as grpcurl command" -> {
+                                    isSuccess = try {
+                                        onClickCopyGrpcurl(selectedPayloadExampleId!!, currentGrpcMethod!!)
+                                    } catch (e: Throwable) {
+                                        log.d(e) { "Cannot copy grpcurl command" }
+                                        false
+                                    }
                                 }
                             }
                             isSuccess
@@ -597,6 +608,8 @@ fun RequestEditorView(
                 modifier = Modifier.weight(0.7f).fillMaxWidth(),
                 request = request,
                 onRequestModified = onRequestModified,
+                selectedPayloadExampleId = selectedPayloadExampleId!!,
+                onSelectExample = { selectedPayloadExampleId = it.id },
                 hasCompleteButton = request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true,
                 knownVariables = environmentVariableKeys,
                 onClickSendPayload = onClickSendPayload,
@@ -1191,6 +1204,8 @@ fun StreamingPayloadEditorView(
     editExampleNameViewModel: EditNameViewModel = remember { EditNameViewModel() },
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
+    selectedPayloadExampleId: String,
+    onSelectExample: (PayloadExample) -> Unit,
     hasCompleteButton: Boolean,
     knownVariables: Set<String>,
     onClickSendPayload: (String) -> Unit,
@@ -1199,16 +1214,13 @@ fun StreamingPayloadEditorView(
 ) {
     val colors = LocalColor.current
 
-    var selectedExampleId by remember { mutableStateOf(request.payloadExamples!!.first().id) }
-    var selectedExample = request.payloadExamples!!.firstOrNull { it.id == selectedExampleId }
-
-    fun onSelectExample(example: PayloadExample) {
-        selectedExampleId = example.id
-        selectedExample = example
-    }
+    var selectedExample = request.payloadExamples!!.firstOrNull { it.id == selectedPayloadExampleId }
 
     if (selectedExample == null) {
-        onSelectExample(request.payloadExamples.first())
+        request.payloadExamples.first().let {
+            onSelectExample(it)
+            selectedExample = it
+        }
     }
 
     Column(modifier) {

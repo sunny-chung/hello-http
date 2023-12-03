@@ -34,15 +34,19 @@ End users input **JSON** payloads and read **JSON** responses.
 JSON data is converted to Protobuf for data transmission transparently.
 
 ## Updating an API Specification
-
 On clicking the download schema button and the schema is successfully retrieved, it would **replace the one that has the
 name `{host}:{port}`** in the same Subproject. If there is none, even if a schema is selected, Hello HTTP would create a
 new one with this name. The name can be changed afterwards, and can be managed, as described below.
 
 ## Managing API Specifications
-
 Click the pencil (Edit) button next to the current Subproject name. gRPC API specifications can be managed in the
 "Edit Subproject" dialog.
 
 ![Manage gRPC API Specifications](../manage-grpc-apispec.gif)
 
+## Copy as `grpcurl` commands
+A [grpcurl](https://github.com/fullstorydev/grpcurl) command can be copied to send the current request in a command
+shell. All service method types are supported. If only response bodies are needed, the verbose option `-v` can be
+removed.
+
+![grpcurl](../grpcurl.png)
