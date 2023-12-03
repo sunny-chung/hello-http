@@ -13,7 +13,7 @@ class PrettifierManager {
     init {
         // JSON
         register(
-            contentTypeRegex = "application\\/(json|.+\\+json)".toRegex(),
+            contentTypeRegex = "application\\/(json|.+\\+json)\\b.*".toRegex(),
             prettifier = Prettifier(
                 formatName = "JSON (Prettified)",
                 prettify = {
