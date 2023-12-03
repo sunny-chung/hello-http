@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -51,6 +54,7 @@ fun SubprojectEditorDialogView(
 
     log.d { "SubprojectEditorDialogView recompose" }
 
+    val focusRequester = remember { FocusRequester() }
     var cachedSubproject by rememberLast(subprojectId) { mutableStateOf<Subproject?>(null) }
     val subproject = projectCollectionRepository.subscribeLatestSubproject(
         ProjectAndEnvironmentsDI(), subprojectId
@@ -86,7 +90,7 @@ fun SubprojectEditorDialogView(
                     onSubprojectUpdate()
                 },
                 placeholder = { AppText(text = "Subproject Name", color = colours.placeholder) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
             )
         }
 
@@ -170,6 +174,10 @@ fun SubprojectEditorDialogView(
                 }
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
     }
 }
 

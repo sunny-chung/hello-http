@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
@@ -89,6 +97,7 @@ fun AppView() {
                 AppContentView()
 
                 dialogState?.let { dialog ->
+                    val focusRequester = remember { FocusRequester() }
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -97,7 +106,7 @@ fun AppView() {
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
                             ) {
-                                dialogViewModel.updateState(null)
+                                dialogViewModel.updateState(null) // close the dialog
                             }
                     )
                     Box(
@@ -110,12 +119,26 @@ fun AppView() {
                             ) {
                                 // no-op
                             }
+                            .onKeyEvent {
+                                log.d { "Dialog key ${it.type} ${it.key}" }
+                                if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
+                                    dialogViewModel.updateState(null) // close the dialog
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            .focusRequester(focusRequester)
                             .padding(40.dp)
                             .align(
                                 Alignment.Center
                             )
                             .sizeIn(maxWidth = 480.dp, maxHeight = 300.dp)
                     ) {
+                        LaunchedEffect(Unit) {
+                            focusRequester.requestFocus()
+                        }
+
                         dialog.content()
                         AppImageButton(
                             resource = "close.svg",
