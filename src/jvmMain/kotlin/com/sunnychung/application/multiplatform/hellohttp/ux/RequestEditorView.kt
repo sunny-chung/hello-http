@@ -164,7 +164,7 @@ fun RequestEditorView(
             DropDownView(
                 selectedItem = options.dropdownables.first { it.key.application == request.application && (it.key.method == request.method || it.key.method.isEmpty()) },
                 items = options.dropdownables,
-                contentView = { it, isLabel, isSelected ->
+                contentView = { it, isLabel, isSelected, isClickable ->
                     val (text, color) = when (it!!.key.application) {
                         ProtocolApplication.Http -> Pair(
                             it.displayText,
@@ -677,10 +677,10 @@ private fun RequestServiceMethodSelector(
             selectedItem = DropDownValue(service),
             onClickItem = { onSelectService(it.displayText); true },
             isLabelFillMaxWidth = true,
-            contentView = { it, isLabel, isSelected ->
+            contentView = { it, isLabel, isSelected, isClickable ->
                 AppText(
                     text = if (isLabel) it?.displayText?.split('.')?.last().emptyToNull() ?: "--" else it!!.displayText,
-                    color = if (!isLabel && isSelected) LocalColor.current.highlight else LocalColor.current.primary,
+                    color = if (!isLabel && isSelected) LocalColor.current.highlight else if (isClickable) LocalColor.current.primary else LocalColor.current.disabled,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)

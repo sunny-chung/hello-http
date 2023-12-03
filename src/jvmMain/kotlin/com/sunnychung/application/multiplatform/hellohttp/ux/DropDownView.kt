@@ -36,10 +36,16 @@ fun <T: DropDownable> DropDownView(
     maxLines: Int = 1,
     isLabelFillMaxWidth: Boolean = false,
     isShowLabel: Boolean = true,
-    contentView: @Composable (RowScope.(it: T?, isLabel: Boolean, isSelected: Boolean) -> Unit) = {it, isLabel, isSelected ->
+    contentView: @Composable (RowScope.(it: T?, isLabel: Boolean, isSelected: Boolean, isClickable: Boolean) -> Unit) = {it, isLabel, isSelected, isClickable ->
         AppText(
             text = it?.displayText.emptyToNull() ?: "--",
-            color = if (!isLabel && isSelected) LocalColor.current.highlight else LocalColor.current.primary,
+            color = if (!isLabel && isSelected) {
+                LocalColor.current.highlight
+            } else if (isClickable) {
+                LocalColor.current.primary
+            } else {
+                LocalColor.current.disabled
+            },
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
             modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false)
@@ -50,6 +56,8 @@ fun <T: DropDownable> DropDownView(
     onClickItem: (T) -> Boolean
 ) {
     val colors = LocalColor.current
+    val populatedItems = populateItems(items)
+    val isClickable = isEnabled && populatedItems.isNotEmpty()
 
     var isShowContextMenu by remember { mutableStateOf(false) }
 
@@ -58,14 +66,14 @@ fun <T: DropDownable> DropDownView(
         onDismissRequest = { isShowContextMenu = false },
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
-        populateItems(items).forEach { item ->
+        populatedItems.forEach { item ->
             Column(modifier = Modifier.clickable {
                 if (onClickItem(item)) {
                     isShowContextMenu = false
                 }
             }.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth()) {
                 Row {
-                    contentView(item, false, item.key == selectedItem?.key)
+                    contentView(item, false, item.key == selectedItem?.key, isClickable)
                 }
             }
         }
@@ -73,16 +81,25 @@ fun <T: DropDownable> DropDownView(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.clickable {
-            if (isEnabled) {
-                isShowContextMenu = !isShowContextMenu
+        modifier = modifier.run {
+            if (isClickable) {
+                clickable {
+                    isShowContextMenu = !isShowContextMenu
+                }
+            } else {
+                this
             }
         }
     ) {
         if (isShowLabel) {
-            contentView(selectedItem, true, false)
+            contentView(selectedItem, true, false, isClickable)
         }
-        AppImage(resource = iconResource, size = iconSize, modifier = Modifier.padding(arrowPadding))
+        AppImage(
+            resource = iconResource,
+            size = iconSize,
+            color = if (isClickable) colors.primary else colors.disabled,
+            modifier = Modifier.padding(arrowPadding),
+        )
     }
 }
 
