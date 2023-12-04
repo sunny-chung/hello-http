@@ -129,7 +129,7 @@ fun RequestEditorView(
     val hasPayloadEditor = (request.application == ProtocolApplication.WebSocket
             || (request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true)
             )
-    var selectedPayloadExampleId by remember { mutableStateOf(request.payloadExamples?.firstOrNull()?.id) }
+    var selectedPayloadExampleId by rememberLast(request.id) { mutableStateOf(request.payloadExamples?.firstOrNull()?.id) }
 
     log.d { "RequestEditorView recompose $request" }
 
