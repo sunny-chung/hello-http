@@ -31,6 +31,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.insomniav4.InsomniaV4
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
@@ -209,16 +210,23 @@ class InsomniaV4Importer {
                             "application/octet-stream" -> FileBody(
                                 filePath = it.body.fileName
                             )
-                            "application/graphql" -> jsonParser.readValue<GraphqlRequestBody>(it.body.text ?: "")
-                                .let {
-                                    GraphqlBody(
-                                        document = it.query,
-                                        variables = jsonParser.writerWithDefaultPrettyPrinter()
-                                            .writeValueAsString(it.variables)
-                                            .let { if (it == "null") "" else it },
-                                        operationName = it.operationName,
-                                    )
+                            "application/graphql" -> it.body.text.emptyToNull()?.let { body ->
+                                try {
+                                    jsonParser.readValue<GraphqlRequestBody>(body)
+                                        .let {
+                                            GraphqlBody(
+                                                document = it.query,
+                                                variables = jsonParser.writerWithDefaultPrettyPrinter()
+                                                    .writeValueAsString(it.variables)
+                                                    .let { if (it == "null") "" else it },
+                                                operationName = it.operationName,
+                                            )
+                                        }
+                                } catch (e: Throwable) {
+                                    log.w(e) { "Insomnia import error while parsing JSON of GraphQL content. Will use default empty value." }
+                                    null
                                 }
+                            } ?: GraphqlBody(document = "", variables = "", operationName = null)
                             else -> StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: "")
                         },
                         headers = it.parseHeaders(postFlightBodyVariables),
