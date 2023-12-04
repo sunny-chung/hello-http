@@ -223,8 +223,8 @@ class PostmanV2ZipImporter {
 
                         "file" -> FileBody(file?.src)
                         "graphql" -> GraphqlBody(
-                            document = graphql?.query ?: "",
-                            variables = graphql?.variables ?: "",
+                            document = graphql?.query?.convertVariables() ?: "",
+                            variables = graphql?.variables?.convertVariables() ?: "",
                             operationName = null
                         )
 

@@ -215,10 +215,11 @@ class InsomniaV4Importer {
                                     jsonParser.readValue<GraphqlRequestBody>(body)
                                         .let {
                                             GraphqlBody(
-                                                document = it.query,
+                                                document = it.query.convertVariables(postFlightBodyVariables),
                                                 variables = jsonParser.writerWithDefaultPrettyPrinter()
                                                     .writeValueAsString(it.variables)
-                                                    .let { if (it == "null") "" else it },
+                                                    .let { if (it == "null") "" else it }
+                                                    .convertVariables(postFlightBodyVariables),
                                                 operationName = it.operationName,
                                             )
                                         }
