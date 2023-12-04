@@ -397,6 +397,8 @@ class InsomniaV4Importer {
             .replace("\\{% variable '([^{}%']*)' %\\}".toRegex(), "\\\${{\$1}}")
             .replace("\\{% uuid 'v4' %\\}".toRegex(), "\\\$((uuid))")
             .replace("\\{% now 'iso-8601'[^{}%]* %\\}".toRegex(), "\\\$((now.iso8601))")
+            .replace("\\{% now 'millis'[^{}%]* %\\}".toRegex(), "\\\$((now.epochMills))")
+            .replace("\\{% now 'unix'[^{}%]* %\\}".toRegex(), "\\\$((now.epochSeconds))")
         INSOMNIA_SAVE_VARIABLE_REGEX.findAll(s)
             .filter { it.groupValues[2] == "responseBody" && it.groupValues[4] == "jsonPath" }
             .forEach {
