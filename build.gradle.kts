@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.4.0" // must be in 'x.y.z' for native distributions
+version = "1.4.1-SNAPSHOT" // must be in 'x.y.z' for native distributions
 
 repositories {
     google()
