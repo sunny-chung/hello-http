@@ -50,7 +50,6 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toGrpcurlCom
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
-import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -70,7 +69,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorSch
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -533,6 +531,7 @@ fun AppContentView() {
                                         if (requestNonNull.application == ProtocolApplication.Grpc) {
                                             networkClientManager.cancelFetchingGrpcApiSpec(
                                                 url = requestNonNull.url,
+                                                environment = selectedEnvironment,
                                                 subprojectId = selectedSubprojectId!!
                                             )
                                         }
@@ -542,6 +541,7 @@ fun AppContentView() {
                                         val r = if (requestNonNull.application == ProtocolApplication.Grpc) {
                                             networkClientManager.subscribeGrpcApiSpecFetchingStatus(
                                                 url = requestNonNull.url,
+                                                environment = selectedEnvironment,
                                                 subprojectId = selectedSubprojectId
                                             ).collectAsState().value
                                         } else {
