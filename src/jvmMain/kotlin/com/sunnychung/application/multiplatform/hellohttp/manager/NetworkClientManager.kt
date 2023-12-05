@@ -288,6 +288,12 @@ class NetworkClientManager : CallDataStore {
                     url0,
                     environment?.sslConfig ?: SslConfig()
                 )
+            } catch (e: Throwable) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    val errorMessageVM = AppContext.ErrorMessagePromptViewModel
+                    errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                }
+                throw e
             } finally {
                 call.isConnecting.value = false
             }

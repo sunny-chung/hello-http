@@ -1,5 +1,9 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
@@ -9,13 +13,17 @@ import androidx.compose.foundation.defaultScrollbarStyle
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusRequester
@@ -35,6 +44,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
@@ -67,6 +78,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,6 +87,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 @Preview
 fun AppView() {
@@ -147,6 +160,41 @@ fun AppView() {
                         )
                     }
                 }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(all = 40.dp)
+                        .width(IntrinsicSize.Max)
+                        .height(IntrinsicSize.Max)
+                ) {
+                    val errorMessageVM = AppContext.ErrorMessagePromptViewModel
+                    val errorMessageState = errorMessageVM.state.collectAsState().value
+                    val visible = errorMessageVM.isVisible()
+                    AnimatedVisibility(
+                        visible,
+                        enter = fadeIn(tween(200)),
+                        exit = fadeOut(tween(1000))
+                    ) {
+                        AppText(
+                            text = errorMessageState.message,
+                            modifier = Modifier
+                                .background(colors.errorResponseBackground)
+                                .widthIn(min = 200.dp, max = 600.dp)
+                                .onPointerEvent(PointerEventType.Enter) {
+                                    errorMessageVM.lockDismissTime()
+                                }
+                                .onPointerEvent(PointerEventType.Exit) {
+                                    errorMessageVM.unlockDismissTime(1.seconds())
+                                }
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                ) { errorMessageVM.dismiss() }
+                                .padding(12.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -165,6 +213,7 @@ fun AppContentView() {
         runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
     }
     val clipboardManager = LocalClipboardManager.current
+    val errorMessageVM = AppContext.ErrorMessagePromptViewModel
 
     val coroutineScope = rememberCoroutineScope()
     var selectedProject by remember { mutableStateOf<Project?>(null) }
@@ -471,19 +520,25 @@ fun AppContentView() {
                                             true
                                         } catch (e: Throwable) {
                                             log.w(e) { "Cannot convert request" }
+                                            errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
                                             false
                                         }
                                     },
                                     onClickCopyGrpcurl = { payloadExampleId, grpcMethod ->
-                                        val cmd = requestNonNull.toGrpcurlCommand(
-                                            exampleId = selectedRequestExampleId!!,
-                                            environment = selectedEnvironment,
-                                            payloadExampleId = payloadExampleId,
-                                            method = grpcMethod,
-                                        )
-                                        log.d { "grpcurl: $cmd" }
-                                        clipboardManager.setText(AnnotatedString(cmd))
-                                        true
+                                        try {
+                                            val cmd = requestNonNull.toGrpcurlCommand(
+                                                exampleId = selectedRequestExampleId!!,
+                                                environment = selectedEnvironment,
+                                                payloadExampleId = payloadExampleId,
+                                                method = grpcMethod,
+                                            )
+                                            log.d { "grpcurl: $cmd" }
+                                            clipboardManager.setText(AnnotatedString(cmd))
+                                            true
+                                        } catch (e: Throwable) {
+                                            errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                            throw e
+                                        }
                                     },
                                     onRequestModified = {
                                         log.d { "onRequestModified" }
@@ -518,13 +573,17 @@ fun AppContentView() {
                                     },
                                     onClickFetchApiSpec = {
                                         if (requestNonNull.application == ProtocolApplication.Grpc) {
-                                            networkClientManager.fetchGrpcApiSpec(
-                                                url = requestNonNull.url,
-                                                environment = selectedEnvironment,
-                                                projectId = selectedProject!!.id,
-                                                subprojectId = selectedSubprojectId!!
-                                            )
-                                            forceUpdateUI() // load the "Connecting" icon
+                                            try {
+                                                networkClientManager.fetchGrpcApiSpec(
+                                                    url = requestNonNull.url,
+                                                    environment = selectedEnvironment,
+                                                    projectId = selectedProject!!.id,
+                                                    subprojectId = selectedSubprojectId!!
+                                                )
+                                                forceUpdateUI() // load the "Connecting" icon
+                                            } catch (e: Throwable) {
+                                                errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                            }
                                         }
                                     },
                                     onClickCancelFetchApiSpec = {
