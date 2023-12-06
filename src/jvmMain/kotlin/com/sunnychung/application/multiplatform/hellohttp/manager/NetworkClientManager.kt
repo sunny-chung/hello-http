@@ -27,6 +27,9 @@ import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import io.grpc.Status
+import io.grpc.StatusRuntimeException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -288,6 +291,19 @@ class NetworkClientManager : CallDataStore {
                     url0,
                     environment?.sslConfig ?: SslConfig()
                 )
+            } catch (e: StatusRuntimeException) {
+                val errorMessage = if (e.status.code == Status.Code.UNAVAILABLE && e.cause != null) {
+                    "${e.message}\n${e.cause!!.message}"
+                } else {
+                    e.message ?: e.javaClass.name
+                }
+                CoroutineScope(Dispatchers.Main).launch {
+                    val errorMessageVM = AppContext.ErrorMessagePromptViewModel
+                    errorMessageVM.showErrorMessage(errorMessage)
+                }
+                throw e
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Throwable) {
                 CoroutineScope(Dispatchers.Main).launch {
                     val errorMessageVM = AppContext.ErrorMessagePromptViewModel
