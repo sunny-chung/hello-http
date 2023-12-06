@@ -2,6 +2,8 @@
 
 [Visit the GitHub Repository](https://github.com/sunny-chung/hello-http)
 
+[Download for Mac/Windows/Linux](https://github.com/sunny-chung/hello-http/releases)
+
 [![License](https://img.shields.io/github/license/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/releases)
 

@@ -21,8 +21,8 @@ moment.
 ## Status
 
 - **macOS** - Stable since v1.2.0
-- **Windows** - Beta
-- **Linux** - Alpha
+- **Windows** - Stable since v1.4.1
+- **Linux** - Beta. Known issue: horizontal scrolling is not working
 
 ## Features
 
@@ -124,6 +124,12 @@ All data are saved in a single content root directory. In Hello HTTP, open setti
 "Open Backup Directory", then go to one level upper. This is the content root directory.
 
 Clearing this directory would reset the application.
+
+## Performance
+
+Honestly, Hello HTTP is not yet performance-oriented. It relies on JVM, so it would demand a significant amount of
+memory (about 0.5 GB). But, it still outperforms many web apps. It performs very well on a Windows laptop with 8 GB RAM
+without a noticeable performance degrade of other applications.
 
 ## Planned
 
