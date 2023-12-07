@@ -11,8 +11,10 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
@@ -182,6 +184,7 @@ class PostmanV2ZipImporter {
             name = name,
             method = request.method,
             url = request.url?.raw?.convertVariables() ?: "",
+            application = if (request.body?.mode == "graphql") ProtocolApplication.Graphql else ProtocolApplication.Http,
             examples = listOf(UserRequestExample(
                 id = uuidString(),
                 name = "Base",
@@ -192,6 +195,7 @@ class PostmanV2ZipImporter {
                     "formdata" -> ContentType.Multipart
                     "urlencoded" -> ContentType.FormUrlEncoded
                     "file" -> ContentType.BinaryFile
+                    "graphql" -> ContentType.Graphql
                     "raw" -> if (headers.firstOrNull {
                             it.key.equals(
                                 "content-type",
@@ -206,17 +210,27 @@ class PostmanV2ZipImporter {
                     }
                     else -> ContentType.Raw
                 },
-                body = when (request.body?.mode) {
-                    null -> null
-                    "formdata" -> MultipartBody(
-                        request.body.formdata?.map { it.toUserKeyValuePair() } ?: emptyList()
-                    )
-                    "urlencoded" -> FormUrlEncodedBody(
-                        request.body.urlencoded?.map { it.toUserKeyValuePair() } ?: emptyList()
-                    )
-                    "file" -> FileBody(request.body.file?.src)
-                    "raw" -> StringBody(request.body.raw?.convertVariables() ?: "")
-                    else -> StringBody(request.body.raw?.convertVariables() ?: "")
+                body = with (request.body) {
+                    when (this?.mode) {
+                        null -> null
+                        "formdata" -> MultipartBody(
+                            formdata?.map { it.toUserKeyValuePair() } ?: emptyList()
+                        )
+
+                        "urlencoded" -> FormUrlEncodedBody(
+                            urlencoded?.map { it.toUserKeyValuePair() } ?: emptyList()
+                        )
+
+                        "file" -> FileBody(file?.src)
+                        "graphql" -> GraphqlBody(
+                            document = graphql?.query?.convertVariables() ?: "",
+                            variables = graphql?.variables?.convertVariables() ?: "",
+                            operationName = null
+                        )
+
+                        "raw" -> StringBody(raw?.convertVariables() ?: "")
+                        else -> StringBody(raw?.convertVariables() ?: "")
+                    }
                 }
             ))
         )

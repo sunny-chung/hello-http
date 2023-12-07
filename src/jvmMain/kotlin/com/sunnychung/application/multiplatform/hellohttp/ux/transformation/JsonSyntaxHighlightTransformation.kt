@@ -5,14 +5,18 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
-val OBJECT_KEY_REGEX = "(?<!\\\\)(\".*?(?<!\\\\)\")\\s*:".toRegex()
-val STRING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(?<!\\\\)(\".*?(?<!\\\\)\")".toRegex()
-val NUMBER_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)\\b".toRegex()
-val BOOLEAN_TRUE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(true)\\b".toRegex()
-val BOOLEAN_FALSE_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(false)\\b".toRegex()
-val NOTHING_LITERAL_REGEX = "(?<!\\\\)\"\\s*:\\s*(null|undefined)\\b".toRegex()
+private val TOKEN_REGEX = "(?<!\\\\)(\".+?(?<!\\\\)\"(?:\\s*:)?)|(?<=[,\\[\\]{}:])\\s*([^,\\s\"\\[\\]{}]+?)\\s*(?=[,\\[\\]{}:])".toRegex()
+
+private val OBJECT_KEY_REGEX = "(\".*?(?<!\\\\)\")\\s*:".toRegex()
+private val STRING_LITERAL_REGEX = "\".*?(?<!\\\\)\"".toRegex()
+private val NUMBER_LITERAL_REGEX = "-?\\d+(?:\\.\\d+)?".toRegex()
+private val BOOLEAN_TRUE_LITERAL_REGEX = "true".toRegex()
+private val BOOLEAN_FALSE_LITERAL_REGEX = "false".toRegex()
+private val NOTHING_LITERAL_REGEX = "null|undefined".toRegex()
 
 class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransformation {
 
@@ -22,6 +26,15 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
     val booleanTrueLiteralStyle = SpanStyle(color = colours.syntaxColor.booleanTrueLiteral)
     val booleanFalseLiteralStyle = SpanStyle(color = colours.syntaxColor.booleanFalseLiteral)
     val nothingLiteralStyle = SpanStyle(color = colours.syntaxColor.nothingLiteral)
+
+    val subPatterns = listOf(
+        OBJECT_KEY_REGEX to objectKeyStyle,
+        STRING_LITERAL_REGEX to stringLiteralStyle,
+        NUMBER_LITERAL_REGEX to numberLiteralStyle,
+        BOOLEAN_TRUE_LITERAL_REGEX to booleanTrueLiteralStyle,
+        BOOLEAN_FALSE_LITERAL_REGEX to booleanFalseLiteralStyle,
+        NOTHING_LITERAL_REGEX to nothingLiteralStyle,
+    )
 
     var lastTextHash: Int? = null
     var lastResult: TransformedText? = null
@@ -34,19 +47,30 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
             return lastResult!!
         }
 
-        listOf(
-            OBJECT_KEY_REGEX to objectKeyStyle,
-            STRING_LITERAL_REGEX to stringLiteralStyle,
-            NUMBER_LITERAL_REGEX to numberLiteralStyle,
-            BOOLEAN_TRUE_LITERAL_REGEX to booleanTrueLiteralStyle,
-            BOOLEAN_FALSE_LITERAL_REGEX to booleanFalseLiteralStyle,
-            NOTHING_LITERAL_REGEX to nothingLiteralStyle,
-        ).forEach { (regex, style) ->
-            regex.findAll(s).forEach { m ->
-                val range = m.groups[1]!!.range
-                spans += AnnotatedString.Range(style, range.start, range.endInclusive + 1)
+        val start = KInstant.now()
+
+        TOKEN_REGEX.findAll(s).forEach { m ->
+            val match = (m.groups[1] ?: m.groups[2])!!
+            subPatterns.firstOrNull { (pattern, style) ->
+                val subMatch = pattern.matchEntire(match.value)
+                if (subMatch != null) {
+                    val range = if (subMatch.groups.size > 1) {
+                        subMatch.groups[1]!!.range
+                            .let { it.start + match.range.start .. it.endInclusive + match.range.start }
+                    } else {
+                        match.range
+                    }
+                    spans += AnnotatedString.Range(style, range.start, range.endInclusive + 1)
+                    true
+                } else {
+                    false
+                }
             }
         }
+        val timeCost = KInstant.now() - start
+        // took 40ms for a 300k-length string
+        log.d { "JsonSyntaxHighlightTransformation took ${timeCost.millis}ms to process ${s.length}" }
+
         lastTextHash = text.text.hashCode()
         lastResult = TransformedText(AnnotatedString(s, text.spanStyles + spans), OffsetMapping.Identity)
         return lastResult!!

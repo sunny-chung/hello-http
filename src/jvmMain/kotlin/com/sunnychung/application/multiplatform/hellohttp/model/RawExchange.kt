@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
@@ -11,6 +12,7 @@ import java.io.ByteArrayOutputStream
 @Serializable
 data class RawExchange(
     val exchanges: MutableList<Exchange>,
+    @Transient var uiVersion: String = uuidString(),
 ) {
     @Persisted
     @Serializable
@@ -20,7 +22,8 @@ data class RawExchange(
         val direction: Direction,
         val detail: String?,
         @Transient var payloadBuilder: ByteArrayOutputStream? = null,
-        var payload: ByteArray? = null
+        val streamId: Int? = null,
+        var payload: ByteArray? = null,
     ) {
         fun consumePayloadBuilder() {
             if ((payload?.size ?: 0) < (payloadBuilder?.size() ?: 0)) {

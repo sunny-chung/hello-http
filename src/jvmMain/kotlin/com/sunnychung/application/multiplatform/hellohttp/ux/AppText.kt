@@ -28,6 +28,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 fun AppText(
     text: String,
     modifier: Modifier = Modifier,
+    isDisableWordWrap: Boolean = false,
     color: Color = LocalColor.current.text,
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     fontStyle: FontStyle? = null,
@@ -51,9 +52,14 @@ fun AppText(
     var isReadyToRender by remember { mutableStateOf(!isFitContent) }
     var isHover by remember { mutableStateOf(false) }
 
+    val textToUse = if (isDisableWordWrap) {
+        text.replace(' ', '\u00A0') // disable breaking by words
+    } else {
+        text
+    }
 
     Text(
-        text = text,
+        text = textToUse,
         modifier = modifier
             .run {
                 @OptIn(ExperimentalComposeUiApi::class)

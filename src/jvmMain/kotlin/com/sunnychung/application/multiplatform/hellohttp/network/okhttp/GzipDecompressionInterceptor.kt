@@ -1,4 +1,4 @@
-package com.sunnychung.application.multiplatform.hellohttp.network
+package com.sunnychung.application.multiplatform.hellohttp.network.okhttp
 
 import okhttp3.Interceptor
 import okhttp3.Response

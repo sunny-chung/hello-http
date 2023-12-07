@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
@@ -131,6 +132,7 @@ fun AppTextField(
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     minLines: Int = 1,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    onTextLayout: (TextLayoutResult) -> Unit = {},
     shape: Shape = TextFieldDefaults.TextFieldShape,
     colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = LocalColor.current.text,
@@ -187,7 +189,8 @@ fun AppTextField(
                 colors = colors,
                 contentPadding = contentPadding /** difference here **/
             )
-        }
+        },
+        onTextLayout = onTextLayout,
     )
 }
 

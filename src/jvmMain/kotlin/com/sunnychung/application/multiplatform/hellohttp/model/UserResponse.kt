@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
@@ -14,19 +15,27 @@ data class UserResponse(
     override val id: String,
     val requestId: String, // corresponding id of UserRequest
     val requestExampleId: String, // corresponding id of UserRequestExample
+    var protocol: ProtocolVersion? = null,
+    var application: ProtocolApplication = ProtocolApplication.Http,
 
     var startAt: KInstantAsLong? = null,
     var endAt: KInstantAsLong? = null,
-    var isCommunicating: Boolean = false,
+    @Transient @Deprecated("Use CallData#status") var isCommunicating: Boolean = false,
     var isError: Boolean = false,
     var statusCode: Int? = null,
     var statusText: String? = null,
     var responseSizeInBytes: Long? = null,
-    var body: ByteArray? = null,
+    var body: ByteArray? = null, // original bytes are stored, EXCEPT gRPC
     var errorMessage: String? = null,
     @Transient var postFlightErrorMessage: String? = null,
     var headers: List<Pair<String, String>>? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
+    var payloadExchanges: MutableList<PayloadMessage>? = // null = not support streaming; empty list = streaming without data
+        if (application in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql))
+            Collections.synchronizedList(mutableListOf())
+        else
+            null,
+    @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -66,5 +75,7 @@ data class UserResponse(
         result = 31 * result + rawExchange.hashCode()
         return result
     }
+
+    fun isStreaming() = payloadExchanges != null
 
 }

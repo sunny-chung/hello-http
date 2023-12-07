@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
@@ -38,7 +39,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 @Composable
-fun SubprojectEnvironmentsEditorView(
+fun SubprojectEnvironmentsEditorDialogView(
     modifier: Modifier = Modifier,
     subproject: Subproject,
     initialEnvironment: Environment?,
@@ -165,6 +166,12 @@ fun EnvironmentEditorView(
                 modifier = modifier,
             )
 
+            EnvironmentEditorTab.HTTP -> EnvironmentHttpTabContent(
+                environment = environment,
+                onUpdateEnvironment = onUpdateEnvironment,
+                modifier = modifier,
+            )
+
             EnvironmentEditorTab.SSL -> EnvironmentSslTabContent(
                 environment = environment,
                 onUpdateEnvironment = onUpdateEnvironment,
@@ -213,6 +220,42 @@ fun EnvironmentVariableTabContent(
 }
 
 @Composable
+fun EnvironmentHttpTabContent(
+    modifier: Modifier = Modifier,
+    environment: Environment,
+    onUpdateEnvironment: (Environment) -> Unit,
+) {
+
+    val httpConfig = environment.httpConfig
+    val headerColumnWidth = 250.dp
+
+    Column(modifier = modifier.padding(horizontal = 8.dp)) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            AppText(text = "HTTP Protocol Version", modifier = Modifier.width(headerColumnWidth).align(Alignment.CenterStart))
+            val options = DropDownMap(listOf(
+                DropDownKeyValue(HttpConfig.HttpProtocolVersion.Http1Only, "HTTP/1 only"),
+                DropDownKeyValue(HttpConfig.HttpProtocolVersion.Http2Only, "HTTP/2 only"),
+                DropDownKeyValue(HttpConfig.HttpProtocolVersion.Negotiate, "Prefer HTTP/2"),
+                DropDownKeyValue(null, "Default"),
+            ))
+            DropDownView(
+                selectedItem = options[httpConfig.protocolVersion],
+                items = options.dropdownables,
+                onClickItem = {
+                    onUpdateEnvironment(
+                        environment.copy(httpConfig = httpConfig.copy(
+                            protocolVersion = it.key
+                        ))
+                    )
+                    true
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
+        }
+    }
+}
+
+@Composable
 fun EnvironmentSslTabContent(
     modifier: Modifier = Modifier,
     environment: Environment,
@@ -250,7 +293,7 @@ fun EnvironmentSslTabContent(
 }
 
 private enum class EnvironmentEditorTab {
-    Variables, SSL
+    Variables, HTTP, SSL
 }
 
 private enum class BooleanConfigValueText(val value: Boolean?) {

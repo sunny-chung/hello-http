@@ -27,11 +27,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import java.io.File
 
 @Composable
@@ -54,12 +56,15 @@ fun KeyValueEditorView(
 
     var isShowFileDialog by remember { mutableStateOf(false) }
     var fileDialogRequest by remember { mutableStateOf<Int?>(null) }
+    val fileDialogState = rememberFileDialogState()
 
     if (isShowFileDialog) {
-        FileDialog {
+        FileDialog(state = fileDialogState) {
             println("File Dialog result = $it")
-            val index = fileDialogRequest!!
-            onItemChange(index, keyValues[index].copy(value = it.firstOrNull()?.absolutePath ?: ""))
+            if (it != null) {
+                val index = fileDialogRequest!!
+                onItemChange(index, keyValues[index].copy(value = it.firstOrNull()?.absolutePath ?: ""))
+            }
             isShowFileDialog = false
         }
     }
@@ -175,7 +180,7 @@ fun KeyValueEditorView(
                             text = file?.name ?: "Choose a File",
                             color = if (isEnabled) colors.primary else colors.disabled,
                             onClick = if (!isInheritedView) {
-                                { fileDialogRequest = index; isShowFileDialog = true }
+                                { log.d {"onClick file"}; fileDialogRequest = index; isShowFileDialog = true }
                             } else null,
                             modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder)
                         )
@@ -183,10 +188,10 @@ fun KeyValueEditorView(
                     if (it != null) {
                         if (isSupportFileValue && !isInheritedView) {
                             DropDownView(
-                                items = ValueType.values().toList(),
+                                items = ValueType.values().map { DropDownKeyValue(it, it.displayText) }.toList(),
                                 isShowLabel = false,
                                 onClickItem = { v ->
-                                    val valueType = when (v) {
+                                    val valueType = when (v.key) {
                                         ValueType.Text -> FieldValueType.String
                                         ValueType.File -> FieldValueType.File
                                     }
@@ -229,9 +234,9 @@ fun KeyValueEditorView(
     }
 }
 
-private enum class ValueType(override val displayText: String) : DropDownable {
-    Text("Text"),
-    File("File")
+private enum class ValueType(val displayText: String) {
+    Text(displayText = "Text"),
+    File(displayText = "File")
 }
 
 private enum class FocusPosition {

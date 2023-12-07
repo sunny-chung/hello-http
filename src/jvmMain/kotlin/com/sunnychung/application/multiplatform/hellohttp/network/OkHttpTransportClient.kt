@@ -1,37 +1,22 @@
-package com.sunnychung.application.multiplatform.hellohttp.manager
+package com.sunnychung.application.multiplatform.hellohttp.network
 
-import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.network.GzipDecompressionInterceptor
-import com.sunnychung.application.multiplatform.hellohttp.network.InspectInputStream
-import com.sunnychung.application.multiplatform.hellohttp.network.InspectOutputStream
-import com.sunnychung.application.multiplatform.hellohttp.network.TrustAllSslCertificateManager
+import com.sunnychung.application.multiplatform.hellohttp.network.okhttp.GzipDecompressionInterceptor
+import com.sunnychung.application.multiplatform.hellohttp.network.util.InspectInputStream
+import com.sunnychung.application.multiplatform.hellohttp.network.util.InspectOutputStream
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.yield
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Connection
@@ -47,16 +32,12 @@ import okhttp3.SocketSourceSinkTransformer
 import okhttp3.internal.headersContentLength
 import okio.Sink
 import okio.Source
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
-import java.security.SecureRandom
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import javax.net.ssl.SSLContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.reflect.full.memberFunctions
@@ -76,36 +57,15 @@ private val inputStreamSourceConstructor = Class.forName("okio.InputStreamSource
     isAccessible = true
 }
 
-class NetworkManager {
-    class NetworkEvent(val callId: String, val instant: KInstant, val event: String)
-    class CallData(
-        val id: String,
-        val subprojectId: String,
-        var isPrepared: Boolean = false,
-
-        val events: SharedFlow<NetworkEvent>,
-        val eventsStateFlow: StateFlow<NetworkEvent?>,
-        val outgoingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
-        val incomingBytes: SharedFlow<Pair<KInstant, ByteArray>>,
-        val optionalResponseSize: AtomicInteger,
-        val response: UserResponse,
-    )
-
-    private val eventSharedFlow = MutableSharedFlow<NetworkEvent>()
-
-    /**
-     * MutableSharedFlow#collectAsState is buggy in Jetpack Compose
-     * Copy to MutableStateFlow to make UI updates
-     */
-    private val eventStateFlow = MutableStateFlow<NetworkEvent?>(null)
-
-    private val callData = ConcurrentHashMap<String, CallData>()
-
-    init {
-        eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
-    }
-
-    fun buildHttpClient(callId: String, sslConfig: SslConfig, outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>, incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>, responseSize: AtomicInteger): OkHttpClient {
+class OkHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
+    
+    fun buildHttpClient(
+        callId: String,
+        sslConfig: SslConfig,
+        outgoingBytesChannel: MutableSharedFlow<RawPayload>,
+        incomingBytesChannel: MutableSharedFlow<RawPayload>,
+        responseSize: AtomicInteger
+    ): OkHttpClient {
 
         fun logNetworkEvent(call: Call, event: String) {
             val instant = KInstant.now()
@@ -124,10 +84,8 @@ class NetworkManager {
             .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
             .apply {
                 if (sslConfig.isInsecure == true) {
-                    val trustManager = TrustAllSslCertificateManager()
-                    val sslContext = SSLContext.getInstance("SSL")
-                    sslContext.init(null, arrayOf(trustManager), SecureRandom())
-                    sslSocketFactory(sslContext.socketFactory, trustManager)
+                    val (sslContext, trustManager) = createSslContext(sslConfig)
+                    sslSocketFactory(sslContext.socketFactory, trustManager!!)
                     hostnameVerifier { _, _ -> true }
                 }
             }
@@ -265,128 +223,39 @@ class NetworkManager {
             .build()
     }
 
-    fun getCallData(callId: String) = callData[callId]
+    override fun sendRequest(request: HttpRequest, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, httpConfig: HttpConfig, sslConfig: SslConfig): CallData {
+        val okHttpRequest = request.toOkHttpRequest()
 
-    fun sendRequest(request: Request, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, sslConfig: SslConfig): CallData {
-        val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
-        val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>> = Channel()
-        val optionalResponseSize = AtomicInteger()
-
-        val callId = uuidString()
+        val data = createCallData(
+            requestBodySize = okHttpRequest.body?.contentLength()?.toInt(),
+            requestExampleId = requestExampleId,
+            requestId = requestId,
+            subprojectId = subprojectId,
+        )
+        val callId = data.id
 
         val httpClient = buildHttpClient(
             callId = callId,
             sslConfig = sslConfig,
-            outgoingBytesChannel = outgoingBytesChannel,
-            incomingBytesChannel = incomingBytesChannel,
-            responseSize = optionalResponseSize
+            outgoingBytesChannel = data.outgoingBytes as MutableSharedFlow<RawPayload>,
+            incomingBytesChannel = data.incomingBytes as MutableSharedFlow<RawPayload>,
+            responseSize = data.optionalResponseSize
         )
 
         val call = NetworkCall(
             id = callId,
-            call = httpClient.newCall(request),
-            outgoingBytesChannel = outgoingBytesChannel,
-            incomingBytesChannel = incomingBytesChannel
+            call = httpClient.newCall(okHttpRequest),
         )
-        val data = CallData(
-            id = call.id,
-            subprojectId = subprojectId,
-            events = eventSharedFlow.asSharedFlow()
-                .filter { it.callId == call.id }
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
-            eventsStateFlow = eventStateFlow,
-            outgoingBytes = outgoingBytesChannel.receiveAsFlow()
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
-            incomingBytes = incomingBytesChannel.receiveAsFlow()
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
-            optionalResponseSize = optionalResponseSize,
-            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
-        )
-        callData[call.id] = data
-
-        data.events
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    if (true || it.event == "Response completed") { // deadline fighter
-                        data.response.rawExchange.exchanges.forEach {
-                                it.consumePayloadBuilder()
-                            }
-                        } else { // lazy
-                            val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                            lastExchange?.consumePayloadBuilder()
-                        }
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Unspecified,
-                            detail = it.event
-                    )
-                }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
-
-        data.outgoingBytes
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.first,
-                            direction = RawExchange.Direction.Outgoing,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(request.body?.contentLength()?.toInt() ?: 0, it.second.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.second)
-                        }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.second)
-                        lastExchange.lastUpdateInstant = it.first
-                    }
-                    log.v { it.second.decodeToString() }
-                }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
-
-        data.incomingBytes
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.first,
-                            direction = RawExchange.Direction.Incoming,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.second.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.second)
-                        }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.second)
-                        lastExchange.lastUpdateInstant = it.first
-                    }
-                    log.v { it.second.decodeToString() }
-                }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
 
         CoroutineScope(Dispatchers.IO).launch {
             val callData = callData[call.id]!!
-            withTimeout(3000) {
-                while (!callData.isPrepared) {
-                    log.d { "Wait for preparation" }
-                    delay(100)
-                    yield()
-                }
-            }
-            // withTimeout and while(...) guarantee callData is prepared
-            assert(callData.isPrepared)
+            callData.waitForPreparation()
             log.d { "Call ${call.id} is prepared" }
 
             val out = callData.response
             out.startAt = KInstant.now()
             out.isCommunicating = true
+            callData.status = ConnectionStatus.CONNECTING
 
             try {
                 val response = call.await()
@@ -403,17 +272,11 @@ class NetworkManager {
             } finally {
                 out.endAt = KInstant.now()
                 out.isCommunicating = false
+                callData.status = ConnectionStatus.DISCONNECTED
             }
 
             if (!out.isError && postFlightAction != null) {
-                eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Executing Post Flight Actions"))
-                try {
-                    postFlightAction(out)
-                    eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Post Flight Actions Completed"))
-                } catch (e: Throwable) {
-                    out.postFlightErrorMessage = e.message
-                    eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Post Flight Actions Stopped with Error"))
-                }
+                executePostFlightAction(callId, out, postFlightAction)
             }
 
             eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed"))
@@ -425,8 +288,6 @@ class NetworkManager {
 internal class NetworkCall(
     val id: String,
     private val call: Call,
-    val outgoingBytesChannel: Channel<Pair<KInstant, ByteArray>>,
-    val incomingBytesChannel: Channel<Pair<KInstant, ByteArray>>,
 ) : Call by call {
 
     suspend fun await(): Response {

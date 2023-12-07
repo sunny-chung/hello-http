@@ -3,12 +3,16 @@ package com.sunnychung.application.multiplatform.hellohttp.exporter
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
@@ -18,6 +22,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.insomniav4.InsomniaV4
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -30,7 +35,7 @@ class InsomniaV4Exporter {
 
     suspend fun exportToFile(project: Project, file: File) {
         val resources = project.subprojects.flatMap {
-            exportSubproject(it)
+            exportSubproject(project, it)
         }
 
         val metadataManager = AppContext.MetadataManager
@@ -44,7 +49,7 @@ class InsomniaV4Exporter {
         jsonWriter.writeValue(file, document)
     }
 
-    suspend fun exportSubproject(subproject: Subproject): List<Any> {
+    suspend fun exportSubproject(project: Project, subproject: Subproject): List<Any> {
         var result = mutableListOf<Any>()
         val parentIdByRequestId = mutableMapOf<String, String>() // (original id, converted parentId)
 
@@ -92,57 +97,157 @@ class InsomniaV4Exporter {
             ?.filter { parentIdByRequestId.containsKey(it.id) }
             ?: emptyList()
 
+        val grpcMethods = AppContext.ApiSpecificationCollectionRepository.read(ApiSpecDI(project.id))
+            ?.grpcApiSpecs
+            ?.associate { it.id to it.methods.associateBy { "${it.serviceFullName}/${it.methodName}" } }
+
         result.addAll(requests.flatMap { req ->
             val convertedParentId = parentIdByRequestId[req.id]!!
-            req.examples.mapIndexed { index, it ->
-                InsomniaV4.HttpRequest(
-                    id = it.id.convertId("req_"),
-                    parentId = convertedParentId,
-                    url = req.url.resolveVariables(),
-                    name = req.name + if (index > 0) {
-                        " (${it.name})"
-                    } else {
-                        ""
-                    },
-                    description = "",
-                    method = req.method,
-                    headers = req.getMergedProperty(index) { it.headers }
-                        .map { it.toInsomniaKeyValue() },
-                    parameters = req.getMergedProperty(index) { it.queryParameters }
-                        .map { it.toInsomniaKeyValue() },
-                    body = when (it.body) {
-                        is FormUrlEncodedBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "application/x-www-form-urlencoded",
-                            text = null,
-                            params = req.getMergedProperty(index) { (it.body as? FormUrlEncodedBody)?.value }
+            when (req.application) {
+                ProtocolApplication.WebSocket -> {
+                    val id = req.id.convertId("ws-req_")
+                    val it = req.payloadExamples!!.first()
+                    listOf(
+                        InsomniaV4.WebSocketRequest(
+                            id = id,
+                            parentId = convertedParentId,
+                            url = req.url.resolveVariables(),
+                            name = req.name,
+                            description = "",
+                            headers = req.getMergedProperty(0) { it.headers }
                                 .map { it.toInsomniaKeyValue() },
+                            parameters = req.getMergedProperty(0) { it.queryParameters }
+                                .map { it.toInsomniaKeyValue() },
+                            authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
+                            type = "websocket_request",
+                        ),
+                        InsomniaV4.RequestPayload(
+                            id = uuidString().convertId("ws-payload_"),
+                            parentId = id,
+                            name = it.name,
+                            value = it.body,
+                            mode = "text/plain",
+                            type = "websocket_payload",
                         )
-                        is MultipartBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "multipart/form-data",
-                            text = null,
-                            params = req.getMergedProperty(index) { (it.body as? MultipartBody)?.value }
-                                .map { it.toInsomniaKeyValue().copy(
-                                    type = if (it.valueType == FieldValueType.File) "file" else null,
-                                    fileName = if (it.valueType == FieldValueType.File) it.value.resolveVariables() else null,
-                                    value = if (it.valueType == FieldValueType.File) "" else it.value.resolveVariables(),
-                                ) },
-                        )
-                        is StringBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "application/json",
-                            text = it.body.value.resolveVariables(),
-                            params = null,
-                        )
-                        is FileBody -> InsomniaV4.HttpRequest.Body(
-                            mimeType = "application/octet-stream",
-                            text = null,
-                            fileName = it.body.filePath,
-                            params = null,
-                        )
-                        null -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
-                    },
-                    authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
-                    type = "request",
-                )
+                    )
+                }
+
+                else -> req.examples.mapIndexed { index, it ->
+                    val baseExample = req.examples.first()
+                    InsomniaV4.HttpRequest(
+                        id = it.id.convertId("req_"),
+                        parentId = convertedParentId,
+                        url = req.url.resolveVariables(),
+                        name = req.name + if (index > 0) {
+                            " (${it.name})"
+                        } else {
+                            ""
+                        },
+                        description = "",
+                        method = if (req.application == ProtocolApplication.Graphql) "POST" else req.method,
+                        headers = req.getMergedProperty(index) { it.headers }
+                            .let {
+                                if (req.application == ProtocolApplication.Graphql) {
+                                    it.filter { !it.key.equals("Content-Type", true) && !it.key.equals("Accept", true) }
+                                        .let {
+                                            it +
+                                                UserKeyValuePair(key = "Content-Type", value = "application/json") +
+                                                UserKeyValuePair(
+                                                    key = "Accept",
+                                                    value = "application/graphql-response+json; charset=utf-8, application/json; charset=utf-8"
+                                                )
+                                        }
+                                } else {
+                                    it
+                                }
+                            }
+                            .map { it.toInsomniaKeyValue() },
+                        parameters = req.getMergedProperty(index) { it.queryParameters }
+                            .map { it.toInsomniaKeyValue() },
+                        body = when (it.body) {
+                            is FormUrlEncodedBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = "application/x-www-form-urlencoded",
+                                text = null,
+                                params = req.getMergedProperty(index) { (it.body as? FormUrlEncodedBody)?.value }
+                                    .map { it.toInsomniaKeyValue() },
+                            )
+
+                            is MultipartBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = "multipart/form-data",
+                                text = null,
+                                params = req.getMergedProperty(index) { (it.body as? MultipartBody)?.value }
+                                    .map {
+                                        it.toInsomniaKeyValue().copy(
+                                            type = if (it.valueType == FieldValueType.File) "file" else null,
+                                            fileName = if (it.valueType == FieldValueType.File) it.value.resolveVariables() else null,
+                                            value = if (it.valueType == FieldValueType.File) "" else it.value.resolveVariables(),
+                                        )
+                                    },
+                            )
+
+                            is StringBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = when (req.application) {
+                                    ProtocolApplication.Grpc -> null
+                                    else -> "application/json"
+                                },
+                                text = it.body.value.resolveVariables(), // FIXME inheritance
+                                params = null,
+                            )
+
+                            is FileBody -> InsomniaV4.HttpRequest.Body(
+                                mimeType = "application/octet-stream",
+                                text = null,
+                                fileName = it.body.filePath,
+                                params = null,
+                            )
+
+                            is GraphqlBody -> it.body
+                                .let { body ->
+                                    val jsonMapper = jacksonObjectMapper()
+                                    val graphqlRequest = GraphqlRequestBody(
+                                        query = (if (it.overrides?.isOverrideBodyContent != false) body else baseExample.body as GraphqlBody).document.resolveVariables(),
+                                        variables = jsonMapper.readTree((if (it.overrides?.isOverrideBodyVariables != false) body else baseExample.body as GraphqlBody).variables.resolveVariables()),
+                                        operationName = body.operationName.emptyToNull()
+                                    )
+                                    InsomniaV4.HttpRequest.Body(
+                                        mimeType = "application/graphql",
+                                        text = jsonMapper.writeValueAsString(graphqlRequest),
+                                        params = null,
+                                    )
+                                }
+
+                                null -> InsomniaV4.HttpRequest.Body(mimeType = null, text = null, params = null)
+                        },
+                        authentication = InsomniaV4.HttpRequest.Authentication(null, null, null, null),
+                        type = "request",
+                    ).let {
+                        if (req.application == ProtocolApplication.Grpc) {
+                            var r = it.copy(
+                                id = "g${it.id}",
+                                type = "grpc_request",
+                                protoMethodName = if (req.grpc?.service?.isNotEmpty() == true && req.grpc?.method?.isNotEmpty() == true) {
+                                    "/${req.grpc.service}/${req.grpc.method}"
+                                } else "",
+                                protoFileId = "",
+                            )
+                            if (req.grpc?.service?.isNotEmpty() == true && req.grpc?.method?.isNotEmpty() == true) {
+                                val method = grpcMethods?.get(req.grpc.apiSpecId)?.get("${req.grpc.service}/${req.grpc.method}")
+                                if (method != null && method.isClientStreaming) {
+                                    r = r.copy(
+                                        body = InsomniaV4.HttpRequest.Body(
+                                            text = req.payloadExamples?.firstOrNull()?.body ?: r.body.text,
+                                            mimeType = null,
+                                            params = null,
+                                        )
+                                    )
+                                }
+                            }
+                            r
+                        } else {
+                            it
+                        }
+                    }
+                }
             }
         })
 

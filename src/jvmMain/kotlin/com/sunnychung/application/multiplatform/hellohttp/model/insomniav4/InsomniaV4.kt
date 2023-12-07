@@ -13,19 +13,33 @@ object InsomniaV4 {
         val resources: List<Any>,
     )
 
+    interface Request {
+        val id: String
+        val parentId: String
+        val url: String
+        val name: String
+        val description: String
+        val parameters: List<HttpRequest.KeyValue>? // null if gRPC
+        val headers: List<HttpRequest.KeyValue>? // can be null if gRPC
+        val authentication: HttpRequest.Authentication? // can be null if gRPC
+        val type: String
+    }
+
     data class HttpRequest(
-        @JsonProperty("_id") val id: String,
-        val parentId: String,
-        val url: String,
-        val name: String,
-        val description: String,
-        val method: String,
+        @JsonProperty("_id") override val id: String,
+        override val parentId: String,
+        override val url: String,
+        override val name: String,
+        override val description: String,
+        val method: String?, // null if gRPC
         val body: Body,
-        val parameters: List<KeyValue>,
-        val headers: List<KeyValue>,
-        val authentication: Authentication,
-        @JsonProperty("_type") val type: String,
-    ) {
+        override val parameters: List<KeyValue>?, // null if gRPC
+        override val headers: List<KeyValue>?, // can be null if gRPC
+        override val authentication: Authentication?, // can be null if gRPC
+        val protoMethodName: String? = null, // for gRPC only
+        val protoFileId: String? = null, // for gRPC only
+        @JsonProperty("_type") override val type: String,
+    ) : Request {
         data class Body(
             val mimeType: String?,
             val text: String?,
@@ -50,6 +64,27 @@ object InsomniaV4 {
             val disabled: Boolean?,
         )
     }
+
+    data class WebSocketRequest(
+        @JsonProperty("_id") override val id: String,
+        override val parentId: String,
+        override val url: String,
+        override val name: String,
+        override val description: String,
+        override val parameters: List<HttpRequest.KeyValue>,
+        override val headers: List<HttpRequest.KeyValue>,
+        override val authentication: HttpRequest.Authentication,
+        @JsonProperty("_type") override val type: String,
+    ) : Request
+
+    data class RequestPayload(
+        @JsonProperty("_id") val id: String,
+        val parentId: String,
+        val name: String,
+        val value: String,
+        val mode: String,
+        @JsonProperty("_type") val type: String,
+    )
 
     data class RequestGroup(
         @JsonProperty("_id") val id: String,

@@ -7,6 +7,8 @@ import androidx.compose.ui.unit.sp
 data class AppFont(
     val bodyFontSize: TextUnit,
     val buttonFontSize: TextUnit,
+    val searchInputSize: TextUnit,
+    val supplementSize: TextUnit,
 
     val createLabelSize: TextUnit,
     val largeInfoSize: TextUnit,
@@ -17,6 +19,8 @@ val LocalFont = compositionLocalOf { regularFont() }
 internal fun regularFont() = AppFont(
     bodyFontSize = 14.sp,
     buttonFontSize = 16.sp,
+    searchInputSize = 12.sp,
+    supplementSize = 11.sp,
 
     createLabelSize = 20.sp,
     largeInfoSize = 29.sp,

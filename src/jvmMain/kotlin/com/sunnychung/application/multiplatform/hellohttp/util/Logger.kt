@@ -10,6 +10,7 @@ val log = Logger.apply {
     setLogWriters(JvmLogger())
     setTag("Hello")
 }
+val llog = log
 
 class JvmLogger : LogWriter() {
     override fun log(severity: Severity, message: String, tag: String, throwable: Throwable?) {

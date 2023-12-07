@@ -3,22 +3,29 @@ package com.sunnychung.application.multiplatform.hellohttp.model.postmanv2
 import com.fasterxml.jackson.annotation.JsonProperty
 
 object PostmanV2 {
+    sealed interface File
+
     data class Collection(
         val info: FileInfo,
         val item: List<Item>,
-    )
+    ) : File
 
     data class Environment(
         val id: String,
         val name: String,
         val values: List<EnvKeyValue>,
-    )
+    ) : File
 
     data class SingleCollection(
         val info: FileInfo,
         val item: List<Item>,
         val variable: List<SimpleKeyValue>?,
-    )
+    ) : File
+
+    data class Archive(
+        val environment: Map<String, Boolean>,
+        val collection: Map<String, Boolean>,
+    ) : File
 
     data class FileInfo(
         @JsonProperty("_postman_id") val id: String,
@@ -27,10 +34,11 @@ object PostmanV2 {
     )
 
     data class Item(
+        val id: String?, // id is not exported from Postman
         val name: String,
-        val item: List<Item>?,
-        val request: Request?,
-        val auth: Auth?,
+        val item: List<Item>? = null,
+        val request: Request? = null,
+        val auth: Auth? = null,
     )
 
     data class Request(
@@ -59,15 +67,21 @@ object PostmanV2 {
     data class Url(
         val raw: String,
         val query: List<KeyValue>?,
+
+        val protocol: String? = null,
+        val host: List<String>? = null,
+        val port: String? = null,
+        val path: List<String>? = null,
     )
 
     data class Body(
         val mode: String, // known values: formdata, raw, urlencoded, file
-        val formdata: List<KeyValue>?,
-        val urlencoded: List<KeyValue>?,
-        val file: File?,
-        val raw: String?, // json
-        val options: Options?,
+        val formdata: List<KeyValue>? = null,
+        val urlencoded: List<KeyValue>? = null,
+        val file: File? = null,
+        val raw: String? = null, // json
+        val graphql: Graphql? = null, // TODO import
+        val options: Options? = null,
     ) {
         data class Options(
             val raw: Raw?
@@ -78,6 +92,11 @@ object PostmanV2 {
 
         data class File(
             val src: String?
+        )
+
+        data class Graphql(
+            val query: String?,
+            val variables: String?,
         )
     }
 

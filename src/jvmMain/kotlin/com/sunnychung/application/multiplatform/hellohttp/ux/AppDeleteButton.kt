@@ -1,5 +1,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.TooltipPlacement
@@ -26,6 +29,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -37,53 +41,50 @@ fun AppDeleteButton(
     onClickDelete: () -> Unit,
 ) {
     val colors = LocalColor.current
-    var isShowingConfirmButton by remember { mutableStateOf(false) }
+    var isShowingConfirmButtonState by remember { mutableStateOf(false) }
     var lastClickInstant by remember { mutableStateOf(KInstant.now()) }
 
-    TooltipArea(
-        tooltip = {
-            Surface(
-                modifier = Modifier.shadow(4.dp),
-                color = colors.backgroundTooltip,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                AppText(text = "Click to Delete", modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp))
-            }
-        },
-        delayMillis = 100,
-        tooltipPlacement = TooltipPlacement.CursorPoint(
-            offset = DpOffset(x = 16.dp, y = 0.dp)
-        )
+    AppTooltipArea(
+        tooltipText = "Click to Delete"
     ) {
-        if (!isShowingConfirmButton) {
-            if (initialContentView != null) {
-                initialContentView(modifier.clickable { isShowingConfirmButton = true })
-            } else {
-                AppImageButton(
-                    resource = "delete.svg",
-                    color = colors.placeholder,
-                    size = size,
-                    modifier = modifier.focusProperties { canFocus = false },
-                    onClick = {
-                        isShowingConfirmButton = true
-                        lastClickInstant = KInstant.now()
-                    },
-                )
-            }
-        } else {
-            Row(modifier = modifier
-                .clickable {
-                    if (KInstant.now() - lastClickInstant >= KDuration.of(500, KFixedTimeUnit.MilliSecond)) {
-                        onClickDelete()
-                        isShowingConfirmButton = false
-                    }
+        Crossfade(
+            targetState = isShowingConfirmButtonState,
+            animationSpec = tween(
+                durationMillis = if (isShowingConfirmButtonState) 1100 else 500,
+                easing = LinearOutSlowInEasing
+            ),
+            modifier = modifier
+        ) { isShowingConfirmButton ->
+            if (!isShowingConfirmButton) {
+                if (initialContentView != null) {
+                    initialContentView(Modifier.clickable { isShowingConfirmButtonState = true })
+                } else {
+                    AppImageButton(
+                        resource = "delete.svg",
+                        color = colors.placeholder,
+                        size = size,
+                        modifier = Modifier.focusProperties { canFocus = false },
+                        onClick = {
+                            isShowingConfirmButtonState = true
+                            lastClickInstant = KInstant.now()
+                        },
+                    )
                 }
-                .onPointerEvent(eventType = PointerEventType.Exit, onEvent = { isShowingConfirmButton = false })
-                .focusProperties { canFocus = false }
-            ) {
-                AppImage(resource = "warning-sharp.svg", color = colors.highlight, size = size)
-                if (isShowTextLabel) {
-                    AppText(text = "Click to Confirm", color = colors.highlight)
+            } else {
+                Row(modifier = Modifier
+                    .clickable {
+                        if (KInstant.now() - lastClickInstant >= 500.milliseconds()) {
+                            onClickDelete()
+                            isShowingConfirmButtonState = false
+                        }
+                    }
+                    .onPointerEvent(eventType = PointerEventType.Exit, onEvent = { isShowingConfirmButtonState = false })
+                    .focusProperties { canFocus = false }
+                ) {
+                    AppImage(resource = "warning-sharp.svg", color = colors.highlight, size = size)
+                    if (isShowTextLabel) {
+                        AppText(text = "Click to Confirm", color = colors.highlight)
+                    }
                 }
             }
         }

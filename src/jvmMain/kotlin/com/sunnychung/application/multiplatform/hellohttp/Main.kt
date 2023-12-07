@@ -11,9 +11,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.jayway.jsonpath.Configuration
+import com.jayway.jsonpath.Option
+import com.jayway.jsonpath.spi.json.JacksonJsonProvider
+import com.jayway.jsonpath.spi.json.JsonProvider
+import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
+import com.jayway.jsonpath.spi.mapper.MappingProvider
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.error.MultipleProcessError
-import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
+import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import kotlinx.coroutines.runBlocking
 import net.harawata.appdirs.AppDirsFactory
@@ -46,6 +52,12 @@ fun main() {
         val preference = AppContext.UserPreferenceRepository.read(UserPreferenceDI())!!.preference
         AppContext.UserPreferenceViewModel.setColorTheme(preference.colourTheme)
     }
+    // json path initialization
+    Configuration.setDefaults(object : Configuration.Defaults {
+        override fun jsonProvider(): JsonProvider = JacksonJsonProvider()
+        override fun options(): MutableSet<Option> = mutableSetOf()
+        override fun mappingProvider(): MappingProvider = JacksonMappingProvider()
+    })
     application {
         Window(
             title = "Hello HTTP",
@@ -54,7 +66,11 @@ fun main() {
             state = rememberWindowState(width = 1024.dp, height = 560.dp)
         ) {
             with(LocalDensity.current) {
-                window.minimumSize = Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                window.minimumSize = if (isMacOs()) {
+                    Dimension(800, 450)
+                } else {
+                    Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                }
             }
             AppView()
         }

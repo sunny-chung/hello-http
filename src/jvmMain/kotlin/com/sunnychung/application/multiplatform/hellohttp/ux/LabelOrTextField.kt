@@ -26,18 +26,19 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameV
 
 @Composable
 fun LabelOrTextField(
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     isEditing: Boolean,
     value: String,
     onValueUpdate: (String) -> Unit,
     labelColor: Color = LocalColor.current.primary,
     editNameViewModel: EditNameViewModel,
-    onFocus: () -> Unit,
-    onUnfocus: () -> Unit,
+    onFocus: () -> Unit = {},
+    onUnfocus: () -> Unit = {},
 ) {
     if (!isEditing) {
         AppText(
-            text = value.replace(' ', '\u00A0'), // disable breaking by words
+            text = value,
+            isDisableWordWrap = true,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = labelColor,

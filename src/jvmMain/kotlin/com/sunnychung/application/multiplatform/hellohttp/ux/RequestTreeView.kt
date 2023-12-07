@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -41,14 +42,15 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerButton
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeObject
@@ -56,10 +58,11 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun RequestTreeView(
     selectedSubproject: Subproject,
@@ -217,28 +220,34 @@ fun RequestTreeView(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier.combinedClickable(
-                    onClick = { onSelectRequest(it) },
-                    onDoubleClick = {
-                        selectedTreeObjectId = it.id
+                modifier = modifier
+                    .onPointerEvent(PointerEventType.Press) { _ ->
                         onSelectRequest(it)
-                        editTreeObjectNameViewModel.onStartEdit()
                     }
-                )
+                    .combinedClickable(
+                        onClick = {}, // not using this because there will be a significant delay
+                        onDoubleClick = {
+                            selectedTreeObjectId = it.id
+                            onSelectRequest(it)
+                            editTreeObjectNameViewModel.onStartEdit()
+                        }
+                    )
             ) {
-                val (text, color) = when (it.protocol) {
-                    Protocol.Http -> Pair(
+                val (text, color) = when (it.application) {
+                    ProtocolApplication.Http -> Pair(
                         it.method, when (it.method) {
                             "GET" -> colors.httpRequestGet
                             "POST" -> colors.httpRequestPost
                             "PUT" -> colors.httpRequestPut
+                            "PATCH" -> colors.httpRequestPatch
                             "DELETE" -> colors.httpRequestDelete
                             else -> colors.httpRequestOthers
                         }
                     )
 
-                    Protocol.Grpc -> Pair("gRPC", colors.grpcRequest)
-                    Protocol.Graphql -> Pair("GQL", colors.graphqlRequest)
+                    ProtocolApplication.WebSocket -> Pair("WS", colors.websocketRequest)
+                    ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
+                    ProtocolApplication.Graphql -> Pair("GQL", colors.graphqlRequest)
                 }
                 AppText(
                     text = text,
@@ -278,19 +287,23 @@ fun RequestTreeView(
         ) {
             var modifierToUse = modifier.onClick(
                 matcher = PointerMatcher.Primary,
-                onClick = { onExpandUnexpand(!isExpanded) },
+                onClick = {}, // not using this because there will be a significant delay
                 onDoubleClick = {
                     selectedTreeObjectId = folder.id
                     editTreeObjectNameViewModel.onStartEdit()
                 }
             )
-                .onClick(
-                    matcher = PointerMatcher.mouse(PointerButton.Secondary),
-                    onClick = {
-                        contextMenuAtItemId = folder.id
-                        isShowContextMenu = true
+                .onPointerEvent(PointerEventType.Press) {
+                    when (it.button) {
+                        PointerButton.Primary -> {
+                            onExpandUnexpand(!isExpanded)
+                        }
+                        PointerButton.Secondary -> {
+                            contextMenuAtItemId = folder.id
+                            isShowContextMenu = true
+                        }
                     }
-                )
+                }
                 .droppable(MoveDirection.Inside, folder)
             if (draggingOverDropTarget?.direction == MoveDirection.Inside && draggingOverDropTarget?.item?.id == folder.id) {
                 modifierToUse = modifierToUse.background(colors.backgroundHoverDroppable)
@@ -326,7 +339,9 @@ fun RequestTreeView(
                 val modifier = Modifier.defaultMinSize(minHeight = 28.dp).padding(start = leftPadding)
                 when (obj) {
                     is TreeRequest -> {
-                        RequestLeafView(modifier, requests[obj.id]!!)
+                        requests[obj.id]?.let { request ->
+                            RequestLeafView(modifier, request)
+                        }
                     }
 
                     is TreeFolder -> {
@@ -493,12 +508,12 @@ fun filterTreeObjects(rootObjects: MutableList<TreeObject>, containText: String,
 @Preview
 fun RequestListViewPreview() {
     val dummyRequests = listOf(
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "GET", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "POST", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "PUT", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Http, method = "DELETE", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Grpc, method = "", url = "", examples = emptyList()),
-        UserRequestTemplate(id = uuidString(), name = "abc", protocol = Protocol.Graphql, method = "POST", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "GET", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "POST", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "PUT", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Http, method = "DELETE", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Grpc, method = "", url = "", examples = emptyList()),
+        UserRequestTemplate(id = uuidString(), name = "abc", application = ProtocolApplication.Graphql, method = "POST", url = "", examples = emptyList()),
     )
     RequestTreeView(
         selectedSubproject = Subproject(id = "preview", name = "", treeObjects = dummyRequests.map { TreeRequest(it.id) }.toMutableList(), mutableListOf()),
