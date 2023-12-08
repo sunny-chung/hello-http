@@ -254,6 +254,7 @@ fun CodeEditorView(
                 val lineVerticalRange = textLayoutResult!!.getLineTop(lineIndex).toInt() .. textLayoutResult!!.getLineBottom(lineIndex).toInt()
                 if (lineVerticalRange !in visibleVerticalRange) {
                     coroutineScope.launch {
+                        log.d { "CEV scroll l=$lineIndex r=$lineVerticalRange v=$visibleVerticalRange" }
                         scrollState.animateScrollTo(lineVerticalRange.start)
                     }
                 }
@@ -329,8 +330,9 @@ fun CodeEditorView(
             AppTextField(
                 value = textValue,
                 onValueChange = {
-                    onTextChange?.invoke(it.text)
                     textValue = it
+                    log.d { "CEV sel ${textValue.selection.start}" }
+                    onTextChange?.invoke(it.text)
                 },
                 visualTransformation = visualTransformations.let {
                     if (it.size > 1) {
