@@ -1,10 +1,13 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.OverscrollEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.scrollable
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.overscroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,25 +36,119 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.absoluteValue
 import kotlin.math.min
+import kotlin.math.sign
+import kotlin.reflect.KProperty
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit, onDoubleClickTab: ((Int) -> Unit)? = null, contents: List<@Composable (() -> Unit)>) {
     val colors = LocalColor.current
     var lastSelectedIndex by remember { mutableStateOf(-1) }
     val scrollState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope() // needed for scrolling
-    val verticalScrollable = rememberScrollableState { delta ->
-        coroutineScope.launch {
-            scrollState.scrollBy(-delta)
+
+    val scrollLock = remember { Mutex() }
+    val verticalScrollingDepth = remember { AtomicInteger(0) }
+    val horizontalScrollingDepth = remember { AtomicInteger(0) }
+    val lastScrollDirection = remember { AtomicInteger(Orientation.Horizontal.ordinal) }
+    val lastScrollTime = remember { AtomicLong(KInstant.now().toEpochMilliseconds()) }
+//    val verticalScrollingDepth = AtomicInteger(0)
+//    val horizontalScrollingDepth = AtomicInteger(0)
+
+    log.d { "TabsView recompose" }
+
+    class ScrollingDepthDelegate(val direction: Orientation) {
+        operator fun getValue(thisRef: Any?, property: KProperty<*>): Int {
+            return when (direction) {
+                Orientation.Vertical -> verticalScrollingDepth.get()
+                Orientation.Horizontal -> horizontalScrollingDepth.get()
+            }
         }
-        delta
+        operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) {
+            when (direction) {
+                Orientation.Vertical -> verticalScrollingDepth.set(value)
+                Orientation.Horizontal -> horizontalScrollingDepth.set(value)
+            }
+        }
     }
-    LazyRow(modifier = modifier
-        .background(color = colors.backgroundLight)
-        .scrollable(state = verticalScrollable, orientation = Orientation.Vertical),
-        state = scrollState
+
+    fun Orientation.opposite() = when (this) {
+        Orientation.Vertical -> Orientation.Horizontal
+        Orientation.Horizontal -> Orientation.Vertical
+    }
+
+    @Composable
+    fun rememberCorrelatedScrollableState(direction: Orientation): ScrollableState {
+        var scrollingDepth by ScrollingDepthDelegate(direction)
+        val oppositeScrollingDepth by ScrollingDepthDelegate(direction.opposite())
+
+        return rememberScrollableState { delta ->
+            val shouldScroll = runBlocking {
+                scrollLock.withLock {
+                    log.v { "scroll depth begin v=$verticalScrollingDepth h=$horizontalScrollingDepth [$direction] delta=$delta" }
+                    if (delta.absoluteValue < 0.1) {
+                        false
+                    } else if (oppositeScrollingDepth <= 0) {
+//                        if (lastScrollDirection.get() == delta.sign.toInt() || KInstant.now().toEpochMilliseconds() - lastScrollTime.get() > 200) {
+                            ++scrollingDepth
+                            true
+//                        } else {
+//                            false
+//                        }
+                    } else {
+                        false
+                    }
+                }
+            }
+            if (shouldScroll || true) {
+                coroutineScope.launch {
+//                    if ((scrollState.canScrollBackward && delta > 0) || scrollState.canScrollForward && delta < 0) {
+                        scrollState.scrollBy(-delta)
+//                        lastScrollDirection.set(delta.sign.toInt())
+//                        lastScrollTime.set(KInstant.now().toEpochMilliseconds())
+//                    }
+//                    log.v { "end scroll v $verticalScrollingDepth" }
+                    --scrollingDepth
+                    log.v { "scroll depth end v=$verticalScrollingDepth h=$horizontalScrollingDepth [$direction] delta=$delta" }
+                }
+                delta
+            } else 0f // 0f
+        }
+    }
+
+    val verticalScrollable = rememberCorrelatedScrollableState(Orientation.Vertical)
+    val horizontalScrollable = rememberCorrelatedScrollableState(Orientation.Horizontal)
+    LazyRow(
+        state = scrollState,
+        userScrollEnabled = false,
+        modifier = modifier
+            .background(color = colors.backgroundLight)
+            .scrollable(state = verticalScrollable, orientation = Orientation.Vertical)
+            .scrollable(state = horizontalScrollable, orientation = Orientation.Horizontal)
+//            .overscroll(ScrollableDefaults.overscrollEffect())
+//            .onPointerEvent(PointerEventType.Scroll) {
+//                log.v { "onScroll $it" }
+//                val delta = if (it.changes.first().scrollDelta.x.absoluteValue > it.changes.first().scrollDelta.y.absoluteValue) {
+//                    it.changes.first().scrollDelta.x
+//                } else {
+//                    it.changes.first().scrollDelta.y
+//                }
+//                if (delta > 0.1) {
+//                    coroutineScope.launch {
+//                        scrollState.scrollBy(-delta)
+//                    }
+//                }
+//            }
     ) {
         items(count = contents.size) { i ->
             TabItem(
