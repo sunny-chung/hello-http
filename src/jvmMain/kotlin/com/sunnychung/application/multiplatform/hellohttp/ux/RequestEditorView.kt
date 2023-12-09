@@ -345,7 +345,7 @@ fun RequestEditorView(
                     val selectedExample = request.examples[it]
                     onSelectExample(selectedExample)
                     if (it > 0) { // the "Base" example cannot be renamed
-                        editExampleNameViewModel.onStartEdit()
+                        editExampleNameViewModel.onStartEdit(selectedExample.id)
                     }
                 },
                 contents = request.examples.mapIndexed { index, it ->
@@ -418,7 +418,7 @@ fun RequestEditorView(
                         request.copy(examples = request.examples + newExample)
                     )
                     onSelectExample(newExample)
-                    editExampleNameViewModel.onStartEdit()
+                    editExampleNameViewModel.onStartEdit(newExample.id)
                 },
                 modifier = Modifier.padding(4.dp)
             )
@@ -1254,7 +1254,7 @@ fun StreamingPayloadEditorView(
                 },
                 onDoubleClickTab = {
                     onSelectExample(request.payloadExamples!![it])
-                    editExampleNameViewModel.onStartEdit()
+                    editExampleNameViewModel.onStartEdit(request.payloadExamples!![it].id)
                 },
                 contents = (request.payloadExamples ?: emptyList()).mapIndexed { index, it ->
                     {
@@ -1297,7 +1297,7 @@ fun StreamingPayloadEditorView(
                         request.copy(payloadExamples = (request.payloadExamples ?: emptyList()) + newExample)
                     )
                     onSelectExample(newExample)
-                    editExampleNameViewModel.onStartEdit()
+                    editExampleNameViewModel.onStartEdit(newExample.id)
                 },
                 modifier = Modifier.padding(4.dp)
             )

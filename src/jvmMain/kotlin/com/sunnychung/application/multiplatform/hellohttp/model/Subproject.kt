@@ -129,4 +129,23 @@ data class Subproject(
         destinationParentList.add(insertIndex, item)
         return true
     }
+
+    fun addNear(item: TreeObject, direction: MoveDirection, nearItemId: String): Boolean {
+        if (direction == MoveDirection.Inside) throw UnsupportedOperationException()
+        val nearItemParent = findParentAndItem(nearItemId).first as TreeFolder?
+        val destinationParentList = if (nearItemParent != null) {
+            nearItemParent.childs
+        } else {
+            treeObjects
+        }
+        val nearItemIndex = destinationParentList.indexOfFirst { it.id == nearItemId }
+        assert(nearItemIndex >= 0)
+        val insertIndex = when (direction) {
+            MoveDirection.Before -> nearItemIndex
+            MoveDirection.After -> nearItemIndex + 1
+            MoveDirection.Inside -> throw UnsupportedOperationException()
+        }
+        destinationParentList.add(insertIndex, item)
+        return true
+    }
 }

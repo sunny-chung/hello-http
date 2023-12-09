@@ -139,7 +139,6 @@ express your desired priorities in the issue tracker.
 
 - Custom HTTP methods
 - Response JSON folding
-- Duplicating requests
 - Copy buttons in response
 - Binary response view
 - Binary request editor

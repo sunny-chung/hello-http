@@ -80,11 +80,11 @@ fun RequestTreeView(
     onUpdateFolder: (TreeFolder) -> Unit,
     onDeleteFolder: (TreeFolder) -> Unit,
     onMoveTreeObject: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
+    onCopyRequest: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
 ) {
     val colors = LocalColor.current
 
     var searchText by remember { mutableStateOf("") }
-    var selectedTreeObjectId by remember { mutableStateOf<String?>(null) }
     var expandedFolderIds = remember { mutableStateMapOf<String, Unit>() }
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -227,9 +227,8 @@ fun RequestTreeView(
                     .combinedClickable(
                         onClick = {}, // not using this because there will be a significant delay
                         onDoubleClick = {
-                            selectedTreeObjectId = it.id
                             onSelectRequest(it)
-                            editTreeObjectNameViewModel.onStartEdit()
+                            editTreeObjectNameViewModel.onStartEdit(it.id)
                         }
                     )
             ) {
@@ -258,7 +257,7 @@ fun RequestTreeView(
                     modifier = Modifier.width(width = 36.dp).padding(end = 4.dp)
                 )
                 LabelOrTextField(
-                    isEditing = isEditing && selectedTreeObjectId == it.id,
+                    isEditing = isEditing && editTreeObjectNameViewModel.editingItemId.value == it.id,
                     editNameViewModel = editTreeObjectNameViewModel,
                     labelColor = if (selectedRequest?.id == it.id) colors.highlight else colors.primary,
                     value = it.name,
@@ -266,6 +265,15 @@ fun RequestTreeView(
                     onFocus = onFocusNameTextField,
                     onUnfocus = onUnfocusNameTextField,
                     modifier = Modifier.weight(1f),
+                )
+                AppImageButton(
+                    resource = "duplicate.svg",
+                    size = 16.dp,
+                    color = colors.placeholder,
+                    onClick = {
+                        onCopyRequest(it.id, MoveDirection.After, TreeRequest(id = it.id))
+                    },
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
                 AppDeleteButton { onDeleteRequest(it) }
             }
@@ -289,8 +297,7 @@ fun RequestTreeView(
                 matcher = PointerMatcher.Primary,
                 onClick = {}, // not using this because there will be a significant delay
                 onDoubleClick = {
-                    selectedTreeObjectId = folder.id
-                    editTreeObjectNameViewModel.onStartEdit()
+                    editTreeObjectNameViewModel.onStartEdit(folder.id)
                 }
             )
                 .onPointerEvent(PointerEventType.Press) {
@@ -317,7 +324,7 @@ fun RequestTreeView(
                     size = 16.dp,
                 )
                 LabelOrTextField(
-                    isEditing = isEditing && selectedTreeObjectId == folder.id,
+                    isEditing = isEditing && editTreeObjectNameViewModel.editingItemId.value == folder.id,
                     editNameViewModel = editTreeObjectNameViewModel,
                     value = folder.name,
                     onValueUpdate = { v -> onUpdateFolder(folder.copy(name = v)) },
@@ -402,13 +409,13 @@ fun RequestTreeView(
     }
 
     fun createRequestOrFolder(resourceType: ResourceType, parentId: String?) {
-        selectedTreeObjectId = when (resourceType) {
+        val itemId = when (resourceType) {
             ResourceType.Request -> onAddRequest(parentId).id
             ResourceType.Folder -> {
                 onAddFolder(parentId).id
             }
         }
-        editTreeObjectNameViewModel.onStartEdit()
+        editTreeObjectNameViewModel.onStartEdit(itemId)
         coroutineScope.launch {
             scrollState.animateScrollTo(scrollState.maxValue)
         }
@@ -531,6 +538,7 @@ fun RequestListViewPreview() {
         onUpdateFolder = {},
         onDeleteFolder = {},
         onMoveTreeObject = {_, _, _ ->},
+        onCopyRequest = {_, _, _ ->},
     )
 }
 
