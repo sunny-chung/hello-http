@@ -123,6 +123,7 @@ fun AppView() {
                     )
                     Box(
                         modifier = Modifier
+                            .padding(60.dp)
                             .border(1.dp, color = colors.highlight)
                             .background(colors.background)
                             .clickable(
@@ -145,7 +146,6 @@ fun AppView() {
                             .align(
                                 Alignment.Center
                             )
-                            .sizeIn(maxWidth = 480.dp, maxHeight = 300.dp)
                     ) {
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
