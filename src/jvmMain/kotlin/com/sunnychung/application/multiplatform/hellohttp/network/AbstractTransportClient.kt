@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
@@ -24,10 +25,13 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
+import java.security.KeyStore
 import java.security.SecureRandom
+import java.security.cert.CertificateFactory
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
 abstract class AbstractTransportClient internal constructor(callDataStore: CallDataStore) : TransportClient {
@@ -67,10 +71,37 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                     init(null, arrayOf(trustManager), SecureRandom())
                     Pair(this, trustManager)
                 } else {
-                    init(null, null, SecureRandom())
-                    Pair(this, null)
+                    val customCaCertificates = sslConfig.trustedCaCertificates.filter { it.isEnabled }
+                    if (customCaCertificates.isNotEmpty()) {
+                        val defaultX509TrustManager = createTrustManager(null)
+                        val trustStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                        trustStore.load(null)
+                        customCaCertificates.map {
+                            val cert = CertificateFactory.getInstance("X.509").generateCertificate(it.content.inputStream())
+                            trustStore.setCertificateEntry(it.name, cert)
+                        }
+                        val customTrustManager = createTrustManager(trustStore)
+                        val combinedTrustManager = MultipleTrustCertificateManager(
+                            listOf(defaultX509TrustManager, customTrustManager)
+                        )
+                        init(null, arrayOf(combinedTrustManager), SecureRandom())
+                        Pair(this, combinedTrustManager)
+                    } else {
+                        init(null, null, SecureRandom())
+                        Pair(this, null)
+                    }
                 }
             }
+    }
+
+    private fun createTrustManager(keystore: KeyStore?): X509TrustManager {
+        return TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+            .apply {
+                init(keystore)
+            }
+            .trustManagers
+            .filterIsInstance(X509TrustManager::class.java)
+            .first()
     }
 
     protected fun createHostnameVerifier(sslConfig: SslConfig): HostnameVerifier? {

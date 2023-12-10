@@ -1,18 +1,24 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,20 +29,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedDateTime
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
+import java.io.File
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import javax.security.auth.x500.X500Principal
 
 @Composable
 fun SubprojectEnvironmentsEditorDialogView(
@@ -175,7 +197,7 @@ fun EnvironmentEditorView(
             EnvironmentEditorTab.SSL -> EnvironmentSslTabContent(
                 environment = environment,
                 onUpdateEnvironment = onUpdateEnvironment,
-                modifier = modifier,
+                modifier = modifier.verticalScroll(rememberScrollState()),
             )
         }
     }
@@ -288,6 +310,151 @@ fun EnvironmentSslTabContent(
                 },
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
+        }
+        CertificateEditorView(
+            title = "Additional Trusted CA Certificates",
+            certificates = sslConfig.trustedCaCertificates,
+            onAddCertificate = { new ->
+                onUpdateEnvironment(
+                    environment.copy(sslConfig = sslConfig.copy(
+                        trustedCaCertificates = sslConfig.trustedCaCertificates + new
+                    ))
+                )
+            },
+            onUpdateCertificate = { update ->
+                onUpdateEnvironment(
+                    environment.copy(sslConfig = sslConfig.copy(
+                        trustedCaCertificates = sslConfig.trustedCaCertificates.copyWithChange(update)
+                    ))
+                )
+            },
+            onDeleteCertificate = { delete ->
+                onUpdateEnvironment(
+                    environment.copy(
+                        sslConfig = sslConfig.copy(
+                            trustedCaCertificates = sslConfig.trustedCaCertificates.copyWithRemoval { it.id == delete.id }
+                        )
+                    )
+                )
+            },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        )
+    }
+}
+
+@Composable
+fun CertificateEditorView(
+    modifier: Modifier,
+    title: String,
+    certificates: List<ImportedFile>,
+    onAddCertificate: (ImportedFile) -> Unit,
+    onUpdateCertificate: (ImportedFile) -> Unit,
+    onDeleteCertificate: (ImportedFile) -> Unit,
+) {
+    val colours = LocalColor.current
+
+    var isShowFileDialog by remember { mutableStateOf(false) }
+    val fileDialogState = rememberFileDialogState()
+
+    fun parseAndAddCertificate(path: String) {
+        val file = File(path)
+        val content = file.readBytes()
+        val cert: X509Certificate = CertificateFactory.getInstance("X.509").generateCertificate(content.inputStream()) as X509Certificate
+        log.d { "Loaded cert ${cert}" }
+
+        onAddCertificate(
+            ImportedFile(
+                id = uuidString(),
+                name = cert.subjectX500Principal.getName(X500Principal.RFC1779) +
+                    "\nExpiry: ${KZonedInstant(cert.notAfter.time, KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern)}" +
+                    if (cert.keyUsage?.get(5) != true) "\n⚠️ Not a CA certificate!" else ""
+                ,
+                originalFilename = file.name,
+                createdWhen = KInstant.now(),
+                isEnabled = true,
+                content = content,
+            )
+        )
+    }
+
+    Column(modifier) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            AppText(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(vertical = 6.dp))
+            AppImageButton(
+                resource = "add.svg",
+                size = 24.dp,
+                onClick = { isShowFileDialog = true },
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
+            )
+        }
+        Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
+                AppText(
+                    text = "Certificate",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(0.7f)
+                        .fillMaxHeight()
+                        .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                        .padding(all = 8.dp)
+                )
+                AppText(
+                    text = "Import Time",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(0.3f)
+                        .fillMaxHeight()
+                        .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                        .padding(all = 8.dp)
+                )
+                Spacer(modifier = Modifier.width(24.dp + 24.dp))
+            }
+            certificates.forEach {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
+                    AppText(
+                        text = it.name,
+                        modifier = Modifier.weight(0.7f)
+                            .fillMaxHeight()
+                            .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                            .padding(all = 8.dp)
+                    )
+                    AppText(
+                        text = it.createdWhen.atZoneOffset(KZoneOffset.local()).format("yyyy-MM-dd HH:mm"),
+                        modifier = Modifier.weight(0.3f)
+                            .fillMaxHeight()
+                            .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                            .padding(all = 8.dp)
+                    )
+                    AppCheckbox(
+                        checked = it.isEnabled,
+                        onCheckedChange = { v -> onUpdateCertificate(it.copy(isEnabled = v)) },
+                        size = 16.dp,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    AppDeleteButton(
+                        onClickDelete = { onDeleteCertificate(it) },
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            }
+            if (certificates.isEmpty()) {
+                Row {
+                    AppText(
+                        text = "No entry",
+                        modifier = Modifier.weight(1f)
+                            .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                            .padding(all = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.width(24.dp + 24.dp))
+                }
+            }
+        }
+    }
+
+    if (isShowFileDialog) {
+        FileDialog(state = fileDialogState) {
+            isShowFileDialog = false
+            if (it != null && it.isNotEmpty()) {
+                parseAndAddCertificate(it.first().absolutePath)
+            }
         }
     }
 }

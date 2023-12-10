@@ -150,7 +150,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
     fun configureWebSocketClient(client: WebSocketClient, callId: String, sslConfig: SslConfig) {
         with (client) {
             setDnsResolver(createDnsResolver(callId))
-            if (uri.scheme == "wss" && sslConfig.isInsecure == true) {
+            if (uri.scheme == "wss" && sslConfig.hasCustomConfig()) {
                 setSocketFactory(createSslContext(sslConfig).first.socketFactory)
             }
         }

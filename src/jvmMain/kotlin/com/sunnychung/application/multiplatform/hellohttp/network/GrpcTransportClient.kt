@@ -95,8 +95,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 if (uri0.scheme in setOf("http", "grpc")) {
                     usePlaintext();
                 } else {
-                    if (sslConfig.isInsecure == true) {
-                        log.d { "Insecure gRPC" }
+                    if (sslConfig.hasCustomConfig()) {
                         GrpcSslContexts.forClient()
                             .trustManager(createSslContext(sslConfig).second)
                             .build()

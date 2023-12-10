@@ -34,5 +34,8 @@ data class HttpConfig(
 @Persisted
 @Serializable
 data class SslConfig(
-    val isInsecure: Boolean? = null
-)
+    val isInsecure: Boolean? = null,
+    val trustedCaCertificates: List<ImportedFile> = emptyList(),
+) {
+    fun hasCustomConfig() = isInsecure == true || trustedCaCertificates.any { it.isEnabled }
+}
