@@ -381,7 +381,7 @@ fun CertificateEditorView(
         Box(modifier = Modifier.fillMaxWidth()) {
             AppText(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(vertical = 6.dp))
             AppTooltipArea(
-                tooltipText = "Add a certificate in DER format",
+                tooltipText = "Import a certificate in DER format",
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
             ) {
                 AppImageButton(
