@@ -380,12 +380,16 @@ fun CertificateEditorView(
     Column(modifier) {
         Box(modifier = Modifier.fillMaxWidth()) {
             AppText(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(vertical = 6.dp))
-            AppImageButton(
-                resource = "add.svg",
-                size = 24.dp,
-                onClick = { isShowFileDialog = true },
+            AppTooltipArea(
+                tooltipText = "Add a certificate in DER format",
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
-            )
+            ) {
+                AppImageButton(
+                    resource = "add.svg",
+                    size = 24.dp,
+                    onClick = { isShowFileDialog = true },
+                )
+            }
         }
         Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
@@ -450,7 +454,7 @@ fun CertificateEditorView(
     }
 
     if (isShowFileDialog) {
-        FileDialog(state = fileDialogState) {
+        FileDialog(state = fileDialogState, title = "Choose a DER file") {
             isShowFileDialog = false
             if (it != null && it.isNotEmpty()) {
                 parseAndAddCertificate(it.first().absolutePath)

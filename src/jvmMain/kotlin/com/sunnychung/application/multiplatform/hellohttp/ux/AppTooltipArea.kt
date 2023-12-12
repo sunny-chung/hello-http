@@ -16,6 +16,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppTooltipArea(
+    modifier: Modifier = Modifier,
     isVisible: Boolean = true,
     tooltipText: String,
     delayMillis: Int = 100,
@@ -40,7 +41,8 @@ fun AppTooltipArea(
         delayMillis = delayMillis,
         tooltipPlacement = TooltipPlacement.CursorPoint(
             offset = DpOffset(x = 16.dp, y = 0.dp)
-        )
+        ),
+        modifier = modifier,
     ) {
         content()
     }
