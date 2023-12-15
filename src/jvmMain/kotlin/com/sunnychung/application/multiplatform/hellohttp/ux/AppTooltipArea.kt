@@ -40,7 +40,7 @@ fun AppTooltipArea(
         },
         delayMillis = delayMillis,
         tooltipPlacement = TooltipPlacement.CursorPoint(
-            offset = DpOffset(x = 16.dp, y = 0.dp)
+            offset = DpOffset(x = 16.dp, y = 8.dp)
         ),
         modifier = modifier,
     ) {
