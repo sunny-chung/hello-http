@@ -103,7 +103,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
                 .setTlsStrategy(ClientTlsStrategyBuilder.create()
-                    .setSslContext(createSslContext(sslConfig).first)
+                    .setSslContext(createSslContext(sslConfig).sslContext)
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
                 .setConnectionListener(object : ConnectionListener {

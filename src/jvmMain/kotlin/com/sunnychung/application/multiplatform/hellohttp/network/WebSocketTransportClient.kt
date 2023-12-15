@@ -151,7 +151,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         with (client) {
             setDnsResolver(createDnsResolver(callId))
             if (uri.scheme == "wss" && sslConfig.hasCustomConfig()) {
-                setSocketFactory(createSslContext(sslConfig).first.socketFactory)
+                setSocketFactory(createSslContext(sslConfig).sslContext.socketFactory)
             }
         }
     }

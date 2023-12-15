@@ -84,7 +84,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             .protocols(listOf(Protocol.HTTP_1_1)) // TODO support HTTP/2
             .apply {
                 if (sslConfig.isInsecure == true) {
-                    val (sslContext, trustManager) = createSslContext(sslConfig)
+                    val (sslContext, keyManager, trustManager) = createSslContext(sslConfig)
                     sslSocketFactory(sslContext.socketFactory, trustManager!!)
                     hostnameVerifier { _, _ -> true }
                 }

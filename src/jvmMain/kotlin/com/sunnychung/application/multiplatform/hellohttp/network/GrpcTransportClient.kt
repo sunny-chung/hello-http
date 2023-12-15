@@ -96,8 +96,10 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     usePlaintext();
                 } else {
                     if (sslConfig.hasCustomConfig()) {
+                        val customSsl = createSslContext(sslConfig)
                         GrpcSslContexts.forClient()
-                            .trustManager(createSslContext(sslConfig).second)
+                            .keyManager(customSsl.keyManager)
+                            .trustManager(customSsl.trustManager)
                             .build()
                             .let { sslContext(it) }
                     }

@@ -29,19 +29,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.model.ClientCertificateKeyPair
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.model.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
@@ -53,7 +56,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberF
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
-import com.sunnychung.lib.multiplatform.kdatetime.KZonedDateTime
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import java.io.File
 import java.security.cert.CertificateFactory
@@ -311,9 +313,11 @@ fun EnvironmentSslTabContent(
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
+
         CertificateEditorView(
             title = "Additional Trusted CA Certificates",
             certificates = sslConfig.trustedCaCertificates,
+            isShowAddButton = true,
             onAddCertificate = { new ->
                 onUpdateEnvironment(
                     environment.copy(sslConfig = sslConfig.copy(
@@ -339,14 +343,69 @@ fun EnvironmentSslTabContent(
             },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         )
+
+        CertificateEditorView(
+            title = "Client Certificate",
+            certificates = sslConfig.clientCertificateKeyPairs.map { it.certificate },
+            isShowAddButton = false,
+            onAddCertificate = { throw NotImplementedError("Unimplemented as intended") },
+            onUpdateCertificate = { update ->
+                onUpdateEnvironment(
+                    environment.copy(
+                        sslConfig = sslConfig.copy(
+                            clientCertificateKeyPairs = with(sslConfig.clientCertificateKeyPairs) {
+                                map {
+                                    if (it.certificate.id == update.id) {
+                                        // TODO this data logic should be in data layer
+                                        it.copy(
+                                            isEnabled = update.isEnabled,
+                                            certificate = update,
+                                            privateKey = it.privateKey.copy(isEnabled = update.isEnabled)
+                                        )
+                                    } else {
+                                        it
+                                    }
+                                }
+                            }
+                        )
+                    )
+                )
+            },
+            onDeleteCertificate = { delete ->
+                onUpdateEnvironment(
+                    environment.copy(
+                        sslConfig = sslConfig.copy(
+                            clientCertificateKeyPairs = sslConfig.clientCertificateKeyPairs.copyWithRemoval { it.certificate.id == delete.id }
+                        )
+                    )
+                )
+            },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        )
+        Column(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp)) {
+            if (sslConfig.clientCertificateKeyPairs.isEmpty()) {
+                CertificateKeyPairImportForm(onAddItem = { new ->
+                    onUpdateEnvironment(
+                        environment.copy(
+                            sslConfig = sslConfig.copy(
+                                clientCertificateKeyPairs = listOf(new) // always only one
+                            )
+                        )
+                    )
+                })
+            } else {
+                AppText(text = "Only 1 certificate can be persisted. To add a new one, delete the current one first.")
+            }
+        }
     }
 }
 
 @Composable
 fun CertificateEditorView(
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     title: String,
     certificates: List<ImportedFile>,
+    isShowAddButton: Boolean,
     onAddCertificate: (ImportedFile) -> Unit,
     onUpdateCertificate: (ImportedFile) -> Unit,
     onDeleteCertificate: (ImportedFile) -> Unit,
@@ -356,6 +415,9 @@ fun CertificateEditorView(
     var isShowFileDialog by remember { mutableStateOf(false) }
     val fileDialogState = rememberFileDialogState()
 
+    /**
+     * TODO: This logic should be in data layer
+     */
     fun parseAndAddCertificate(path: String) {
         val file = File(path)
         val content = file.readBytes()
@@ -380,15 +442,17 @@ fun CertificateEditorView(
     Column(modifier) {
         Box(modifier = Modifier.fillMaxWidth()) {
             AppText(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(vertical = 6.dp))
-            AppTooltipArea(
-                tooltipText = "Import a certificate in DER format",
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
-            ) {
-                AppImageButton(
-                    resource = "add.svg",
-                    size = 24.dp,
-                    onClick = { isShowFileDialog = true },
-                )
+            if (isShowAddButton) {
+                AppTooltipArea(
+                    tooltipText = "Import a certificate in DER format",
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
+                ) {
+                    AppImageButton(
+                        resource = "add.svg",
+                        size = 24.dp,
+                        onClick = { isShowFileDialog = true },
+                    )
+                }
             }
         }
         Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
@@ -461,6 +525,81 @@ fun CertificateEditorView(
             }
         }
     }
+}
+
+@Composable
+fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (ClientCertificateKeyPair) -> Unit) {
+    val headerColumnWidth = 160.dp
+
+    var certFile by remember { mutableStateOf<File?>(null) }
+    var keyFile by remember { mutableStateOf<File?>(null) }
+    var keyFilePassword by remember { mutableStateOf("") }
+    var fileChooser by remember { mutableStateOf(CertificateKeyPairFileChooserType.None) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppText(text = "Certificate", modifier = Modifier.width(headerColumnWidth))
+            AppTextButton(
+                text = certFile?.name ?: "Choose a File in DER format",
+                onClick = { fileChooser = CertificateKeyPairFileChooserType.Certificate },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppText(text = "Private Key", modifier = Modifier.width(headerColumnWidth))
+            AppTextButton(
+                text = keyFile?.name ?: "Choose a File in PKCS #8 DER format",
+                onClick = { fileChooser = CertificateKeyPairFileChooserType.PrivateKey },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppText(text = "Private Key Password", modifier = Modifier.width(headerColumnWidth))
+            AppTextField(
+                value = keyFilePassword,
+                onValueChange = { keyFilePassword = it },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.defaultMinSize(minWidth = 200.dp)
+            )
+        }
+        Row {
+            Spacer(modifier = Modifier.width(4.dp))
+            AppTextButton(
+                text = "Import this Certificate-Key Pair",
+                onClick = {
+                    val parsed = try {
+                        if (certFile == null) throw IllegalArgumentException("Please select a certificate file.")
+                        if (keyFile == null) throw IllegalArgumentException("Please select a private key file.")
+                        ClientCertificateKeyPair.importFrom(
+                            certFile = certFile!!,
+                            keyFile = keyFile!!,
+                            keyPassword = keyFilePassword
+                        )
+                    } catch (e: Throwable) {
+                        AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: e::class.simpleName!!)
+                        return@AppTextButton
+                    }
+                    onAddItem(parsed)
+                },
+            )
+        }
+    }
+
+    if (fileChooser != CertificateKeyPairFileChooserType.None) {
+        FileDialog(state = rememberFileDialogState(), title = "Choose a DER file") {
+            val currentFileChooser = fileChooser
+            fileChooser = CertificateKeyPairFileChooserType.None
+            if (!it.isNullOrEmpty()) {
+                when (currentFileChooser) {
+                    CertificateKeyPairFileChooserType.None -> throw IllegalStateException()
+                    CertificateKeyPairFileChooserType.Certificate -> certFile = it.first()
+                    CertificateKeyPairFileChooserType.PrivateKey -> keyFile = it.first()
+                }
+            }
+        }
+    }
+}
+
+private enum class CertificateKeyPairFileChooserType {
+    None, Certificate, PrivateKey
 }
 
 private enum class EnvironmentEditorTab {

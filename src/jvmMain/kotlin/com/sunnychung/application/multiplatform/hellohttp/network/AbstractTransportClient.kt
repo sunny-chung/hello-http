@@ -25,11 +25,14 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
+import java.security.KeyFactory
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.cert.CertificateFactory
+import java.security.spec.PKCS8EncodedKeySpec
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
@@ -63,16 +66,16 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         }
     }
 
-    protected fun createSslContext(sslConfig: SslConfig): Pair<SSLContext, X509TrustManager?> {
+    protected fun createSslContext(sslConfig: SslConfig): CustomSsl {
         return SSLContext.getInstance("TLS")
             .run {
                 if (sslConfig.isInsecure == true) {
                     val trustManager = TrustAllSslCertificateManager()
                     init(null, arrayOf(trustManager), SecureRandom())
-                    Pair(this, trustManager)
+                    CustomSsl(sslContext = this, keyManager = null, trustManager = trustManager)
                 } else {
                     val customCaCertificates = sslConfig.trustedCaCertificates.filter { it.isEnabled }
-                    if (customCaCertificates.isNotEmpty()) {
+                    val trustManager = Unit.takeIf { customCaCertificates.isNotEmpty() }?.let {
                         val defaultX509TrustManager = createTrustManager(null)
                         val trustStore = KeyStore.getInstance(KeyStore.getDefaultType())
                         trustStore.load(null)
@@ -84,12 +87,24 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         val combinedTrustManager = MultipleTrustCertificateManager(
                             listOf(defaultX509TrustManager, customTrustManager)
                         )
-                        init(null, arrayOf(combinedTrustManager), SecureRandom())
-                        Pair(this, combinedTrustManager)
-                    } else {
-                        init(null, null, SecureRandom())
-                        Pair(this, null)
+                        combinedTrustManager
                     }
+                    val keyManager = sslConfig.clientCertificateKeyPairs.firstOrNull { it.isEnabled }?.let {
+                        val cert = CertificateFactory.getInstance("X.509").generateCertificate(it.certificate.content.inputStream())
+                        val key = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(it.privateKey.content))
+
+                        val password = uuidString()
+                        val keyStore = KeyStore.getInstance("JKS")
+                        keyStore.load(null)
+                        keyStore.setCertificateEntry("cert", cert)
+                        keyStore.setKeyEntry("key", key, password.toCharArray(), arrayOf(cert))
+                        val keyManagers = KeyManagerFactory.getInstance("SunX509")
+                            .apply { init(keyStore, password.toCharArray()) }
+                            .keyManagers
+                        keyManagers.first()
+                    }
+                    init(keyManager?.let { arrayOf(it) }, trustManager?.let { arrayOf(it) }, SecureRandom())
+                    CustomSsl(sslContext = this, keyManager = keyManager, trustManager = trustManager)
                 }
             }
     }
