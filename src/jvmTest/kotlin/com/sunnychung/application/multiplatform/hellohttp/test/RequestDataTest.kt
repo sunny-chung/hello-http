@@ -1,3 +1,5 @@
+package com.sunnychung.application.multiplatform.hellohttp.test
+
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody

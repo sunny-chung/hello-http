@@ -1,3 +1,5 @@
+package com.sunnychung.application.multiplatform.hellohttp.test
+
 import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierManager
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import kotlin.test.Test
