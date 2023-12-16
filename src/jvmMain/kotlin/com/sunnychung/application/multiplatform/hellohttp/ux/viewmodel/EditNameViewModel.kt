@@ -8,14 +8,16 @@ class EditNameViewModel {
 
     val isEditing = MutableStateFlow(false)
     val isCancelled = MutableStateFlow(false)
+    val editingItemId = MutableStateFlow<String?>(null)
 
     @Deprecated("unused")
     val textFieldValue = MutableStateFlow(TextFieldValue(""))
 
     val hasReachedEditingState = MutableStateFlow(false)
 
-    fun onStartEdit() {
+    fun onStartEdit(id: String) {
         isEditing.value = true
+        editingItemId.value = id
         hasReachedEditingState.value = false
 //        textFieldValue.value = TextFieldValue(request.name, selection = TextRange(0, request.name.length))
         isCancelled.value = false
@@ -33,6 +35,7 @@ class EditNameViewModel {
         } else {
             if (hasReachedEditingState.value) {
                 isEditing.value = false
+                editingItemId.value = null
             }
         }
     }
@@ -43,5 +46,6 @@ class EditNameViewModel {
 
     fun onUserCancelEdit() {
         isCancelled.value = true
+        editingItemId.value = null
     }
 }

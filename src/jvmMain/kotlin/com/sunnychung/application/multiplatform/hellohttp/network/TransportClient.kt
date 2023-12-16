@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.atomic.AtomicInteger
+import javax.net.ssl.KeyManager
+import javax.net.ssl.SSLContext
+import javax.net.ssl.X509TrustManager
 
 interface TransportClient {
     fun getCallData(callId: String): CallData?
@@ -30,6 +33,8 @@ class CallData(
     val subprojectId: String,
     var isPrepared: Boolean = false,
     var status: ConnectionStatus = ConnectionStatus.PREPARING,
+
+    val sslConfig: SslConfig,
 
     val events: SharedFlow<NetworkEvent>,
     val eventsStateFlow: StateFlow<NetworkEvent?>,
@@ -71,3 +76,9 @@ data class Http2Frame(override val instant: KInstant, val streamId: Int?, val co
     override val payload: ByteArray
         get() = content.encodeToByteArray()
 }
+
+data class CustomSsl(
+    val sslContext: SSLContext,
+    val keyManager: KeyManager?,
+    val trustManager: X509TrustManager?
+)

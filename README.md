@@ -128,9 +128,9 @@ Clearing this directory would reset the application.
 
 ## Performance
 
-Honestly, Hello HTTP is not yet performance-oriented. It relies on JVM, so it would demand a significant amount of
-memory (about 0.5 GB). But, it still outperforms many web apps. It performs very well on a Windows laptop with 8 GB RAM
-without a noticeable performance degrade of other applications.
+Honestly, Hello HTTP is not yet performance-oriented. It is not another web app. It relies on JVM, so it demands a
+significant amount of memory (about 0.5 GB). But, it still outperforms many web apps. It performs very well on a
+Windows laptop with 8 GB RAM without a noticeable performance degrade of other applications.
 
 ## Planned
 
@@ -139,7 +139,6 @@ express your desired priorities in the issue tracker.
 
 - Custom HTTP methods
 - Response JSON folding
-- Duplicating requests
 - Copy buttons in response
 - Binary response view
 - Binary request editor

@@ -79,6 +79,78 @@ data class UserRequestTemplate(
             copy(application = application, method = method)
         }
 
+    fun deepCopyWithNewId(): UserRequestTemplate {
+        val idMapping = mutableMapOf<String, String>()
+
+        fun List<UserKeyValuePair>.deepCopyWithNewId(
+            isSaveIdMapping: Boolean = false,
+            isUseIdMapping: Boolean = false
+        ) = map {
+            val newId = if (isUseIdMapping) {
+                idMapping[it.id] ?: uuidString()
+            } else {
+                uuidString()
+            }
+            if (isSaveIdMapping) {
+                idMapping[it.id] = newId
+            }
+            it.copy(
+                id = newId,
+            )
+        }
+
+        fun UserRequestBody.deepCopyWithNewId(
+            isSaveIdMapping: Boolean = false,
+            isUseIdMapping: Boolean = false
+        ) = when(this) {
+            is FileBody -> FileBody(filePath)
+            is FormUrlEncodedBody -> FormUrlEncodedBody(value.deepCopyWithNewId(
+                isSaveIdMapping = isSaveIdMapping,
+                isUseIdMapping = isUseIdMapping
+            ))
+            is GraphqlBody -> GraphqlBody(document, variables, operationName)
+            is com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody -> MultipartBody(
+                value.deepCopyWithNewId(
+                    isSaveIdMapping = isSaveIdMapping,
+                    isUseIdMapping = isUseIdMapping
+                )
+            )
+            is StringBody -> StringBody(value)
+        }
+
+        return copy(
+            id = uuidString(),
+            examples = examples.mapIndexed { index, it ->
+                it.copy(
+                    id = uuidString(),
+                    headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    postFlight = with (it.postFlight) {
+                        copy(
+                            updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                        )
+                    },
+                    overrides = it.overrides?.let { o ->
+                        o.copy(
+                            disabledHeaderIds = o.disabledHeaderIds.map { idMapping[it]!! }.toSet(),
+                            disabledQueryParameterIds = o.disabledQueryParameterIds.map { idMapping[it]!! }.toSet(),
+                            disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { idMapping[it]!! }.toSet(),
+                            disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
+                        )
+                    },
+                )
+            },
+            payloadExamples = payloadExamples?.map {
+                it.copy(
+                    id = uuidString(),
+                )
+            },
+            grpc = grpc?.copy(),
+        )
+    }
+
     sealed class ResolveVariableMode
     object ExpandByEnvironment : ResolveVariableMode()
     data class ReplaceAsString(val replacement: String = "{{\$1}}") : ResolveVariableMode()
@@ -278,10 +350,14 @@ class StringBody(val value: String) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody = value.toRequestBody(mediaType)
 }
 
+interface RequestBodyWithKeyValuePairs {
+    val value: List<UserKeyValuePair>
+}
+
 @Persisted
 @Serializable
 @SerialName("FormUrlEncodedBody")
-class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
+class FormUrlEncodedBody(override val value: List<UserKeyValuePair>) : UserRequestBody, RequestBodyWithKeyValuePairs {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
         val builder = FormBody.Builder()
         value.forEach { builder.add(it.key, it.value) }
@@ -292,7 +368,7 @@ class FormUrlEncodedBody(val value: List<UserKeyValuePair>) : UserRequestBody {
 @Persisted
 @Serializable
 @SerialName("MultipartBody")
-class MultipartBody(val value: List<UserKeyValuePair>) : UserRequestBody {
+class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBody, RequestBodyWithKeyValuePairs {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
         val b = MultipartBody.Builder()
         value.filter { it.isEnabled }.forEach {

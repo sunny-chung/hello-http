@@ -22,6 +22,7 @@ fun FileDialog(
     parent: Frame? = null,
     state: FileDialogState,
     mode: Int = FileDialog.LOAD,
+    title: String = "Choose a file",
     filename: String? = null,
     onCloseRequest: (result: List<File>?) -> Unit
 ) {
@@ -35,7 +36,7 @@ fun FileDialog(
     AwtWindow(
         create = {
             log.d { "FileDialog create" }
-            object : FileDialog(parent, "Choose a file", mode) {
+            object : FileDialog(parent, title, mode) {
                 init {
                     if (filename != null) {
                         file = filename

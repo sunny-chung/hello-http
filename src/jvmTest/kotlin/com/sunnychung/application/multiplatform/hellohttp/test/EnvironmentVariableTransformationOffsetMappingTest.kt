@@ -1,3 +1,5 @@
+package com.sunnychung.application.multiplatform.hellohttp.test
+
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformationOffsetMapping
 import java.util.*
 import kotlin.test.Test

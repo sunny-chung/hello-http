@@ -185,6 +185,7 @@ class NetworkClientManager : CallDataStore {
             val d = CallData(
                 id = uuidString(),
                 subprojectId = subprojectId,
+                sslConfig = environment?.sslConfig ?: SslConfig(),
                 response = UserResponse(
                     id = uuidString(),
                     requestExampleId = requestExampleId,

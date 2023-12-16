@@ -19,6 +19,7 @@ data class AppColor(
 
     val primary: Color,
     val bright: Color,
+    val successful: Color,
     val text: Color = primary,
     val image: Color = primary,
     val line: Color,
@@ -95,6 +96,7 @@ fun darkColorScheme(): AppColor = AppColor(
 
     primary = Color(red = 0.8f, green = 0.8f, blue = 1.0f),
     bright = Color.White,
+    successful = Color(red = 0.1f, green = 0.8f, blue = 0.1f),
     line = Color(red = 0.6f, green = 0.6f, blue = 0.6f),
 
     placeholder = Color(red = 0.5f, green = 0.5f, blue = 0.5f),
@@ -156,13 +158,14 @@ fun lightColorScheme(): AppColor = AppColor(
     backgroundButton = Color(red = 0.6f, green = 0.6f, blue = 1f),
     backgroundStopButton = Color(red = 1f, green = 0.43f, blue = 0.43f),
     backgroundDialogOverlay = Color.Black.copy(alpha = 0.4f),
-    backgroundTooltip = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
+    backgroundTooltip = Color(red = 0.7f, green = 0.7f, blue = 0.9f),
     backgroundHoverDroppable = Color(0f, 0f, 0.4f),
     backgroundInputFieldHighlight = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
     backgroundInputFieldHighlightEmphasize = Color(red = 0.8f, green = 0.8f, blue = 0.3f),
 
     primary = Color(red = 0.2f, green = 0.2f, blue = 0.3f),
     bright = Color.Black,
+    successful = Color(red = 0.1f, green = 0.6f, blue = 0.1f),
     line = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
 
     placeholder = Color(red = 0.5f, green = 0.5f, blue = 0.5f),

@@ -34,6 +34,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
@@ -192,17 +193,18 @@ fun CodeEditorView(
         isCaseSensitive = false,
         isWholeWord = false
     )) }
+    var searchPattern by rememberLast(searchText, searchOptions) { mutableStateOf<Regex?>(null) }
     val scrollState = rememberScrollState()
     val searchBarFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
 
-    var searchResultViewIndex by remember { mutableStateOf(0) }
-    var lastSearchResultViewIndex by remember { mutableStateOf(0) }
-    var searchResultRanges by rememberLast(searchText, searchOptions) { mutableStateOf<List<IntRange>?>(null) }
+    var searchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
+    var lastSearchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
+    var searchResultRanges by rememberLast(text, searchPattern) { mutableStateOf<List<IntRange>?>(null) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var textFieldSize by remember { mutableStateOf<IntSize?>(null) }
 
-    if (searchText.isNotEmpty() && searchResultRanges == null) {
+    if (searchText.isNotEmpty() && searchPattern == null) {
         val regexOption = if (searchOptions.isCaseSensitive) setOf() else setOf(RegexOption.IGNORE_CASE)
         try {
             val pattern = if (searchOptions.isRegex) {
@@ -212,7 +214,7 @@ fun CodeEditorView(
             } else {
                 Pattern.quote(searchText).toRegex(regexOption)
             }
-            searchResultRanges = pattern.findAll(textValue.text).map { it.range }.sortedBy { it.start }.toList()
+            searchPattern = pattern
             searchResultViewIndex = 0
             lastSearchResultViewIndex = -1
         } catch (_: Throwable) {}
@@ -237,12 +239,26 @@ fun CodeEditorView(
             }
 
     if (isSearchVisible) {
-        if (!searchResultRanges.isNullOrEmpty()) {
+        if (!searchResultRanges.isNullOrEmpty() && searchPattern != null) {
             visualTransformations += SearchHighlightTransformation(
-                highlightRanges = searchResultRanges!!,
+                searchPattern = searchPattern!!,
                 currentIndex = searchResultViewIndex,
                 colours = themeColours,
             )
+        }
+
+        if (searchPattern != null && searchResultRanges == null) {
+            try {
+                searchResultRanges = searchPattern!!
+                    .findAll(
+                        MultipleVisualTransformation(visualTransformations)
+                            .filter(AnnotatedString(textValue.text))
+                            .text.text
+                    )
+                    .map { it.range }
+                    .sortedBy { it.start }
+                    .toList()
+            } catch (_: Throwable) {}
         }
 
         if (lastSearchResultViewIndex != searchResultViewIndex && textLayoutResult != null && textFieldSize != null && searchResultRanges != null) {

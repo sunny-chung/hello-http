@@ -123,6 +123,7 @@ fun AppView() {
                     )
                     Box(
                         modifier = Modifier
+                            .padding(60.dp)
                             .border(1.dp, color = colors.highlight)
                             .background(colors.background)
                             .clickable(
@@ -145,7 +146,6 @@ fun AppView() {
                             .align(
                                 Alignment.Center
                             )
-                            .sizeIn(maxWidth = 480.dp, maxHeight = 300.dp)
                     ) {
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
@@ -474,6 +474,18 @@ fun AppContentView() {
                                     }
                                     projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
                                 },
+                                onCopyRequest = { treeObjectId, direction, destination ->
+                                    val request = requestCollection?.requests?.firstOrNull { it.id == treeObjectId } ?: return@RequestTreeView
+                                    val copiedRequest = request.deepCopyWithNewId()
+                                    requestCollection!!.requests += copiedRequest
+                                    requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+
+                                    selectedSubproject!!.addNear(TreeRequest(copiedRequest.id), direction, destination!!.id)
+                                    projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
+
+                                    selectedRequestId = copiedRequest.id
+                                    editRequestNameViewModel.onStartEdit(copiedRequest.id)
+                                }
                             )
                         }
                     }
@@ -615,7 +627,7 @@ fun AppContentView() {
                                 isShowCreateRequest = selectedSubproject != null && requestCollection != null
                             ) {
                                 val newRequest = createRequestForCurrentSubproject(parentId = null)
-                                editRequestNameViewModel.onStartEdit()
+                                editRequestNameViewModel.onStartEdit(newRequest.id)
                             }
                         }
                         second(minSize = 200.dp) {
