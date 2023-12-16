@@ -98,7 +98,7 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
     val cert: X509Certificate = try {
         CertificateFactory.getInstance("X.509").generateCertificate(certBytes.inputStream()) as X509Certificate
     } catch (e: Throwable) {
-        throw RuntimeException("Error while parsing the certificate file -- ${e.message}")
+        throw RuntimeException("Error while parsing the certificate file -- ${e.message}", e)
     }
 
     fun decryptAsRsaKeySpec(keyBytes: ByteArray, password: String): PKCS8EncodedKeySpec {
@@ -131,7 +131,7 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
             decryptAsRsaKeySpec(keyBytes = keyBytes, keyPassword)
         }
     } catch (e: Throwable) {
-        throw RuntimeException("Error while parsing the private key file -- ${e.message}")
+        throw RuntimeException("Error while parsing the private key file -- ${e.message}", e)
     }
 
     val now = KInstant.now()

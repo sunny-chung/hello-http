@@ -66,7 +66,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         }
     }
 
-    protected fun createSslContext(sslConfig: SslConfig): CustomSsl {
+    internal fun createSslContext(sslConfig: SslConfig): CustomSsl {
         return SSLContext.getInstance("TLS")
             .run {
                 if (sslConfig.isInsecure == true) {
