@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.ContentEncodingDecompressProcessor
 import com.sunnychung.application.multiplatform.hellohttp.network.apache.Http2FrameSerializer
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CallDataUserResponseUtil
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +73,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
     private fun buildHttpClient(
         callId: String,
+        callData: CallData,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
@@ -103,7 +105,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
                 .setTlsStrategy(ClientTlsStrategyBuilder.create()
-                    .setSslContext(createSslContext(sslConfig).first)
+                    .setSslContext(createSslContext(sslConfig).sslContext)
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
                 .setConnectionListener(object : ConnectionListener {
@@ -112,6 +114,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     }
 
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
+                        CallDataUserResponseUtil.onConnected(callData.response)
                         emitEvent(callId, "Connected to $remoteAddress with $protocolVersion")
                     }
 
@@ -124,6 +127,12 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         peerPrincipal: Principal?,
                         peerCertificates: Array<Certificate>?
                     ) {
+                        CallDataUserResponseUtil.onTlsUpgraded(
+                            callData = callData,
+                            localCertificates = localCertificates,
+                            peerCertificates = peerCertificates
+                        )
+
                         var event = "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite'"
                         if (applicationProtocol.isNotBlank()) {
                             event += " and application protocol '$applicationProtocol'"
@@ -246,11 +255,13 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
+            sslConfig = sslConfig
         )
         val callId = data.id
 
         val httpClient = buildHttpClient(
             callId = callId,
+            callData = data,
             httpConfig = httpConfig,
             sslConfig = sslConfig,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,

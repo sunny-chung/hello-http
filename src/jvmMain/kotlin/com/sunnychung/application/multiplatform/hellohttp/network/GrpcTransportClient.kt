@@ -19,6 +19,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CallDataUserResponseUtil
 import com.sunnychung.application.multiplatform.hellohttp.network.util.flowAndStreamObserver
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -80,7 +81,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         callId: String, uri: URI, sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>?,
         incomingBytesFlow: MutableSharedFlow<RawPayload>?,
-        out: UserResponse?
+        callData: CallData?, out: UserResponse?
     ): ManagedChannel {
         val uri0 = uri.let {
             val uriString = it.toString()
@@ -96,8 +97,10 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     usePlaintext();
                 } else {
                     if (sslConfig.hasCustomConfig()) {
+                        val customSsl = createSslContext(sslConfig)
                         GrpcSslContexts.forClient()
-                            .trustManager(createSslContext(sslConfig).second)
+                            .keyManager(customSsl.keyManager)
+                            .trustManager(customSsl.trustManager)
                             .build()
                             .let { sslContext(it) }
                     }
@@ -372,6 +375,9 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 }
 
                 override fun onChannelActive() {
+                    if (callData != null) {
+                        CallDataUserResponseUtil.onConnected(callData.response)
+                    }
                     emitEvent(callId, "HTTP/2 channel established.")
                 }
 
@@ -380,6 +386,14 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 }
 
                 override fun onTlsHandshakeComplete(session: SSLSession, applicationProtocol: String?) {
+                    if (callData != null) {
+                        CallDataUserResponseUtil.onTlsUpgraded(
+                            callData = callData,
+                            localCertificates = session.localCertificates,
+                            peerCertificates = session.peerCertificates,
+                        )
+                    }
+
                     var event = "Established TLS upgrade with protocol '${session.protocol}', cipher suite '${session.cipherSuite}'"
                     if (!applicationProtocol.isNullOrBlank()) {
                         event += " and application protocol '$applicationProtocol'"
@@ -410,7 +424,8 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
-            subprojectId = subprojectId
+            subprojectId = subprojectId,
+            sslConfig = sslConfig,
         )
 
         val extra = request.extra as GrpcRequestExtra
@@ -439,6 +454,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     sslConfig = sslConfig,
                     outgoingBytesFlow = call.outgoingBytes as MutableSharedFlow<RawPayload>,
                     incomingBytesFlow = call.incomingBytes as MutableSharedFlow<RawPayload>,
+                    callData = call,
                     out = out,
                 ) // blocking call
                 val channel = ClientInterceptors.intercept(channel0, object : ClientInterceptor {
@@ -712,7 +728,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         sslConfig: SslConfig
     ): GrpcApiSpec {
         val uri = URI.create(url)
-        val channel = buildChannel("", uri, sslConfig, null, null, null)
+        val channel = buildChannel("", uri, sslConfig, null, null, null, null)
         try {
             return fetchServiceSpec("${uri.host}:${uri.port}", channel)
         } finally {

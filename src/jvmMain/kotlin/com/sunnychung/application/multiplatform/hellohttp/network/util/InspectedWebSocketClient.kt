@@ -1,5 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.network.util
 
+import com.sunnychung.application.multiplatform.hellohttp.model.ConnectionSecurity
+import com.sunnychung.application.multiplatform.hellohttp.model.ConnectionSecurityType
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.RawPayload
@@ -67,6 +69,7 @@ abstract class InspectedWebSocketClient(
     }
 
     override fun onConnected(address: InetSocketAddress) {
+        CallDataUserResponseUtil.onConnected(out)
         emitEvent(callId, "Connected to $address")
     }
 
@@ -75,6 +78,11 @@ abstract class InspectedWebSocketClient(
         val cipherSuite = event.cipherSuite
         val localPrincipal = event.localPrincipal
         val peerPrincipal = event.peerPrincipal
+        CallDataUserResponseUtil.onTlsUpgraded(
+            callData = data,
+            localCertificates = event.session.localCertificates,
+            peerCertificates = event.session.peerCertificates
+        )
         var event = "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite'"
         event += ".\n\n" +
                 "Client principal = $localPrincipal\n" +
