@@ -20,6 +20,7 @@ class MultipleTrustCertificateManager(private val trustManagers: List<X509TrustM
         trustManagers.forEachIndexed { index, it ->
             try {
                 it.checkClientTrusted(chain, authType)
+                return // if any manager trusts the cert, accept it
             } catch (e: CertificateException) {
                 if (index >= trustManagers.lastIndex) {
                     throw e
@@ -40,6 +41,7 @@ class MultipleTrustCertificateManager(private val trustManagers: List<X509TrustM
         trustManagers.forEachIndexed { index, it ->
             try {
                 it.checkServerTrusted(chain, authType)
+                return // if any manager trusts the cert, accept it
             } catch (e: CertificateException) {
                 if (index >= trustManagers.lastIndex) {
                     throw e
