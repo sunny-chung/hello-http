@@ -296,7 +296,7 @@ fun EnvironmentSslTabContent(
     val sslConfig = environment.sslConfig
     val headerColumnWidth = 250.dp
 
-    Column(modifier = modifier.padding(horizontal = 8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier.padding(horizontal = 8.dp)) {
         Box(modifier = Modifier.fillMaxWidth()) {
             AppText(text = "Disable SSL Verification", modifier = Modifier.width(headerColumnWidth).align(Alignment.CenterStart))
             DropDownView(
@@ -341,60 +341,79 @@ fun EnvironmentSslTabContent(
                     )
                 )
             },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
         )
 
-        CertificateEditorView(
-            title = "Client Certificate",
-            certificates = sslConfig.clientCertificateKeyPairs.map { it.certificate },
-            isShowAddButton = false,
-            onAddCertificate = { throw NotImplementedError("Unimplemented as intended") },
-            onUpdateCertificate = { update ->
-                onUpdateEnvironment(
-                    environment.copy(
-                        sslConfig = sslConfig.copy(
-                            clientCertificateKeyPairs = with(sslConfig.clientCertificateKeyPairs) {
-                                map {
-                                    if (it.certificate.id == update.id) {
-                                        // TODO this data logic should be in data layer
-                                        it.copy(
-                                            isEnabled = update.isEnabled,
-                                            certificate = update,
-                                            privateKey = it.privateKey.copy(isEnabled = update.isEnabled)
-                                        )
-                                    } else {
-                                        it
-                                    }
-                                }
-                            }
-                        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            AppText(text = "Disable System CA Certificates", modifier = Modifier.width(headerColumnWidth).align(Alignment.CenterStart))
+            DropDownView(
+                selectedItem = DropDownValue(sslConfig.isDisableSystemCaCertificates.toConfigText().name),
+                items = BooleanConfigValueText.values().map { DropDownValue(it.name) },
+                onClickItem = {
+                    onUpdateEnvironment(
+                        environment.copy(sslConfig = sslConfig.copy(
+                            isDisableSystemCaCertificates = BooleanConfigValueText.valueOf(it.displayText).value
+                        ))
                     )
-                )
-            },
-            onDeleteCertificate = { delete ->
-                onUpdateEnvironment(
-                    environment.copy(
-                        sslConfig = sslConfig.copy(
-                            clientCertificateKeyPairs = sslConfig.clientCertificateKeyPairs.copyWithRemoval { it.certificate.id == delete.id }
-                        )
-                    )
-                )
-            },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        )
-        Column(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp)) {
-            if (sslConfig.clientCertificateKeyPairs.isEmpty()) {
-                CertificateKeyPairImportForm(onAddItem = { new ->
+                    true
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
+        }
+
+        Column {
+            CertificateEditorView(
+                title = "Client Certificate",
+                certificates = sslConfig.clientCertificateKeyPairs.map { it.certificate },
+                isShowAddButton = false,
+                onAddCertificate = { throw NotImplementedError("Unimplemented as intended") },
+                onUpdateCertificate = { update ->
                     onUpdateEnvironment(
                         environment.copy(
                             sslConfig = sslConfig.copy(
-                                clientCertificateKeyPairs = listOf(new) // always only one
+                                clientCertificateKeyPairs = with(sslConfig.clientCertificateKeyPairs) {
+                                    map {
+                                        if (it.certificate.id == update.id) {
+                                            // TODO this data logic should be in data layer
+                                            it.copy(
+                                                isEnabled = update.isEnabled,
+                                                certificate = update,
+                                                privateKey = it.privateKey.copy(isEnabled = update.isEnabled)
+                                            )
+                                        } else {
+                                            it
+                                        }
+                                    }
+                                }
                             )
                         )
                     )
-                })
-            } else {
-                AppText(text = "Only 1 certificate can be persisted. To add a new one, delete the current one first.")
+                },
+                onDeleteCertificate = { delete ->
+                    onUpdateEnvironment(
+                        environment.copy(
+                            sslConfig = sslConfig.copy(
+                                clientCertificateKeyPairs = sslConfig.clientCertificateKeyPairs.copyWithRemoval { it.certificate.id == delete.id }
+                            )
+                        )
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Column(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp)) {
+                if (sslConfig.clientCertificateKeyPairs.isEmpty()) {
+                    CertificateKeyPairImportForm(onAddItem = { new ->
+                        onUpdateEnvironment(
+                            environment.copy(
+                                sslConfig = sslConfig.copy(
+                                    clientCertificateKeyPairs = listOf(new) // always only one
+                                )
+                            )
+                        )
+                    })
+                } else {
+                    AppText(text = "Only 1 certificate can be persisted. To add a new one, delete the current one first.")
+                }
             }
         }
     }
@@ -441,7 +460,7 @@ fun CertificateEditorView(
 
     Column(modifier) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            AppText(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(vertical = 6.dp))
+            AppText(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(bottom = 6.dp))
             if (isShowAddButton) {
                 AppTooltipArea(
                     tooltipText = "Import a certificate in DER format",

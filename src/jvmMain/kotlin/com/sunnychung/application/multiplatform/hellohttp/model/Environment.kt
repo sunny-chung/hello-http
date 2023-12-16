@@ -53,10 +53,12 @@ data class HttpConfig(
 data class SslConfig(
     val isInsecure: Boolean? = null,
     val trustedCaCertificates: List<ImportedFile> = emptyList(),
+    val isDisableSystemCaCertificates: Boolean? = null,
     val clientCertificateKeyPairs: List<ClientCertificateKeyPair> = emptyList(),
 ) {
     fun hasCustomConfig() = isInsecure == true ||
             trustedCaCertificates.any { it.isEnabled } ||
+            isDisableSystemCaCertificates == true ||
             clientCertificateKeyPairs.any { it.isEnabled }
 }
 

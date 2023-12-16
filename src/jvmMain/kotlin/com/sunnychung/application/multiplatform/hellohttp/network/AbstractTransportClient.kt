@@ -1,9 +1,11 @@
 package com.sunnychung.application.multiplatform.hellohttp.network
 
+import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -75,7 +77,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                     CustomSsl(sslContext = this, keyManager = null, trustManager = trustManager)
                 } else {
                     val customCaCertificates = sslConfig.trustedCaCertificates.filter { it.isEnabled }
-                    val trustManager = Unit.takeIf { customCaCertificates.isNotEmpty() }?.let {
+                    val trustManager = Unit.takeIf { customCaCertificates.isNotEmpty() || sslConfig.isDisableSystemCaCertificates == true }?.let {
                         val defaultX509TrustManager = createTrustManager(null)
                         val trustStore = KeyStore.getInstance(KeyStore.getDefaultType())
                         trustStore.load(null)
@@ -85,7 +87,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         }
                         val customTrustManager = createTrustManager(trustStore)
                         val combinedTrustManager = MultipleTrustCertificateManager(
-                            listOf(defaultX509TrustManager, customTrustManager)
+                            listOfNotNull(
+                                defaultX509TrustManager.takeIf { sslConfig.isDisableSystemCaCertificates != true },
+                                customTrustManager.takeIf { customCaCertificates.isNotEmpty() }
+                            ).emptyToNull() ?: listOf(DenyAllSslCertificateManager())
                         )
                         combinedTrustManager
                     }
