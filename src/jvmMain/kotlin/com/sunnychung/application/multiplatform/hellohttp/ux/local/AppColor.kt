@@ -158,7 +158,7 @@ fun lightColorScheme(): AppColor = AppColor(
     backgroundButton = Color(red = 0.6f, green = 0.6f, blue = 1f),
     backgroundStopButton = Color(red = 1f, green = 0.43f, blue = 0.43f),
     backgroundDialogOverlay = Color.Black.copy(alpha = 0.4f),
-    backgroundTooltip = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
+    backgroundTooltip = Color(red = 0.7f, green = 0.7f, blue = 0.9f),
     backgroundHoverDroppable = Color(0f, 0f, 0.4f),
     backgroundInputFieldHighlight = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
     backgroundInputFieldHighlightEmphasize = Color(red = 0.8f, green = 0.8f, blue = 0.3f),
