@@ -29,6 +29,7 @@ data class UserResponse(
     var errorMessage: String? = null,
     @Transient var postFlightErrorMessage: String? = null,
     var headers: List<Pair<String, String>>? = null,
+    var connectionSecurity: ConnectionSecurity? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
     var payloadExchanges: MutableList<PayloadMessage>? = // null = not support streaming; empty list = streaming without data
         if (application in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql))

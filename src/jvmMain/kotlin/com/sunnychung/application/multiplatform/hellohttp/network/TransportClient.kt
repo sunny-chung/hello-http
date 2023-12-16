@@ -34,6 +34,8 @@ class CallData(
     var isPrepared: Boolean = false,
     var status: ConnectionStatus = ConnectionStatus.PREPARING,
 
+    val sslConfig: SslConfig,
+
     val events: SharedFlow<NetworkEvent>,
     val eventsStateFlow: StateFlow<NetworkEvent?>,
     val outgoingBytes: SharedFlow<RawPayload>,

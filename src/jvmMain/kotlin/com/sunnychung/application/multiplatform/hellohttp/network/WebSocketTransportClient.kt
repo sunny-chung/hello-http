@@ -43,6 +43,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
+            sslConfig = sslConfig,
         )
         val callId = data.id
         val uri: URI = request.getResolvedUri()

@@ -57,6 +57,7 @@ private val inputStreamSourceConstructor = Class.forName("okio.InputStreamSource
     isAccessible = true
 }
 
+@Deprecated("Use ApacheHttpTransportClient")
 class OkHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
     
     fun buildHttpClient(
@@ -231,6 +232,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
+            sslConfig = sslConfig,
         )
         val callId = data.id
 

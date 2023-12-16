@@ -129,7 +129,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun getCallData(callId: String) = callData[callId]
 
-    protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String): CallData {
+    protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String, sslConfig: SslConfig): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
         val incomingBytesFlow = MutableSharedFlow<RawPayload>()
         val optionalResponseSize = AtomicInteger()
@@ -139,6 +139,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         val data = CallData(
             id = callId,
             subprojectId = subprojectId,
+            sslConfig = sslConfig.copy(),
             events = eventSharedFlow.asSharedFlow()
                 .filter { it.callId == callId }
                 .flowOn(Dispatchers.IO)
