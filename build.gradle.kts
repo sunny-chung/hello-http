@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.io.ByteArrayOutputStream
 import java.util.Properties
@@ -124,6 +125,12 @@ tasks.getByName("jvmProcessResources") {
 
 tasks.getByName("jvmMainClasses") {
     dependsOn("createBuildProperties")
+}
+
+tasks.withType<Test> {
+    testLogging {
+        events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+    }
 }
 
 compose.desktop {
