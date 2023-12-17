@@ -108,6 +108,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
 
                             ConnectionSecurityType.InsecureEncrypted -> AppImage(
                                 resource = "questionable-secure.svg",
+                                color = colors.placeholder,
                                 size = 20.dp,
                                 modifier = Modifier.padding(2.dp),
                             )
