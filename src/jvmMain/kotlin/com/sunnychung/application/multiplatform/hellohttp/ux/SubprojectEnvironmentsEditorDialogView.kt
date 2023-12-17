@@ -439,8 +439,13 @@ fun CertificateEditorView(
      */
     fun parseAndAddCertificate(path: String) {
         val file = File(path)
-        val content = file.readBytes()
-        val cert: X509Certificate = CertificateFactory.getInstance("X.509").generateCertificate(content.inputStream()) as X509Certificate
+        val (content, cert: X509Certificate) = try {
+            val content = file.readBytes()
+            Pair(content, CertificateFactory.getInstance("X.509").generateCertificate(content.inputStream()) as X509Certificate)
+        } catch (e: Throwable) {
+            AppContext.ErrorMessagePromptViewModel.showErrorMessage("Error while reading the certificate -- ${e.message ?: e::class.simpleName}")
+            return
+        }
         log.d { "Loaded cert ${cert}" }
 
         onAddCertificate(
