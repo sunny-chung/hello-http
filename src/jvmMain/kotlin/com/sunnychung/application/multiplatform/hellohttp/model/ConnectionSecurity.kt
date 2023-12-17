@@ -17,6 +17,7 @@ data class ConnectionSecurity(
 data class Certificate(
     val principal: String,
     val issuerPrincipal: String,
+    val subjectAlternativeNames: List<Pair<Int, String>>? = null,
     val notAfter: KInstant,
     val notBefore: KInstant,
 )

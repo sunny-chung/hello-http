@@ -44,6 +44,18 @@ internal object CallDataUserResponseUtil {
     private fun X509Certificate.toPersistableCertificate() = com.sunnychung.application.multiplatform.hellohttp.model.Certificate(
         principal = subjectX500Principal.getName(X500Principal.RFC1779),
         issuerPrincipal = issuerX500Principal.getName(X500Principal.RFC1779),
+        subjectAlternativeNames = subjectAlternativeNames?.filter { it.size >= 2 }
+            ?.map {
+                Pair(
+                    it[0] as? Int,
+                    when (it[1]) {
+                        is String -> it[1]
+                        is ByteArray -> (it[1] as ByteArray).decodeToString()
+                        else -> null
+                    }
+                )
+            }
+            ?.filter { it.first != null && it.second != null } as List<Pair<Int, String>>?,
         notAfter = KInstant(notAfter.time),
         notBefore = KInstant(notBefore.time),
     )

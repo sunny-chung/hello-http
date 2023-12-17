@@ -369,6 +369,26 @@ fun CertificateView(title: String, cert: Certificate?) {
                     AppText(text = "Subject", modifier = Modifier.width(columnWidth))
                     AppText(text = cert.principal)
                 }
+                if (!cert.subjectAlternativeNames.isNullOrEmpty()) {
+                    Row {
+                        AppText(text = "Alt. Names", modifier = Modifier.width(columnWidth))
+                        AppText(text = cert.subjectAlternativeNames.joinToString(", ") {
+                            val key = when (it.first) {
+                                0 -> "otherName"
+                                1 -> "rfc822Name"
+                                2 -> "DNS"
+                                3 -> "x400Address"
+                                4 -> "dirName"
+                                5 -> "ediPartyName"
+                                6 -> "URI"
+                                7 -> "IP"
+                                8 -> "RID"
+                                else -> return@joinToString "?"
+                            }
+                            "$key: ${it.second}"
+                        })
+                    }
+                }
                 Row {
                     AppText(text = "Issuer", modifier = Modifier.width(columnWidth))
                     AppText(text = cert.issuerPrincipal)
