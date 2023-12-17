@@ -36,8 +36,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -62,6 +68,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExamp
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
@@ -131,9 +139,29 @@ fun RequestEditorView(
             )
     var selectedPayloadExampleId by rememberLast(request.id) { mutableStateOf(request.payloadExamples?.firstOrNull()?.id) }
 
+    val isEnableSendButton = when (connectionStatus.isConnectionActive()) {
+        true -> true
+        false -> when (request.application) {
+            ProtocolApplication.Grpc -> currentGrpcMethod != null
+            else -> true
+        }
+    }
+
     log.d { "RequestEditorView recompose $request" }
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier
+        .onKeyEvent { e ->
+            if (isEnableSendButton && e.type == KeyEventType.KeyDown && e.key == Key.Enter && !e.isAltPressed && !e.isShiftPressed) {
+                val currentOS = currentOS()
+                if ( (currentOS != MacOS && e.isCtrlPressed && !e.isMetaPressed) ||
+                    (currentOS == MacOS && !e.isCtrlPressed && e.isMetaPressed) ) {
+                    onClickSend()
+                    return@onKeyEvent true
+                }
+            }
+            false
+        }
+    ) {
         Row(
             modifier = Modifier
                 .background(color = colors.backgroundInputField)
@@ -230,13 +258,6 @@ fun RequestEditorView(
                 ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
                 else -> true
             }
-            val isEnableButton = when (connectionStatus.isConnectionActive()) {
-                true -> true
-                false -> when (request.application) {
-                    ProtocolApplication.Grpc -> currentGrpcMethod != null
-                    else -> true
-                }
-            }
             val dropdownItems: List<String> = when (request.application) {
                 ProtocolApplication.WebSocket -> emptyList()
                 ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
@@ -254,7 +275,7 @@ fun RequestEditorView(
             ) {
                 Box(modifier = Modifier.fillMaxHeight().weight(1f)
                     .run {
-                        if (isEnableButton) {
+                        if (isEnableSendButton) {
                             clickable {
                                 if (!connectionStatus.isConnectionActive()) {
                                     onClickSend()
@@ -270,7 +291,7 @@ fun RequestEditorView(
                 ) {
                     AppText(
                         text = label,
-                        color = if (isEnableButton) colors.primary else colors.disabled,
+                        color = if (isEnableSendButton) colors.primary else colors.disabled,
                         fontSize = fonts.buttonFontSize,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.align(Alignment.Center)

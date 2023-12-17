@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
@@ -58,7 +57,6 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
 import com.sunnychung.application.multiplatform.hellohttp.extension.toGrpcurlCommand
-import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -69,6 +67,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
@@ -496,6 +495,16 @@ fun AppContentView() {
                         first(minSize = 200.dp) {
                             val requestEditorModifier = Modifier.fillMaxWidth()
                             request?.let { requestNonNull ->
+                                fun onClickSendOrConnect() {
+                                    networkClientManager.fireRequest(
+                                        request = requestNonNull,
+                                        requestExampleId = selectedRequestExampleId!!,
+                                        environment = selectedEnvironment,
+                                        projectId = selectedProject!!.id,
+                                        subprojectId = selectedSubproject!!.id
+                                    )
+                                }
+
                                 RequestEditorView(
                                     modifier = requestEditorModifier,
                                     request = requestNonNull,
@@ -510,13 +519,7 @@ fun AppContentView() {
                                         updateResponseView()
                                     },
                                     onClickSend = {
-                                        networkClientManager.fireRequest(
-                                            request = requestNonNull,
-                                            requestExampleId = selectedRequestExampleId!!,
-                                            environment = selectedEnvironment,
-                                            projectId = selectedProject!!.id,
-                                            subprojectId = selectedSubproject!!.id
-                                        )
+                                        onClickSendOrConnect()
                                     },
                                     onClickCancel = {
                                         networkClientManager.cancel(selectedRequestExampleId!!)
@@ -560,13 +563,7 @@ fun AppContentView() {
                                     },
                                     connectionStatus = selectedRequestExampleId?.let { networkClientManager.getStatusByRequestExampleId(it) } ?: ConnectionStatus.DISCONNECTED ,
                                     onClickConnect = {
-                                        networkClientManager.fireRequest(
-                                            request = requestNonNull,
-                                            requestExampleId = selectedRequestExampleId!!,
-                                            environment = selectedEnvironment,
-                                            projectId = selectedProject!!.id,
-                                            subprojectId = selectedSubproject!!.id
-                                        )
+                                        onClickSendOrConnect()
                                     },
                                     onClickDisconnect = {
                                         networkClientManager.cancel(selectedRequestExampleId!!)
