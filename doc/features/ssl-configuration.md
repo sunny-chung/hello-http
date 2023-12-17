@@ -8,8 +8,12 @@ title: SSL Configuration
 
 ## Additional Trusted CA Certificates
 
-Additional to the default trusted CA certificates, custom ones can be imported to verify the server identities. Currently,
-the accepted format is only DER. A DER certificate can be converted from a PEM certificate using OpenSSL:
+Additional to the default trusted CA certificates, custom ones can be imported to verify the server identities.
+Currently, the accepted formats are:
+- DER
+- PEM containing only one certificate
+
+A DER certificate can be converted from a PEM certificate using OpenSSL:
 ```
 openssl x509 -in cert.pem -out cert.der -outform DER
 ```
