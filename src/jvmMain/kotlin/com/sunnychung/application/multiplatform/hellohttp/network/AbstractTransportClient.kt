@@ -71,13 +71,11 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
     internal fun createSslContext(sslConfig: SslConfig): CustomSsl {
         return SSLContext.getInstance("TLS")
             .run {
-                if (sslConfig.isInsecure == true) {
-                    val trustManager = TrustAllSslCertificateManager()
-                    init(null, arrayOf(trustManager), SecureRandom())
-                    CustomSsl(sslContext = this, keyManager = null, trustManager = trustManager)
+                val trustManager = if (sslConfig.isInsecure == true) {
+                    TrustAllSslCertificateManager()
                 } else {
                     val customCaCertificates = sslConfig.trustedCaCertificates.filter { it.isEnabled }
-                    val trustManager = Unit.takeIf { customCaCertificates.isNotEmpty() || sslConfig.isDisableSystemCaCertificates == true }?.let {
+                    Unit.takeIf { customCaCertificates.isNotEmpty() || sslConfig.isDisableSystemCaCertificates == true }?.let {
                         val defaultX509TrustManager = createTrustManager(null)
                         val trustStore = KeyStore.getInstance(KeyStore.getDefaultType())
                         trustStore.load(null)
@@ -94,9 +92,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         )
                         combinedTrustManager
                     }
-                    val keyManager = sslConfig.clientCertificateKeyPairs.firstOrNull { it.isEnabled }?.let {
-                        val cert = CertificateFactory.getInstance("X.509").generateCertificate(it.certificate.content.inputStream())
-                        val key = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(it.privateKey.content))
+                }
+                val keyManager = sslConfig.clientCertificateKeyPairs.firstOrNull { it.isEnabled }?.let {
+                    val cert = CertificateFactory.getInstance("X.509").generateCertificate(it.certificate.content.inputStream())
+                    val key = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(it.privateKey.content))
 
                         val password = uuidString()
                         val keyStore = KeyStore.getInstance("JKS")
@@ -109,8 +108,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         keyManagers.first()
                     }
                     init(keyManager?.let { arrayOf(it) }, trustManager?.let { arrayOf(it) }, SecureRandom())
-                    CustomSsl(sslContext = this, keyManager = keyManager, trustManager = trustManager)
-                }
+                CustomSsl(sslContext = this, keyManager = keyManager, trustManager = trustManager)
             }
     }
 
