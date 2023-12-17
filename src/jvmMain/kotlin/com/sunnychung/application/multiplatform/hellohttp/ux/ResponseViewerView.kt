@@ -118,13 +118,20 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                                 size = 24.dp,
                             )
 
-                            ConnectionSecurityType.MutuallyVerifiedEncrypted -> AppText(
-                                text = "mTLS",
-                                isFitContent = true,
-                                maxLines = 1,
-                                color = colors.successful,
-                                modifier = Modifier.width(32.dp),
-                            )
+                            ConnectionSecurityType.MutuallyVerifiedEncrypted -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                AppImage(
+                                    resource = "secure.svg",
+                                    color = colors.successful,
+                                    size = 24.dp,
+                                )
+                                AppText(
+                                    text = "mTLS",
+                                    isFitContent = true,
+                                    maxLines = 1,
+                                    color = colors.successful,
+                                    modifier = Modifier.width(32.dp),
+                                )
+                            }
                         }
                     }
                 }
