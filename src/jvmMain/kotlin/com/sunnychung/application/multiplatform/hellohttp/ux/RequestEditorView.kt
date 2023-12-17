@@ -43,6 +43,7 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -1244,12 +1245,32 @@ fun StreamingPayloadEditorView(
         }
     }
 
-    Column(modifier) {
+    val isEnableSend = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING
+
+    fun triggerSendPayload() {
+        if (isEnableSend) {
+            onClickSendPayload(selectedExample!!.body)
+        }
+    }
+
+    Column(modifier
+        .onPreviewKeyEvent { e ->
+            if (isEnableSend && e.type == KeyEventType.KeyDown && e.key == Key.Enter && !e.isAltPressed && !e.isShiftPressed) {
+                val currentOS = currentOS()
+                if ( (currentOS != MacOS && e.isCtrlPressed && !e.isMetaPressed) ||
+                    (currentOS == MacOS && !e.isCtrlPressed && e.isMetaPressed) ) {
+                    triggerSendPayload()
+                    return@onPreviewKeyEvent true
+                }
+            }
+            false
+        }
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Payload")
             Spacer(modifier = Modifier.weight(1f))
-            AppTextButton(text = "Send", isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING ) {
-                onClickSendPayload(selectedExample!!.body)
+            AppTextButton(text = "Send", isEnabled = isEnableSend) {
+                triggerSendPayload()
             }
             if (hasCompleteButton) {
                 AppTextButton(
