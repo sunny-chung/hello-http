@@ -266,15 +266,19 @@ fun RequestTreeView(
                     onUnfocus = onUnfocusNameTextField,
                     modifier = Modifier.weight(1f),
                 )
-                AppImageButton(
-                    resource = "duplicate.svg",
-                    size = 16.dp,
-                    color = colors.placeholder,
-                    onClick = {
-                        onCopyRequest(it.id, MoveDirection.After, TreeRequest(id = it.id))
-                    },
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
+                AppTooltipArea(
+                    tooltipText = "Duplicate",
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                ) {
+                    AppImageButton(
+                        resource = "duplicate.svg",
+                        size = 16.dp,
+                        color = colors.placeholder,
+                        onClick = {
+                            onCopyRequest(it.id, MoveDirection.After, TreeRequest(id = it.id))
+                        },
+                    )
+                }
                 AppDeleteButton { onDeleteRequest(it) }
             }
         }
