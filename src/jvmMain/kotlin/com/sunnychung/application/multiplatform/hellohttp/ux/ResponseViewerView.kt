@@ -85,7 +85,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                 AppTooltipArea(
                     tooltipText = "",
                     tooltipContent = {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.widthIn(max = 360.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.widthIn(max = 480.dp)) {
                             AppText(text = when (it.security) {
                                 ConnectionSecurityType.Unencrypted -> "Not encrypted"
                                 ConnectionSecurityType.InsecureEncrypted -> "Unverified TLS"
@@ -99,26 +99,23 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                     modifier = Modifier.fillMaxHeight()
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight()) {
-                        val modifier = Modifier //.align(Alignment.Center)
                         when (it.security) {
                             ConnectionSecurityType.Unencrypted -> AppImage(
                                 resource = "insecure.svg",
                                 color = colors.placeholder,
                                 size = 24.dp,
-                                modifier = modifier,
                             )
 
                             ConnectionSecurityType.InsecureEncrypted -> AppImage(
                                 resource = "questionable-secure.svg",
-                                size = 24.dp,
-                                modifier = modifier,
+                                size = 20.dp,
+                                modifier = Modifier.padding(2.dp),
                             )
 
                             ConnectionSecurityType.VerifiedEncrypted -> AppImage(
                                 resource = "secure.svg",
                                 color = colors.successful,
                                 size = 24.dp,
-                                modifier = modifier,
                             )
 
                             ConnectionSecurityType.MutuallyVerifiedEncrypted -> AppText(
@@ -126,7 +123,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                                 isFitContent = true,
                                 maxLines = 1,
                                 color = colors.successful,
-                                modifier = modifier.width(32.dp),
+                                modifier = Modifier.width(32.dp),
                             )
                         }
                     }
@@ -369,7 +366,7 @@ fun CertificateView(title: String, cert: Certificate?) {
             Column(modifier = Modifier.padding(start = indentWidth)) {
                 val columnWidth = headerColumnWidth - indentWidth
                 Row {
-                    AppText(text = "Principal", modifier = Modifier.width(columnWidth))
+                    AppText(text = "Subject", modifier = Modifier.width(columnWidth))
                     AppText(text = cert.principal)
                 }
                 Row {
