@@ -453,7 +453,7 @@ fun CertificateEditorView(
                 id = uuidString(),
                 name = cert.subjectX500Principal.getName(X500Principal.RFC1779) +
                     "\nExpiry: ${KZonedInstant(cert.notAfter.time, KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern)}" +
-                    if (cert.keyUsage?.get(5) != true) "\n⚠️ Not a CA certificate!" else ""
+                    if (cert.keyUsage?.get(5) != true || cert.basicConstraints < 0) "\n⚠️ Not a CA certificate!" else ""
                 ,
                 originalFilename = file.name,
                 createdWhen = KInstant.now(),
