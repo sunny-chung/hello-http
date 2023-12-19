@@ -48,6 +48,17 @@ Accepted formats for a private key are:
 - Unencrypted PKCS #8 DER
 - Password-encrypted PKCS #8 DER
 
+An unencrypted PKCS #8 DER key file can be converted from a PEM file using OpenSSL.
+```
+openssl pkcs8 -topk8 -in clientKey.pem -out clientKey.pkcs8.der -outform DER -nocrypt
+```
+
+A password-encrypted PKCS #8 DER key file can be converted from a PEM file using OpenSSL.
+```
+openssl pkcs8 -topk8 -in clientKey.pem -out clientKey.pkcs8.encrypted.der -outform DER
+```
+
+
 ## Disable SSL Verification
 
 SSL certificate verification can be disabled. By default, SSL verification is enabled.
