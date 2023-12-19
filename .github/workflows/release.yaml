@@ -18,7 +18,7 @@ permissions:
   security-events: none
   statuses: read
 jobs:
-  build-ubuntu:
+  build-linux:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +27,10 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
       - run: ./gradlew check createDistributable packageDistributionForCurrentOS
-      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-ubuntu-${{ runner.arch }}.tar.gz" && popd
+      - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-linux-${{ runner.arch }}.tar.gz" && popd
       - uses: softprops/action-gh-release@v1
         with:
-          files: "HelloHTTP-${{ github.ref_name }}-ubuntu-${{ runner.arch }}.tar.gz"
+          files: "HelloHTTP-${{ github.ref_name }}-linux-${{ runner.arch }}.tar.gz"
           draft: true
   build-windows:
     runs-on: windows-2019
