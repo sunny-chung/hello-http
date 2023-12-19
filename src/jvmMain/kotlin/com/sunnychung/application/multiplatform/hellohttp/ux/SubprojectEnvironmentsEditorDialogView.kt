@@ -44,23 +44,17 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.model.importCaCertificate
 import com.sunnychung.application.multiplatform.hellohttp.model.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
-import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
-import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
-import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
-import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import java.io.File
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
-import javax.security.auth.x500.X500Principal
 
 @Composable
 fun SubprojectEnvironmentsEditorDialogView(
@@ -434,33 +428,16 @@ fun CertificateEditorView(
     var isShowFileDialog by remember { mutableStateOf(false) }
     val fileDialogState = rememberFileDialogState()
 
-    /**
-     * TODO: This logic should be in data layer
-     */
     fun parseAndAddCertificate(path: String) {
         val file = File(path)
-        val (content, cert: X509Certificate) = try {
-            val content = file.readBytes()
-            Pair(content, CertificateFactory.getInstance("X.509").generateCertificate(content.inputStream()) as X509Certificate)
+        val import = try {
+            importCaCertificate(file)
         } catch (e: Throwable) {
             AppContext.ErrorMessagePromptViewModel.showErrorMessage("Error while reading the certificate -- ${e.message ?: e::class.simpleName}")
             return
         }
-        log.d { "Loaded cert ${cert}" }
 
-        onAddCertificate(
-            ImportedFile(
-                id = uuidString(),
-                name = cert.subjectX500Principal.getName(X500Principal.RFC1779) +
-                    "\nExpiry: ${KZonedInstant(cert.notAfter.time, KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern)}" +
-                    if (cert.keyUsage?.get(5) != true || cert.basicConstraints < 0) "\n⚠️ Not a CA certificate!" else ""
-                ,
-                originalFilename = file.name,
-                createdWhen = KInstant.now(),
-                isEnabled = true,
-                content = content,
-            )
-        )
+        onAddCertificate(import)
     }
 
     Column(modifier) {

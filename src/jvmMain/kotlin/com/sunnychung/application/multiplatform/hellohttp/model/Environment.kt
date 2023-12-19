@@ -10,6 +10,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import kotlinx.serialization.Serializable
 import java.io.File
+import java.io.InputStream
 import java.security.KeyFactory
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
@@ -158,5 +159,28 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
         ),
         createdWhen = now,
         isEnabled = true,
+    )
+}
+
+// ----------- TODO refactor to a separate file -----------
+
+fun parseCaCertificate(contentStream: InputStream) : X509Certificate {
+    return CertificateFactory.getInstance("X.509").generateCertificate(contentStream) as X509Certificate
+}
+
+fun importCaCertificate(file: File): ImportedFile {
+    val content = file.readBytes()
+    val cert = parseCaCertificate(content.inputStream())
+
+    return ImportedFile(
+        id = uuidString(),
+        name = cert.subjectX500Principal.getName(X500Principal.RFC1779) +
+                "\nExpiry: ${KZonedInstant(cert.notAfter.time, KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern)}" +
+                if (cert.keyUsage?.get(5) != true || cert.basicConstraints < 0) "\n⚠️ Not a CA certificate!" else ""
+        ,
+        originalFilename = file.name,
+        createdWhen = KInstant.now(),
+        isEnabled = true,
+        content = content,
     )
 }

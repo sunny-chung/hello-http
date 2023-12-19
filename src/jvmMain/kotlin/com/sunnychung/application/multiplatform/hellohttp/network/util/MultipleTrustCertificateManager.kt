@@ -7,7 +7,7 @@ import javax.net.ssl.SSLEngine
 import javax.net.ssl.X509ExtendedTrustManager
 import javax.net.ssl.X509TrustManager
 
-class MultipleTrustCertificateManager(private val trustManagers: List<X509TrustManager>) : X509ExtendedTrustManager() {
+class MultipleTrustCertificateManager(val trustManagers: List<X509TrustManager>) : X509ExtendedTrustManager() {
     override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?, socket: Socket?) {
         checkClientTrusted(chain, authType)
     }
