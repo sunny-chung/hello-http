@@ -547,7 +547,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
                 try {
-                    val cancel = {
+                    val cancel = { _: Throwable? ->
                         if (call.status.isConnectionActive()) {
                             try {
                                 responseObserver.onCompleted()
@@ -584,7 +584,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                             log.d { "Response = ${responseJsonData.decodeToString()}" }
                         } catch (e: Throwable) {
                             setStreamError(e)
-                            call.cancel()
+                            call.cancel(e)
                         }
 
                         if (postFlightAction != null) {
@@ -604,7 +604,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 requestObserver.onNext(request)
                             } catch (e: Throwable) {
                                 setStreamError(e)
-                                call.cancel()
+                                call.cancel(e)
                             }
                         }
                     }
@@ -618,7 +618,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 if (!hasInvokedCancelDueToError) {
                                     hasInvokedCancelDueToError = true
                                     setStreamError(e)
-                                    call.cancel()
+                                    call.cancel(e)
                                 }
                             }
                         }
@@ -627,12 +627,12 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     fun initiateClientStreamableCall(requestObserver: StreamObserver<DynamicMessage>) {
                         call.sendPayload = buildSendPayloadFunction(requestObserver)
                         call.sendEndOfStream = buildSendEndOfStream(requestObserver)
-                        call.cancel = {
+                        call.cancel = { e ->
                             if (call.status.isConnectionActive()) {
                                 try {
                                     call.sendEndOfStream()
                                 } catch (_: Throwable) {}
-                                cancel()
+                                cancel(e)
                             }
                         }
                         // actually, at this stage it could be not yet connected

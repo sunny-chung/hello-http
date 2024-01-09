@@ -43,7 +43,7 @@ class CallData(
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
 
-    var cancel: () -> Unit,
+    var cancel: (Throwable?) -> Unit,
     var sendPayload: (String) -> Unit = {},
     var sendEndOfStream: () -> Unit = {},
 )
