@@ -412,6 +412,10 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         val cancelResult = call.cancel() // no use at all
                         log.d { "Cancel result = $cancelResult" }
                         httpClient.close(CloseMode.IMMEDIATE)
+
+                        // httpClient.close is buggy. Do not rely on it
+                        data.status = ConnectionStatus.DISCONNECTED
+                        this.cancel()
                     }
                 }
 
