@@ -11,6 +11,8 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllS
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -68,6 +70,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         }
     }
 
+    protected fun coroutineExceptionHandler() = CoroutineExceptionHandler { context, ex ->
+        log.w(ex) { "Uncaught exception in coroutine ${context[CoroutineName.Key] ?: "-"}" }
+    }
+
     internal fun createSslContext(sslConfig: SslConfig): CustomSsl {
         return SSLContext.getInstance("TLS")
             .run {
@@ -97,17 +103,17 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                     val cert = CertificateFactory.getInstance("X.509").generateCertificate(it.certificate.content.inputStream())
                     val key = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(it.privateKey.content))
 
-                        val password = uuidString()
-                        val keyStore = KeyStore.getInstance("JKS")
-                        keyStore.load(null)
-                        keyStore.setCertificateEntry("cert", cert)
-                        keyStore.setKeyEntry("key", key, password.toCharArray(), arrayOf(cert))
-                        val keyManagers = KeyManagerFactory.getInstance("SunX509")
-                            .apply { init(keyStore, password.toCharArray()) }
-                            .keyManagers
-                        keyManagers.first()
-                    }
-                    init(keyManager?.let { arrayOf(it) }, trustManager?.let { arrayOf(it) }, SecureRandom())
+                    val password = uuidString()
+                    val keyStore = KeyStore.getInstance("JKS")
+                    keyStore.load(null)
+                    keyStore.setCertificateEntry("cert", cert)
+                    keyStore.setKeyEntry("key", key, password.toCharArray(), arrayOf(cert))
+                    val keyManagers = KeyManagerFactory.getInstance("SunX509")
+                        .apply { init(keyStore, password.toCharArray()) }
+                        .keyManagers
+                    keyManagers.first()
+                }
+                init(keyManager?.let { arrayOf(it) }, trustManager?.let { arrayOf(it) }, SecureRandom())
                 CustomSsl(sslContext = this, keyManager = keyManager, trustManager = trustManager)
             }
     }

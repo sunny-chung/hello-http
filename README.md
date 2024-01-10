@@ -22,7 +22,7 @@ moment.
 
 - **macOS** - Stable since v1.2.0
 - **Windows** - Stable since v1.4.1
-- **Linux** - Beta. Known issue: horizontal scrolling is not working
+- **Linux** - Stable since v1.4.3
 
 ## Features
 
@@ -152,7 +152,6 @@ express your desired priorities in the issue tracker.
 - Example-level variables
 - Checking for version updates
 - Establish release builds (minified and without debug logs and symbols)
-- Streamlining building executables for multiple OS
 
 ## Development
 

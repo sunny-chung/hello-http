@@ -210,7 +210,7 @@ class NetworkClientManager : CallDataStore {
         val oldCallId = requestExampleToCallMapping.put(requestExampleId, callData.id)
         if (oldCallId != null) {
             CoroutineScope(Dispatchers.IO).launch {
-                callDataMap[oldCallId]?.cancel?.invoke()
+                callDataMap[oldCallId]?.cancel?.invoke(null)
                 callDataMap.remove(oldCallId)
             }
         }
@@ -231,7 +231,7 @@ class NetworkClientManager : CallDataStore {
     }
 
     fun cancel(selectedRequestExampleId: String) {
-        getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel() }
+        getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel(null) }
     }
 
     private fun <T> emptySharedFlow() = emptyFlow<T>().shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly)
