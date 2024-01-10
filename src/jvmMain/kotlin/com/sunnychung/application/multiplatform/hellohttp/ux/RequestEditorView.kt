@@ -138,7 +138,7 @@ fun RequestEditorView(
     val hasPayloadEditor = (request.application == ProtocolApplication.WebSocket
             || (request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true)
             )
-    var selectedPayloadExampleId by rememberLast(request.id) { mutableStateOf(request.payloadExamples?.firstOrNull()?.id) }
+    var selectedPayloadExampleId by rememberLast(request.id, request.application) { mutableStateOf(request.payloadExamples?.firstOrNull()?.id) }
 
     val isEnableSendButton = when (connectionStatus.isConnectionActive()) {
         true -> true
