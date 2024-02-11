@@ -90,9 +90,10 @@ fun CodeEditorView(
 
     var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
     var cursorDelta by remember { mutableStateOf(0) }
-    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    var lineTops by remember { mutableStateOf<List<Float>?>(null) }
     val newText = text.filterForTextField()
+    var textLayoutResult by rememberLast(newText) { mutableStateOf<TextLayoutResult?>(null) }
+    var lineTops by rememberLast(newText) { mutableStateOf<List<Float>?>(null) }
+    log.d { "len newText ${newText.length}, textValue.text ${textValue.text.length}, text ${text.length}" }
     if (newText != textValue.text) {
         log.d { "CodeEditorView replace text len ${textValue.text.length} -> ${newText.length}" }
         textValue = textValue.copy(text = newText)
