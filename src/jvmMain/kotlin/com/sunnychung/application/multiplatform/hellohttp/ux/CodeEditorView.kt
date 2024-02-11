@@ -220,7 +220,6 @@ fun CodeEditorView(
     var searchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
     var lastSearchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
     var searchResultRanges by rememberLast(text, searchPattern) { mutableStateOf<List<IntRange>?>(null) }
-    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var textFieldSize by remember { mutableStateOf<IntSize?>(null) }
 
     if (searchText.isNotEmpty() && searchPattern == null) {
