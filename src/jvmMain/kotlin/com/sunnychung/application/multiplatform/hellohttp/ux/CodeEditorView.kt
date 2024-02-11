@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -46,8 +48,10 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
@@ -506,16 +510,17 @@ data class SearchOptions(
 
 @Composable
 fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, textLayoutResult: TextLayoutResult?, lineTops: List<Float>?) = with(LocalDensity.current) {
+    val colours = LocalColor.current
     var size by remember { mutableStateOf<IntSize?>(null) }
 
     Box(
         modifier = modifier
-            .width(20.dp)
+            .width(28.dp)
             .fillMaxHeight()
             .clipToBounds()
             .onGloballyPositioned { size = it.size }
-            .background(LocalColor.current.backgroundLight)
-            .padding(top = 6.dp), // see AppTextField
+            .background(colours.backgroundLight)
+            .padding(top = 6.dp, end = 8.dp), // see AppTextField
     ) {
         if (size != null && textLayoutResult != null && lineTops != null) {
             val viewportTop = scrollState.value.toFloat()
@@ -527,11 +532,23 @@ fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, tex
             log.v { "LineNumbersView $firstLine ~ <$lastLine / $viewportTop ~ $viewportBottom" }
             log.v { "lineTops = $lineTops" }
             log.d { "LineNumbersView after calculation" }
+            val lineHeight = textLayoutResult.getLineBottom(0) - textLayoutResult.getLineTop(0)
             for (i in firstLine until minOf(lastLine, lineTops.size - 1)) {
-                AppText(
-                    text = "${i + 1}",
-                    modifier = Modifier.offset(y = (lineTops[i] - viewportTop).toDp())
-                )
+                Box(
+                    contentAlignment = Alignment.CenterEnd,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(lineHeight.toDp())
+                        .offset(y = (lineTops[i] - viewportTop).toDp()),
+                ) {
+                    AppText(
+                        text = "${i + 1}",
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        color = colours.unimportant,
+                    )
+                }
             }
         }
     }

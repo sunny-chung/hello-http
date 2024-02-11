@@ -21,6 +21,7 @@ data class AppColor(
     val bright: Color,
     val successful: Color,
     val text: Color = primary,
+    val unimportant: Color,
     val image: Color = primary,
     val line: Color,
 
@@ -95,6 +96,7 @@ fun darkColorScheme(): AppColor = AppColor(
     backgroundInputFieldHighlightEmphasize = Color(red = 0.6f, green = 0.38f, blue = 0f),
 
     primary = Color(red = 0.8f, green = 0.8f, blue = 1.0f),
+    unimportant = Color(red = 0.45f, green = 0.45f, blue = 0.65f),
     bright = Color.White,
     successful = Color(red = 0.1f, green = 0.8f, blue = 0.1f),
     line = Color(red = 0.6f, green = 0.6f, blue = 0.6f),
@@ -164,6 +166,7 @@ fun lightColorScheme(): AppColor = AppColor(
     backgroundInputFieldHighlightEmphasize = Color(red = 0.8f, green = 0.8f, blue = 0.3f),
 
     primary = Color(red = 0.2f, green = 0.2f, blue = 0.3f),
+    unimportant = Color(red = 0.4f, green = 0.4f, blue = 0.5f),
     bright = Color.Black,
     successful = Color(red = 0.1f, green = 0.6f, blue = 0.1f),
     line = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
