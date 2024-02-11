@@ -519,7 +519,17 @@ fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, tex
         fontFamily = FontFamily.Monospace,
         color = colours.unimportant,
     )
-    val lineNumDigits = "${(lineTops?.size ?: 2) - 1}".length
+    log.v { "LineNumbersView ${size != null} && ${textLayoutResult != null} && ${lineTops != null}" }
+    var lastTextLayoutResult by remember { mutableStateOf(textLayoutResult) }
+    var lastLineTops by remember { mutableStateOf(lineTops) }
+
+    val textLayoutResult = textLayoutResult ?: lastTextLayoutResult
+    val lineTops = lineTops ?: lastLineTops
+
+    lastTextLayoutResult = textLayoutResult
+    lastLineTops = lineTops
+
+    val lineNumDigits = lineTops?.let { "${it.lastIndex}".length } ?: 1
     val width = rememberLast(lineNumDigits) {
         maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
             4.dp + 8.dp
