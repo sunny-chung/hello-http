@@ -111,14 +111,6 @@ fun CodeEditorView(
 
     log.d { "CodeEditorView recompose" }
 
-    if (lineTops == null && textLayoutResult != null) {
-        log.d { "lineTops recalc start" }
-        val lineOffsets = listOf(0) + "\n".toRegex().findAll(textValue.text).map { it.range.endInclusive + 1 }
-        lineTops = lineOffsets.map { textLayoutResult!!.getLineTop(textLayoutResult!!.getLineForOffset(it)) } + // O(l * L * 1)
-            (Float.POSITIVE_INFINITY)
-        log.d { "lineTops recalc end" }
-    }
-
     fun onPressEnterAddIndent() {
         val cursorPos = textValue.selection.min
         assert(textValue.selection.length == 0)
@@ -314,6 +306,28 @@ fun CodeEditorView(
         searchResultViewIndex = (searchResultViewIndex - 1 + size) % size
     }
 
+    val visualTransformationToUse = visualTransformations.let {
+        if (it.size > 1) {
+            MultipleVisualTransformation(it)
+        } else if (it.size == 1) {
+            it.first()
+        } else {
+            VisualTransformation.None
+        }
+    }
+
+    log.d { "lineTops ${lineTops != null}, textLayoutResult ${textLayoutResult != null}" }
+
+    if (lineTops == null && textLayoutResult != null) {
+        log.d { "lineTops recalc start" }
+        val charOffsetMapping = visualTransformationToUse.filter(AnnotatedString(textValue.text)).offsetMapping
+        val lineOffsets = listOf(0) + "\n".toRegex().findAll(textValue.text).map { charOffsetMapping.originalToTransformed(it.range.endInclusive + 1) }
+        log.v { "lineOffsets = $lineOffsets" }
+        lineTops = lineOffsets.map { textLayoutResult!!.getLineTop(textLayoutResult!!.getLineForOffset(it)) } + // O(l * L * 1)
+                (Float.POSITIVE_INFINITY)
+        log.d { "lineTops recalc end" }
+    }
+
     Column(modifier = modifier.onPreviewKeyEvent {
         if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         if (it.key == Key.F && (it.isMetaPressed || it.isCtrlPressed)) {
@@ -381,15 +395,7 @@ fun CodeEditorView(
                         log.d { "CEV sel ${textValue.selection.start}" }
                         onTextChange?.invoke(it.text)
                     },
-                    visualTransformation = visualTransformations.let {
-                        if (it.size > 1) {
-                            MultipleVisualTransformation(it)
-                        } else if (it.size == 1) {
-                            it.first()
-                        } else {
-                            VisualTransformation.None
-                        }
-                    },
+                    visualTransformation = visualTransformationToUse,
                     readOnly = isReadOnly,
                     textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
                     colors = colors,
