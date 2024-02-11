@@ -1,10 +1,16 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -34,14 +41,19 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -84,9 +96,14 @@ fun CodeEditorView(
     var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
     var cursorDelta by remember { mutableStateOf(0) }
     val newText = text.filterForTextField()
+    var textLayoutResult by rememberLast(newText) { mutableStateOf<TextLayoutResult?>(null) }
+    var lineTops by rememberLast(newText, textLayoutResult) { mutableStateOf<List<Float>?>(null) }
+    log.d { "len newText ${newText.length}, textValue.text ${textValue.text.length}, text ${text.length}" }
     if (newText != textValue.text) {
         log.d { "CodeEditorView replace text len ${textValue.text.length} -> ${newText.length}" }
         textValue = textValue.copy(text = newText)
+        lineTops = null // recalculate
+        textLayoutResult = null
     }
     if (cursorDelta > 0) {
         textValue = textValue.copy(
@@ -201,7 +218,6 @@ fun CodeEditorView(
     var searchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
     var lastSearchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
     var searchResultRanges by rememberLast(text, searchPattern) { mutableStateOf<List<IntRange>?>(null) }
-    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var textFieldSize by remember { mutableStateOf<IntSize?>(null) }
 
     if (searchText.isNotEmpty() && searchPattern == null) {
@@ -237,6 +253,12 @@ fun CodeEditorView(
             } else {
                 emptyList()
             }
+
+    textLayoutResult?.let { tl ->
+        (0..minOf(10, tl.lineCount - 1)).forEach {
+            log.d { "> TL Line $it top=${tl.getLineTop(it)} bottom=${tl.getLineBottom(it)} h=${tl.getLineBottom(it) - tl.getLineTop(it)}" }
+        }
+    }
 
     if (isSearchVisible) {
         if (!searchResultRanges.isNullOrEmpty() && searchPattern != null) {
@@ -288,6 +310,28 @@ fun CodeEditorView(
         val size = searchResultRanges?.size ?: 0
         if (size < 1) return
         searchResultViewIndex = (searchResultViewIndex - 1 + size) % size
+    }
+
+    val visualTransformationToUse = visualTransformations.let {
+        if (it.size > 1) {
+            MultipleVisualTransformation(it)
+        } else if (it.size == 1) {
+            it.first()
+        } else {
+            VisualTransformation.None
+        }
+    }
+
+    log.d { "lineTops ${lineTops != null}, textLayoutResult ${textLayoutResult != null}" }
+
+    if (lineTops == null && textLayoutResult != null) {
+        log.d { "lineTops recalc start" }
+        val charOffsetMapping = visualTransformationToUse.filter(AnnotatedString(textValue.text)).offsetMapping
+        val lineOffsets = listOf(0) + "\n".toRegex().findAll(textValue.text).map { charOffsetMapping.originalToTransformed(it.range.endInclusive + 1) }
+        log.v { "lineOffsets = $lineOffsets" }
+        lineTops = lineOffsets.map { textLayoutResult!!.getLineTop(textLayoutResult!!.getLineForOffset(it)) } + // O(l * L * 1)
+                (Float.POSITIVE_INFINITY)
+        log.d { "lineTops recalc end" }
     }
 
     Column(modifier = modifier.onPreviewKeyEvent {
@@ -343,54 +387,54 @@ fun CodeEditorView(
         }
         Box(modifier = Modifier.weight(1f).onGloballyPositioned { textFieldSize = it.size }) {
 //        log.v { "CodeEditorView text=$text" }
-            AppTextField(
-                value = textValue,
-                onValueChange = {
-                    textValue = it
-                    log.d { "CEV sel ${textValue.selection.start}" }
-                    onTextChange?.invoke(it.text)
-                },
-                visualTransformation = visualTransformations.let {
-                    if (it.size > 1) {
-                        MultipleVisualTransformation(it)
-                    } else if (it.size == 1) {
-                        it.first()
-                    } else {
-                        VisualTransformation.None
-                    }
-                },
-                readOnly = isReadOnly,
-                textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-                colors = colors,
-                onTextLayout = { textLayoutResult = it },
-                modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
-                    .focusRequester(textFieldFocusRequester)
-                    .run {
-                        if (!isReadOnly) {
-                            this.onPreviewKeyEvent {
-                                if (it.type == KeyEventType.KeyDown) {
-                                    when (it.key) {
-                                        Key.Enter -> {
-                                            onPressEnterAddIndent()
-                                            true
-                                        }
+            Row {
+                LineNumbersView(
+                    scrollState = scrollState,
+                    textLayoutResult = textLayoutResult,
+                    lineTops = lineTops,
+                    modifier = Modifier.fillMaxHeight(),
+                )
+                AppTextField(
+                    value = textValue,
+                    onValueChange = {
+                        textValue = it
+                        log.d { "CEV sel ${textValue.selection.start}" }
+                        onTextChange?.invoke(it.text)
+                    },
+                    visualTransformation = visualTransformationToUse,
+                    readOnly = isReadOnly,
+                    textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+                    colors = colors,
+                    onTextLayout = { textLayoutResult = it },
+                    modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
+                        .focusRequester(textFieldFocusRequester)
+                        .run {
+                            if (!isReadOnly) {
+                                this.onPreviewKeyEvent {
+                                    if (it.type == KeyEventType.KeyDown) {
+                                        when (it.key) {
+                                            Key.Enter -> {
+                                                onPressEnterAddIndent()
+                                                true
+                                            }
 
-                                        Key.Tab -> {
-                                            onPressTab(it.isShiftPressed)
-                                            true
-                                        }
+                                            Key.Tab -> {
+                                                onPressTab(it.isShiftPressed)
+                                                true
+                                            }
 
-                                        else -> false
+                                            else -> false
+                                        }
+                                    } else {
+                                        false
                                     }
-                                } else {
-                                    false
                                 }
+                            } else {
+                                this
                             }
-                        } else {
-                            this
                         }
-                    }
-            )
+                )
+            }
             VerticalScrollbar(
                 modifier = Modifier.align(Alignment.CenterEnd),
                 adapter = rememberScrollbarAdapter(scrollState),
@@ -464,6 +508,74 @@ data class SearchOptions(
     val isCaseSensitive: Boolean,
     val isWholeWord: Boolean, // ignore if isRegex is true
 )
+
+@Composable
+fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, textLayoutResult: TextLayoutResult?, lineTops: List<Float>?) = with(LocalDensity.current) {
+    val colours = LocalColor.current
+    var size by remember { mutableStateOf<IntSize?>(null) }
+    val textMeasurer = rememberTextMeasurer()
+    val textStyle = LocalTextStyle.current.copy(
+        fontSize = 13.sp,
+        fontFamily = FontFamily.Monospace,
+        color = colours.unimportant,
+    )
+    log.v { "LineNumbersView ${size != null} && ${textLayoutResult != null} && ${lineTops != null}" }
+    var lastTextLayoutResult by remember { mutableStateOf(textLayoutResult) }
+    var lastLineTops by remember { mutableStateOf(lineTops) }
+
+    val textLayoutResult = textLayoutResult ?: lastTextLayoutResult
+    val lineTops = lineTops ?: lastLineTops
+
+    lastTextLayoutResult = textLayoutResult
+    lastLineTops = lineTops
+
+    val lineNumDigits = lineTops?.let { "${it.lastIndex}".length } ?: 1
+    val width = rememberLast(lineNumDigits) {
+        maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
+            4.dp + 8.dp
+    }
+
+    Box(
+        modifier = modifier
+            .width(width)
+            .fillMaxHeight()
+            .clipToBounds()
+            .onGloballyPositioned { size = it.size }
+            .background(colours.backgroundLight)
+            .padding(top = 6.dp, end = 8.dp, start = 4.dp), // see AppTextField
+    ) {
+        if (size != null && textLayoutResult != null && lineTops != null) {
+            val viewportTop = scrollState.value.toFloat()
+            val viewportBottom = viewportTop + size!!.height
+            log.d { "LineNumbersView before calculation" }
+            // 0-based line index
+            val firstLine = lineTops.binarySearchForInsertionPoint { if (it <= viewportTop) -1 else 1 } - 1
+            val lastLine = lineTops.binarySearchForInsertionPoint { if (it > viewportBottom) 1 else -1 }
+            log.v { "LineNumbersView $firstLine ~ <$lastLine / $viewportTop ~ $viewportBottom" }
+            log.v { "lineTops = $lineTops" }
+            log.d { "LineNumbersView after calculation" }
+            val lineHeight = textLayoutResult.getLineBottom(0) - textLayoutResult.getLineTop(0)
+            for (i in firstLine until minOf(lastLine, lineTops.size - 1)) {
+                Box(
+                    contentAlignment = Alignment.CenterEnd,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(lineHeight.toDp())
+                        .offset(y = (lineTops[i] - viewportTop).toDp()),
+                ) {
+                    AppText(
+                        text = "${i + 1}",
+                        style = textStyle,
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        color = colours.unimportant,
+                    )
+                }
+            }
+        }
+    }
+}
 
 fun getLineStart(text: String, position: Int): Int {
     for (i in (position - 1) downTo 0) {
