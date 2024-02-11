@@ -1,3 +1,7 @@
+*.log
+/Releases
+/archived
+
 ### Gradle ###
 .gradle
 build/

@@ -10,15 +10,22 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.ContentEncodingDecompressProcessor
 import com.sunnychung.application.multiplatform.hellohttp.network.apache.Http2FrameSerializer
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CallDataUserResponseUtil
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.apache.hc.client5.http.SystemDefaultDnsResolver
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse
 import org.apache.hc.client5.http.async.methods.SimpleResponseConsumer
@@ -43,6 +50,7 @@ import org.apache.hc.core5.http.nio.RequestChannel
 import org.apache.hc.core5.http.protocol.HttpContext
 import org.apache.hc.core5.http2.HttpVersionPolicy
 import org.apache.hc.core5.http2.config.H2Config
+import org.apache.hc.core5.http2.frame.FrameFlag
 import org.apache.hc.core5.http2.frame.FrameType
 import org.apache.hc.core5.http2.frame.RawFrame
 import org.apache.hc.core5.http2.hpack.HPackInspectHeader
@@ -53,8 +61,11 @@ import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.security.Principal
 import java.security.cert.Certificate
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.CoroutineContext
 
 class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
@@ -72,6 +83,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
     private fun buildHttpClient(
         callId: String,
+        callData: CallData,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
@@ -103,7 +115,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 .setDefaultTlsConfig(TlsConfig.custom().setVersionPolicy(httpVersionPolicy).build())
                 .setDnsResolver(dnsResolver)
                 .setTlsStrategy(ClientTlsStrategyBuilder.create()
-                    .setSslContext(createSslContext(sslConfig).first)
+                    .setSslContext(createSslContext(sslConfig).sslContext)
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
                 .setConnectionListener(object : ConnectionListener {
@@ -112,6 +124,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     }
 
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
+                        CallDataUserResponseUtil.onConnected(callData.response)
                         emitEvent(callId, "Connected to $remoteAddress with $protocolVersion")
                     }
 
@@ -124,6 +137,12 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         peerPrincipal: Principal?,
                         peerCertificates: Array<Certificate>?
                     ) {
+                        CallDataUserResponseUtil.onTlsUpgraded(
+                            callData = callData,
+                            localCertificates = localCertificates,
+                            peerCertificates = peerCertificates
+                        )
+
                         var event = "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite'"
                         if (applicationProtocol.isNotBlank()) {
                             event += " and application protocol '$applicationProtocol'"
@@ -163,6 +182,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             },
             object : H2InspectListener {
                 val suspendedHeaderFrames = ConcurrentHashMap<Int, H2HeaderFrame>()
+                val openedStreamIds = Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
+                val lock = Mutex()
+                val isCancelled = AtomicBoolean(false)
 
                 override fun onHeaderInputDecoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
                     val serialized = http2FrameSerializer.serializeHeaders(headers)
@@ -202,6 +224,14 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     val type = FrameType.valueOf(frame.type)
                     log.d { "processFrame $streamId $type" }
                     if (type == FrameType.HEADERS) {
+                        if (frame.flags and FrameFlag.END_STREAM.value == 0) {
+                            openedStreamIds += streamId
+                        } else {
+                            openedStreamIds -= streamId
+                            if (openedStreamIds.isEmpty()) {
+                                checkForHangConnectionLater()
+                            }
+                        }
                         val frame = suspendedHeaderFrames.getOrPut(streamId) { H2HeaderFrame(streamId = streamId) }
                         frame.frameHeader = serialized
                         if (frame.isComplete()) {
@@ -219,6 +249,20 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                                     content = serialized,
                                 )
                             )
+                        }
+                    }
+                }
+
+                fun checkForHangConnectionLater() {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        delay(3.seconds().toMilliseconds())
+                        lock.withLock {
+                            if (openedStreamIds.isEmpty() && !isCancelled.get()) {
+                                val message = "The connection has no active stream for some seconds, it appears to be hanging. Cancelling the connection."
+                                emitEvent(callId, message)
+                                callData.cancel(Exception(message))
+                                isCancelled.set(true)
+                            }
                         }
                     }
                 }
@@ -246,11 +290,13 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
+            sslConfig = sslConfig
         )
         val callId = data.id
 
         val httpClient = buildHttpClient(
             callId = callId,
+            callData = data,
             httpConfig = httpConfig,
             sslConfig = sslConfig,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
@@ -293,7 +339,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             }
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
             val callData = callData[callId]!!
             callData.waitForPreparation()
             log.d { "Call $callId is prepared" }
@@ -396,11 +442,15 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                     })
 
-                    data.cancel = {
+                    data.cancel = { error ->
                         log.d { "Request to cancel the call" }
                         val cancelResult = call.cancel() // no use at all
                         log.d { "Cancel result = $cancelResult" }
                         httpClient.close(CloseMode.IMMEDIATE)
+
+                        // httpClient.close is buggy. Do not rely on it
+                        data.status = ConnectionStatus.DISCONNECTED
+                        this.cancel(error?.let { CancellationException(it.message, it) })
                     }
                 }
 

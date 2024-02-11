@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -51,7 +52,7 @@ import java.io.File
 fun SettingDialogView(closeDialog: () -> Unit) {
     val colors = LocalColor.current
     var selectedTabIndex by remember { mutableStateOf(0) }
-    Column(modifier = Modifier.size(width = 480.dp, height = 300.dp)) {
+    Column(modifier = Modifier.fillMaxSize()) {
         TabsView(
             selectedIndex = selectedTabIndex,
             contents = SettingTab.values().map { { AppTabLabel(text = it.name) } },

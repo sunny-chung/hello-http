@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.io.ByteArrayOutputStream
 import java.util.Properties
@@ -9,7 +10,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.4.2-SNAPSHOT" // must be in 'x.y.z' for native distributions
+version = "1.5.0-SNAPSHOT" // must be in 'x.y.z' for native distributions
 
 repositories {
     google()
@@ -124,6 +125,12 @@ tasks.getByName("jvmProcessResources") {
 
 tasks.getByName("jvmMainClasses") {
     dependsOn("createBuildProperties")
+}
+
+tasks.withType<Test> {
+    testLogging {
+        events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+    }
 }
 
 compose.desktop {

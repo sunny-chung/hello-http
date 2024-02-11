@@ -179,7 +179,7 @@ fun ProjectAndEnvironmentViewV2(
             subproject = selectedSubproject!!,
             onSubprojectUpdate = { onUpdateSubproject(it) },
             initialEnvironment = selectedEnvironment,
-            modifier = Modifier.padding(12.dp).size(width = 480.dp, height = 300.dp),
+            modifier = Modifier.padding(12.dp).fillMaxSize(),
         )
     }
 

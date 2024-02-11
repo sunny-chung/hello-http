@@ -10,9 +10,10 @@ navigation:
       - path: doc/features/project-and-request-management.md
       - path: doc/features/request-examples-and-payload-examples.md
       - path: doc/features/environments.md
-      - path: doc/features/disable-ssl-verification.md
+      - path: doc/features/ssl-configuration.md
       - path: doc/features/functions.md
       - path: doc/features/post-flight-actions.md
+      - path: doc/features/viewing-responses.md
       - path: doc/features/transport-timeline.md
       - path: doc/features/delete-protection.md
       - path: doc/features/automatic-backup.md

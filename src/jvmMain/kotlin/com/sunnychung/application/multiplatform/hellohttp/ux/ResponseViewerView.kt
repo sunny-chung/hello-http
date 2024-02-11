@@ -7,7 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -39,6 +42,8 @@ import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
+import com.sunnychung.application.multiplatform.hellohttp.model.Certificate
+import com.sunnychung.application.multiplatform.hellohttp.model.ConnectionSecurityType
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
@@ -70,10 +75,69 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
     val updateTime by responseViewModel.subscribe()
 
     Column {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-            StatusLabel(response = response, connectionStatus = connectionStatus)
-            DurationLabel(response = response, updateTime = updateTime, connectionStatus = connectionStatus)
-            ResponseSizeLabel(response = response)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(IntrinsicSize.Max)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).weight(1f)) {
+                StatusLabel(response = response, connectionStatus = connectionStatus)
+                DurationLabel(response = response, updateTime = updateTime, connectionStatus = connectionStatus)
+                ResponseSizeLabel(response = response)
+            }
+            response.connectionSecurity?.let {
+                AppTooltipArea(
+                    tooltipText = "",
+                    tooltipContent = {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.widthIn(max = 480.dp)) {
+                            AppText(text = when (it.security) {
+                                ConnectionSecurityType.Unencrypted -> "Not encrypted"
+                                ConnectionSecurityType.InsecureEncrypted -> "Unverified TLS"
+                                ConnectionSecurityType.VerifiedEncrypted -> "One-way TLS"
+                                ConnectionSecurityType.MutuallyVerifiedEncrypted -> "mTLS"
+                            })
+                            CertificateView(title = "Client Certificate", it.clientCertificatePrincipal)
+                            CertificateView(title = "Server Certificate", it.peerCertificatePrincipal)
+                        }
+                    },
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight()) {
+                        when (it.security) {
+                            ConnectionSecurityType.Unencrypted -> AppImage(
+                                resource = "insecure.svg",
+                                color = colors.placeholder,
+                                size = 24.dp,
+                            )
+
+                            ConnectionSecurityType.InsecureEncrypted -> AppImage(
+                                resource = "questionable-secure.svg",
+                                color = colors.placeholder,
+                                size = 20.dp,
+                                modifier = Modifier.padding(2.dp),
+                            )
+
+                            ConnectionSecurityType.VerifiedEncrypted -> AppImage(
+                                resource = "secure.svg",
+                                color = colors.successful,
+                                size = 24.dp,
+                            )
+
+                            ConnectionSecurityType.MutuallyVerifiedEncrypted -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                AppImage(
+                                    resource = "secure.svg",
+                                    color = colors.successful,
+                                    size = 24.dp,
+                                )
+                                AppText(
+                                    text = "mTLS",
+                                    isFitContent = true,
+                                    maxLines = 1,
+                                    color = colors.successful,
+                                    modifier = Modifier.width(32.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+            }
         }
 
         val tabs = if (
@@ -293,6 +357,61 @@ fun ResponseSizeLabel(modifier: Modifier = Modifier, response: UserResponse) {
         "${size} B"
     }
     DataLabel(modifier = modifier, text = text)
+}
+
+@Composable
+fun CertificateView(title: String, cert: Certificate?) {
+    val headerColumnWidth = 136.dp
+    val indentWidth = 16.dp
+    Column {
+        Row {
+            AppText(text = title, modifier = Modifier.width(headerColumnWidth))
+            if (cert == null) {
+                AppText("N/A")
+            }
+        }
+        if (cert != null) {
+            Column(modifier = Modifier.padding(start = indentWidth)) {
+                val columnWidth = headerColumnWidth - indentWidth
+                Row {
+                    AppText(text = "Subject", modifier = Modifier.width(columnWidth))
+                    AppText(text = cert.principal)
+                }
+                if (!cert.subjectAlternativeNames.isNullOrEmpty()) {
+                    Row {
+                        AppText(text = "Alt. Names", modifier = Modifier.width(columnWidth))
+                        AppText(text = cert.subjectAlternativeNames.joinToString(", ") {
+                            val key = when (it.first) {
+                                0 -> "otherName"
+                                1 -> "rfc822Name"
+                                2 -> "DNS"
+                                3 -> "x400Address"
+                                4 -> "dirName"
+                                5 -> "ediPartyName"
+                                6 -> "URI"
+                                7 -> "IP"
+                                8 -> "RID"
+                                else -> return@joinToString "?"
+                            }
+                            "$key: ${it.second}"
+                        })
+                    }
+                }
+                Row {
+                    AppText(text = "Issuer", modifier = Modifier.width(columnWidth))
+                    AppText(text = cert.issuerPrincipal)
+                }
+                Row {
+                    AppText(text = "Expiry at", modifier = Modifier.width(columnWidth))
+                    AppText(text = cert.notAfter.atZoneOffset(KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern))
+                }
+                Row {
+                    AppText(text = "Issued at", modifier = Modifier.width(columnWidth))
+                    AppText(text = cert.notBefore.atZoneOffset(KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern))
+                }
+            }
+        }
+    }
 }
 
 @Composable

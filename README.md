@@ -22,7 +22,7 @@ moment.
 
 - **macOS** - Stable since v1.2.0
 - **Windows** - Stable since v1.4.1
-- **Linux** - Beta. Known issue: horizontal scrolling is not working
+- **Linux** - Stable since v1.4.3
 
 ## Features
 
@@ -74,6 +74,10 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
 - Multiple environments (no inheritance) per subproject, in which each one has
   - Environment variables that can be embedded anywhere in the request (type `${{variable-name}}`)
   - SSL configuration
+    - Additional trusted CA certificates
+    - Option to disable system CA certificates
+    - Client certificate
+    - Option to disable SSL Verification
   - HTTP protocol preference
 - Functions that can be resolved anywhere in the request:
   - UUID (type `$((uuid))`)
@@ -94,8 +98,10 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
 - Message streaming from gRPC communications
 - Persistence per request example
 - Searching in response body
-- Filtering JSON response body by JSON path
+- Filtering JSON response body by [JSON path](https://github.com/json-path/JsonPath)
 - Automatic gzip / deflate decompression
+- Connection security indicator (Unencrypted / Unverified TLS / Verified One-way TLS / Verified mTLS)
+- Certificates in use
 
 **Appearance and Interactions**
 - Dark and light theme
@@ -128,9 +134,9 @@ Clearing this directory would reset the application.
 
 ## Performance
 
-Honestly, Hello HTTP is not yet performance-oriented. It relies on JVM, so it would demand a significant amount of
-memory (about 0.5 GB). But, it still outperforms many web apps. It performs very well on a Windows laptop with 8 GB RAM
-without a noticeable performance degrade of other applications.
+Honestly, Hello HTTP is not yet performance-oriented. It is not another web app. It relies on JVM, so it demands a
+significant amount of memory (about 0.5 GB). But, it still outperforms many web apps. It performs very well on a
+Windows laptop with 8 GB RAM without a noticeable performance degrade of other applications.
 
 ## Planned
 
@@ -142,12 +148,10 @@ express your desired priorities in the issue tracker.
 - Copy buttons in response
 - Binary response view
 - Binary request editor
-- More SSL configuration
 - Overriding default headers
 - Example-level variables
 - Checking for version updates
 - Establish release builds (minified and without debug logs and symbols)
-- Streamlining building executables for multiple OS
 
 ## Development
 

@@ -43,6 +43,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
+            sslConfig = sslConfig,
         )
         val callId = data.id
         val uri: URI = request.getResolvedUri()
@@ -150,8 +151,8 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
     fun configureWebSocketClient(client: WebSocketClient, callId: String, sslConfig: SslConfig) {
         with (client) {
             setDnsResolver(createDnsResolver(callId))
-            if (uri.scheme == "wss" && sslConfig.isInsecure == true) {
-                setSocketFactory(createSslContext(sslConfig).first.socketFactory)
+            if (uri.scheme == "wss" && sslConfig.hasCustomConfig()) {
+                setSocketFactory(createSslContext(sslConfig).sslContext.socketFactory)
             }
         }
     }

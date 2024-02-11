@@ -1,13 +1,18 @@
 package com.sunnychung.application.multiplatform.hellohttp.network
 
+import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
+import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -24,10 +29,16 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
+import java.security.KeyFactory
+import java.security.KeyStore
 import java.security.SecureRandom
+import java.security.cert.CertificateFactory
+import java.security.spec.PKCS8EncodedKeySpec
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
 abstract class AbstractTransportClient internal constructor(callDataStore: CallDataStore) : TransportClient {
@@ -59,18 +70,62 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         }
     }
 
-    protected fun createSslContext(sslConfig: SslConfig): Pair<SSLContext, X509TrustManager?> {
+    protected fun coroutineExceptionHandler() = CoroutineExceptionHandler { context, ex ->
+        log.w(ex) { "Uncaught exception in coroutine ${context[CoroutineName.Key] ?: "-"}" }
+    }
+
+    internal fun createSslContext(sslConfig: SslConfig): CustomSsl {
         return SSLContext.getInstance("TLS")
             .run {
-                if (sslConfig.isInsecure == true) {
-                    val trustManager = TrustAllSslCertificateManager()
-                    init(null, arrayOf(trustManager), SecureRandom())
-                    Pair(this, trustManager)
+                val trustManager = if (sslConfig.isInsecure == true) {
+                    TrustAllSslCertificateManager()
                 } else {
-                    init(null, null, SecureRandom())
-                    Pair(this, null)
+                    val customCaCertificates = sslConfig.trustedCaCertificates.filter { it.isEnabled }
+                    Unit.takeIf { customCaCertificates.isNotEmpty() || sslConfig.isDisableSystemCaCertificates == true }?.let {
+                        val defaultX509TrustManager = createTrustManager(null)
+                        val trustStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                        trustStore.load(null)
+                        customCaCertificates.map {
+                            val cert = CertificateFactory.getInstance("X.509").generateCertificate(it.content.inputStream())
+                            trustStore.setCertificateEntry(it.name, cert)
+                        }
+                        val customTrustManager = createTrustManager(trustStore)
+                        val combinedTrustManager = MultipleTrustCertificateManager(
+                            listOfNotNull(
+                                defaultX509TrustManager.takeIf { sslConfig.isDisableSystemCaCertificates != true },
+                                customTrustManager.takeIf { customCaCertificates.isNotEmpty() }
+                            ).emptyToNull() ?: listOf(DenyAllSslCertificateManager())
+                        )
+                        combinedTrustManager
+                    }
                 }
+                val keyManager = sslConfig.clientCertificateKeyPairs.firstOrNull { it.isEnabled }?.let {
+                    val cert = CertificateFactory.getInstance("X.509").generateCertificate(it.certificate.content.inputStream())
+                    val key = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(it.privateKey.content))
+
+                    val password = uuidString()
+                    val keyStore = KeyStore.getInstance("JKS")
+                    keyStore.load(null)
+                    keyStore.setCertificateEntry("cert", cert)
+                    keyStore.setKeyEntry("key", key, password.toCharArray(), arrayOf(cert))
+                    val keyManagers = KeyManagerFactory.getInstance("SunX509")
+                        .apply { init(keyStore, password.toCharArray()) }
+                        .keyManagers
+                    keyManagers.first()
+                }
+                init(keyManager?.let { arrayOf(it) }, trustManager?.let { arrayOf(it) }, SecureRandom())
+                CustomSsl(sslContext = this, keyManager = keyManager, trustManager = trustManager)
             }
+    }
+
+    private fun createTrustManager(keystore: KeyStore?): X509TrustManager {
+        return TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+            .apply {
+                init(keystore)
+            }
+            .trustManagers
+            .filterIsInstance(X509TrustManager::class.java)
+            .first()
     }
 
     protected fun createHostnameVerifier(sslConfig: SslConfig): HostnameVerifier? {
@@ -83,7 +138,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun getCallData(callId: String) = callData[callId]
 
-    protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String): CallData {
+    protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String, sslConfig: SslConfig): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
         val incomingBytesFlow = MutableSharedFlow<RawPayload>()
         val optionalResponseSize = AtomicInteger()
@@ -93,6 +148,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         val data = CallData(
             id = callId,
             subprojectId = subprojectId,
+            sslConfig = sslConfig.copy(),
             events = eventSharedFlow.asSharedFlow()
                 .filter { it.callId == callId }
                 .flowOn(Dispatchers.IO)

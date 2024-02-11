@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.TooltipPlacement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Surface
@@ -16,9 +17,11 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppTooltipArea(
+    modifier: Modifier = Modifier,
     isVisible: Boolean = true,
     tooltipText: String,
     delayMillis: Int = 100,
+    tooltipContent: @Composable () -> Unit = { AppText(text = tooltipText) },
     content: @Composable () -> Unit,
 ) {
     val colours = LocalColor.current
@@ -30,17 +33,17 @@ fun AppTooltipArea(
                     color = colours.backgroundTooltip,
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    AppText(
-                        text = tooltipText,
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
-                    )
+                    Box(modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)) {
+                        tooltipContent()
+                    }
                 }
             }
         },
         delayMillis = delayMillis,
         tooltipPlacement = TooltipPlacement.CursorPoint(
-            offset = DpOffset(x = 16.dp, y = 0.dp)
-        )
+            offset = DpOffset(x = 16.dp, y = 8.dp)
+        ),
+        modifier = modifier,
     ) {
         content()
     }
