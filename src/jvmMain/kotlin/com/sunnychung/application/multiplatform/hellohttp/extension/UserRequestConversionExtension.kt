@@ -215,7 +215,7 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
                 *(entity.trailers?.get()?.toTypedArray() ?: emptyArray())
             )
         }
-        is StringBody -> AsyncEntityProducers.create(body.value)
+        is StringBody -> AsyncEntityProducers.create(body.value, Charsets.UTF_8)
         null -> null
         else -> throw UnsupportedOperationException()
     }

@@ -14,7 +14,7 @@ data class HttpRequest(
     val extra: Any? = null
 ) {
     fun getResolvedUri(): URI {
-        return URIBuilder(url)
+        return URIBuilder(url.replace(" ", "+"))
             .run {
                 var b = this
                 queryParameters.forEach {
@@ -23,5 +23,6 @@ data class HttpRequest(
                 b
             }
             .build()
+            .let { URI.create(it.toASCIIString()) }
     }
 }
