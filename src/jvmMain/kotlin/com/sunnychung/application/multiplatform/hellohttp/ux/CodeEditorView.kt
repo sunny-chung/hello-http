@@ -48,6 +48,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -512,15 +513,26 @@ data class SearchOptions(
 fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, textLayoutResult: TextLayoutResult?, lineTops: List<Float>?) = with(LocalDensity.current) {
     val colours = LocalColor.current
     var size by remember { mutableStateOf<IntSize?>(null) }
+    val textMeasurer = rememberTextMeasurer()
+    val textStyle = LocalTextStyle.current.copy(
+        fontSize = 13.sp,
+        fontFamily = FontFamily.Monospace,
+        color = colours.unimportant,
+    )
+    val lineNumDigits = "${(lineTops?.size ?: 2) - 1}".length
+    val width = rememberLast(lineNumDigits) {
+        maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
+            4.dp + 8.dp
+    }
 
     Box(
         modifier = modifier
-            .width(28.dp)
+            .width(width)
             .fillMaxHeight()
             .clipToBounds()
             .onGloballyPositioned { size = it.size }
             .background(colours.backgroundLight)
-            .padding(top = 6.dp, end = 8.dp), // see AppTextField
+            .padding(top = 6.dp, end = 8.dp, start = 4.dp), // see AppTextField
     ) {
         if (size != null && textLayoutResult != null && lineTops != null) {
             val viewportTop = scrollState.value.toFloat()
@@ -543,6 +555,7 @@ fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, tex
                 ) {
                     AppText(
                         text = "${i + 1}",
+                        style = textStyle,
                         fontSize = 13.sp,
                         fontFamily = FontFamily.Monospace,
                         maxLines = 1,
