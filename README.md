@@ -143,8 +143,6 @@ Windows laptop with 8 GB RAM without a noticeable performance degrade of other a
 Following features are on the TODO list (not in order). Feel free to raise feature requests or
 express your desired priorities in the issue tracker.
 
-- Custom HTTP methods
-- Response JSON folding
 - Copy buttons in response
 - Binary response view
 - Binary request editor

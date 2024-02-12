@@ -67,6 +67,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMethod
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
@@ -148,7 +149,25 @@ fun RequestEditorView(
         }
     }
 
+    var isShowCustomHttpMethodDialog by remember { mutableStateOf(false) }
+
     log.d { "RequestEditorView recompose $request" }
+
+    CustomHttpMethodDialog(
+        isEnabled = isShowCustomHttpMethodDialog,
+        onDismiss = { isShowCustomHttpMethodDialog = false },
+        onConfirm = { customHttpMethod ->
+            if (customHttpMethod.isValidHttpMethod()) {
+                onRequestModified(
+                    request.copyForApplication(
+                        application = ProtocolApplication.Http,
+                        method = customHttpMethod
+                    )
+                )
+                isShowCustomHttpMethodDialog = false
+            }
+        },
+    )
 
     Column(modifier = modifier
         .onKeyEvent { e ->
@@ -169,6 +188,10 @@ fun RequestEditorView(
                 .height(IntrinsicSize.Max),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val customHttpMethodOption = DropDownKeyValue(
+                key = ProtocolMethod(application = ProtocolApplication.Http, method = "<Custom>"),
+                displayText = "Custom"
+            )
             val options = DropDownMap(
                 listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD")
                     .map { DropDownKeyValue(
@@ -176,6 +199,7 @@ fun RequestEditorView(
                         displayText = it
                     ) }
                 + listOf(
+                    customHttpMethodOption,
                     DropDownKeyValue(
                         key = ProtocolMethod(application = ProtocolApplication.Graphql, method = ""),
                         displayText = "GraphQL"
@@ -191,25 +215,31 @@ fun RequestEditorView(
                 )
             )
             DropDownView(
-                selectedItem = options.dropdownables.first { it.key.application == request.application && (it.key.method == request.method || it.key.method.isEmpty()) },
+                selectedItem = options.dropdownables.firstOrNull {
+                    it.key.application == request.application && (it.key.method == request.method || it.key.method.isEmpty())
+                } ?: customHttpMethodOption,
                 items = options.dropdownables,
                 contentView = { it, isLabel, isSelected, isClickable ->
-                    val (text, color) = when (it!!.key.application) {
-                        ProtocolApplication.Http -> Pair(
-                            it.displayText,
-                            when (it.displayText) {
-                                "GET" -> colors.httpRequestGet
-                                "POST" -> colors.httpRequestPost
-                                "PUT" -> colors.httpRequestPut
-                                "PATCH" -> colors.httpRequestPatch
-                                "DELETE" -> colors.httpRequestDelete
-                                else -> colors.httpRequestOthers
-                            }
-                        )
+                    val (text, color) = if (isLabel && it!!.key.application == ProtocolApplication.Http && it!!.key.method == "<Custom>") {
+                        Pair(request.method, colors.httpRequestOthers)
+                    } else {
+                        when (it!!.key.application) {
+                            ProtocolApplication.Http -> Pair(
+                                it.displayText,
+                                when (it.displayText) {
+                                    "GET" -> colors.httpRequestGet
+                                    "POST" -> colors.httpRequestPost
+                                    "PUT" -> colors.httpRequestPut
+                                    "PATCH" -> colors.httpRequestPatch
+                                    "DELETE" -> colors.httpRequestDelete
+                                    else -> colors.httpRequestOthers
+                                }
+                            )
 
-                        ProtocolApplication.WebSocket -> Pair("WebSocket", colors.websocketRequest)
-                        ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
-                        ProtocolApplication.Graphql -> Pair("GraphQL", colors.graphqlRequest)
+                            ProtocolApplication.WebSocket -> Pair("WebSocket", colors.websocketRequest)
+                            ProtocolApplication.Grpc -> Pair("gRPC", colors.grpcRequest)
+                            ProtocolApplication.Graphql -> Pair("GraphQL", colors.graphqlRequest)
+                        }
                     }
                     val modifier = if (isLabel) {
                         Modifier
@@ -227,10 +257,16 @@ fun RequestEditorView(
                         modifier = modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
                     )
                 },
-                onClickItem = {
+                onClickItem = onClickItem@ {
                     if (request.application != it.key.application) {
                         selectedRequestTabIndex = 0
                     }
+
+                    if (it.key.application == ProtocolApplication.Http && it.key.method == "<Custom>") {
+                        isShowCustomHttpMethodDialog = true
+                        return@onClickItem true
+                    }
+
                     onRequestModified(request.copyForApplication(application = it.key.application, method = it.key.method))
                     true
                 },
