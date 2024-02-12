@@ -1,7 +1,9 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
+import com.sunnychung.application.multiplatform.hellohttp.parser.JsonParser
 
 class PrettifierManager {
     private val registrations: MutableSet<PrettifierRegistration> = mutableSetOf()
@@ -17,7 +19,7 @@ class PrettifierManager {
             prettifier = Prettifier(
                 formatName = "JSON (Prettified)",
                 prettify = {
-                    jacksonObjectMapper().readTree(it).toPrettyString()
+                    JsonParser(it).prettify()
                 }
             )
         )
@@ -41,7 +43,7 @@ class PrettifierManager {
 
 class Prettifier(
     val formatName: String,
-    val prettify: (ByteArray) -> String,
+    val prettify: (ByteArray) -> PrettifyResult,
 )
 
 data class PrettifierRegistration(
