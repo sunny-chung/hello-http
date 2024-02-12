@@ -17,6 +17,7 @@ data class AppColor(
     val backgroundInputFieldHighlight: Color,
     val backgroundInputFieldHighlightEmphasize: Color,
     val backgroundCollapsed: Color,
+    val backgroundFloatingButton: Color = background.copy(alpha = 0.7f),
 
     val primary: Color,
     val bright: Color,
@@ -57,6 +58,8 @@ data class AppColor(
 
     val scrollBarUnhover: Color,
     val scrollBarHover: Color,
+
+    val copyButton: Color = image.copy(alpha = 0.8f),
 
     val syntaxColor: SyntaxColor,
 )
