@@ -16,6 +16,7 @@ data class AppColor(
     val backgroundHoverDroppable: Color,
     val backgroundInputFieldHighlight: Color,
     val backgroundInputFieldHighlightEmphasize: Color,
+    val backgroundCollapsed: Color,
 
     val primary: Color,
     val bright: Color,
@@ -94,6 +95,7 @@ fun darkColorScheme(): AppColor = AppColor(
     backgroundHoverDroppable = Color(0f, 0f, 0.6f),
     backgroundInputFieldHighlight = Color(red = 0.3f, green = 0.3f, blue = 0.78f),
     backgroundInputFieldHighlightEmphasize = Color(red = 0.6f, green = 0.38f, blue = 0f),
+    backgroundCollapsed = Color(red = 0.4f, green = 0.4f, blue = 0.4f),
 
     primary = Color(red = 0.8f, green = 0.8f, blue = 1.0f),
     unimportant = Color(red = 0.45f, green = 0.45f, blue = 0.65f),
@@ -164,6 +166,7 @@ fun lightColorScheme(): AppColor = AppColor(
     backgroundHoverDroppable = Color(0f, 0f, 0.4f),
     backgroundInputFieldHighlight = Color(red = 0.6f, green = 0.6f, blue = 0.8f),
     backgroundInputFieldHighlightEmphasize = Color(red = 0.8f, green = 0.8f, blue = 0.3f),
+    backgroundCollapsed = Color(red = 0.6f, green = 0.6f, blue = 0.6f),
 
     primary = Color(red = 0.2f, green = 0.2f, blue = 0.3f),
     unimportant = Color(red = 0.4f, green = 0.4f, blue = 0.5f),

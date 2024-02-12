@@ -3,9 +3,12 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
@@ -20,6 +24,7 @@ import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,6 +67,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDe
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.CollapseTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.CollapseTransformationOffsetMapping
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
@@ -75,6 +82,8 @@ fun CodeEditorView(
     isReadOnly: Boolean = false,
     text: String,
     onTextChange: ((String) -> Unit)? = null,
+    collapsableLines: List<IntRange> = emptyList(),
+    collapsableChars: List<IntRange> = emptyList(),
     textColor: Color = LocalColor.current.text,
     transformations: List<VisualTransformation> = emptyList(),
     isEnableVariables: Boolean = false,
@@ -114,6 +123,9 @@ fun CodeEditorView(
         )
         cursorDelta = 0
     }
+
+    var collapsedLines = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
+    var collapsedChars = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
 
     log.d { "CodeEditorView recompose" }
 
@@ -250,6 +262,11 @@ fun CodeEditorView(
                     ),
                     FunctionTransformation(themeColours),
                 )
+            } else {
+                emptyList()
+            } +
+            if (isReadOnly) {
+                listOf(CollapseTransformation(themeColours, collapsedChars.values.toList()))
             } else {
                 emptyList()
             }
@@ -392,6 +409,18 @@ fun CodeEditorView(
                     scrollState = scrollState,
                     textLayoutResult = textLayoutResult,
                     lineTops = lineTops,
+                    collapsableLines = collapsableLines,
+                    collapsedLines = collapsedLines.values.toList(),
+                    onCollapseLine = { i ->
+                        val index = collapsableLines.indexOfFirst { it.start == i }
+                        collapsedLines[collapsableLines[index]] = collapsableLines[index]
+                        collapsedChars[collapsableChars[index]] = collapsableChars[index]
+                    },
+                    onExpandLine = { i ->
+                        val index = collapsableLines.indexOfFirst { it.start == i }
+                        collapsedLines -= collapsableLines[index]
+                        collapsedChars -= collapsableChars[index]
+                    },
                     modifier = Modifier.fillMaxHeight(),
                 )
                 AppTextField(
@@ -510,7 +539,16 @@ data class SearchOptions(
 )
 
 @Composable
-fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, textLayoutResult: TextLayoutResult?, lineTops: List<Float>?) = with(LocalDensity.current) {
+fun LineNumbersView(
+    modifier: Modifier = Modifier,
+    scrollState: ScrollState,
+    textLayoutResult: TextLayoutResult?,
+    lineTops: List<Float>?,
+    collapsableLines: List<IntRange>,
+    collapsedLines: List<IntRange>,
+    onCollapseLine: (Int) -> Unit,
+    onExpandLine: (Int) -> Unit,
+) = with(LocalDensity.current) {
     val colours = LocalColor.current
     var size by remember { mutableStateOf<IntSize?>(null) }
     val textMeasurer = rememberTextMeasurer()
@@ -530,10 +568,13 @@ fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, tex
     lastLineTops = lineTops
 
     val lineNumDigits = lineTops?.let { "${it.lastIndex}".length } ?: 1
-    val width = rememberLast(lineNumDigits) {
+    val width = rememberLast(lineNumDigits, collapsableLines.isEmpty()) {
         maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
-            4.dp + 8.dp
+            4.dp + (if (collapsableLines.isNotEmpty()) 24.dp else 0.dp) + 4.dp
     }
+
+    val collapsableLinesMap = collapsableLines.associateBy { it.start }
+    val collapsedLines = collapsedLines.associateBy { it.first }.toSortedMap() // TODO optimize using range tree
 
     Box(
         modifier = modifier
@@ -542,36 +583,76 @@ fun LineNumbersView(modifier: Modifier = Modifier, scrollState: ScrollState, tex
             .clipToBounds()
             .onGloballyPositioned { size = it.size }
             .background(colours.backgroundLight)
-            .padding(top = 6.dp, end = 8.dp, start = 4.dp), // see AppTextField
+            .padding(top = 6.dp, start = 4.dp, end = 4.dp), // see AppTextField
     ) {
         if (size != null && textLayoutResult != null && lineTops != null) {
             val viewportTop = scrollState.value.toFloat()
             val viewportBottom = viewportTop + size!!.height
             log.d { "LineNumbersView before calculation" }
             // 0-based line index
-            val firstLine = lineTops.binarySearchForInsertionPoint { if (it <= viewportTop) -1 else 1 } - 1
+            // include the partially visible line before the first line that is entirely visible
+            val firstLine = maxOf(0, lineTops.binarySearchForInsertionPoint { if (it >= viewportTop) 1 else -1 } - 1)
             val lastLine = lineTops.binarySearchForInsertionPoint { if (it > viewportBottom) 1 else -1 }
             log.v { "LineNumbersView $firstLine ~ <$lastLine / $viewportTop ~ $viewportBottom" }
             log.v { "lineTops = $lineTops" }
+            log.v { "collapsedLines = $collapsedLines" }
             log.d { "LineNumbersView after calculation" }
             val lineHeight = textLayoutResult.getLineBottom(0) - textLayoutResult.getLineTop(0)
-            for (i in firstLine until minOf(lastLine, lineTops.size - 1)) {
-                Box(
-                    contentAlignment = Alignment.CenterEnd,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(lineHeight.toDp())
-                        .offset(y = (lineTops[i] - viewportTop).toDp()),
-                ) {
-                    AppText(
-                        text = "${i + 1}",
-                        style = textStyle,
-                        fontSize = 13.sp,
-                        fontFamily = FontFamily.Monospace,
-                        maxLines = 1,
-                        color = colours.unimportant,
-                    )
+
+            var ii: Int = firstLine
+            while (ii < minOf(lastLine, lineTops.size - 1)) {
+                val i: Int = ii // `ii` is passed by ref
+
+                if (i > firstLine && lineTops[i] - lineTops[i-1] < 1) {
+                    // optimization: there is an instant that collapsedLines is empty but lineTops = [0, 0, ..., 0, 1234]
+                    // skip drawing if there are duplicated lineTops
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .height(lineHeight.toDp())
+                            .offset(y = (lineTops[i] - viewportTop).toDp()),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.CenterEnd,
+                            modifier = Modifier
+                                .weight(1f)
+                        ) {
+                            AppText(
+                                text = "${i + 1}",
+                                style = textStyle,
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                color = colours.unimportant,
+                            )
+                        }
+                        if (collapsableLinesMap.contains(i)) {
+                            AppImageButton(
+                                resource = if (collapsedLines.containsKey(i)) "expand.svg" else "collapse.svg",
+                                size = 12.dp,
+                                innerPadding = PaddingValues(horizontal = 4.dp),
+                                onClick = {
+                                    if (collapsedLines.containsKey(i)) {
+                                        onExpandLine(i)
+                                    } else {
+                                        onCollapseLine(i)
+                                    }
+                                },
+                                modifier = modifier
+                                    .width(24.dp)
+                                    .padding(start = 4.dp),
+                            )
+                        } else if (collapsableLines.isNotEmpty()) {
+                            Spacer(modifier.width(24.dp))
+                        }
+                    }
                 }
+                collapsedLines.headMap(i + 1).forEach {
+                    if (it.value.contains(i)) {
+                        ii = maxOf(ii, it.value.last)
+                    }
+                }
+                ++ii
             }
         }
     }

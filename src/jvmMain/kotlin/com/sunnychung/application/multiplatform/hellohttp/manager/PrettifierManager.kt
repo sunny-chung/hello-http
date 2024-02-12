@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.parser.JsonParser
 
@@ -42,7 +43,7 @@ class PrettifierManager {
 
 class Prettifier(
     val formatName: String,
-    val prettify: (ByteArray) -> String,
+    val prettify: (ByteArray) -> PrettifyResult,
 )
 
 data class PrettifierRegistration(

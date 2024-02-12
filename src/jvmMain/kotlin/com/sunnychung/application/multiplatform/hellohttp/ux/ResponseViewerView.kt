@@ -45,6 +45,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.Certificate
 import com.sunnychung.application.multiplatform.hellohttp.model.ConnectionSecurityType
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
+import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -496,17 +497,21 @@ fun BodyViewerView(
             }
             isJsonPathError = hasError
 
+            val prettifyResult = try {
+                if (isRaw) {
+                    selectedView.prettifier!!.prettify(contentToUse)
+                } else {
+                    PrettifyResult(contentToUse.decodeToString())
+                }
+            } catch (e: Throwable) {
+                PrettifyResult(contentToUse.decodeToString() ?: "")
+            }
+
             CodeEditorView(
                 isReadOnly = true,
-                text = try {
-                    if (isRaw) {
-                        selectedView.prettifier!!.prettify(contentToUse)
-                    } else {
-                        contentToUse.decodeToString()
-                    }
-                } catch (e: Throwable) {
-                    contentToUse.decodeToString() ?: ""
-                },
+                text = prettifyResult.prettyString,
+                collapsableLines = prettifyResult.collapsableLineRange,
+                collapsableChars = prettifyResult.collapsableCharRange,
                 transformations = if (selectedView.prettifier!!.formatName.contains("JSON")) {
                     listOf(JsonSyntaxHighlightTransformation(colours = colours))
                 } else {
@@ -558,7 +563,7 @@ fun ResponseBodyView(response: UserResponse) {
             emptyList()
         }
             .map { PrettifierDropDownValue(it.formatName, it) } +
-                PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() })
+                PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { PrettifyResult(it.decodeToString()) })
     } else {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     }
@@ -599,11 +604,11 @@ fun ResponseStreamView(response: UserResponse) {
     val prettifiers = if ((response.isError && displayMessage == null) || displayMessage?.type == PayloadMessage.Type.Error) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     } else if (displayMessage?.type in setOf(PayloadMessage.Type.Connected, PayloadMessage.Type.Disconnected)) {
-        listOf(PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() }))
+        listOf(PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { PrettifyResult(it.decodeToString()) }))
     } else {
         AppContext.PrettifierManager.allPrettifiers()
             .map { PrettifierDropDownValue(it.formatName, it) } +
-                PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { it.decodeToString() })
+                PrettifierDropDownValue(ORIGINAL, Prettifier(ORIGINAL) { PrettifyResult(it.decodeToString()) })
     }
     val detailData = displayMessage?.data
 
