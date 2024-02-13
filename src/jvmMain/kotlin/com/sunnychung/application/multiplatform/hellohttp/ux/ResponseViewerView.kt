@@ -640,6 +640,7 @@ fun CopyableContentContainer(
                     .align(Alignment.TopEnd)
                     .padding(outerPadding)
             ) {
+                log.d { "Copied $textToCopy" }
                 clipboardManager.setText(AnnotatedString(textToCopy))
             }
         }

@@ -27,3 +27,15 @@ fun <T> MutableList<T>.upsert(entity: T, condition: (T) -> Boolean, update: (T, 
         }
     }
 }
+
+/**
+ * This method is NOT thread-safe.
+ */
+fun <K, V> MutableMap<K, V>.getAndDoSomethingOrPut(key: K, doIfExists: (V) -> Unit, putIfNotExists: () -> V): V {
+    return this[key]?.also(doIfExists)
+        ?: run {
+            val newValue = putIfNotExists()
+            this[key] = newValue
+            newValue
+        }
+}
