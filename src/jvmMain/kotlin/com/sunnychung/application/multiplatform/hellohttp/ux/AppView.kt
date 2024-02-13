@@ -48,6 +48,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
@@ -178,6 +179,7 @@ fun AppView() {
                     ) {
                         AppText(
                             text = errorMessageState.message,
+                            textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .background(
                                     when (errorMessageState.type) {
