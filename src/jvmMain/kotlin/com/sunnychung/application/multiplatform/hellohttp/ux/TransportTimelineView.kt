@@ -424,6 +424,7 @@ private fun TransportTimelineContentView(
                                     else -> "= "
                                 },
                                 fontFamily = FontFamily.Monospace,
+                                fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 modifier = Modifier.padding(start = 4.dp)
                             )
                             // cannot filter by it.direction != RawExchange.Direction.Unspecified
@@ -435,6 +436,7 @@ private fun TransportTimelineContentView(
                                         ' '
                                     ) + " ",
                                     fontFamily = FontFamily.Monospace,
+                                    fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 )
                             }
                         } else {
@@ -445,6 +447,7 @@ private fun TransportTimelineContentView(
                             AppText(
                                 text = "  ",
                                 fontFamily = FontFamily.Monospace,
+                                fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 modifier = Modifier.padding(start = 4.dp)
                             )
                             // cannot filter by it.direction != RawExchange.Direction.Unspecified
@@ -453,6 +456,7 @@ private fun TransportTimelineContentView(
                                 AppText(
                                     text = " ".repeat("{} ".length + streamDigits),
                                     fontFamily = FontFamily.Monospace,
+                                    fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 )
                             }
                         }
@@ -460,6 +464,7 @@ private fun TransportTimelineContentView(
                     AppText(
                         text = textChunk,
                         fontFamily = FontFamily.Monospace,
+                        fontSize = LocalFont.current.transportTimelineBodyFontSize,
                         maxLines = numTextLines[textIndex],
                         softWrap = false, // since maxLines is always 1
                         modifier = Modifier.weight(1f).onGloballyPositioned {
@@ -528,7 +533,17 @@ fun TimestampColumn(modifier: Modifier = Modifier, createTime: KInstant, lastUpd
 
     // sometimes copy button is not working, due to Compose bug:
     // https://github.com/JetBrains/compose-multiplatform/issues/1450
-    CopyableContentContainer(textToCopy = text, size = 12.dp, innerPadding = 2.dp, outerPadding = PaddingValues(end = 2.dp)) {
-        AppText(text = text, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Right, modifier = modifier.padding(end = 4.dp))
+    CopyableContentContainer(textToCopy = text,
+        size = 10.dp,
+        innerPadding = 2.dp,
+        outerPadding = PaddingValues(end = 2.dp)
+    ) {
+        AppText(
+            text = text,
+            fontFamily = FontFamily.Monospace,
+            fontSize = LocalFont.current.transportTimelineBodyFontSize,
+            textAlign = TextAlign.Right,
+            modifier = modifier.padding(end = 4.dp)
+        )
     }
 }

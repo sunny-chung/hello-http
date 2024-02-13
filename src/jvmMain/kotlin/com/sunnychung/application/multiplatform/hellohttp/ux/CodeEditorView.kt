@@ -432,7 +432,10 @@ fun CodeEditorView(
                     },
                     visualTransformation = visualTransformationToUse,
                     readOnly = isReadOnly,
-                    textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+                    textStyle = LocalTextStyle.current.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = LocalFont.current.codeEditorBodyFontSize,
+                    ),
                     colors = colors,
                     onTextLayout = { textLayoutResult = it },
                     modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
@@ -550,10 +553,11 @@ fun LineNumbersView(
     onExpandLine: (Int) -> Unit,
 ) = with(LocalDensity.current) {
     val colours = LocalColor.current
+    val fonts = LocalFont.current
     var size by remember { mutableStateOf<IntSize?>(null) }
     val textMeasurer = rememberTextMeasurer()
     val textStyle = LocalTextStyle.current.copy(
-        fontSize = 13.sp,
+        fontSize = fonts.codeEditorLineNumberFontSize,
         fontFamily = FontFamily.Monospace,
         color = colours.unimportant,
     )
@@ -620,7 +624,7 @@ fun LineNumbersView(
                             AppText(
                                 text = "${i + 1}",
                                 style = textStyle,
-                                fontSize = 13.sp,
+                                fontSize = fonts.codeEditorLineNumberFontSize,
                                 fontFamily = FontFamily.Monospace,
                                 maxLines = 1,
                                 color = colours.unimportant,

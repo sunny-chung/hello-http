@@ -9,6 +9,9 @@ data class AppFont(
     val buttonFontSize: TextUnit,
     val searchInputSize: TextUnit,
     val supplementSize: TextUnit,
+    val codeEditorBodyFontSize: TextUnit,
+    val codeEditorLineNumberFontSize: TextUnit,
+    val transportTimelineBodyFontSize: TextUnit = codeEditorBodyFontSize,
 
     val createLabelSize: TextUnit,
     val largeInfoSize: TextUnit,
@@ -21,6 +24,8 @@ internal fun regularFont() = AppFont(
     buttonFontSize = 16.sp,
     searchInputSize = 12.sp,
     supplementSize = 11.sp,
+    codeEditorBodyFontSize = 13.sp,
+    codeEditorLineNumberFontSize = 12.sp,
 
     createLabelSize = 20.sp,
     largeInfoSize = 29.sp,
