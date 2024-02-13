@@ -257,7 +257,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
 
             So, Column is still being used when the number of Text elements is small.
          */
-        if ((totalNumLines ?: Int.MAX_VALUE) > 2000) {
+        if ((totalNumLines ?: Int.MAX_VALUE) > 1000) {
             val scrollState = rememberLazyListState()
             scrollbarAdapter = rememberScrollbarAdapter(scrollState)
 
