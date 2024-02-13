@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 @Composable
-fun KeyValueTableView(modifier: Modifier = Modifier, keyValues: List<Pair<String, String>>) {
+fun KeyValueTableView(modifier: Modifier = Modifier, keyValues: List<Pair<String, String>>, isCopyable: Boolean = false) {
     val colors = LocalColor.current
 
     Column(modifier) {
@@ -30,8 +30,42 @@ fun KeyValueTableView(modifier: Modifier = Modifier, keyValues: List<Pair<String
         LazyColumn {
             items(items = keyValues) {
                 Row(modifier = Modifier.height(IntrinsicSize.Max)) {
-                    AppTextField(value = it.first, readOnly = true, onValueChange = {}, backgroundColor = Color.Transparent, contentPadding = PaddingValues(0.dp), modifier = Modifier.weight(0.4f).fillMaxHeight().border(width = 1.dp, color = colors.placeholder, RectangleShape).padding(all = 8.dp))
-                    AppTextField(value = it.second, readOnly = true, onValueChange = {}, backgroundColor = Color.Transparent, contentPadding = PaddingValues(0.dp), modifier = Modifier.weight(0.6f).fillMaxHeight().border(width = 1.dp, color = colors.placeholder, RectangleShape).padding(all = 8.dp))
+                    CopyableContentContainer(
+                        textToCopy = it.first,
+                        isEnabled = isCopyable,
+                        size = 16.dp,
+                        innerPadding = 2.dp,
+                        outerPadding = PaddingValues(top = 6.dp, end = 2.dp),
+                        modifier = Modifier.weight(0.4f).fillMaxHeight()
+                            .border(width = 1.dp, color = colors.placeholder, RectangleShape)
+                    ) {
+                        AppTextField(
+                            value = it.first,
+                            readOnly = true,
+                            onValueChange = {},
+                            backgroundColor = Color.Transparent,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.padding(all = 8.dp),
+                        )
+                    }
+                    CopyableContentContainer(
+                        textToCopy = it.second,
+                        isEnabled = isCopyable,
+                        size = 16.dp,
+                        innerPadding = 2.dp,
+                        outerPadding = PaddingValues(top = 6.dp, end = 2.dp),
+                        modifier = Modifier.weight(0.6f).fillMaxHeight()
+                            .border(width = 1.dp, color = colors.placeholder, RectangleShape)
+                    ) {
+                        AppTextField(
+                            value = it.second,
+                            readOnly = true,
+                            onValueChange = {},
+                            backgroundColor = Color.Transparent,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.padding(all = 8.dp),
+                        )
+                    }
                 }
             }
         }

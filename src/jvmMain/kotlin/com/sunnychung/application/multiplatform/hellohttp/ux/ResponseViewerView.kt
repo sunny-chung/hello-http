@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -30,17 +31,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
-import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.Certificate
 import com.sunnychung.application.multiplatform.hellohttp.model.ConnectionSecurityType
@@ -49,6 +53,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -169,7 +174,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                 ResponseTab.Stream -> ResponseStreamView(response)
 
                 ResponseTab.Header -> if (response.headers != null) {
-                    KeyValueTableView(keyValues = response.headers!!, modifier = Modifier.fillMaxSize().padding(8.dp))
+                    KeyValueTableView(keyValues = response.headers!!, isCopyable = true, modifier = Modifier.fillMaxSize().padding(8.dp))
                 } else {
                     ResponseEmptyView(type = "header", isCommunicating = connectionStatus.isConnectionActive(), modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
@@ -507,25 +512,28 @@ fun BodyViewerView(
                 PrettifyResult(contentToUse.decodeToString() ?: "")
             }
 
-            CodeEditorView(
-                isReadOnly = true,
-                text = prettifyResult.prettyString,
-                collapsableLines = prettifyResult.collapsableLineRange,
-                collapsableChars = prettifyResult.collapsableCharRange,
-                transformations = if (selectedView.prettifier!!.formatName.contains("JSON")) {
-                    listOf(JsonSyntaxHighlightTransformation(colours = colours))
-                } else {
-                    emptyList()
-                },
-                modifier = modifier,
-            )
+            CopyableContentContainer(textToCopy = prettifyResult.prettyString, modifier = modifier) {
+                CodeEditorView(
+                    isReadOnly = true,
+                    text = prettifyResult.prettyString,
+                    collapsableLines = prettifyResult.collapsableLineRange,
+                    collapsableChars = prettifyResult.collapsableCharRange,
+                    transformations = if (selectedView.prettifier!!.formatName.contains("JSON")) {
+                        listOf(JsonSyntaxHighlightTransformation(colours = colours))
+                    } else {
+                        emptyList()
+                    },
+                )
+            }
         } else {
-            CodeEditorView(
-                isReadOnly = true,
-                text = errorMessage ?: content.decodeToString(),
-                textColor = colours.warning,
-                modifier = modifier,
-            )
+            val text = errorMessage ?: content.decodeToString()
+            CopyableContentContainer(textToCopy = text, modifier = modifier) {
+                CodeEditorView(
+                    isReadOnly = true,
+                    text = text,
+                    textColor = colours.warning,
+                )
+            }
         }
         if (isEnableJsonPath) {
             AppTextFieldWithPlaceholder(
@@ -586,6 +594,49 @@ fun ResponseBodyView(response: UserResponse) {
                 text = response.postFlightErrorMessage ?: "",
                 textColor = LocalColor.current.warning,
                 modifier = Modifier.fillMaxWidth().height(100.dp),
+            )
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalComposeUiApi::class)
+fun CopyableContentContainer(
+    modifier: Modifier = Modifier,
+    textToCopy: String,
+    isEnabled: Boolean = true,
+    size: Dp = 20.dp,
+    innerPadding: Dp = 4.dp,
+    outerPadding: PaddingValues = PaddingValues(top = 4.dp, end = 12.dp),
+    contentView: @Composable () -> Unit
+) {
+    if (!isEnabled) {
+        Box(modifier = modifier) {
+            contentView()
+        }
+        return
+    }
+
+    var isShowCopyButton by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier
+            .onPointerEvent(PointerEventType.Enter) {
+                isShowCopyButton = true
+            }
+            .onPointerEvent(PointerEventType.Exit) {
+                isShowCopyButton = false
+            }
+    ) {
+        contentView()
+        if (isShowCopyButton) {
+            FloatingCopyButton(
+                textToCopy = textToCopy,
+                size = size,
+                innerPadding = innerPadding,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(outerPadding)
             )
         }
     }

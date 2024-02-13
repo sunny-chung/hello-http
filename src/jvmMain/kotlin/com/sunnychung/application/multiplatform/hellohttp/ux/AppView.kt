@@ -48,6 +48,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
@@ -77,6 +78,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ErrorMessagePromptViewModel
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -177,8 +179,14 @@ fun AppView() {
                     ) {
                         AppText(
                             text = errorMessageState.message,
+                            textAlign = TextAlign.Center,
                             modifier = Modifier
-                                .background(colors.errorResponseBackground)
+                                .background(
+                                    when (errorMessageState.type) {
+                                        ErrorMessagePromptViewModel.MessageType.Error -> colors.errorResponseBackground
+                                        ErrorMessagePromptViewModel.MessageType.Success -> colors.successfulResponseBackground
+                                    }
+                                )
                                 .widthIn(min = 200.dp, max = 600.dp)
                                 .onPointerEvent(PointerEventType.Enter) {
                                     errorMessageVM.lockDismissTime()

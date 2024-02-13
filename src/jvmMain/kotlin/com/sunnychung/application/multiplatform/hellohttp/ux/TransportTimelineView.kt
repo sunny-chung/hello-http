@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -22,13 +23,20 @@ import androidx.compose.foundation.v2.ScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.Paragraph
@@ -49,9 +57,11 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 private val DATE_TIME_FORMAT = KDateTimeFormat("HH:mm:ss.lll")
 private val TIMESTAMP_COLUMN_WIDTH_DP = 130.dp
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersion?, exchange: RawExchange) {
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
+    val density = LocalDensity.current
 
     log.d { "TransportTimelineView recompose" }
 
@@ -68,7 +78,139 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
         0
     }
 
-    Box(modifier = modifier) {
+    // --- for copy button start
+    data class PosContainer(val top: Float, val bottom: Float = top, val index: Int, val localLine: Int) : Comparable<PosContainer> {
+        override fun compareTo(other: PosContainer): Int {
+            return compareValuesBy(this, other, { it.top }, { it.index }, { it.localLine })
+        }
+    }
+    class LineKey(val index: Int, val type: LineType, val localLine: Int, val text: String) : Comparable<LineKey> {
+        override fun compareTo(other: LineKey): Int {
+            return compareValuesBy(this, other, { it.index }, { it.localLine })
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is LineKey) return false
+
+            if (index != other.index) return false
+            if (localLine != other.localLine) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = index
+            result = 31 * result + localLine
+            return result
+        }
+
+        override fun toString(): String {
+            return "LineKey(index=$index, type=$type, localLine=$localLine)"
+        }
+    }
+
+    var copyButtonHeight by remember { mutableStateOf(1) }
+    var containerXPos by remember { mutableStateOf(0f) }
+    var containerYPos by remember { mutableStateOf(0f) }
+    var mouseRelativePos by remember { mutableStateOf<Offset?>(null) }
+    var showCopyButtonAtYPos by remember { mutableStateOf<Float?>(null) }
+    var showCopyButtonForText by remember { mutableStateOf("") }
+    var showCopyButtonLeftBound by remember { mutableStateOf(0f) }
+    val childPositions = remember { sortedMapOf<LineKey, PosContainer>() }
+    val childPositionToKeys = remember { sortedMapOf<PosContainer, LineKey>() }
+
+    val onPositionLine = { itemIndex: Int, xLeftAbsPos: Float, yTopAbsPos: Float, yBottomAbsPos: Float, localLine: Int, lineType: LineType, eventText: String ->
+        val key = LineKey(itemIndex, lineType, localLine, eventText)
+        synchronized(childPositions) {
+            childPositions[key]?.also { v ->
+//                log.v { "Removing $key $v" }
+                childPositionToKeys.remove(v) //?: throw RuntimeException("Cannot remove $key")
+            }
+            val posContainer = PosContainer(top = yTopAbsPos, bottom = yBottomAbsPos, index = itemIndex, localLine = localLine)
+//            log.v { "Inserting $key $posContainer" }
+            childPositions[key] = posContainer
+            childPositionToKeys[posContainer] = key
+
+            showCopyButtonLeftBound = xLeftAbsPos
+        }
+    }
+    val onDisposeLine = { index: Int, localLine: Int ->
+        val key = LineKey(index, LineType.FIRST_LINE, localLine, "")
+        val posContainer = childPositions[key] //?: throw RuntimeException("Not released $index $localLine")
+        if (posContainer != null) {
+            childPositions.remove(key) //?: throw RuntimeException("Not released $index $localLine")
+            childPositionToKeys.remove(posContainer) //?: throw RuntimeException("Not released $index $localLine")
+        }
+    }
+    val onMouseMove = onMouseMove@ { mousePos: Offset ->
+        mouseRelativePos = mousePos
+
+        if (mousePos.x + containerXPos < showCopyButtonLeftBound) {
+            showCopyButtonAtYPos = null
+            return@onMouseMove
+        }
+
+        val yPos = mousePos.y + containerYPos
+
+        val beforeKey = childPositionToKeys.headMap(PosContainer(yPos + 0.1f, index = -1, localLine = -1)).let { map ->
+            if (map.isEmpty()) {
+                null
+            } else {
+                val index = map[map.lastKey()]?.index ?: return@let null
+                // find the first visible line for this item index
+                childPositions.tailMap(LineKey(index, LineType.FIRST_LINE, -1, "")).firstKey()
+            }
+        }
+        val afterKey = childPositionToKeys.tailMap(PosContainer(yPos - 0.1f, index = -1, localLine = -1)).let { map ->
+            if (map.isEmpty()) {
+                null
+            } else {
+                val key = map[map.firstKey()]
+                if (key != null && beforeKey != null && key.index > beforeKey.index) {
+                    childPositions.headMap(LineKey(key.index, LineType.FIRST_LINE, -1, "")).lastKey()
+                } else {
+                    key
+                }
+            }
+        }
+//        log.v { "move at $beforeKey $afterKey" }
+
+        var showYPos = (beforeKey?.let { childPositions[it] } ?: run {
+            showCopyButtonAtYPos = null
+            return@onMouseMove
+        }).top - containerYPos
+        log.v { "first line pos $showYPos" }
+        showYPos = maxOf(with (density) { 4.dp.toPx() }, showYPos) // stay in visible area
+        if (afterKey?.type == LineType.LAST_LINE) {
+            // but let it go if the text is going to leave the visible area
+            childPositions[afterKey]?.let { lastLinePosContainer ->
+                log.v { "bottom ${lastLinePosContainer.bottom} - $copyButtonHeight - ${containerYPos} = ${lastLinePosContainer.bottom - copyButtonHeight - containerYPos}" }
+                showYPos = minOf(lastLinePosContainer.bottom - copyButtonHeight - containerYPos, showYPos)
+            }
+        }
+        showCopyButtonAtYPos = showYPos
+        showCopyButtonForText = beforeKey.text
+
+        log.v { "move at $beforeKey $afterKey $showYPos" }
+        log.v { "childPositions size ${childPositions.size} ${childPositionToKeys.size}" }
+    }
+    // --- for copy button end
+
+    Box(
+        modifier = modifier
+            .onGloballyPositioned {
+                containerXPos = it.positionInRoot().x
+                containerYPos = it.positionInRoot().y
+            }
+            .onPointerEvent(PointerEventType.Move) {
+                onMouseMove(it.changes.first().position)
+            }
+            .onPointerEvent(PointerEventType.Exit) {
+                showCopyButtonAtYPos = null
+            }
+            .clipToBounds()
+    ) {
         Box(
             Modifier
                 .width(timestampColumnWidthDp + 6.dp)
@@ -88,7 +230,6 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
             fontSize = LocalFont.current.bodyFontSize,
             fontFamily = FontFamily.Monospace,
         )
-        val density = LocalDensity.current
         val fontFamilyResolver = LocalFontFamilyResolver.current
 
         val numCharsInALine = if (contentWidthInPx != null) {
@@ -120,6 +261,10 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
             val scrollState = rememberLazyListState()
             scrollbarAdapter = rememberScrollbarAdapter(scrollState)
 
+            if (scrollState.isScrollInProgress) {
+                mouseRelativePos?.let { onMouseMove(it) }
+            }
+
             log.d { "TransportTimelineView adopts LazyColumn $totalNumLines" }
 
             SelectionContainer {
@@ -136,6 +281,8 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
                             onMeasureContentWidth = { contentWidthInPx = it },
                             onMeasureContentLines = { totalNumLines = it.totalNumLines },
                             onPrepareComposable = {},
+                            onPositionLine = onPositionLine,
+                            onDisposeLine = onDisposeLine,
                         )
     //                    }
                     }
@@ -144,6 +291,10 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
         } else {
             val scrollState = rememberScrollState()
             scrollbarAdapter = rememberScrollbarAdapter(scrollState)
+
+            if (scrollState.isScrollInProgress) {
+                mouseRelativePos?.let { onMouseMove(it) }
+            }
 
             log.d { "TransportTimelineView adopts Column $totalNumLines" }
 
@@ -161,6 +312,8 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
                             onMeasureContentWidth = { contentWidthInPx = it },
                             onMeasureContentLines = { totalNumLines = it.totalNumLines },
                             onPrepareComposable = { composables += it },
+                            onPositionLine = onPositionLine,
+                            onDisposeLine = onDisposeLine,
                         )
                     }
                     composables.forEach { it() }
@@ -168,11 +321,28 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
             }
         }
 
+        showCopyButtonAtYPos?.let { showCopyButtonAtYPos ->
+            FloatingCopyButton(
+                textToCopy = showCopyButtonForText,
+                size = 16.dp,
+                innerPadding = 2.dp,
+                modifier = Modifier
+                    .onGloballyPositioned { copyButtonHeight = it.size.height }
+                    .align(Alignment.TopEnd)
+                    .padding(end = 8.dp)
+                    .offset(y = with (density) { showCopyButtonAtYPos.toDp() })
+            )
+        }
+
         VerticalScrollbar(
             modifier = Modifier.align(Alignment.CenterEnd),
             adapter = scrollbarAdapter,
         )
     }
+}
+
+enum class LineType {
+    FIRST_LINE, MIDDLE_LINE, LAST_LINE
 }
 
 private fun TransportTimelineContentView(
@@ -185,6 +355,10 @@ private fun TransportTimelineContentView(
     onMeasureContentWidth: (Int) -> Unit,
     onMeasureContentLines: (TransportTimelineContentMeasureResult) -> Unit,
     onPrepareComposable: (@Composable () -> Unit) -> Unit,
+
+    // all the below events are for copy buttons
+    onPositionLine: (itemIndex: Int, xLeftAbsPos: Float, yTopAbsPos: Float, yBottomAbsPos: Float, localLine: Int, lineType: LineType, eventText: String) -> Unit,
+    onDisposeLine: (itemIndex: Int, localLine: Int) -> Unit,
 ) {
     var totalLines = 0
     exchange.exchanges.forEachIndexed { index, it ->
@@ -220,11 +394,12 @@ private fun TransportTimelineContentView(
             Pair(listOf(" "), listOf(1))
         }
         totalLines += textsSplitted.size
-        log.d { "max chars = " + textsSplitted.maxOf { it.length } }
-        log.d { "size = ${textsSplitted.size}" }
+        log.v { "max chars = " + textsSplitted.maxOf { it.length } }
+        log.v { "size = ${textsSplitted.size}" }
 
         textsSplitted.forEachIndexed { textIndex, textChunk ->
-            lazyOrNormalItem(scope = scope, key = "$protocol-$index-$textIndex-${textChunk.hashCode()}", onPrepareComposable = onPrepareComposable) {
+            val viewKey = "$protocol-$index-$textIndex-${textChunk.hashCode()}"
+            lazyOrNormalItem(scope = scope, key = viewKey, onPrepareComposable = onPrepareComposable) {
                 // Not using `height(IntrinsicSize.Min)` because it is buggy.
                 Row(
                     modifier = Modifier.padding(
@@ -289,8 +464,28 @@ private fun TransportTimelineContentView(
                         softWrap = false, // since maxLines is always 1
                         modifier = Modifier.weight(1f).onGloballyPositioned {
                             onMeasureContentWidth(it.size.width)
+//                            log.v { "pos $index, $textIndex -> ${ it.positionInRoot().y }, ${ it.positionInWindow().y }, ${ it.positionInParent().y }" }
+                            val absPos = it.positionInRoot()
+                            onPositionLine(
+                                index,
+                                absPos.x,
+                                absPos.y,
+                                absPos.y + it.size.height,
+                                textIndex,
+                                when (textIndex) {
+                                    0 -> LineType.FIRST_LINE
+                                    textsSplitted.lastIndex -> LineType.LAST_LINE
+                                    else -> LineType.MIDDLE_LINE
+                                },
+                                text,
+                            )
                         },
                     )
+                    DisposableEffect(viewKey) {
+                        onDispose {
+                            onDisposeLine(index, textIndex)
+                        }
+                    }
                 }
             }
         }
@@ -331,5 +526,9 @@ fun TimestampColumn(modifier: Modifier = Modifier, createTime: KInstant, lastUpd
         text = "$text ~ ${DATE_TIME_FORMAT.format(lastUpdateTime.atZoneOffset(KZoneOffset.local()))}"
     }
 
-    AppText(text = text, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Right, modifier = modifier.padding(end = 4.dp))
+    // sometimes copy button is not working, due to Compose bug:
+    // https://github.com/JetBrains/compose-multiplatform/issues/1450
+    CopyableContentContainer(textToCopy = text, size = 12.dp, innerPadding = 2.dp, outerPadding = PaddingValues(end = 2.dp)) {
+        AppText(text = text, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Right, modifier = modifier.padding(end = 4.dp))
+    }
 }
