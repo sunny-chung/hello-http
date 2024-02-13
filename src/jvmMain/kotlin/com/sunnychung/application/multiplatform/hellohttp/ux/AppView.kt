@@ -540,6 +540,7 @@ fun AppContentView() {
                                             )
                                             log.d { "curl: $curl" }
                                             clipboardManager.setText(AnnotatedString(curl))
+                                            errorMessageVM.showSuccessMessage("Copied command")
                                             true
                                         } catch (e: Throwable) {
                                             log.w(e) { "Cannot convert request" }
@@ -557,6 +558,7 @@ fun AppContentView() {
                                             )
                                             log.d { "grpcurl: $cmd" }
                                             clipboardManager.setText(AnnotatedString(cmd))
+                                            errorMessageVM.showSuccessMessage("Copied command")
                                             true
                                         } catch (e: Throwable) {
                                             errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
