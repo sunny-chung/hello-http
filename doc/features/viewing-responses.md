@@ -36,7 +36,7 @@ documented [here](https://github.com/json-path/JsonPath).
 
 ![Filtering JSON Response](../response-json-filtering.gif)
 
-## Collapse/Expand JSON Data Structures
+## Collapsing/Expanding JSON
 
 JSON arrays and objects can be collapsed and expanded.
 
