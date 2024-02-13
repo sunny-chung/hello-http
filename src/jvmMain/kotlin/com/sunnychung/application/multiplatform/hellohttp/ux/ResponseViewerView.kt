@@ -36,8 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,7 +45,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
-import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.manager.Prettifier
 import com.sunnychung.application.multiplatform.hellohttp.model.Certificate
 import com.sunnychung.application.multiplatform.hellohttp.model.ConnectionSecurityType
@@ -56,6 +53,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -619,7 +617,6 @@ fun CopyableContentContainer(
         return
     }
 
-    val clipboardManager = LocalClipboardManager.current
     var isShowCopyButton by remember { mutableStateOf(false) }
 
     Box(
@@ -634,15 +631,13 @@ fun CopyableContentContainer(
         contentView()
         if (isShowCopyButton) {
             FloatingCopyButton(
+                textToCopy = textToCopy,
                 size = size,
                 innerPadding = innerPadding,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(outerPadding)
-            ) {
-                log.d { "Copied $textToCopy" }
-                clipboardManager.setText(AnnotatedString(textToCopy))
-            }
+            )
         }
     }
 }

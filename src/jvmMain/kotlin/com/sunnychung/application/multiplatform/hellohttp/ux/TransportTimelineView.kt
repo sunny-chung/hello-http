@@ -37,10 +37,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -64,7 +62,6 @@ private val TIMESTAMP_COLUMN_WIDTH_DP = 130.dp
 fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersion?, exchange: RawExchange) {
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
     val density = LocalDensity.current
-    val clipboardManager = LocalClipboardManager.current
 
     log.d { "TransportTimelineView recompose" }
 
@@ -326,6 +323,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
 
         showCopyButtonAtYPos?.let { showCopyButtonAtYPos ->
             FloatingCopyButton(
+                textToCopy = showCopyButtonForText,
                 size = 16.dp,
                 innerPadding = 2.dp,
                 modifier = Modifier
@@ -333,9 +331,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
                     .align(Alignment.TopEnd)
                     .padding(end = 8.dp)
                     .offset(y = with (density) { showCopyButtonAtYPos.toDp() })
-            ) {
-                clipboardManager.setText(AnnotatedString(showCopyButtonForText))
-            }
+            )
         }
 
         VerticalScrollbar(

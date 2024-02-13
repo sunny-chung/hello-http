@@ -77,6 +77,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ErrorMessagePromptViewModel
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -178,7 +179,12 @@ fun AppView() {
                         AppText(
                             text = errorMessageState.message,
                             modifier = Modifier
-                                .background(colors.errorResponseBackground)
+                                .background(
+                                    when (errorMessageState.type) {
+                                        ErrorMessagePromptViewModel.MessageType.Error -> colors.errorResponseBackground
+                                        ErrorMessagePromptViewModel.MessageType.Success -> colors.successfulResponseBackground
+                                    }
+                                )
                                 .widthIn(min = 200.dp, max = 600.dp)
                                 .onPointerEvent(PointerEventType.Enter) {
                                     errorMessageVM.lockDismissTime()
