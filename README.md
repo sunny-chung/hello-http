@@ -56,6 +56,7 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
     - DELETE
     - OPTIONS
     - HEAD
+    - any other custom defined
   - with request body varieties:
     - Form URL-encoded
     - Multipart Form with file upload
@@ -98,10 +99,12 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
 - Message streaming from gRPC communications
 - Persistence per request example
 - Searching in response body
+- Collapsable JSON response body
 - Filtering JSON response body by [JSON path](https://github.com/json-path/JsonPath)
 - Automatic gzip / deflate decompression
 - Connection security indicator (Unencrypted / Unverified TLS / Verified One-way TLS / Verified mTLS)
 - Certificates in use
+- Handy buttons for copying responses to clipboard
 
 **Appearance and Interactions**
 - Dark and light theme

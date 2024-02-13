@@ -36,3 +36,15 @@ documented [here](https://github.com/json-path/JsonPath).
 
 ![Filtering JSON Response](../response-json-filtering.gif)
 
+## Collapse/Expand JSON Data Structures
+
+JSON arrays and objects can be collapsed and expanded.
+
+![Collapse/Expand JSON Data Structures](../collapse-json.gif)
+
+## Copying Responses
+
+Hover any copiable fields and click the "copy" button to copy. A prompt is displayed if copying is successful.
+
+![Copying Responses](../copy-response.gif)
+
