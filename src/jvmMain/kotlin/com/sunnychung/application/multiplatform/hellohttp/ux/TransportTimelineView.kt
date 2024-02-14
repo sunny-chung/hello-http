@@ -527,7 +527,7 @@ fun lazyOrNormalItem(
 @Composable
 fun TimestampColumn(modifier: Modifier = Modifier, createTime: KInstant, lastUpdateTime: KInstant?) {
     var text = DATE_TIME_FORMAT.format(createTime.atZoneOffset(KZoneOffset.local()))
-    if (lastUpdateTime != null) {
+    if (lastUpdateTime != null && lastUpdateTime != createTime) {
         text = "$text ~ ${DATE_TIME_FORMAT.format(lastUpdateTime.atZoneOffset(KZoneOffset.local()))}"
     }
 
