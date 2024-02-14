@@ -55,7 +55,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 
 private val DATE_TIME_FORMAT = KDateTimeFormat("HH:mm:ss.lll")
-private val TIMESTAMP_COLUMN_WIDTH_DP = 130.dp
+private val TIMESTAMP_COLUMN_WIDTH_DP = 110.dp
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
