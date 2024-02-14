@@ -11,6 +11,7 @@ data class AppFont(
     val supplementSize: TextUnit,
     val codeEditorBodyFontSize: TextUnit,
     val codeEditorLineNumberFontSize: TextUnit,
+    val streamFontSize: TextUnit = codeEditorBodyFontSize,
     val transportTimelineBodyFontSize: TextUnit = codeEditorBodyFontSize,
 
     val createLabelSize: TextUnit,

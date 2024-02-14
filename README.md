@@ -104,12 +104,12 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
 - Automatic gzip / deflate decompression
 - Connection security indicator (Unencrypted / Unverified TLS / Verified One-way TLS / Verified mTLS)
 - Certificates in use
-- Handy buttons for copying responses to clipboard
 
 **Appearance and Interactions**
 - Dark and light theme
 - Syntax highlighting for JSON and GraphQL
 - Confirmation is made before executing any delete action
+- Handy buttons for copying responses to clipboard
 
 **Others**
 - Best effort to make executables portable. Installation is not mandatory.

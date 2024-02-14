@@ -643,12 +643,13 @@ fun CopyableContentContainer(
 }
 
 private val DATE_TIME_FORMAT = KDateTimeFormat("HH:mm:ss.lll")
-private val TIMESTAMP_COLUMN_WIDTH_DP = 120.dp
+private val TIMESTAMP_COLUMN_WIDTH_DP = 100.dp
 private val TYPE_COLUMN_WIDTH_DP = 20.dp
 
 @Composable
 fun ResponseStreamView(response: UserResponse) {
     val colours = LocalColor.current
+    val fonts = LocalFont.current
 
     var selectedMessage by rememberLast(response.id) { mutableStateOf<PayloadMessage?>(null) }
     val displayMessage = selectedMessage ?: response.payloadExchanges?.lastOrNull { it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.Error) } // last -> largest timestamp
@@ -711,6 +712,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
                                 color = textColour,
                                 fontFamily = FontFamily.Monospace,
+                                fontSize = fonts.streamFontSize,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
                             )
@@ -724,6 +726,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 },
                                 color = textColour,
                                 fontFamily = FontFamily.Monospace,
+                                fontSize = fonts.streamFontSize,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
                             )
@@ -734,6 +737,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 softWrap = false,
                                 maxLines = 1,
                                 fontFamily = FontFamily.Monospace,
+                                fontSize = fonts.streamFontSize,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
                             )
