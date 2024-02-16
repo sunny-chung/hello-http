@@ -29,6 +29,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
+import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.message.BasicNameValuePair
 import org.apache.hc.core5.http.nio.AsyncRequestProducer
 import org.apache.hc.core5.http.nio.entity.AsyncEntityProducers
@@ -215,7 +216,13 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
                 *(entity.trailers?.get()?.toTypedArray() ?: emptyArray())
             )
         }
-        is StringBody -> AsyncEntityProducers.create(body.value, Charsets.UTF_8)
+
+        is StringBody -> AsyncEntityProducers.create(
+            /* content = */ body.value,
+            /* contentType = */ contentType.headerValue?.let { ContentType.create(it, Charsets.UTF_8) }
+                ?: ContentType.DEFAULT_BINARY.withCharset(Charsets.UTF_8)
+        )
+
         null -> null
         else -> throw UnsupportedOperationException()
     }
