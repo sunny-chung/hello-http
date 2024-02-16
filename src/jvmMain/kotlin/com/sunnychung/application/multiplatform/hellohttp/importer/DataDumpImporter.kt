@@ -106,14 +106,14 @@ class DataDumpImporter {
             }
         }
 
-        fun copyWithNewId(current: TreeObject): TreeObject {
+        fun copyWithNewId(current: TreeObject): TreeObject? {
             return when (current) {
                 is TreeFolder -> current.copy(
                     id = uuidString(),
-                    childs = current.childs.map { copyWithNewId(it) }.toMutableList(),
+                    childs = current.childs.mapNotNull { copyWithNewId(it) }.toMutableList(),
                 )
                 is TreeRequest -> current.copy(
-                    id = newRequestTemplateIds[current.id]!!
+                    id = newRequestTemplateIds[current.id] ?: return null
                 )
             }
         }
@@ -129,7 +129,7 @@ class DataDumpImporter {
                         environments = it.environments.map {
                             it.copy(id = uuidString())
                         }.toMutableList(),
-                        treeObjects = it.treeObjects.map { copyWithNewId(it) }.toMutableList(),
+                        treeObjects = it.treeObjects.mapNotNull { copyWithNewId(it) }.toMutableList(),
                         grpcApiSpecIds = it.grpcApiSpecIds.mapNotNull { newApiSpecIds[it] }.toMutableSet(),
                     )
                 }.toMutableList()
