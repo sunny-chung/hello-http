@@ -17,6 +17,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,7 +47,9 @@ fun AppText(
     hasHoverHighlight: Boolean = false,
     hoverColor: Color = LocalColor.current.highlight,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
-    style: TextStyle = LocalTextStyle.current
+
+    // https://issuetracker.google.com/issues/325519362
+    style: TextStyle = LocalTextStyle.current.copy(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Bottom, LineHeightStyle.Trim.Both))
 ) {
     var textStyle by remember { mutableStateOf(style.copy(fontSize = fontSize)) }
     var isReadyToRender by remember { mutableStateOf(!isFitContent) }
