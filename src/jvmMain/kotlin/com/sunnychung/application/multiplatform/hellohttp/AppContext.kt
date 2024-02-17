@@ -14,6 +14,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstance
 import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.repository.ApiSpecificationCollectionRepository
+import com.sunnychung.application.multiplatform.hellohttp.repository.OperationalRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ProjectCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.RequestCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.ResponseCollectionRepository
@@ -42,6 +43,7 @@ object AppContext {
     val ResponseCollectionRepository = ResponseCollectionRepository()
     val ApiSpecificationCollectionRepository = ApiSpecificationCollectionRepository()
     val UserPreferenceRepository = UserPreferenceRepository()
+    val OperationalRepository = OperationalRepository()
 
     val DialogViewModel = DialogViewModel()
     val ErrorMessagePromptViewModel = ErrorMessagePromptViewModel()

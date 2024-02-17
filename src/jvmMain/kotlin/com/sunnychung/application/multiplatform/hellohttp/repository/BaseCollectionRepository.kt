@@ -142,6 +142,11 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
+    suspend fun awaitUpdate(identifier: ID) {
+        notifyUpdated(identifier)
+        update(identifier)
+    }
+
     open suspend fun delete(identifier: ID) {
         withLock(identifier) {
             with(persistenceManager) {

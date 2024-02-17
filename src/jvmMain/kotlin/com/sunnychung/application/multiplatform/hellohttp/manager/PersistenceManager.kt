@@ -2,12 +2,16 @@ package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.DocumentIdentifier
+import com.sunnychung.application.multiplatform.hellohttp.document.OperationalDI
+import com.sunnychung.application.multiplatform.hellohttp.document.OperationalDocument
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDocument
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
+import com.sunnychung.application.multiplatform.hellohttp.model.OperationalInfo
 import com.sunnychung.application.multiplatform.hellohttp.model.UserPreference
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -68,6 +72,15 @@ class PersistenceManager {
             UserPreferenceDocument(id = id, preference = UserPreference(
                 colourTheme = ColourTheme.Dark
             ))
+        }
+        AppContext.OperationalRepository.readOrCreate(OperationalDI()) { id ->
+            OperationalDocument(
+                id = id,
+                data = OperationalInfo(
+                    appVersion = AppContext.MetadataManager.version,
+                    installationId = uuidString(),
+                )
+            )
         }
     }
 
