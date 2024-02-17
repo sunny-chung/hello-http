@@ -12,6 +12,7 @@ class MetadataManager {
             if (!hasReadProperties) {
                 val inputStream = javaClass.getResourceAsStream("/build.properties")
                 properties.load(inputStream)
+                hasReadProperties = true
             }
         }
     }
