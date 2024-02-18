@@ -234,3 +234,64 @@ Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
 
     else -> throw UnsupportedOperationException()
 }
+
+fun UserResponse.describeTransportLayer() = buildString {
+    val events = synchronized(rawExchange.exchanges) {
+        rawExchange.exchanges.toList()
+    }
+    val titles = listOf(
+        "Time",
+        "Dir",
+        "Stream",
+        "Detail"
+    )
+    val exportedData = events.map {
+        listOf(
+            it.instant.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT) +
+                if (it.lastUpdateInstant != null && it.lastUpdateInstant != it.instant) {
+                    " ~ " + it.lastUpdateInstant!!.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT)
+                } else {
+                    ""
+                },
+            when (it.direction) {
+                RawExchange.Direction.Outgoing -> "Out"
+                RawExchange.Direction.Incoming -> "In"
+                RawExchange.Direction.Unspecified -> "-"
+            },
+            it.streamId?.toString() ?: if (protocol?.isHttp2() == true) "*" else "",
+            it.detail
+                ?: it.payload?.decodeToString()
+                ?: it.payloadBuilder?.toByteArray()?.decodeToString()
+                ?: "<Payload Lost>",
+        )
+    }
+    val maxLengths = (0 .. titles.lastIndex).map { i ->
+        exportedData.maxOf { it[i].length }
+    }
+    val columnLengths = maxLengths.mapIndexed { i, it ->
+        if (it > 0) {
+            maxOf(it, titles[i].length)
+        } else {
+            0
+        }
+    }
+
+    // TODO optimize the loops
+    val columnIndices = titles.withIndex().filter { (i, _) -> columnLengths[i] > 0 }.map { (i, _) -> i }
+    appendLine(titles.withIndex().filter { (i, _) -> columnLengths[i] > 0 }.joinToString(" | ") { (i, s) -> s.padEnd(columnLengths[i], ' ') })
+    appendLine(titles.withIndex().filter { (i, _) -> columnLengths[i] > 0 }.joinToString("=|=") { (i, _) -> "".padEnd(columnLengths[i], '=') })
+    exportedData.forEach { texts ->
+        // assume only the last column can have multiple lines
+        append(texts.withIndex().filter { (i, _) -> columnLengths[i] > 0 && i < columnIndices.lastIndex }.joinToString("") { (i, s) -> s.padEnd(columnLengths[i], ' ') + " | " })
+        val lines = texts.last().lines()
+        if (lines.size <= 1) {
+            appendLine(lines.firstOrNull() ?: "")
+        } else {
+            val linePrefix = titles.withIndex().filter { (ii, _) -> columnLengths[ii] > 0 && ii < columnIndices.lastIndex }.joinToString("") { (i, _) -> "".padEnd(columnLengths[i], ' ') + " | " }
+            lines.forEachIndexed { i, line ->
+                if (i > 0) append(linePrefix)
+                appendLine(line)
+            }
+        }
+    }
+}

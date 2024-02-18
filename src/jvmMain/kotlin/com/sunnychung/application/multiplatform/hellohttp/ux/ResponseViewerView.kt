@@ -184,7 +184,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                 }
 
                 ResponseTab.Raw ->
-                    TransportTimelineView(protocol = response.protocol, exchange = response.rawExchange.copy(), modifier = Modifier.fillMaxSize())
+                    TransportTimelineView(protocol = response.protocol, exchange = response.rawExchange.copy(), response = response, modifier = Modifier.fillMaxSize())
             }
         }
     }
