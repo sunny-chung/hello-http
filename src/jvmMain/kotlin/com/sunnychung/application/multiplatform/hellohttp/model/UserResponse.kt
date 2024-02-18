@@ -4,8 +4,9 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.extension.endWithNewLine
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormattable
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -237,9 +238,13 @@ Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
     else -> throw UnsupportedOperationException()
 }
 
-fun UserResponse.describeTransportLayer() = buildString {
+fun UserResponse.describeTransportLayer(isRelativeTimeDisplay: Boolean) = buildString {
     val events = synchronized(rawExchange.exchanges) {
         rawExchange.exchanges.toList()
+    }
+    val startInstant = events.firstOrNull()?.instant ?: run {
+        appendLine("No transportation")
+        return@buildString
     }
     val titles = listOf(
         "Time",
@@ -247,11 +252,18 @@ fun UserResponse.describeTransportLayer() = buildString {
         "Stream",
         "Detail"
     )
+    fun KZonedInstant.formatAbsTimeOrRelativeTime(): String =
+        if (isRelativeTimeDisplay) {
+            (this - startInstant).format("HH:mm:ss.lll")
+        } else {
+            this.format(TIME_FORMAT)
+        }
+
     val exportedData = events.map {
         listOf(
-            it.instant.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT) +
+            it.instant.atZoneOffset(KZoneOffset.local()).formatAbsTimeOrRelativeTime() +
                 if (it.lastUpdateInstant != null && it.lastUpdateInstant != it.instant) {
-                    " ~ " + it.lastUpdateInstant!!.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT)
+                    " ~ " + it.lastUpdateInstant!!.atZoneOffset(KZoneOffset.local()).formatAbsTimeOrRelativeTime()
                 } else {
                     ""
                 },

@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -69,6 +70,8 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
     val density = LocalDensity.current
     val clipboardManager = LocalClipboardManager.current
+
+    var isRelativeTimeDisplay by remember { mutableStateOf(false) }
 
     log.d { "TransportTimelineView recompose" }
 
@@ -205,12 +208,23 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
     // --- for copy button end
 
     Column(modifier = modifier) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+            AppCheckbox(
+                checked = isRelativeTimeDisplay,
+                onCheckedChange = { isRelativeTimeDisplay = it },
+                size = 24.dp,
+                modifier = Modifier.padding(end = 4.dp)
+            )
+            AppText(
+                text = "Relative Time Display",
+                modifier = Modifier.clickable { isRelativeTimeDisplay = !isRelativeTimeDisplay },
+            )
+            Spacer(modifier = Modifier.weight(1f))
             AppTextButton(
                 text = "Copy All",
-                modifier = Modifier.align(Alignment.CenterEnd).padding(vertical = 4.dp, horizontal = 8.dp),
+                modifier = Modifier.padding(vertical = 4.dp),
             ) {
-                val textToCopy = response.describeTransportLayer()
+                val textToCopy = response.describeTransportLayer(isRelativeTimeDisplay = isRelativeTimeDisplay)
                 clipboardManager.setText(AnnotatedString(textToCopy))
                 AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
             }
@@ -297,6 +311,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
                                 numCharsInALine = numCharsInALine,
                                 protocol = protocol,
                                 streamDigits = streamDigits,
+                                isRelativeTimeDisplay = isRelativeTimeDisplay,
                                 onMeasureContentWidth = { contentWidthInPx = it },
                                 onMeasureContentLines = { totalNumLines = it.totalNumLines },
                                 onPrepareComposable = {},
@@ -328,6 +343,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
                                 numCharsInALine = numCharsInALine,
                                 protocol = protocol,
                                 streamDigits = streamDigits,
+                                isRelativeTimeDisplay = isRelativeTimeDisplay,
                                 onMeasureContentWidth = { contentWidthInPx = it },
                                 onMeasureContentLines = { totalNumLines = it.totalNumLines },
                                 onPrepareComposable = { composables += it },
@@ -372,6 +388,7 @@ private fun TransportTimelineContentView(
     numCharsInALine: Int,
     protocol: ProtocolVersion?,
     streamDigits: Int,
+    isRelativeTimeDisplay: Boolean,
     onMeasureContentWidth: (Int) -> Unit,
     onMeasureContentLines: (TransportTimelineContentMeasureResult) -> Unit,
     onPrepareComposable: (@Composable () -> Unit) -> Unit,
@@ -434,6 +451,8 @@ private fun TransportTimelineContentView(
                             TimestampColumn(
                                 createTime = it.instant,
                                 lastUpdateTime = it.lastUpdateInstant,
+                                isRelativeTimeDisplay = isRelativeTimeDisplay,
+                                startInstant = exchange.exchanges.first().instant,
                                 modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
                                     .padding(end = 1.dp)
                             )
@@ -545,10 +564,17 @@ fun lazyOrNormalItem(
 }
 
 @Composable
-fun TimestampColumn(modifier: Modifier = Modifier, createTime: KInstant, lastUpdateTime: KInstant?) {
-    var text = DATE_TIME_FORMAT.format(createTime.atZoneOffset(KZoneOffset.local()))
+fun TimestampColumn(modifier: Modifier = Modifier, createTime: KInstant, lastUpdateTime: KInstant?, isRelativeTimeDisplay: Boolean, startInstant: KInstant) {
+    var text = DATE_TIME_FORMAT.format(
+        createTime.atZoneOffset(KZoneOffset.local()).let { if (isRelativeTimeDisplay) it - startInstant else it }
+    )
     if (lastUpdateTime != null && lastUpdateTime != createTime) {
-        text = "$text ~ ${DATE_TIME_FORMAT.format(lastUpdateTime.atZoneOffset(KZoneOffset.local()))}"
+        text = "$text ~ ${
+            DATE_TIME_FORMAT.format(
+                lastUpdateTime.atZoneOffset(KZoneOffset.local())
+                    .let { if (isRelativeTimeDisplay) it - startInstant else it }
+            )
+        }"
     }
 
     // sometimes copy button is not working, due to Compose bug:
