@@ -117,6 +117,8 @@ ${
 
 Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
 
+Status Code: ${statusCode ?: "-"}${statusText?.let { " $it" } ?: ""}
+
 Headers:
 ```
 ${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
