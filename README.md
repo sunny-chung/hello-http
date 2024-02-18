@@ -109,7 +109,7 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
 - Dark and light theme
 - Syntax highlighting for JSON and GraphQL
 - Confirmation is made before executing any delete action
-- Handy buttons for copying responses to clipboard
+- Handy buttons for copying requests, responses or transport logs to clipboard
 
 **Others**
 - Best effort to make executables portable. Installation is not mandatory.
@@ -146,7 +146,6 @@ Windows laptop with 8 GB RAM without a noticeable performance degrade of other a
 Following features are on the TODO list (not in order). Feel free to raise feature requests or
 express your desired priorities in the issue tracker.
 
-- Copy buttons in response
 - Binary response view
 - Binary request editor
 - Overriding default headers
