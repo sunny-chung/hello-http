@@ -52,7 +52,11 @@ Hover any copiable fields and click the "copy" button to copy. A prompt is displ
 
 ### Copy Entire Request and Response
 
-Click the "Copy All" button. This functionality is supported regardless of protocol and streaming type.
+This is designed for communication with third party about API integration issues. When a third party API does not work as expected, simply copy the whole request and response to them, and they will have commonly needed information to figure out and fix the issues.
+
+To use it, just click the "Copy All" button. This functionality is supported regardless of protocols and streaming types.
+
+The copied text is in a markdown-like format for readability.
 
 Sample of copied text of a simple HTTP call:
 ``````markdown
@@ -301,6 +305,8 @@ grpc-status: 0
 ### Copy Entire Transport Log
 
 Click "Copy All" button in the "Raw" tab.
+
+Copied texts are in a table format. It can be imported into spreadsheet softwares, or selected or manipulated in major code editors that support vertical selections, for example, Sublime Text. Don't forget to turn off "word wrap" while viewing the table in code editors.
 
 Sample of copied text:
 ``````
