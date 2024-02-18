@@ -16,6 +16,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
+import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -213,6 +214,23 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                     log.w(e) { "Cannot parse grpc status code" }
                                 }
                             }
+
+                            handleHeaders(direction = direction, headers = headers)
+                        }
+
+                        fun handleHeaders(direction: Direction, headers: Http2Headers) {
+                            if (out == null) return
+                            when (direction) {
+                                Direction.OUTBOUND -> {
+                                    out.requestData!!.headers = (out.requestData!!.headers ?: emptyList()) +
+                                            headers.map { it.key.toString() to it.value.toString() }
+                                }
+                                Direction.INBOUND -> {
+                                    out.headers = (out.headers ?: emptyList()) +
+                                            headers.map { it.key.toString() to it.value.toString() }
+                                }
+                            }
+
                         }
 
                         override fun logHeaders(
@@ -235,6 +253,8 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                     headers.joinToString("\n") { "${it.key}: ${it.value}" }
                                 }"
                             )
+
+                            handleHeaders(direction = direction, headers = headers)
                         }
 
                         override fun logData(
@@ -437,6 +457,10 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         val apiSpec: GrpcApiSpec = extra.apiSpec!!
 
         val out = call.response
+        out.requestData = RequestData(
+            method = "POST",
+            url = uri.toASCIIString(),
+        )
 
         CoroutineScope(Dispatchers.IO).launch {
             call.status = ConnectionStatus.CONNECTING
@@ -470,10 +494,6 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 }
                                 super.start(object : SimpleForwardingClientCallListener<RespT>(responseListener) {
                                     override fun onHeaders(headers: Metadata) {
-                                        out.headers = headers.keys().flatMap { key ->
-                                            headers.getAll(Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER))
-                                                ?.map { key to it } ?: emptyList()
-                                        }
                                         super.onHeaders(headers)
                                     }
 

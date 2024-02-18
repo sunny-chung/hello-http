@@ -6,6 +6,8 @@ import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.RawPayload
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.util.llog
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -35,6 +37,14 @@ abstract class InspectedWebSocketClient(
 ) : WebSocketClient(
     uri,
     object : Draft_6455() {
+        override fun createHandshake(handshakedata: Handshakedata): MutableList<ByteBuffer> {
+            out.requestData!!.headers = handshakedata.iterateHttpFields()
+                .asSequence()
+                .map { it to handshakedata.getFieldValue(it) }
+                .toList()
+            return super.createHandshake(handshakedata)
+        }
+
         override fun translateHandshake(buf: ByteBuffer): Handshakedata {
             val copy = buf.duplicate()
             val line = readStringLine(copy)
@@ -43,6 +53,7 @@ abstract class InspectedWebSocketClient(
                 if (s[0] == "HTTP/1.1") {
                     out.statusCode = s[1].toIntOrNull()
                     out.statusText = s[2]
+                    out.protocol = ProtocolVersion(Protocol.Http, 1, 1)
                 }
             }
 
@@ -107,6 +118,7 @@ abstract class InspectedWebSocketClient(
         out.isCommunicating = false
         val appendReason = if (!reason.isNullOrEmpty()) ", reason $reason" else ""
         emitEvent(callId, "WebSocket channel closed by ${if (remote) "server" else "us"} with code $code$appendReason")
+        out.closeReason = "Closed by ${if (remote) "server" else "us"} with code $code$appendReason"
     }
 
     override fun onError(error: Exception) {

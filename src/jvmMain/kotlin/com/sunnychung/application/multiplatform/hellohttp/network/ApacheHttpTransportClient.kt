@@ -6,6 +6,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
+import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.ContentEncodingDecompressProcessor
@@ -41,6 +42,7 @@ import org.apache.hc.core5.http.Header
 import org.apache.hc.core5.http.HttpConnection
 import org.apache.hc.core5.http.HttpResponse
 import org.apache.hc.core5.http.config.Http1Config
+import org.apache.hc.core5.http.impl.Http1StreamListener
 import org.apache.hc.core5.http.message.StatusLine
 import org.apache.hc.core5.http.nio.AsyncClientExchangeHandler
 import org.apache.hc.core5.http.nio.AsyncPushConsumer
@@ -65,7 +67,6 @@ import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.coroutines.CoroutineContext
 
 class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
@@ -126,6 +127,12 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
                         CallDataUserResponseUtil.onConnected(callData.response)
                         emitEvent(callId, "Connected to $remoteAddress with $protocolVersion")
+
+                        if (protocolVersion.startsWith("HTTP/", ignoreCase = true)) {
+                            try {
+                                callData.response.protocol = ProtocolVersion(Protocol.Http, protocolVersion.drop("HTTP/".length))
+                            } catch (_: Throwable) { /* ignore */ }
+                        }
                     }
 
                     override fun onTlsUpgraded(
@@ -198,6 +205,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                 override fun onHeaderOutputEncoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
                     log.d { "onHeaderOutputEncoded $streamId" }
+                    callData.response.requestData!!.headers = (callData.response.requestData!!.headers ?: emptyList()) +
+                            headers.map { it.name to it.value }
+
                     val serialized = http2FrameSerializer.serializeHeaders(headers)
                     val frame = suspendedHeaderFrames.getOrPut(streamId) { H2HeaderFrame(streamId = streamId) }
                     frame.block = serialized
@@ -267,6 +277,21 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     }
                 }
 
+            },
+            object : Http1StreamListener {
+                override fun onRequestHead(connection: HttpConnection, request: org.apache.hc.core5.http.HttpRequest) {
+                    val persistedRequest = callData.response.requestData!!
+                    persistedRequest.headers = request.headers.map { it.name to it.value }.toList()
+                }
+
+                override fun onResponseHead(connection: HttpConnection, response: HttpResponse?) {
+
+                }
+
+                override fun onExchangeComplete(connection: HttpConnection, keepAlive: Boolean) {
+
+                }
+
             }
         )
 
@@ -284,6 +309,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         sslConfig: SslConfig
     ): CallData {
         val (apacheHttpRequest, requestBodySize) = request.toApacheHttpRequest()
+        val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
 
         val data = createCallData(
             requestBodySize = requestBodySize.toInt(),
@@ -348,6 +374,33 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             val producer = apacheHttpRequest
 
             val out = callData.response
+            out.requestData = RequestData().also {
+                val bytes = ByteArray(requestBodySize.toInt())
+                val channel = object : DataStreamChannel {
+                    override fun write(bb: ByteBuffer): Int {
+                        bb.get(bytes, 0, bb.remaining())
+                        return bb.remaining()
+                    }
+
+                    override fun endStream(p0: MutableList<out Header>?) {
+
+                    }
+
+                    override fun endStream() {
+
+                    }
+
+                    override fun requestOutput() {
+
+                    }
+
+                }
+                apacheHttpRequestCopied.produce(channel)
+                apacheHttpRequestCopied.releaseResources()
+                it.method = request.method
+                it.url = request.getResolvedUri().toASCIIString()
+                it.body = bytes
+            }
             out.startAt = KInstant.now()
             out.isCommunicating = true
             data.status = ConnectionStatus.CONNECTING

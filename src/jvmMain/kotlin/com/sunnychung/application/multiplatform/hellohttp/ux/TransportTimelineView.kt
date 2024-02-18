@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -37,15 +38,20 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.model.describeTransportLayer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -59,9 +65,10 @@ private val TIMESTAMP_COLUMN_WIDTH_DP = 110.dp
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersion?, exchange: RawExchange) {
+fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersion?, exchange: RawExchange, response: UserResponse) {
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
     val density = LocalDensity.current
+    val clipboardManager = LocalClipboardManager.current
 
     log.d { "TransportTimelineView recompose" }
 
@@ -197,147 +204,160 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
     }
     // --- for copy button end
 
-    Box(
-        modifier = modifier
-            .onGloballyPositioned {
-                containerXPos = it.positionInRoot().x
-                containerYPos = it.positionInRoot().y
-            }
-            .onPointerEvent(PointerEventType.Move) {
-                onMouseMove(it.changes.first().position)
-            }
-            .onPointerEvent(PointerEventType.Exit) {
-                showCopyButtonAtYPos = null
-            }
-            .clipToBounds()
-    ) {
-        Box(
-            Modifier
-                .width(timestampColumnWidthDp + 6.dp)
-                .fillMaxHeight()
-                .background(LocalColor.current.backgroundSemiLight)
-        )
-        Box(
-            Modifier
-                .offset(x = timestampColumnWidthDp + 6.dp)
-                .width(1.dp)
-                .fillMaxHeight()
-                .background(LocalColor.current.line)
-        )
-
-        var contentWidthInPx by remember { mutableStateOf<Int?>(null) }
-        val textStyle = LocalTextStyle.current.copy(
-            fontSize = LocalFont.current.bodyFontSize,
-            fontFamily = FontFamily.Monospace,
-        )
-        val fontFamilyResolver = LocalFontFamilyResolver.current
-
-        val numCharsInALine = if (contentWidthInPx != null) {
-            remember(contentWidthInPx) {
-                Paragraph(
-                    text = "0".repeat(1000),
-                    style = textStyle,
-                    constraints = Constraints(maxWidth = contentWidthInPx!!),
-                    density = density,
-                    fontFamilyResolver = fontFamilyResolver,
-                ).getLineEnd(0)
-            }
-        } else {
-            0
-        }
-        log.d { "numCharsInALine = $numCharsInALine" }
-
-        var totalNumLines by rememberLast(exchange.uiVersion) { mutableStateOf<Int?>(null) }
-
-        val scrollbarAdapter: ScrollbarAdapter
-        /*
-            Large number of Text elements freezes scrolling and rendering. In this situation LazyColumn helps.
-            But `SelectionContainer { LazyColumn { ... } }` cannot select text elements span over a screen.
-            (See https://github.com/JetBrains/compose-multiplatform/issues/3550)
-
-            So, Column is still being used when the number of Text elements is small.
-         */
-        if ((totalNumLines ?: Int.MAX_VALUE) > 1000) {
-            val scrollState = rememberLazyListState()
-            scrollbarAdapter = rememberScrollbarAdapter(scrollState)
-
-            if (scrollState.isScrollInProgress) {
-                mouseRelativePos?.let { onMouseMove(it) }
-            }
-
-            log.d { "TransportTimelineView adopts LazyColumn $totalNumLines" }
-
-            SelectionContainer {
-                LazyColumn(state = scrollState) {
-                    synchronized(exchange.exchanges) {
-    //                    items(items = exchange.exchanges) {
-                        TransportTimelineContentView(
-                            scope = this,
-                            exchange = exchange,
-                            contentWidthInPx = contentWidthInPx,
-                            numCharsInALine = numCharsInALine,
-                            protocol = protocol,
-                            streamDigits = streamDigits,
-                            onMeasureContentWidth = { contentWidthInPx = it },
-                            onMeasureContentLines = { totalNumLines = it.totalNumLines },
-                            onPrepareComposable = {},
-                            onPositionLine = onPositionLine,
-                            onDisposeLine = onDisposeLine,
-                        )
-    //                    }
-                    }
-                }
-            }
-        } else {
-            val scrollState = rememberScrollState()
-            scrollbarAdapter = rememberScrollbarAdapter(scrollState)
-
-            if (scrollState.isScrollInProgress) {
-                mouseRelativePos?.let { onMouseMove(it) }
-            }
-
-            log.d { "TransportTimelineView adopts Column $totalNumLines" }
-
-            SelectionContainer {
-                Column(modifier = Modifier.verticalScroll(scrollState)) {
-                    val composables = mutableListOf<@Composable () -> Unit>()
-                    synchronized(exchange.exchanges) {
-                        TransportTimelineContentView(
-                            scope = this,
-                            exchange = exchange,
-                            contentWidthInPx = contentWidthInPx,
-                            numCharsInALine = numCharsInALine,
-                            protocol = protocol,
-                            streamDigits = streamDigits,
-                            onMeasureContentWidth = { contentWidthInPx = it },
-                            onMeasureContentLines = { totalNumLines = it.totalNumLines },
-                            onPrepareComposable = { composables += it },
-                            onPositionLine = onPositionLine,
-                            onDisposeLine = onDisposeLine,
-                        )
-                    }
-                    composables.forEach { it() }
-                }
+    Column(modifier = modifier) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            AppTextButton(
+                text = "Copy All",
+                modifier = Modifier.align(Alignment.CenterEnd).padding(vertical = 4.dp, horizontal = 8.dp),
+            ) {
+                val textToCopy = response.describeTransportLayer()
+                clipboardManager.setText(AnnotatedString(textToCopy))
+                AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
             }
         }
 
-        showCopyButtonAtYPos?.let { showCopyButtonAtYPos ->
-            FloatingCopyButton(
-                textToCopy = showCopyButtonForText,
-                size = 16.dp,
-                innerPadding = 2.dp,
-                modifier = Modifier
-                    .onGloballyPositioned { copyButtonHeight = it.size.height }
-                    .align(Alignment.TopEnd)
-                    .padding(end = 8.dp)
-                    .offset(y = with (density) { showCopyButtonAtYPos.toDp() })
+        Box(
+            modifier = Modifier
+                .onGloballyPositioned {
+                    containerXPos = it.positionInRoot().x
+                    containerYPos = it.positionInRoot().y
+                }
+                .onPointerEvent(PointerEventType.Move) {
+                    onMouseMove(it.changes.first().position)
+                }
+                .onPointerEvent(PointerEventType.Exit) {
+                    showCopyButtonAtYPos = null
+                }
+                .clipToBounds()
+        ) {
+            Box(
+                Modifier
+                    .width(timestampColumnWidthDp + 6.dp)
+                    .fillMaxHeight()
+                    .background(LocalColor.current.backgroundSemiLight)
+            )
+            Box(
+                Modifier
+                    .offset(x = timestampColumnWidthDp + 6.dp)
+                    .width(1.dp)
+                    .fillMaxHeight()
+                    .background(LocalColor.current.line)
+            )
+
+            var contentWidthInPx by remember { mutableStateOf<Int?>(null) }
+            val textStyle = LocalTextStyle.current.copy(
+                fontSize = LocalFont.current.bodyFontSize,
+                fontFamily = FontFamily.Monospace,
+            )
+            val fontFamilyResolver = LocalFontFamilyResolver.current
+
+            val numCharsInALine = if (contentWidthInPx != null) {
+                remember(contentWidthInPx) {
+                    Paragraph(
+                        text = "0".repeat(1000),
+                        style = textStyle,
+                        constraints = Constraints(maxWidth = contentWidthInPx!!),
+                        density = density,
+                        fontFamilyResolver = fontFamilyResolver,
+                    ).getLineEnd(0)
+                }
+            } else {
+                0
+            }
+            log.d { "numCharsInALine = $numCharsInALine" }
+
+            var totalNumLines by rememberLast(exchange.uiVersion) { mutableStateOf<Int?>(null) }
+
+            val scrollbarAdapter: ScrollbarAdapter
+            /*
+                Large number of Text elements freezes scrolling and rendering. In this situation LazyColumn helps.
+                But `SelectionContainer { LazyColumn { ... } }` cannot select text elements span over a screen.
+                (See https://github.com/JetBrains/compose-multiplatform/issues/3550)
+
+                So, Column is still being used when the number of Text elements is small.
+             */
+            if ((totalNumLines ?: Int.MAX_VALUE) > 1000) {
+                val scrollState = rememberLazyListState()
+                scrollbarAdapter = rememberScrollbarAdapter(scrollState)
+
+                if (scrollState.isScrollInProgress) {
+                    mouseRelativePos?.let { onMouseMove(it) }
+                }
+
+                log.d { "TransportTimelineView adopts LazyColumn $totalNumLines" }
+
+                SelectionContainer {
+                    LazyColumn(state = scrollState) {
+                        synchronized(exchange.exchanges) {
+//                        items(items = exchange.exchanges) {
+                            TransportTimelineContentView(
+                                scope = this,
+                                exchange = exchange,
+                                contentWidthInPx = contentWidthInPx,
+                                numCharsInALine = numCharsInALine,
+                                protocol = protocol,
+                                streamDigits = streamDigits,
+                                onMeasureContentWidth = { contentWidthInPx = it },
+                                onMeasureContentLines = { totalNumLines = it.totalNumLines },
+                                onPrepareComposable = {},
+                                onPositionLine = onPositionLine,
+                                onDisposeLine = onDisposeLine,
+                            )
+//                        }
+                        }
+                    }
+                }
+            } else {
+                val scrollState = rememberScrollState()
+                scrollbarAdapter = rememberScrollbarAdapter(scrollState)
+
+                if (scrollState.isScrollInProgress) {
+                    mouseRelativePos?.let { onMouseMove(it) }
+                }
+
+                log.d { "TransportTimelineView adopts Column $totalNumLines" }
+
+                SelectionContainer {
+                    Column(modifier = Modifier.verticalScroll(scrollState)) {
+                        val composables = mutableListOf<@Composable () -> Unit>()
+                        synchronized(exchange.exchanges) {
+                            TransportTimelineContentView(
+                                scope = this,
+                                exchange = exchange,
+                                contentWidthInPx = contentWidthInPx,
+                                numCharsInALine = numCharsInALine,
+                                protocol = protocol,
+                                streamDigits = streamDigits,
+                                onMeasureContentWidth = { contentWidthInPx = it },
+                                onMeasureContentLines = { totalNumLines = it.totalNumLines },
+                                onPrepareComposable = { composables += it },
+                                onPositionLine = onPositionLine,
+                                onDisposeLine = onDisposeLine,
+                            )
+                        }
+                        composables.forEach { it() }
+                    }
+                }
+            }
+
+            showCopyButtonAtYPos?.let { showCopyButtonAtYPos ->
+                FloatingCopyButton(
+                    textToCopy = showCopyButtonForText,
+                    size = 16.dp,
+                    innerPadding = 2.dp,
+                    modifier = Modifier
+                        .onGloballyPositioned { copyButtonHeight = it.size.height }
+                        .align(Alignment.TopEnd)
+                        .padding(end = 8.dp)
+                        .offset(y = with(density) { showCopyButtonAtYPos.toDp() })
+                )
+            }
+
+            VerticalScrollbar(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                adapter = scrollbarAdapter,
             )
         }
-
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd),
-            adapter = scrollbarAdapter,
-        )
     }
 }
 

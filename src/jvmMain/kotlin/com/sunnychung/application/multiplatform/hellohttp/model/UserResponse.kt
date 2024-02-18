@@ -2,8 +2,10 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
+import com.sunnychung.application.multiplatform.hellohttp.extension.endWithNewLine
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -36,6 +38,8 @@ data class UserResponse(
             Collections.synchronizedList(mutableListOf())
         else
             null,
+    var requestData: RequestData? = null,
+    var closeReason: String? = null,
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
     override fun equals(other: Any?): Boolean {
@@ -78,5 +82,218 @@ data class UserResponse(
     }
 
     fun isStreaming() = payloadExchanges != null
+}
 
+@Persisted
+@Serializable
+class RequestData(
+    var method: String? = null,
+    var url: String? = null,
+    var headers: List<Pair<String, String>>? = null,
+    var body: ByteArray? = null,
+) {
+    fun isNotEmpty() = headers != null
+}
+
+val TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.lll (Z)"
+val BODY_BLOCK_DELIMITER = "`````"
+
+fun UserResponse.hasSomethingToCopy() = !isError && requestData?.isNotEmpty() == true
+
+fun UserResponse.describeApplicationLayer() =
+    when {
+        payloadExchanges == null -> """
+Request
+=======
+Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
+
+${protocol?.toString().orEmpty()}
+
+${requestData?.method.orEmpty()} ${requestData?.url.orEmpty()}
+
+Headers:
+$BODY_BLOCK_DELIMITER
+${
+    requestData?.headers?.joinToString("\n") {
+        "${
+            it.first.toByteArray(Charsets.ISO_8859_1).decodeToString()
+        }: ${it.second.toByteArray(Charsets.ISO_8859_1).decodeToString()}"
+    }.orEmpty()
+}
+$BODY_BLOCK_DELIMITER
+
+${
+    if (requestData?.body?.isNotEmpty() == true) {
+"""Body:
+$BODY_BLOCK_DELIMITER
+${requestData?.body?.decodeToString()?.endWithNewLine().orEmpty()}
+$BODY_BLOCK_DELIMITER
+
+""" } else ""
+}Response
+========
+${
+    if (endAt != null) {
+"""Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
+
+Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
+
+Status Code: ${statusCode ?: "-"}${statusText?.let { " $it" } ?: ""}
+
+Headers:
+$BODY_BLOCK_DELIMITER
+${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
+$BODY_BLOCK_DELIMITER
+
+${ if (body?.isNotEmpty() == true) {
+"""Body:
+$BODY_BLOCK_DELIMITER
+${body?.decodeToString()?.endWithNewLine().orEmpty()}
+$BODY_BLOCK_DELIMITER
+"""
+} else "" }"""
+    } else {
+        "Not Available"
+    }
+}
+    """.trim() + "\n"
+
+    payloadExchanges != null -> buildString {
+        append("""
+Request
+=======
+Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
+
+${protocol?.toString().orEmpty()}
+
+${requestData?.method.orEmpty()} ${requestData?.url.orEmpty()}
+
+Headers:
+$BODY_BLOCK_DELIMITER
+${
+            requestData?.headers?.joinToString("\n") {
+                "${
+                    it.first.toByteArray(Charsets.ISO_8859_1).decodeToString()
+                }: ${it.second.toByteArray(Charsets.ISO_8859_1).decodeToString()}"
+            }.orEmpty()
+        }
+$BODY_BLOCK_DELIMITER
+        """.trim())
+
+        headers?.takeIf { application == ProtocolApplication.WebSocket }?.let { headers ->
+            append("\n\n")
+            append("""
+Response
+========
+Status Code: ${statusCode ?: "-"}${statusText?.let { " $it" } ?: ""}
+
+Headers:
+$BODY_BLOCK_DELIMITER
+${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
+$BODY_BLOCK_DELIMITER
+            """.trim())
+        }
+
+        var outgoingCount = 0
+        var incomingCount = 0
+        payloadExchanges?.forEach {
+            if (it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData)) {
+                val title = if (it.type == PayloadMessage.Type.IncomingData) {
+                    "Incoming #${++incomingCount}"
+                } else {
+                    "Outgoing #${++outgoingCount}"
+                }
+                append("\n\n", title, "\n")
+                append("=".repeat(title.length), "\n")
+                append("Time: ${it.instant.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT)}\n\n")
+                append("Body:\n$BODY_BLOCK_DELIMITER\n")
+                append(it.data?.decodeToString()?.endWithNewLine().orEmpty())
+                append("$BODY_BLOCK_DELIMITER\n")
+            }
+        }
+
+        if (endAt != null) {
+            append("\n\n", """
+End
+===
+Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
+
+Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
+            """.trim())
+
+            // gRPC only
+            headers?.takeIf { application != ProtocolApplication.WebSocket }?.let { headers ->
+                append("\n\nHeaders:\n$BODY_BLOCK_DELIMITER\n")
+                append(headers.joinToString("") { "${it.first}: ${it.second}\n" }.orEmpty())
+                append("$BODY_BLOCK_DELIMITER\n")
+            }
+
+            closeReason?.let { closeReason ->
+                append("\n\n$closeReason")
+            }
+        }
+    }.trim() + "\n"
+
+    else -> throw UnsupportedOperationException()
+}
+
+fun UserResponse.describeTransportLayer() = buildString {
+    val events = synchronized(rawExchange.exchanges) {
+        rawExchange.exchanges.toList()
+    }
+    val titles = listOf(
+        "Time",
+        "Dir",
+        "Stream",
+        "Detail"
+    )
+    val exportedData = events.map {
+        listOf(
+            it.instant.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT) +
+                if (it.lastUpdateInstant != null && it.lastUpdateInstant != it.instant) {
+                    " ~ " + it.lastUpdateInstant!!.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT)
+                } else {
+                    ""
+                },
+            when (it.direction) {
+                RawExchange.Direction.Outgoing -> "Out"
+                RawExchange.Direction.Incoming -> "In"
+                RawExchange.Direction.Unspecified -> "-"
+            },
+            it.streamId?.toString() ?: if (protocol?.isHttp2() == true) "*" else "",
+            it.detail
+                ?: it.payload?.decodeToString()
+                ?: it.payloadBuilder?.toByteArray()?.decodeToString()
+                ?: "<Payload Lost>",
+        )
+    }
+    val maxLengths = (0 .. titles.lastIndex).map { i ->
+        exportedData.maxOf { it[i].length }
+    }
+    val columnLengths = maxLengths.mapIndexed { i, it ->
+        if (it > 0) {
+            maxOf(it, titles[i].length)
+        } else {
+            0
+        }
+    }
+
+    // TODO optimize the loops
+    val columnIndices = titles.withIndex().filter { (i, _) -> columnLengths[i] > 0 }.map { (i, _) -> i }
+    appendLine(titles.withIndex().filter { (i, _) -> columnLengths[i] > 0 }.joinToString(" | ") { (i, s) -> s.padEnd(columnLengths[i], ' ') })
+    appendLine(titles.withIndex().filter { (i, _) -> columnLengths[i] > 0 }.joinToString("=|=") { (i, _) -> "".padEnd(columnLengths[i], '=') })
+    exportedData.forEach { texts ->
+        // assume only the last column can have multiple lines
+        append(texts.withIndex().filter { (i, _) -> columnLengths[i] > 0 && i < columnIndices.lastIndex }.joinToString("") { (i, s) -> s.padEnd(columnLengths[i], ' ') + " | " })
+        val lines = texts.last().lines()
+        if (lines.size <= 1) {
+            appendLine(lines.firstOrNull() ?: "")
+        } else {
+            val linePrefix = titles.withIndex().filter { (ii, _) -> columnLengths[ii] > 0 && ii < columnIndices.lastIndex }.joinToString("") { (i, _) -> "".padEnd(columnLengths[i], ' ') + " | " }
+            lines.forEachIndexed { i, line ->
+                if (i > 0) append(linePrefix)
+                appendLine(line)
+            }
+        }
+    }
 }
