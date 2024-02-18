@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -36,6 +37,7 @@ data class UserResponse(
             Collections.synchronizedList(mutableListOf())
         else
             null,
+    @Transient var requestData: RequestData? = null,
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
     override fun equals(other: Any?): Boolean {
@@ -79,4 +81,66 @@ data class UserResponse(
 
     fun isStreaming() = payloadExchanges != null
 
+    fun describeApplicationLayer() = """
+Request
+=======
+Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format("yyyy-MM-dd HH:mm:ss.lll (Z)") ?: "-"}
+
+${protocol?.toString().orEmpty()}
+
+${requestData?.method.orEmpty()} ${requestData?.url.orEmpty()}
+
+Headers:
+```
+${
+    requestData?.headers?.joinToString("\n") {
+        "${
+            it.first.toByteArray(Charsets.ISO_8859_1).decodeToString()
+        }: ${it.second.toByteArray(Charsets.ISO_8859_1).decodeToString()}"
+    }.orEmpty()
+}
+```
+
+${
+    if (requestData?.body?.isNotEmpty() == true) {
+"""Body:
+```
+${requestData?.body?.decodeToString().orEmpty()}
+```
+
+""" } else ""
+}Response
+========
+${
+    if (endAt != null) {
+"""Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format("yyyy-MM-dd HH:mm:ss.lll (Z)") ?: "-"}
+
+Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
+
+Headers:
+```
+${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
+```
+
+${ if (body?.isNotEmpty() == true) {
+"""Body:
+```
+${body?.decodeToString().orEmpty()}
+```
+"""
+} else "" }"""
+    } else {
+        "Not Available"
+    }
+}
+    """.trim() + "\n"
+}
+
+data class RequestData(
+    var method: String? = null,
+    var url: String? = null,
+    var headers: List<Pair<String, String>>? = null,
+    var body: ByteArray? = null,
+) {
+    fun isNotEmpty() = headers != null
 }

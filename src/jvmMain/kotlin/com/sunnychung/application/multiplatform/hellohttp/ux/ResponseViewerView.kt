@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -457,7 +459,9 @@ fun BodyViewerView(
     content: ByteArray,
     errorMessage: String?,
     prettifiers: List<PrettifierDropDownValue>,
-    selectedPrettifierState: MutableState<PrettifierDropDownValue> = remember { mutableStateOf(prettifiers.first()) }
+    selectedPrettifierState: MutableState<PrettifierDropDownValue> = remember { mutableStateOf(prettifiers.first()) },
+    hasTopCopyButton: Boolean,
+    onTopCopyButtonClick: () -> Unit,
 ) {
     val colours = LocalColor.current
 
@@ -473,12 +477,26 @@ fun BodyViewerView(
     var isJsonPathError by rememberLast(key) { mutableStateOf(false) }
 
     Column(modifier = modifier) {
-        Row(modifier = Modifier.padding(vertical = 8.dp)) {
-            AppText(text = "View: ")
-            DropDownView(items = prettifiers, selectedItem = selectedView, onClickItem = { selectedView = it; true })
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.padding(vertical = 8.dp)) {
+                AppText(text = "View: ")
+                DropDownView(
+                    items = prettifiers,
+                    selectedItem = selectedView,
+                    onClickItem = { selectedView = it; true }
+                )
+            }
+            if (hasTopCopyButton) {
+                AppTextButton(
+                    text = "Copy All",
+                    onClick = onTopCopyButtonClick,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                        .padding(top = 4.dp)
+                )
+            }
         }
 
-        val modifier = Modifier.fillMaxWidth().weight(1f).padding(vertical = 8.dp)
+        val modifier = Modifier.fillMaxWidth().weight(1f).padding(top = if (hasTopCopyButton) 2.dp else 6.dp, bottom = 8.dp)
         if (selectedView.name != CLIENT_ERROR) {
             var hasError = false
             var isRaw = true
@@ -576,6 +594,8 @@ fun ResponseBodyView(response: UserResponse) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     }
 
+    val clipboardManager = LocalClipboardManager.current
+
     log.d { "ResponseBodyView recompose" }
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
@@ -584,7 +604,13 @@ fun ResponseBodyView(response: UserResponse) {
             content = response.body ?: byteArrayOf(),
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
-            selectedPrettifierState = rememberLast(response.requestExampleId) { mutableStateOf(prettifiers.first()) }
+            selectedPrettifierState = rememberLast(response.requestExampleId) { mutableStateOf(prettifiers.first()) },
+            hasTopCopyButton = response.requestData?.isNotEmpty() == true,
+            onTopCopyButtonClick = {
+                val textToCopy = response.describeApplicationLayer()
+                clipboardManager.setText(AnnotatedString(textToCopy))
+                AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
+            }
         )
 
         if (response.postFlightErrorMessage?.isNotEmpty() == true) {
@@ -678,6 +704,8 @@ fun ResponseStreamView(response: UserResponse) {
                 }
             ) { mutableStateOf(prettifiers.first()) },
             errorMessage = null,
+            hasTopCopyButton = false, /* TODO */
+            onTopCopyButtonClick = {} /* TODO */
         )
 
         Box(modifier = Modifier.weight(0.4f)) {

@@ -21,12 +21,12 @@ data class ProtocolVersion(val protocol: Protocol, val versionName: String?, val
     )
 
     override fun toString(): String {
-        return "$protocol/$versionName"
+        return "${protocol.displayName}/$versionName"
     }
 
     fun isHttp2() = protocol == Protocol.Http && major == 2
 }
 
-enum class Protocol {
-    Http
+enum class Protocol(val displayName: String) {
+    Http("HTTP")
 }
