@@ -176,9 +176,9 @@ ${
         }
 ```
         """.trim())
-        append("\n\n")
 
-        headers?.let { headers ->
+        headers?.takeIf { application == ProtocolApplication.WebSocket }?.let { headers ->
+            append("\n\n")
             append("""
 Response
 ========
@@ -217,6 +217,13 @@ Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT)
 
 Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
             """.trim())
+
+            // gRPC only
+            headers?.takeIf { application != ProtocolApplication.WebSocket }?.let { headers ->
+                append("\n\nHeaders:\n```\n")
+                append(headers.joinToString("") { "${it.first}: ${it.second}\n" }.orEmpty())
+                append("```\n")
+            }
 
             closeReason?.let { closeReason ->
                 append("\n\n$closeReason")
