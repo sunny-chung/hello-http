@@ -94,6 +94,7 @@ data class RequestData(
 }
 
 val TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.lll (Z)"
+val BODY_BLOCK_DELIMITER = "`````"
 
 fun UserResponse.hasSomethingToCopy() = !isError && requestData?.isNotEmpty() == true
 
@@ -109,7 +110,7 @@ ${protocol?.toString().orEmpty()}
 ${requestData?.method.orEmpty()} ${requestData?.url.orEmpty()}
 
 Headers:
-```
+$BODY_BLOCK_DELIMITER
 ${
     requestData?.headers?.joinToString("\n") {
         "${
@@ -117,14 +118,14 @@ ${
         }: ${it.second.toByteArray(Charsets.ISO_8859_1).decodeToString()}"
     }.orEmpty()
 }
-```
+$BODY_BLOCK_DELIMITER
 
 ${
     if (requestData?.body?.isNotEmpty() == true) {
 """Body:
-```
+$BODY_BLOCK_DELIMITER
 ${requestData?.body?.decodeToString()?.endWithNewLine().orEmpty()}
-```
+$BODY_BLOCK_DELIMITER
 
 """ } else ""
 }Response
@@ -138,15 +139,15 @@ Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
 Status Code: ${statusCode ?: "-"}${statusText?.let { " $it" } ?: ""}
 
 Headers:
-```
+$BODY_BLOCK_DELIMITER
 ${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
-```
+$BODY_BLOCK_DELIMITER
 
 ${ if (body?.isNotEmpty() == true) {
 """Body:
-```
+$BODY_BLOCK_DELIMITER
 ${body?.decodeToString()?.endWithNewLine().orEmpty()}
-```
+$BODY_BLOCK_DELIMITER
 """
 } else "" }"""
     } else {
@@ -166,7 +167,7 @@ ${protocol?.toString().orEmpty()}
 ${requestData?.method.orEmpty()} ${requestData?.url.orEmpty()}
 
 Headers:
-```
+$BODY_BLOCK_DELIMITER
 ${
             requestData?.headers?.joinToString("\n") {
                 "${
@@ -174,7 +175,7 @@ ${
                 }: ${it.second.toByteArray(Charsets.ISO_8859_1).decodeToString()}"
             }.orEmpty()
         }
-```
+$BODY_BLOCK_DELIMITER
         """.trim())
 
         headers?.takeIf { application == ProtocolApplication.WebSocket }?.let { headers ->
@@ -185,9 +186,9 @@ Response
 Status Code: ${statusCode ?: "-"}${statusText?.let { " $it" } ?: ""}
 
 Headers:
-```
+$BODY_BLOCK_DELIMITER
 ${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
-```
+$BODY_BLOCK_DELIMITER
             """.trim())
         }
 
@@ -203,9 +204,9 @@ ${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
                 append("\n\n", title, "\n")
                 append("=".repeat(title.length), "\n")
                 append("Time: ${it.instant.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT)}\n\n")
-                append("Body:\n```\n")
+                append("Body:\n$BODY_BLOCK_DELIMITER\n")
                 append(it.data?.decodeToString()?.endWithNewLine().orEmpty())
-                append("```\n")
+                append("$BODY_BLOCK_DELIMITER\n")
             }
         }
 
@@ -220,9 +221,9 @@ Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
 
             // gRPC only
             headers?.takeIf { application != ProtocolApplication.WebSocket }?.let { headers ->
-                append("\n\nHeaders:\n```\n")
+                append("\n\nHeaders:\n$BODY_BLOCK_DELIMITER\n")
                 append(headers.joinToString("") { "${it.first}: ${it.second}\n" }.orEmpty())
-                append("```\n")
+                append("$BODY_BLOCK_DELIMITER\n")
             }
 
             closeReason?.let { closeReason ->
