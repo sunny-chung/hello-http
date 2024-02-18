@@ -38,8 +38,8 @@ data class UserResponse(
             Collections.synchronizedList(mutableListOf())
         else
             null,
-    @Transient var requestData: RequestData? = null,
-    @Transient var closeReason: String? = null,
+    var requestData: RequestData? = null,
+    var closeReason: String? = null,
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
     override fun equals(other: Any?): Boolean {
@@ -84,7 +84,9 @@ data class UserResponse(
     fun isStreaming() = payloadExchanges != null
 }
 
-data class RequestData(
+@Persisted
+@Serializable
+class RequestData(
     var method: String? = null,
     var url: String? = null,
     var headers: List<Pair<String, String>>? = null,
