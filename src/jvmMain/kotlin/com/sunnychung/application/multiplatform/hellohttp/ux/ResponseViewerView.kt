@@ -55,6 +55,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
+import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -605,7 +607,7 @@ fun ResponseBodyView(response: UserResponse) {
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
             selectedPrettifierState = rememberLast(response.requestExampleId) { mutableStateOf(prettifiers.first()) },
-            hasTopCopyButton = response.requestData?.isNotEmpty() == true,
+            hasTopCopyButton = response.hasSomethingToCopy(),
             onTopCopyButtonClick = {
                 val textToCopy = response.describeApplicationLayer()
                 clipboardManager.setText(AnnotatedString(textToCopy))
@@ -676,6 +678,7 @@ private val TYPE_COLUMN_WIDTH_DP = 20.dp
 fun ResponseStreamView(response: UserResponse) {
     val colours = LocalColor.current
     val fonts = LocalFont.current
+    val clipboardManager = LocalClipboardManager.current
 
     var selectedMessage by rememberLast(response.id) { mutableStateOf<PayloadMessage?>(null) }
     val displayMessage = selectedMessage ?: response.payloadExchanges?.lastOrNull { it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.Error) } // last -> largest timestamp
@@ -704,8 +707,12 @@ fun ResponseStreamView(response: UserResponse) {
                 }
             ) { mutableStateOf(prettifiers.first()) },
             errorMessage = null,
-            hasTopCopyButton = false, /* TODO */
-            onTopCopyButtonClick = {} /* TODO */
+            hasTopCopyButton = response.hasSomethingToCopy(),
+            onTopCopyButtonClick = {
+                val textToCopy = response.describeApplicationLayer()
+                clipboardManager.setText(AnnotatedString(textToCopy))
+                AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
+            }
         )
 
         Box(modifier = Modifier.weight(0.4f)) {

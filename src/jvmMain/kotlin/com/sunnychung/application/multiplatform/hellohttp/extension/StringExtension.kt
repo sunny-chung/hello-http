@@ -11,3 +11,10 @@ fun String.insert(pos: Int, insert: String): String {
     }
     return s
 }
+
+fun String.endWithNewLine() =
+    if (endsWith('\n')) {
+        this
+    } else {
+        this + '\n'
+    }

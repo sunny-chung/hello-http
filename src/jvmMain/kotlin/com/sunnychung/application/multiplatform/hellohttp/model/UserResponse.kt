@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
+import com.sunnychung.application.multiplatform.hellohttp.extension.endWithNewLine
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
@@ -38,6 +39,7 @@ data class UserResponse(
         else
             null,
     @Transient var requestData: RequestData? = null,
+    @Transient var closeReason: String? = null,
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
     override fun equals(other: Any?): Boolean {
@@ -80,11 +82,27 @@ data class UserResponse(
     }
 
     fun isStreaming() = payloadExchanges != null
+}
 
-    fun describeApplicationLayer() = """
+data class RequestData(
+    var method: String? = null,
+    var url: String? = null,
+    var headers: List<Pair<String, String>>? = null,
+    var body: ByteArray? = null,
+) {
+    fun isNotEmpty() = headers != null
+}
+
+val TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.lll (Z)"
+
+fun UserResponse.hasSomethingToCopy() = !isError && requestData?.isNotEmpty() == true
+
+fun UserResponse.describeApplicationLayer() =
+    when {
+        payloadExchanges == null -> """
 Request
 =======
-Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format("yyyy-MM-dd HH:mm:ss.lll (Z)") ?: "-"}
+Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
 
 ${protocol?.toString().orEmpty()}
 
@@ -105,7 +123,7 @@ ${
     if (requestData?.body?.isNotEmpty() == true) {
 """Body:
 ```
-${requestData?.body?.decodeToString().orEmpty()}
+${requestData?.body?.decodeToString()?.endWithNewLine().orEmpty()}
 ```
 
 """ } else ""
@@ -113,7 +131,7 @@ ${requestData?.body?.decodeToString().orEmpty()}
 ========
 ${
     if (endAt != null) {
-"""Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format("yyyy-MM-dd HH:mm:ss.lll (Z)") ?: "-"}
+"""Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
 
 Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
 
@@ -127,7 +145,7 @@ ${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
 ${ if (body?.isNotEmpty() == true) {
 """Body:
 ```
-${body?.decodeToString().orEmpty()}
+${body?.decodeToString()?.endWithNewLine().orEmpty()}
 ```
 """
 } else "" }"""
@@ -136,13 +154,75 @@ ${body?.decodeToString().orEmpty()}
     }
 }
     """.trim() + "\n"
-}
 
-data class RequestData(
-    var method: String? = null,
-    var url: String? = null,
-    var headers: List<Pair<String, String>>? = null,
-    var body: ByteArray? = null,
-) {
-    fun isNotEmpty() = headers != null
+    payloadExchanges != null -> buildString {
+        append("""
+Request
+=======
+Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
+
+${protocol?.toString().orEmpty()}
+
+${requestData?.method.orEmpty()} ${requestData?.url.orEmpty()}
+
+Headers:
+```
+${
+            requestData?.headers?.joinToString("\n") {
+                "${
+                    it.first.toByteArray(Charsets.ISO_8859_1).decodeToString()
+                }: ${it.second.toByteArray(Charsets.ISO_8859_1).decodeToString()}"
+            }.orEmpty()
+        }
+```
+        """.trim())
+        append("\n\n")
+
+        headers?.let { headers ->
+            append("""
+Response
+========
+Status Code: ${statusCode ?: "-"}${statusText?.let { " $it" } ?: ""}
+
+Headers:
+```
+${headers?.joinToString("\n") { "${it.first}: ${it.second}" }.orEmpty()}
+```
+            """.trim())
+        }
+
+        var outgoingCount = 0
+        var incomingCount = 0
+        payloadExchanges?.forEach {
+            if (it.type in setOf(PayloadMessage.Type.IncomingData, PayloadMessage.Type.OutgoingData)) {
+                val title = if (it.type == PayloadMessage.Type.IncomingData) {
+                    "Incoming #${++incomingCount}"
+                } else {
+                    "Outgoing #${++outgoingCount}"
+                }
+                append("\n\n", title, "\n")
+                append("=".repeat(title.length), "\n")
+                append("Time: ${it.instant.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT)}\n\n")
+                append("Body:\n```\n")
+                append(it.data?.decodeToString()?.endWithNewLine().orEmpty())
+                append("```\n")
+            }
+        }
+
+        if (endAt != null) {
+            append("\n\n", """
+End
+===
+Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
+
+Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s
+            """.trim())
+
+            closeReason?.let { closeReason ->
+                append("\n\n$closeReason")
+            }
+        }
+    }.trim() + "\n"
+
+    else -> throw UnsupportedOperationException()
 }

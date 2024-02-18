@@ -5,6 +5,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
+import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.InspectedWebSocketClient
@@ -50,6 +51,10 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         val out = data.response
         out.application = ProtocolApplication.WebSocket
         out.payloadExchanges = mutableListOf()
+        out.requestData = RequestData(
+            method = "GET",
+            url = uri.toASCIIString(),
+        )
 
         val client = object : InspectedWebSocketClient(
             callId = callId,
