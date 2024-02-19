@@ -215,6 +215,7 @@ fun KeyValueEditorView(
                                     onDisableChange(newSet)
                                 }
                             },
+                            isFocusable = false,
                             size = 16.dp,
                             modifier = Modifier.padding(horizontal = 4.dp)
                                 .focusProperties { canFocus = false }

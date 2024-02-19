@@ -19,11 +19,11 @@ fun AppImageButton(
     innerPadding: PaddingValues = PaddingValues(),
     color: Color = LocalColor.current.image,
     enabled: Boolean = true,
-    onClick: () -> Unit
+    onClick: (() -> Unit)?
 ) {
     val modifierToUse = modifier.size(size)
         .let {
-            if (enabled) {
+            if (enabled && onClick != null) {
                 it.clickable(onClick = onClick)
             } else {
                 it

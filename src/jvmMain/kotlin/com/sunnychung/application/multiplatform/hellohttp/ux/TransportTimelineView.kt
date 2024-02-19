@@ -212,13 +212,11 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
             AppCheckbox(
                 checked = isRelativeTimeDisplay,
                 onCheckedChange = { isRelativeTimeDisplay = it },
-                size = 24.dp,
-                modifier = Modifier.padding(end = 4.dp)
-            )
-            AppText(
-                text = "Relative Time Display",
-                modifier = Modifier.clickable { isRelativeTimeDisplay = !isRelativeTimeDisplay },
-            )
+                size = 20.dp,
+                modifier = Modifier
+            ) {
+                AppText(text = "Relative Time Display")
+            }
             Spacer(modifier = Modifier.weight(1f))
             AppTextButton(
                 text = "Copy All",
