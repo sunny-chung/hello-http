@@ -466,6 +466,7 @@ fun BodyViewerView(
     onTopCopyButtonClick: () -> Unit,
 ) {
     val colours = LocalColor.current
+    val fonts = LocalFont.current
 
     var selectedView by selectedPrettifierState
     if (selectedView.name !in prettifiers.map { it.name }) {
@@ -564,11 +565,13 @@ fun BodyViewerView(
                     AppText(
                         text = "JSON Path, e.g. $.items.length()",
                         fontFamily = FontFamily.Monospace,
+                        fontSize = fonts.codeEditorBodyFontSize,
                         color = colours.placeholder
                     )
                 },
                 textStyle = LocalTextStyle.current.copy(
                     fontFamily = FontFamily.Monospace,
+                    fontSize = fonts.codeEditorBodyFontSize,
                 ),
                 singleLine = true,
                 maxLines = 1,

@@ -230,6 +230,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
 
         Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .onGloballyPositioned {
                     containerXPos = it.positionInRoot().x
                     containerYPos = it.positionInRoot().y
@@ -258,7 +259,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
 
             var contentWidthInPx by remember { mutableStateOf<Int?>(null) }
             val textStyle = LocalTextStyle.current.copy(
-                fontSize = LocalFont.current.bodyFontSize,
+                fontSize = LocalFont.current.codeEditorBodyFontSize,
                 fontFamily = FontFamily.Monospace,
             )
             val fontFamilyResolver = LocalFontFamilyResolver.current
