@@ -23,6 +23,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.DialogVie
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ErrorMessagePromptViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ResponseViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.UserPreferenceViewModel
+import java.io.File
 
 object AppContext {
     val MetadataManager = MetadataManager()
@@ -50,4 +51,6 @@ object AppContext {
 //    val EditRequestNameViewModel = EditRequestNameViewModel()
     val UserPreferenceViewModel = UserPreferenceViewModel()
     val ResponseViewModel = ResponseViewModel()
+
+    lateinit var dataDir: File
 }

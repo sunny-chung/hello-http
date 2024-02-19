@@ -41,6 +41,7 @@ fun main() {
     System.setProperty("apple.awt.application.appearance", "system")
     val appDir = AppDirsFactory.getInstance().getUserDataDir("Hello HTTP", null, null)
     println("appDir = $appDir")
+    AppContext.dataDir = File(appDir)
     runBlocking {
         try {
             AppContext.SingleInstanceProcessService.apply { dataDir = File(appDir) }.enforce()

@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
-import net.harawata.appdirs.AppDirsFactory
 import java.io.File
 
 /**
@@ -46,7 +45,7 @@ class AutoBackupManager {
     }
 
     fun backupDir(): File {
-        val appDir = AppDirsFactory.getInstance().getUserDataDir("Hello HTTP", null, null)
+        val appDir = AppContext.dataDir
         return File(appDir, "backups")
             .also { it.mkdirs() }
     }

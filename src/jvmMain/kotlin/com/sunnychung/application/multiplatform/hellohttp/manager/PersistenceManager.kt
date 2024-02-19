@@ -16,7 +16,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
-import net.harawata.appdirs.AppDirsFactory
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -33,7 +32,7 @@ class PersistenceManager {
         ignoreUnknownKeys = true
     }
 
-    private fun dataDir() = File(AppDirsFactory.getInstance().getUserDataDir("Hello HTTP", null, null))
+    private fun dataDir() = AppContext.dataDir
 
     private fun dataFile(relativePath: String): File {
         val path = dataDir().absolutePath + File.separator + relativePath.replace("/", File.separator)
