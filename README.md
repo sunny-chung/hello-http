@@ -24,6 +24,12 @@ moment.
 - **Windows** - Stable since v1.4.1
 - **Linux** - Stable since v1.4.3
 
+As major bugs are often created, automatic tests are targeted to be introduced in v1.6, to cover all supported types of
+HTTP calls.
+
+Meanwhile, filing bug reports are much appreciated. It would help addressing issues quickly. Normally, critical bugs are
+fixed and released within 3 days.
+
 ## Features
 
 Watch the images and videos on the [website](https://sunny-chung.github.io/hello-http/). All the below can be skipped.
