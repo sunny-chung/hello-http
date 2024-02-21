@@ -71,6 +71,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMetho
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
@@ -295,11 +296,14 @@ fun RequestEditorView(
                 ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
                 else -> true
             }
-            val dropdownItems: List<String> = when (request.application) {
-                ProtocolApplication.WebSocket -> emptyList()
-                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
-                ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
-                else -> listOf("Copy as cURL command")
+            val dropdownItems: List<String> = when (currentOS()) {
+                WindowsOS -> emptyList() // disable because not able to escape newlines inside double-quoted string
+                else -> when (request.application) {
+                    ProtocolApplication.WebSocket -> emptyList()
+                    ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
+                    ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
+                    else -> listOf("Copy as cURL command")
+                }
             }
             val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
