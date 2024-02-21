@@ -20,6 +20,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.OS
+import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import graphql.language.OperationDefinition
@@ -233,7 +234,13 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
 }
 
 private fun String.escape(): String {
-    return replace("\\", "\\\\").replace("\"", "\\\"")
+    return this.let {
+        if (currentOS() != WindowsOS) {
+            replace("\\", "\\\\")
+        } else {
+            it
+        }
+    }.replace("\"", "\\\"")
 }
 
 private fun String.urlEncoded(): String {
