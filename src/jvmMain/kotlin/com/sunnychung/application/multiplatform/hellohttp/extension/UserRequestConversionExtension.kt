@@ -90,6 +90,10 @@ fun UserRequestTemplate.toHttpRequest(
         application = application,
     )
 
+    if (req.headers.none { "content-type".equals(it.first, ignoreCase = true) } && req.contentType.headerValue != null) {
+        req = req.copy(headers = req.headers + ("Content-Type" to req.contentType.headerValue!!))
+    }
+
     if (application == ProtocolApplication.Graphql) {
         val graphqlBody = req.body as GraphqlBody
         val baseGraphqlBody = baseExample.body as GraphqlBody
