@@ -1,6 +1,7 @@
 *.log
 /Releases
 /archived
+/temp
 
 ### Gradle ###
 .gradle
