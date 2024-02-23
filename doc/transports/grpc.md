@@ -49,4 +49,6 @@ A [grpcurl](https://github.com/fullstorydev/grpcurl) command can be copied to se
 shell. All service method types are supported. If only response bodies are needed, the verbose option `-v` can be
 removed.
 
+Note: It is only available for Linux & macOS.
+
 ![grpcurl](../grpcurl.png)

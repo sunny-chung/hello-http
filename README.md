@@ -90,8 +90,8 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
   - UUID (type `$((uuid))`)
   - Current date-time ISO-8601 string (type `$((now.iso8601))`)
   - Current timestamp (type `$((now.epochMills))` or `$((now.epochSeconds))`)
-- Copying as verbose cURL commands
-- Copying as verbose [grpcurl](https://github.com/fullstorydev/grpcurl) commands
+- Copying as verbose cURL commands (only for Linux & macOS)
+- Copying as verbose [grpcurl](https://github.com/fullstorydev/grpcurl) commands (only for Linux & macOS)
 
 **Response**
 - Post flight actions
