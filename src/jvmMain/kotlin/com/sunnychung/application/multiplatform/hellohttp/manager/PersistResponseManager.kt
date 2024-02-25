@@ -5,6 +5,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponseCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -43,7 +44,9 @@ class PersistResponseManager {
     private suspend fun persistCallResponse(callData: CallData) {
         val documentId = ResponsesDI(subprojectId = callData.subprojectId)
         val record = loadResponseCollection(documentId)
-        record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response
+        if (callData.status != ConnectionStatus.DISCONNECTED) { // prevent race condition among different calls of the same request example
+            record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response
+        }
         responseCollectionRepository.notifyUpdated(documentId)
     }
 

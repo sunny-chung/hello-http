@@ -291,6 +291,8 @@ class NetworkClientManager : CallDataStore {
                     }
                 }
 
+                log.d { "Load test call #${loadTestState.callId}" }
+
                 var isCompleted = false
                 val networkRequest = request.toHttpRequest(
                     exampleId = requestExampleId,
