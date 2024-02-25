@@ -431,6 +431,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
     }
 
     override fun sendRequest(
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -742,6 +743,14 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
             }
         }
         return call
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 
     private fun buildFileDescriptor(proto: FileDescriptorProto, fileDescriptorProtoByFilename: Map<String, FileDescriptorProto>): FileDescriptor {

@@ -226,6 +226,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
     }
 
     override fun sendRequest(
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -296,6 +297,14 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed"))
         }
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 }
 

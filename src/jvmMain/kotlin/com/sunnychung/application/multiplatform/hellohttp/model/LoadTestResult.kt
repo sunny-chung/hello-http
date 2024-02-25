@@ -110,15 +110,18 @@ class LoadTestState(val input: LoadTestInput, val callId: String, val startAt: K
     suspend fun toResult(intervalMs: Long): LoadTestResult {
         val now = KInstant.now()
         return lock.withLock {
+            val responsesOverResponseTime = responsesOverResponseTime.toList()
+            val latenciesMs = latenciesMs.toList()
+
             val responsesGroupedByInterval = responsesOverResponseTime
                 .groupBy({(it.endAt!!.toEpochMilliseconds() / intervalMs) * intervalMs}, { it.userResponse })
-            log.v { "responsesOverResponseTime = ${jsonMapper().writeValueAsString(responsesOverResponseTime)}" }
-            log.v { "responsesGroupedByInterval = ${jsonMapper().writeValueAsString(responsesGroupedByInterval)}" }
+//            log.v { "responsesOverResponseTime = ${jsonMapper().writeValueAsString(responsesOverResponseTime)}" }
+//            log.v { "responsesGroupedByInterval = ${jsonMapper().writeValueAsString(responsesGroupedByInterval)}" }
             val latencies = latenciesMs.map { it.value }
             LoadTestResult(
                 numRequestsSent = numRequestsSent.get(),
                 numResponses = latenciesMs.size,
-                latenciesMsHistogram = if (latenciesMs.size <= 1001) {
+                latenciesMsHistogram = if (latencies.size <= 1001) {
                     latencies
                 } else {
                     val latenciesMs = latencies

@@ -85,7 +85,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
     private fun buildHttpClient(
         callId: String,
-        callData: CallData,
+        callData: CallData?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
@@ -126,12 +126,14 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     }
 
                     override fun onConnectedHost(remoteAddress: String, protocolVersion: String) {
-                        CallDataUserResponseUtil.onConnected(callData.response)
+                        if (callData != null) {
+                            CallDataUserResponseUtil.onConnected(callData.response)
+                        }
                         emitEvent(callId, "Connected to $remoteAddress with $protocolVersion")
 
                         if (protocolVersion.startsWith("HTTP/", ignoreCase = true)) {
                             try {
-                                callData.response.protocol = ProtocolVersion(Protocol.Http, protocolVersion.drop("HTTP/".length))
+                                callData?.response?.protocol = ProtocolVersion(Protocol.Http, protocolVersion.drop("HTTP/".length))
                             } catch (_: Throwable) { /* ignore */ }
                         }
                     }
@@ -145,11 +147,13 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         peerPrincipal: Principal?,
                         peerCertificates: Array<Certificate>?
                     ) {
-                        CallDataUserResponseUtil.onTlsUpgraded(
-                            callData = callData,
-                            localCertificates = localCertificates,
-                            peerCertificates = peerCertificates
-                        )
+                        if (callData != null) {
+                            CallDataUserResponseUtil.onTlsUpgraded(
+                                callData = callData,
+                                localCertificates = localCertificates,
+                                peerCertificates = peerCertificates
+                            )
+                        }
 
                         var event = "Established TLS upgrade with protocol '$protocol', cipher suite '$cipherSuite'"
                         if (applicationProtocol.isNotBlank()) {
@@ -167,7 +171,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 })
                 .build(),
             listener@ { bytes, pos, len ->
-                if (callData.fireType != UserResponse.Type.Regular) return@listener
+                if (callData?.fireType != UserResponse.Type.Regular) return@listener
                 println("<< " + bytes.copyOfRange(pos, pos + len).decodeToString())
                 runBlocking {
                     incomingBytesFlow.emit(
@@ -179,7 +183,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 }
             },
             listener@ { bytes, pos, len ->
-                if (callData.fireType != UserResponse.Type.Regular) return@listener
+                if (callData?.fireType != UserResponse.Type.Regular) return@listener
                 runBlocking {
                     outgoingBytesFlow.emit(
                         Http1Payload(
@@ -208,7 +212,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                 override fun onHeaderOutputEncoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
                     log.d { "onHeaderOutputEncoded $streamId" }
-                    callData.response.requestData!!.headers = (callData.response.requestData!!.headers ?: emptyList()) +
+                    callData?.response?.requestData?.headers = (callData?.response?.requestData?.headers ?: emptyList()) +
                             headers.map { it.name to it.value }
 
                     val serialized = http2FrameSerializer.serializeHeaders(headers)
@@ -273,7 +277,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                             if (openedStreamIds.isEmpty() && !isCancelled.get()) {
                                 val message = "The connection has no active stream for some seconds, it appears to be hanging. Cancelling the connection."
                                 emitEvent(callId, message)
-                                callData.cancel(Exception(message))
+                                callData?.cancel?.invoke(Exception(message))
                                 isCancelled.set(true)
                             }
                         }
@@ -283,8 +287,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             },
             object : Http1StreamListener {
                 override fun onRequestHead(connection: HttpConnection, request: org.apache.hc.core5.http.HttpRequest) {
-                    val persistedRequest = callData.response.requestData!!
-                    persistedRequest.headers = request.headers.map { it.name to it.value }.toList()
+                    val persistedRequest = callData?.response?.requestData
+                    persistedRequest?.headers = request.headers.map { it.name to it.value }.toList()
                 }
 
                 override fun onResponseHead(connection: HttpConnection, response: HttpResponse?) {
@@ -298,44 +302,6 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             }
         )
 
-        return httpClient
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    override fun sendRequest(
-        request: HttpRequest,
-        requestExampleId: String,
-        requestId: String,
-        subprojectId: String,
-        postFlightAction: ((UserResponse) -> Unit)?,
-        httpConfig: HttpConfig,
-        sslConfig: SslConfig,
-        fireType: UserResponse.Type,
-        parentLoadTestState: LoadTestState?,
-    ): CallData {
-        val (apacheHttpRequest, requestBodySize) = request.toApacheHttpRequest()
-        val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
-
-        val data = createCallData(
-            requestBodySize = requestBodySize.toInt(),
-            requestExampleId = requestExampleId,
-            requestId = requestId,
-            subprojectId = subprojectId,
-            sslConfig = sslConfig,
-            fireType = fireType,
-            loadTestState = parentLoadTestState,
-        )
-        val callId = data.id
-
-        val httpClient = buildHttpClient(
-            callId = callId,
-            callData = data,
-            httpConfig = httpConfig,
-            sslConfig = sslConfig,
-            outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
-            incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
-            responseSize = data.optionalResponseSize
-        )
         httpClient.start()
 
         // TODO: Should we remove push promise support completely?
@@ -371,6 +337,62 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 }
             }
         }
+
+        return httpClient
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): MinimalHttpAsyncClient {
+        return buildHttpClient(
+            callId = parentCallId,
+            callData = null,
+            httpConfig = httpConfig,
+            sslConfig = sslConfig,
+            outgoingBytesFlow = MutableSharedFlow(),
+            incomingBytesFlow = MutableSharedFlow(),
+            responseSize = AtomicInteger(0)
+        )
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun sendRequest(
+        oldClient: Any?,
+        request: HttpRequest,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
+    ): CallData {
+        val (apacheHttpRequest, requestBodySize) = request.toApacheHttpRequest()
+        val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
+
+        val data = createCallData(
+            requestBodySize = requestBodySize.toInt(),
+            requestExampleId = requestExampleId,
+            requestId = requestId,
+            subprojectId = subprojectId,
+            sslConfig = sslConfig,
+            fireType = fireType,
+            loadTestState = parentLoadTestState,
+        )
+        val callId = data.id
+
+        val httpClient = (oldClient as? MinimalHttpAsyncClient) ?: buildHttpClient(
+            callId = callId,
+            callData = data,
+            httpConfig = httpConfig,
+            sslConfig = sslConfig,
+            outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
+            incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
+            responseSize = data.optionalResponseSize
+        )
 
         CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
             val callData = callData[callId]!!
@@ -506,7 +528,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         log.d { "Request to cancel the call" }
                         val cancelResult = call.cancel() // no use at all
                         log.d { "Cancel result = $cancelResult" }
-                        httpClient.close(CloseMode.IMMEDIATE)
+                        if (oldClient == null) {
+                            httpClient.close(CloseMode.IMMEDIATE)
+                        }
 
                         // httpClient.close is buggy. Do not rely on it
                         data.status = ConnectionStatus.DISCONNECTED
@@ -542,7 +566,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 executePostFlightAction(callId, out, postFlightAction)
             }
 
-            httpClient.close()
+            if (oldClient == null) {
+                httpClient.close()
+            }
 //            httpClient.awaitShutdown(TimeValue.ofSeconds(2))
             data.consumePayloads()
 

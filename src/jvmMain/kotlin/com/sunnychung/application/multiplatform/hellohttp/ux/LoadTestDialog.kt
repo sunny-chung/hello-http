@@ -29,7 +29,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 
-private val FIRST_COLUMN_WIDTH = 120.dp
+private val FIRST_COLUMN_WIDTH = 180.dp
 
 @Composable
 fun LoadTestDialog(isEnabled: Boolean, onDismiss: () -> Unit, onConfirm: (LoadTestInput) -> Unit) {
@@ -77,7 +77,7 @@ fun LoadTestDialog(isEnabled: Boolean, onDismiss: () -> Unit, onConfirm: (LoadTe
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AppText(text = "No. of concurrent users", modifier = Modifier.width(FIRST_COLUMN_WIDTH))
+                AppText(text = "No. of concurrent connections", modifier = Modifier.width(FIRST_COLUMN_WIDTH))
                 AppTextFieldWithPlaceholder(
                     value = numConcurrent?.toString() ?: "",
                     onValueChange = {
@@ -92,7 +92,7 @@ fun LoadTestDialog(isEnabled: Boolean, onDismiss: () -> Unit, onConfirm: (LoadTe
                     },
                     singleLine = true,
                     modifier = Modifier.focusRequester(focusRequester)
-                        .defaultMinSize(minWidth = 200.dp),
+                        .defaultMinSize(minWidth = 100.dp),
                 )
             }
 
@@ -111,7 +111,7 @@ fun LoadTestDialog(isEnabled: Boolean, onDismiss: () -> Unit, onConfirm: (LoadTe
                         PlaceholderText("e.g. 20")
                     },
                     singleLine = true,
-                    modifier = Modifier.defaultMinSize(minWidth = 200.dp),
+                    modifier = Modifier.defaultMinSize(minWidth = 100.dp),
                 )
             }
 

@@ -32,6 +32,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
     }
 
     override fun sendRequest(
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -156,6 +157,14 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         client.connect()
 
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 
     fun configureWebSocketClient(client: WebSocketClient, callId: String, sslConfig: SslConfig) {

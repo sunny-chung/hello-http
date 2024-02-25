@@ -29,6 +29,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserResponseByRe
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
+import com.sunnychung.application.multiplatform.hellohttp.network.TransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
@@ -93,6 +94,7 @@ class NetworkClientManager : CallDataStore {
         subprojectId: String,
         fireType: UserResponse.Type,
         parentLoadTestState: LoadTestState? = null,
+        client: Any? = null,
     ) : CallData {
         val callData = try {
             val networkRequest = request.toHttpRequest(
@@ -195,6 +197,7 @@ class NetworkClientManager : CallDataStore {
                 sslConfig = environment?.sslConfig ?: SslConfig(),
                 fireType = fireType,
                 parentLoadTestState = parentLoadTestState,
+                client = client,
             )
         } catch (error: Throwable) {
             val d = CallData(
@@ -251,7 +254,7 @@ class NetworkClientManager : CallDataStore {
         return callData
     }
 
-    private fun HttpRequest.getNetworkManager() = when (this.application) {
+    private fun HttpRequest.getNetworkManager(): TransportClient = when (this.application) {
         ProtocolApplication.Graphql -> graphqlSubscriptionTransportClient
         ProtocolApplication.WebSocket -> webSocketTransportClient
         ProtocolApplication.Grpc -> grpcTransportClient
@@ -294,6 +297,13 @@ class NetworkClientManager : CallDataStore {
                     environment = environment
                 )
                 val networkManager = networkRequest.getNetworkManager()
+
+                val client = networkManager.createReusableNonInspectableClient(
+                    parentCallId = loadTestState.callId,
+                    httpConfig = environment?.httpConfig ?: HttpConfig(),
+                    sslConfig = environment?.sslConfig ?: SslConfig(),
+                )
+
                 val callData = networkManager.createCallData(
                     callId = loadTestState.callId,
                     requestBodySize = null,
@@ -338,6 +348,7 @@ class NetworkClientManager : CallDataStore {
                                 subprojectId = subprojectId,
                                 fireType = UserResponse.Type.LoadTestChild,
                                 parentLoadTestState = loadTestState,
+                                client = client,
                             )
                             call.awaitComplete()
                             log.v { "LoadTest complete C#$i" }

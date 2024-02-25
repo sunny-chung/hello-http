@@ -9,7 +9,6 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onSubscription
@@ -33,6 +32,7 @@ interface TransportClient {
     ): CallData
 
     fun sendRequest(
+        client: Any? = null,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -45,6 +45,12 @@ interface TransportClient {
     ): CallData
 
     fun emitEvent(callId: String, event: String, isForce: Boolean = false)
+
+    fun createReusableNonInspectableClient(
+        parentCallId: String,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig,
+    ): Any?
 }
 
 class NetworkEvent(val callId: String, val instant: KInstant, val event: String)

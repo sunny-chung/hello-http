@@ -42,6 +42,7 @@ import kotlin.coroutines.resumeWithException
 class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientManager) : WebSocketTransportClient(networkClientManager) {
 
     override fun sendRequest(
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -221,5 +222,13 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
         }
 
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 }
