@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toApacheHttp
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -165,7 +166,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                 })
                 .build(),
-            { bytes, pos, len ->
+            listener@ { bytes, pos, len ->
+                if (callData.fireType != UserResponse.Type.Regular) return@listener
                 println("<< " + bytes.copyOfRange(pos, pos + len).decodeToString())
                 runBlocking {
                     incomingBytesFlow.emit(
@@ -176,7 +178,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     )
                 }
             },
-            { bytes, pos, len ->
+            listener@ { bytes, pos, len ->
+                if (callData.fireType != UserResponse.Type.Regular) return@listener
                 runBlocking {
                     outgoingBytesFlow.emit(
                         Http1Payload(
@@ -306,7 +309,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
-        sslConfig: SslConfig
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData {
         val (apacheHttpRequest, requestBodySize) = request.toApacheHttpRequest()
         val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
@@ -316,7 +321,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
-            sslConfig = sslConfig
+            sslConfig = sslConfig,
+            fireType = fireType,
+            loadTestState = parentLoadTestState,
         )
         val callId = data.id
 
@@ -503,6 +510,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                         // httpClient.close is buggy. Do not rely on it
                         data.status = ConnectionStatus.DISCONNECTED
+                        completeResponse(callId = callId, response = out)
                         this.cancel(error?.let { CancellationException(it.message, it) })
                     }
                 }
@@ -539,6 +547,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             data.consumePayloads()
 
             emitEvent(callId, "Response completed")
+            completeResponse(callId = callId, response = out)
         }
         return data
     }

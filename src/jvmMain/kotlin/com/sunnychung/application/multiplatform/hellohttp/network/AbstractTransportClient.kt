@@ -2,9 +2,12 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
+import com.sunnychung.application.multiplatform.hellohttp.model.LongDuplicateContainer
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.model.UserResponseByResponseTime
 import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllSslCertificateManager
@@ -57,7 +60,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    protected fun emitEvent(callId: String, event: String) {
+    override fun emitEvent(callId: String, event: String, isForce: Boolean) {
+        if (!isForce && (callData[callId]?.let { it.fireType == UserResponse.Type.LoadTestChild } != false)) {
+            return
+        }
         val instant = KInstant.now()
         runBlocking {
             eventSharedFlow.emit(
@@ -138,12 +144,21 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun getCallData(callId: String) = callData[callId]
 
-    protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String, sslConfig: SslConfig): CallData {
+    override fun createCallData(
+        callId: String?,
+        requestBodySize: Int?,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState?,
+    ): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
         val incomingBytesFlow = MutableSharedFlow<RawPayload>()
         val optionalResponseSize = AtomicInteger()
 
-        val callId = uuidString()
+        val callId = callId ?: uuidString()
 
         val data = CallData(
             id = callId,
@@ -157,76 +172,90 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             outgoingBytes = outgoingBytesFlow,
             incomingBytes = incomingBytesFlow,
             optionalResponseSize = optionalResponseSize,
-            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
+            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId, type = fireType),
+            fireType = fireType,
+            loadTestState = loadTestState,
             cancel = {}
         )
         callData[callId] = data
 
-        data.events
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    if (true || it.event == "Response completed") { // deadline fighter
-                        data.response.rawExchange.exchanges.forEach {
-                            it.consumePayloadBuilder()
+        if (fireType != UserResponse.Type.LoadTestChild) {
+            data.events
+                .onEach {
+                    synchronized(data.response.rawExchange.exchanges) {
+                        if (true || it.event == "Response completed") { // deadline fighter
+                            data.response.rawExchange.exchanges.forEach {
+                                it.consumePayloadBuilder()
+                            }
+                        } else { // lazy
+                            val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                            lastExchange?.consumePayloadBuilder()
                         }
-                    } else { // lazy
+                        data.response.rawExchange.exchanges += RawExchange.Exchange(
+                            instant = it.instant,
+                            direction = RawExchange.Direction.Unspecified,
+                            detail = it.event
+                        )
+                    }
+                }
+                .launchIn(CoroutineScope(Dispatchers.IO))
+
+            data.outgoingBytes
+                .onEach {
+                    synchronized(data.response.rawExchange.exchanges) {
                         val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                        lastExchange?.consumePayloadBuilder()
-                    }
-                    data.response.rawExchange.exchanges += RawExchange.Exchange(
-                        instant = it.instant,
-                        direction = RawExchange.Direction.Unspecified,
-                        detail = it.event
-                    )
-                }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
-
-        data.outgoingBytes
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Outgoing,
-                            streamId = if (it is Http2Frame) it.streamId else null,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(requestBodySize ?: 0, it.payload.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.payload)
+                        if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
+                            data.response.rawExchange.exchanges += RawExchange.Exchange(
+                                instant = it.instant,
+                                direction = RawExchange.Direction.Outgoing,
+                                streamId = if (it is Http2Frame) it.streamId else null,
+                                detail = null,
+                                payloadBuilder = ByteArrayOutputStream(
+                                    maxOf(
+                                        requestBodySize ?: 0,
+                                        it.payload.size + 1 * 1024 * 1024
+                                    )
+                                )
+                            ).apply {
+                                payloadBuilder!!.write(it.payload)
+                            }
+                        } else {
+                            lastExchange.payloadBuilder!!.write(it.payload)
+                            lastExchange.lastUpdateInstant = it.instant
                         }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.payload)
-                        lastExchange.lastUpdateInstant = it.instant
+                        log.v { it.payload.decodeToString() }
                     }
-                    log.v { it.payload.decodeToString() }
                 }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
+                .launchIn(CoroutineScope(Dispatchers.IO))
 
-        data.incomingBytes
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Incoming,
-                            streamId = if (it is Http2Frame) it.streamId else null,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.payload.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.payload)
+            data.incomingBytes
+                .onEach {
+                    synchronized(data.response.rawExchange.exchanges) {
+                        val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                        if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
+                            data.response.rawExchange.exchanges += RawExchange.Exchange(
+                                instant = it.instant,
+                                direction = RawExchange.Direction.Incoming,
+                                streamId = if (it is Http2Frame) it.streamId else null,
+                                detail = null,
+                                payloadBuilder = ByteArrayOutputStream(
+                                    maxOf(
+                                        optionalResponseSize.get(),
+                                        it.payload.size + 1 * 1024 * 1024
+                                    )
+                                )
+                            ).apply {
+                                payloadBuilder!!.write(it.payload)
+                            }
+                        } else {
+                            lastExchange.payloadBuilder!!.write(it.payload)
+                            lastExchange.lastUpdateInstant = it.instant
                         }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.payload)
-                        lastExchange.lastUpdateInstant = it.instant
+                        log.v { it.payload.decodeToString() }
                     }
-                    log.v { it.payload.decodeToString() }
                 }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
+                .launchIn(CoroutineScope(Dispatchers.IO))
+        }
 
         return data
     }
@@ -251,6 +280,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
     }
 
     fun executePostFlightAction(callId: String, out: UserResponse, postFlightAction: ((UserResponse) -> Unit)) {
+        if (callData[callId]?.let { it.fireType != UserResponse.Type.Regular } != false) {
+            return
+        }
+
         emitEvent(callId, "Executing Post Flight Actions")
         try {
             postFlightAction(out)
@@ -259,5 +292,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             out.postFlightErrorMessage = e.message
             emitEvent(callId, "Post Flight Actions Stopped with Error -- ${e.message}")
         }
+    }
+
+    fun completeResponse(callId: String, response: UserResponse) {
+        val call = callData[callId] ?: return
+        call.complete()
     }
 }

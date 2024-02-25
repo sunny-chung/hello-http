@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -37,7 +38,9 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
-        sslConfig: SslConfig
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData {
         val data = createCallData(
             requestBodySize = null,
@@ -45,6 +48,8 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            fireType = fireType,
+            loadTestState = parentLoadTestState,
         )
         val callId = data.id
         val uri: URI = request.getResolvedUri()

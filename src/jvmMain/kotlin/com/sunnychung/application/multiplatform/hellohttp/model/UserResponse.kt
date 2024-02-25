@@ -41,8 +41,16 @@ data class UserResponse(
             null,
     var requestData: RequestData? = null,
     var closeReason: String? = null,
+
+    @Transient var type: Type = Type.Regular,
+    @Transient var loadTestResult: LoadTestResult? = null,
+
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
+    enum class Type {
+        Regular, LoadTest, LoadTestChild
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -94,6 +102,25 @@ class RequestData(
     var body: ByteArray? = null,
 ) {
     fun isNotEmpty() = headers != null
+}
+
+class UserResponseByResponseTime(val userResponse: UserResponse) : Comparable<UserResponseByResponseTime> {
+    val endAt get() = userResponse.endAt
+
+    // never return 0 (equals) so that we can have duplicated values in the sorted set
+    override fun compareTo(other: UserResponseByResponseTime): Int {
+        if (userResponse.endAt == null) {
+            return if (other.userResponse.endAt == null) {
+                1
+            } else {
+                1
+            }
+        }
+        if (other.userResponse.endAt == null) {
+            return -1
+        }
+        return userResponse.endAt!!.compareTo(other.userResponse.endAt!!).let { if (it == 0) 1 else it }
+    }
 }
 
 val TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.lll (Z)"

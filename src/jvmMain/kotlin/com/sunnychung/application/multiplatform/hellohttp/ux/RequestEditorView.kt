@@ -59,6 +59,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestInput
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -113,6 +114,7 @@ fun RequestEditorView(
     onClickFetchApiSpec: () -> Unit,
     onClickCancelFetchApiSpec: () -> Unit,
     isFetchingApiSpec: Boolean,
+    onRequestLoadTest: (LoadTestInput) -> Unit,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
@@ -151,6 +153,7 @@ fun RequestEditorView(
     }
 
     var isShowCustomHttpMethodDialog by remember { mutableStateOf(false) }
+    var isShowLoadTestDialog by remember { mutableStateOf(false) }
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -167,6 +170,15 @@ fun RequestEditorView(
                 )
                 isShowCustomHttpMethodDialog = false
             }
+        },
+    )
+
+    LoadTestDialog(
+        isEnabled = isShowLoadTestDialog,
+        onDismiss = { isShowLoadTestDialog = false },
+        onConfirm = { loadTestInput ->
+            onRequestLoadTest(loadTestInput)
+            isShowLoadTestDialog = false
         },
     )
 
@@ -304,7 +316,7 @@ fun RequestEditorView(
                     ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
                     else -> listOf("Copy as cURL command")
                 }
-            }
+            } + listOf("Load Test")
             val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
             } else {
@@ -356,6 +368,9 @@ fun RequestEditorView(
                                         log.d(e) { "Cannot copy grpcurl command" }
                                         false
                                     }
+                                }
+                                "Load Test" -> {
+                                    isShowLoadTestDialog = true
                                 }
                             }
                             isSuccess

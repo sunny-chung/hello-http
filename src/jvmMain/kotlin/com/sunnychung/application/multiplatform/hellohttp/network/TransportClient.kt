@@ -2,12 +2,17 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onSubscription
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.KeyManager
 import javax.net.ssl.SSLContext
@@ -16,6 +21,17 @@ import javax.net.ssl.X509TrustManager
 interface TransportClient {
     fun getCallData(callId: String): CallData?
 
+    fun createCallData(
+        callId: String? = null,
+        requestBodySize: Int?,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState? = null,
+    ): CallData
+
     fun sendRequest(
         request: HttpRequest,
         requestExampleId: String,
@@ -23,8 +39,12 @@ interface TransportClient {
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
-        sslConfig: SslConfig
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData
+
+    fun emitEvent(callId: String, event: String, isForce: Boolean = false)
 }
 
 class NetworkEvent(val callId: String, val instant: KInstant, val event: String)
@@ -43,10 +63,27 @@ class CallData(
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
 
+    // load test specific
+    val fireType: UserResponse.Type,
+    val loadTestState: LoadTestState? = null,
+
     var cancel: (Throwable?) -> Unit,
     var sendPayload: (String) -> Unit = {},
     var sendEndOfStream: () -> Unit = {},
-)
+) {
+    private var isCompleted = MutableStateFlow(false)
+
+    fun complete() {
+        isCompleted.value = true
+    }
+
+    suspend fun awaitComplete() {
+        isCompleted
+            .onSubscription { emit(isCompleted.value) }
+            .filter { it == true }
+            .first()
+    }
+}
 
 class LiteCallData(
     val id: String,

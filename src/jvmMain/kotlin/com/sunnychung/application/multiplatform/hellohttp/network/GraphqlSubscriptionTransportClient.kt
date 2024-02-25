@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientM
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -47,7 +48,9 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
-        sslConfig: SslConfig
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData {
         val payload = request.extra as GraphqlRequestBody
 
@@ -57,6 +60,8 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            fireType = fireType,
+            loadTestState = parentLoadTestState,
         )
         val callId = data.id
         val uri: URI = request.getResolvedUri()

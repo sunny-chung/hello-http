@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequ
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.okhttp.GzipDecompressionInterceptor
@@ -224,7 +225,17 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             .build()
     }
 
-    override fun sendRequest(request: HttpRequest, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, httpConfig: HttpConfig, sslConfig: SslConfig): CallData {
+    override fun sendRequest(
+        request: HttpRequest,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState?,
+    ): CallData {
         val okHttpRequest = request.toOkHttpRequest()
 
         val data = createCallData(
@@ -233,6 +244,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            fireType = UserResponse.Type.Regular,
         )
         val callId = data.id
 
