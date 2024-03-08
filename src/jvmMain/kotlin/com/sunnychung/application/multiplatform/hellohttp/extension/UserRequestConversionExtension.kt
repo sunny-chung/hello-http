@@ -328,6 +328,6 @@ fun UserRequestTemplate.toGrpcurlCommand(exampleId: String, environment: Environ
     cmd += "${newLine}-d \"${payload.escape()}\""
 
     cmd += "${newLine}${uri.host}:${uri.port}"
-    cmd += "${newLine}${grpc!!.service}/${grpc!!.method}"
+    cmd += " ${grpc!!.service}/${grpc!!.method}"
     return cmd
 }
