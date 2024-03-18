@@ -296,14 +296,11 @@ fun RequestEditorView(
                 ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
                 else -> true
             }
-            val dropdownItems: List<String> = when (currentOS()) {
-                WindowsOS -> emptyList() // disable because not able to escape newlines inside double-quoted string
-                else -> when (request.application) {
-                    ProtocolApplication.WebSocket -> emptyList()
-                    ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
-                    ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
-                    else -> listOf("Copy as cURL command")
-                }
+            val dropdownItems: List<String> = when (request.application) {
+                ProtocolApplication.WebSocket -> emptyList()
+                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command (for Linux / macOS)") else emptyList()
+                ProtocolApplication.Grpc -> listOf("Copy as grpcurl command (for Linux / macOS)")
+                else -> listOf("Copy as cURL command (for Linux / macOS)")
             }
             val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
@@ -346,10 +343,10 @@ fun RequestEditorView(
                         onClickItem = {
                             var isSuccess = true
                             when (it.displayText) {
-                                "Copy as cURL command" -> {
+                                "Copy as cURL command (for Linux / macOS)" -> {
                                     isSuccess = onClickCopyCurl()
                                 }
-                                "Copy as grpcurl command" -> {
+                                "Copy as grpcurl command (for Linux / macOS)" -> {
                                     isSuccess = try {
                                         onClickCopyGrpcurl(selectedPayloadExampleId!!, currentGrpcMethod!!)
                                     } catch (e: Throwable) {

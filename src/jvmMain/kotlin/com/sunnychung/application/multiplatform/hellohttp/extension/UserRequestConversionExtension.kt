@@ -237,97 +237,114 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
     return Pair(b.build(), entity?.contentLength ?: 0L)
 }
 
-private fun String.escape(): String {
-    return this.let {
-        if (currentOS() != WindowsOS) {
-            replace("\\", "\\\\")
-        } else {
-            it
-        }
-    }.replace("\"", "\\\"")
-}
+class CommandGenerator(val os: OS) {
 
-private fun String.urlEncoded(): String {
-    return URLEncoder.encode(this, StandardCharsets.UTF_8)
-}
-
-fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?): String {
-    val request = toHttpRequest(exampleId, environment)
-
-    val url = request.getResolvedUri().toString()
-
-    val currentOS = currentOS()
-    val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "
-
-    var curl = ""
-    if (currentOS in setOf(MacOS, LinuxOS)) {
-        curl += "time "
-    }
-    curl += "curl --verbose"
-    if (environment?.sslConfig?.isInsecure == true) {
-        curl += "${newLine}--insecure"
-    }
-    curl += "${newLine}--request \"${request.method.escape()}\""
-    curl += "${newLine}--url \"${url.escape()}\""
-    request.headers.forEach {
-        curl += "${newLine}--header \"${it.first.escape()}: ${it.second.escape()}\""
-    }
-    when (request.body) {
-        is FormUrlEncodedBody -> {
-            request.body.value.forEach {
-                curl += "${newLine}--data-urlencode \"${it.key.urlEncoded().escape()}=${it.value.escape()}\""
+    private fun String.escape(): String {
+        return this.let {
+            if (os != WindowsOS) {
+                replace("\\", "\\\\")
+            } else {
+                it
             }
+        }.replace("\"", "\\\"")
+    }
+
+    private fun String.urlEncoded(): String {
+        return URLEncoder.encode(this, StandardCharsets.UTF_8)
+    }
+
+    fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?): String {
+        val request = toHttpRequest(exampleId, environment)
+
+        val url = request.getResolvedUri().toString()
+
+        val currentOS = os
+        val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "
+
+        var curl = ""
+        if (currentOS in setOf(MacOS, LinuxOS)) {
+            curl += "time "
         }
-        is MultipartBody -> {
-            request.body.value.forEach {
-                when (it.valueType) {
-                    FieldValueType.String -> curl += "${newLine}--form \"${it.key.escape()}=\\\"${it.value.escape().escape()}\\\"\""
-                    FieldValueType.File -> curl += "${newLine}--form \"${it.key.escape()}=@\\\"${it.value.escape().escape()}\\\"\""
+        curl += "curl --verbose"
+        if (environment?.sslConfig?.isInsecure == true) {
+            curl += "${newLine}--insecure"
+        }
+        curl += "${newLine}--request \"${request.method.escape()}\""
+        curl += "${newLine}--url \"${url.escape()}\""
+        request.headers.forEach {
+            curl += "${newLine}--header \"${it.first.escape()}: ${it.second.escape()}\""
+        }
+        when (request.body) {
+            is FormUrlEncodedBody -> {
+                request.body.value.forEach {
+                    curl += "${newLine}--data-urlencode \"${it.key.urlEncoded().escape()}=${it.value.escape()}\""
                 }
             }
-        }
-        is StringBody -> {
-            curl += "${newLine}--data \"${request.body.value.escape()}\""
-        }
-        is FileBody -> {
-            if (request.body.filePath != null) {
-                curl += "${newLine}--data-binary \"@${request.body.filePath}\""
+
+            is MultipartBody -> {
+                request.body.value.forEach {
+                    when (it.valueType) {
+                        FieldValueType.String -> curl += "${newLine}--form \"${it.key.escape()}=\\\"${
+                            it.value.escape().escape()
+                        }\\\"\""
+
+                        FieldValueType.File -> curl += "${newLine}--form \"${it.key.escape()}=@\\\"${
+                            it.value.escape().escape()
+                        }\\\"\""
+                    }
+                }
             }
+
+            is StringBody -> {
+                curl += "${newLine}--data \"${request.body.value.escape()}\""
+            }
+
+            is FileBody -> {
+                if (request.body.filePath != null) {
+                    curl += "${newLine}--data-binary \"@${request.body.filePath}\""
+                }
+            }
+
+            null -> {}
+            else -> throw UnsupportedOperationException()
         }
-        null -> {}
-        else -> throw UnsupportedOperationException()
+        return curl
     }
-    return curl
-}
 
-fun UserRequestTemplate.toGrpcurlCommand(exampleId: String, environment: Environment?, payloadExampleId: String, method: GrpcMethod): String {
-    val request = toHttpRequest(exampleId, environment)
+    fun UserRequestTemplate.toGrpcurlCommand(
+        exampleId: String,
+        environment: Environment?,
+        payloadExampleId: String,
+        method: GrpcMethod
+    ): String {
+        val request = toHttpRequest(exampleId, environment)
 
-    val uri = request.getResolvedUri()
+        val uri = request.getResolvedUri()
 
-    val currentOS = currentOS()
-    val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "
+        val currentOS = os
+        val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "
 
-    var cmd = "grpcurl -v"
+        var cmd = "grpcurl -v"
 
-    val isTlsConnection = uri.scheme !in setOf("http", "grpc")
-    if (isTlsConnection && environment?.sslConfig?.isInsecure == true) {
-        cmd += "${newLine}-insecure"
-    } else if (!isTlsConnection) {
-        cmd += "${newLine}-plaintext"
+        val isTlsConnection = uri.scheme !in setOf("http", "grpc")
+        if (isTlsConnection && environment?.sslConfig?.isInsecure == true) {
+            cmd += "${newLine}-insecure"
+        } else if (!isTlsConnection) {
+            cmd += "${newLine}-plaintext"
+        }
+        request.headers.forEach {
+            cmd += "${newLine}-H \"${it.first.escape()}: ${it.second.escape()}\""
+        }
+        val payload = if (!method.isClientStreaming) {
+            (request.body as StringBody).value
+        } else {
+            payloadExamples!!.first { it.id == payloadExampleId }.body
+        }
+        cmd += "${newLine}-format json"
+        cmd += "${newLine}-d \"${payload.escape()}\""
+
+        cmd += "${newLine}${uri.host}:${uri.port}"
+        cmd += " ${grpc!!.service}/${grpc!!.method}"
+        return cmd
     }
-    request.headers.forEach {
-        cmd += "${newLine}-H \"${it.first.escape()}: ${it.second.escape()}\""
-    }
-    val payload = if (!method.isClientStreaming) {
-        (request.body as StringBody).value
-    } else {
-        payloadExamples!!.first { it.id == payloadExampleId }.body
-    }
-    cmd += "${newLine}-format json"
-    cmd += "${newLine}-d \"${payload.escape()}\""
-
-    cmd += "${newLine}${uri.host}:${uri.port}"
-    cmd += " ${grpc!!.service}/${grpc!!.method}"
-    return cmd
 }
