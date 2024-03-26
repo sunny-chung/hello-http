@@ -69,6 +69,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
@@ -542,6 +543,24 @@ fun AppContentView() {
                                             }
                                             log.d { "curl: $curl" }
                                             clipboardManager.setText(AnnotatedString(curl))
+                                            errorMessageVM.showSuccessMessage("Copied command")
+                                            true
+                                        } catch (e: Throwable) {
+                                            log.w(e) { "Cannot convert request" }
+                                            errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                            false
+                                        }
+                                    },
+                                    onClickCopyPowershellInvokeWebrequest = {
+                                        try {
+                                            val cmd = with (CommandGenerator(WindowsOS)) {
+                                                requestNonNull.toPowerShellInvokeWebRequestCommand(
+                                                    exampleId = selectedRequestExampleId!!,
+                                                    environment = selectedEnvironment
+                                                )
+                                            }
+                                            log.d { "cmd: $cmd" }
+                                            clipboardManager.setText(AnnotatedString(cmd))
                                             errorMessageVM.showSuccessMessage("Copied command")
                                             true
                                         } catch (e: Throwable) {
