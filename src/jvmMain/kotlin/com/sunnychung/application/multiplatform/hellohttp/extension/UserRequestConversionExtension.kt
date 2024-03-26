@@ -28,6 +28,7 @@ import graphql.language.OperationDefinition
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import org.apache.hc.client5.http.entity.mime.HttpMultipartMode
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.message.BasicNameValuePair
@@ -206,9 +207,10 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
             val entity = MultipartEntityBuilder.create()
                 .run {
                     var b = this
+                    b = b.setMode(HttpMultipartMode.EXTENDED)
                     body.value.forEach {
                         val part = when (it.valueType) {
-                            FieldValueType.String -> org.apache.hc.client5.http.entity.mime.StringBody(it.value, org.apache.hc.core5.http.ContentType.MULTIPART_FORM_DATA)
+                            FieldValueType.String -> org.apache.hc.client5.http.entity.mime.StringBody(it.value, ContentType.create("text/plain", Charsets.UTF_8))
                             FieldValueType.File -> org.apache.hc.client5.http.entity.mime.FileBody(File(it.value))
                         }
                         b = b.addPart(it.key, part)
