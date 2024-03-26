@@ -90,7 +90,7 @@ fun UserRequestTemplate.toHttpRequest(
         application = application,
     )
 
-    if (req.headers.none { "content-type".equals(it.first, ignoreCase = true) } && req.contentType.headerValue != null) {
+    if (req.headers.none { "content-type".equals(it.first, ignoreCase = true) } && req.contentType.headerValue != null && req.contentType != com.sunnychung.application.multiplatform.hellohttp.model.ContentType.Multipart) {
         req = req.copy(headers = req.headers + ("Content-Type" to req.contentType.headerValue!!))
     }
 
@@ -186,6 +186,8 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
 //            }
 //            .build()
 //    )
+    var approximateContentSize: Long? = null
+
     val b = AsyncRequestBuilder
         .create(method)
         .setUri(getResolvedUri())
@@ -216,7 +218,10 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
                 .build()
             // TODO memory bomb!
             AsyncEntityProducers.create(
-                entity.content.readAllBytes(),
+                entity.content.readAllBytes().also {
+                    // Apache is buggy, entity.contentLength returns -1
+                    approximateContentSize = it.size.toLong()
+                },
                 org.apache.hc.core5.http.ContentType.parse(entity.contentType),
                 *(entity.trailers?.get()?.toTypedArray() ?: emptyArray())
             )
@@ -234,7 +239,7 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
     if (entity != null) {
         b.entity = entity
     }
-    return Pair(b.build(), entity?.contentLength ?: 0L)
+    return Pair(b.build(), approximateContentSize ?: entity?.contentLength ?: 0L)
 }
 
 class CommandGenerator(val os: OS) {
