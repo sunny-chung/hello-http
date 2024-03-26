@@ -10,22 +10,21 @@ import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.OS
 import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
-import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import graphql.language.OperationDefinition
-import graphql.parser.InvalidSyntaxException
-import graphql.parser.Parser
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -39,6 +38,7 @@ import org.apache.hc.core5.net.URIBuilder
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 
 fun UserRequestTemplate.toHttpRequest(
     exampleId: String,
@@ -240,6 +240,11 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
 class CommandGenerator(val os: OS) {
 
     private fun String.escape(): String {
+        if (os == WindowsOS) {
+            return replace("`", "``")
+                .replace("\"", "`\"")
+                .replace("\n", "`\n")
+        }
         return this.let {
             if (os != WindowsOS) {
                 replace("\\", "\\\\")
@@ -309,6 +314,81 @@ class CommandGenerator(val os: OS) {
             else -> throw UnsupportedOperationException()
         }
         return curl
+    }
+
+    private fun List<UserKeyValuePair>.toPowerShellDictionary(): String {
+        val subject = this
+        val escape = "`"
+        return buildString {
+            append("@{$escape")
+            subject.forEach {
+                append("\n    \"${it.key.escape()}\" = ${
+                    if (it.valueType == FieldValueType.File) {
+                        "Get-Item -Path "
+                    } else ""
+                }\"${it.value.escape()}\"")
+            }
+            append("\n  }")
+        }
+    }
+
+    fun UserRequestTemplate.toPowerShellInvokeWebRequestCommand(exampleId: String, environment: Environment?): String {
+        val request = toHttpRequest(exampleId, environment)
+
+        val url = request.getResolvedUri().toString()
+
+        val currentOS = os
+        val escape = "`"
+        val newLine = " $escape\n  "
+
+        var cmd = ""
+        cmd += "Invoke-WebRequest"
+        if (environment?.sslConfig?.isInsecure == true) {
+            cmd += "${newLine}-SkipCertificateCheck"
+        }
+        if (environment?.httpConfig?.protocolVersion == HttpConfig.HttpProtocolVersion.Http2Only) {
+            cmd += "${newLine}-HttpVersion 2.0"
+        }
+        if (request.method.uppercase(Locale.US) in setOf("DEFAULT", "DELETE", "GET", "HEAD", "MERGE", "OPTIONS", "PATCH", "POST", "PUT", "TRACE")) {
+            cmd += "${newLine}-Method \"${request.method.escape()}\""
+        } else {
+            cmd += "${newLine}-CustomMethod \"${request.method.escape()}\""
+        }
+        cmd += "${newLine}-Uri \"${url.escape()}\""
+        if (request.headers.isNotEmpty()) {
+            cmd += "${newLine}-Headers "
+            cmd += request.headers.map { UserKeyValuePair(key = it.first, value = it.second) }
+                .toPowerShellDictionary()
+        }
+        when (request.body) {
+            is FormUrlEncodedBody -> {
+                cmd += "${newLine}-Body "
+                cmd += request.body.value.toPowerShellDictionary()
+            }
+
+            is MultipartBody -> {
+                cmd += "${newLine}-Form "
+                cmd += request.body.value.toPowerShellDictionary()
+            }
+
+            is StringBody -> {
+                cmd += "${newLine}-Body \"${request.body.value.escape()}\""
+            }
+
+            is FileBody -> {
+                if (request.body.filePath != null) {
+                    if (request.headers.none { it.first.equals("Content-Type", ignoreCase = true) }) {
+                        cmd += "${newLine}-ContentType \"\""
+                    }
+                    cmd += "${newLine}-InFile \"${request.body.filePath}\""
+                }
+            }
+
+            null -> {}
+            else -> throw UnsupportedOperationException()
+        }
+        cmd += " | Select-Object -Expand RawContent"
+        return cmd
     }
 
     fun UserRequestTemplate.toGrpcurlCommand(
