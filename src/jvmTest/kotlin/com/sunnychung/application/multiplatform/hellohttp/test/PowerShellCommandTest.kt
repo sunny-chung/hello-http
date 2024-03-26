@@ -165,7 +165,6 @@ class PowerShellCommandTest {
               -Uri "https://httpbin.org/post" `
               -Headers @{`
                 "User-Agent" = "Hello-HTTP/1.5.0-SNAPSHOT"
-                "Content-Type" = "multipart/form-data"
               } `
               -Form @{`
                 "User-Agent" = "Hello-HTTP/1.5.0-SNAPSHOT"
@@ -206,7 +205,6 @@ class PowerShellCommandTest {
               -Uri "https://httpbin.org/post" `
               -Headers @{`
                 "User-Agent" = "Hello-HTTP/1.5.0-SNAPSHOT"
-                "Content-Type" = "multipart/form-data"
               } `
               -Form @{`
                 "User-Agent" = "Hello-HTTP/1.5.0-SNAPSHOT"
