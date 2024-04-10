@@ -56,8 +56,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
-import com.sunnychung.application.multiplatform.hellohttp.extension.toCurlCommand
-import com.sunnychung.application.multiplatform.hellohttp.extension.toGrpcurlCommand
+import com.sunnychung.application.multiplatform.hellohttp.extension.CommandGenerator
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -69,6 +68,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
@@ -534,10 +535,12 @@ fun AppContentView() {
                                     },
                                     onClickCopyCurl = {
                                         try {
-                                            val curl = requestNonNull.toCurlCommand(
-                                                exampleId = selectedRequestExampleId!!,
-                                                environment = selectedEnvironment
-                                            )
+                                            val curl = with (CommandGenerator(LinuxOS)) {
+                                                requestNonNull.toCurlCommand(
+                                                    exampleId = selectedRequestExampleId!!,
+                                                    environment = selectedEnvironment
+                                                )
+                                            }
                                             log.d { "curl: $curl" }
                                             clipboardManager.setText(AnnotatedString(curl))
                                             errorMessageVM.showSuccessMessage("Copied command")
@@ -548,14 +551,34 @@ fun AppContentView() {
                                             false
                                         }
                                     },
+                                    onClickCopyPowershellInvokeWebrequest = {
+                                        try {
+                                            val cmd = with (CommandGenerator(WindowsOS)) {
+                                                requestNonNull.toPowerShellInvokeWebRequestCommand(
+                                                    exampleId = selectedRequestExampleId!!,
+                                                    environment = selectedEnvironment
+                                                )
+                                            }
+                                            log.d { "cmd: $cmd" }
+                                            clipboardManager.setText(AnnotatedString(cmd))
+                                            errorMessageVM.showSuccessMessage("Copied command")
+                                            true
+                                        } catch (e: Throwable) {
+                                            log.w(e) { "Cannot convert request" }
+                                            errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                            false
+                                        }
+                                    },
                                     onClickCopyGrpcurl = { payloadExampleId, grpcMethod ->
                                         try {
-                                            val cmd = requestNonNull.toGrpcurlCommand(
-                                                exampleId = selectedRequestExampleId!!,
-                                                environment = selectedEnvironment,
-                                                payloadExampleId = payloadExampleId,
-                                                method = grpcMethod,
-                                            )
+                                            val cmd = with (CommandGenerator(LinuxOS)) {
+                                                requestNonNull.toGrpcurlCommand(
+                                                    exampleId = selectedRequestExampleId!!,
+                                                    environment = selectedEnvironment,
+                                                    payloadExampleId = payloadExampleId,
+                                                    method = grpcMethod,
+                                                )
+                                            }
                                             log.d { "grpcurl: $cmd" }
                                             clipboardManager.setText(AnnotatedString(cmd))
                                             errorMessageVM.showSuccessMessage("Copied command")

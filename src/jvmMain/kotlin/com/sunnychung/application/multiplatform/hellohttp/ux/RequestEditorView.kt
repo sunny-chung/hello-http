@@ -71,7 +71,6 @@ import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMetho
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
-import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
@@ -104,6 +103,7 @@ fun RequestEditorView(
     onClickCancel: () -> Unit,
     onClickCopyCurl: () -> Boolean,
     onClickCopyGrpcurl: (selectedPayloadExampleId: String, method: GrpcMethod) -> Boolean,
+    onClickCopyPowershellInvokeWebrequest: () -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     connectionStatus: ConnectionStatus,
     onClickConnect: () -> Unit,
@@ -296,14 +296,11 @@ fun RequestEditorView(
                 ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
                 else -> true
             }
-            val dropdownItems: List<String> = when (currentOS()) {
-                WindowsOS -> emptyList() // disable because not able to escape newlines inside double-quoted string
-                else -> when (request.application) {
-                    ProtocolApplication.WebSocket -> emptyList()
-                    ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
-                    ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
-                    else -> listOf("Copy as cURL command")
-                }
+            val dropdownItems: List<SendButtonDropdown> = when (request.application) {
+                ProtocolApplication.WebSocket -> emptyList()
+                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows) else emptyList()
+                ProtocolApplication.Grpc -> listOf(SendButtonDropdown.GrpcurlForLinux)
+                else -> listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows)
             }
             val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
@@ -341,15 +338,18 @@ fun RequestEditorView(
                 if (dropdownItems.isNotEmpty()) {
                     DropDownView(
                         iconSize = 24.dp,
-                        items = dropdownItems.map { DropDownValue(it) },
+                        items = dropdownItems.map { DropDownValue(it.displayText) },
                         isShowLabel = false,
                         onClickItem = {
                             var isSuccess = true
                             when (it.displayText) {
-                                "Copy as cURL command" -> {
+                                SendButtonDropdown.CurlForLinux.displayText -> {
                                     isSuccess = onClickCopyCurl()
                                 }
-                                "Copy as grpcurl command" -> {
+                                SendButtonDropdown.PowershellInvokeWebrequestForWindows.displayText -> {
+                                    isSuccess = onClickCopyPowershellInvokeWebrequest()
+                                }
+                                SendButtonDropdown.GrpcurlForLinux.displayText -> {
                                     isSuccess = try {
                                         onClickCopyGrpcurl(selectedPayloadExampleId!!, currentGrpcMethod!!)
                                     } catch (e: Throwable) {
@@ -1412,3 +1412,9 @@ private enum class RequestTab(val displayText: String) {
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)
+
+private enum class SendButtonDropdown(val displayText: String) {
+    CurlForLinux("Copy as cURL command (for Linux / macOS)"),
+    GrpcurlForLinux("Copy as grpcurl command (for Linux / macOS)"),
+    PowershellInvokeWebrequestForWindows("Copy as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)")
+}
