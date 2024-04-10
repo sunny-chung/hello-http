@@ -6,7 +6,7 @@ title: Data Import & Export
 
 ## Data Import
 
-Welcome to bring in data from other applications to try Hello HTTP! Enjoy data freedom! Currently suppported data
+Welcome to bring in data from other applications to try Hello HTTP! Enjoy data freedom! Currently supported data
 formats are:
 
 - Insomnia v4 JSON
@@ -15,7 +15,7 @@ formats are:
 - Hello HTTP data dump
 
 ## Data Export
-Create a manual backup, or leave anytime you want! Currently suppported data formats are:
+Create a manual backup, or leave anytime you want! Currently supported data formats are:
 - Insomnia v4 JSON
 - Hello HTTP data dump
 - Postman v2 Data Dump (One File per Project or Environment)
