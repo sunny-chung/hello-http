@@ -126,6 +126,7 @@ data class UserRequestTemplate(
                     headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    preFlight = it.preFlight.copy(),
                     postFlight = with (it.postFlight) {
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
