@@ -64,12 +64,15 @@ kotlin {
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
                 implementation("com.jayway.jsonpath:json-path:2.8.0")
 
-                implementation("io.github.sunny-chung:kdatetime-multiplatform:0.5.0")
+                implementation("io.github.sunny-chung:kdatetime-multiplatform:1.0.0")
 
                 implementation("net.harawata:appdirs:1.2.2")
                 implementation("com.darkrockstudios:mpfilepicker:2.1.0")
 
                 implementation("org.jetbrains.compose.components:components-splitpane:1.5.2")
+
+                implementation("io.github.sunny-chung:kotlite-interpreter:1.0.0")
+                implementation("io.github.sunny-chung:kotlite-stdlib:1.0.0")
             }
 
             resources.srcDir("$buildDir/resources")

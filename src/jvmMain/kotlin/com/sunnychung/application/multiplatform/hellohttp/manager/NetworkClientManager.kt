@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestExtra
 import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.helper.CustomCodeExecutor
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -89,6 +90,11 @@ class NetworkClientManager : CallDataStore {
                     this
                 }
             }
+            request.examples.firstOrNull { it.id == requestExampleId }?.let {
+                CustomCodeExecutor(code = it.preFlight.executeCode)
+                    .executePreFlight(networkRequest)
+            }
+
             val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(
                 exampleId = requestExampleId,
                 environment = environment

@@ -224,6 +224,7 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
+    val preFlight: PreFlightSpec = PreFlightSpec(),
     val postFlight: PostFlightSpec = PostFlightSpec(),
     val overrides: Overrides? = null, // only the Base example can be null
 ) : Identifiable {
@@ -289,6 +290,12 @@ data class PayloadExample(
     val name: String,
     val body: String,
 ) : Identifiable
+
+@Persisted
+@Serializable
+data class PreFlightSpec(
+    val executeCode: String = ""
+)
 
 @Persisted
 @Serializable

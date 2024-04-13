@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -492,7 +493,7 @@ fun RequestEditorView(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
                 RequestTab.Header, RequestTab.PostFlight
             )
-            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PreFlight, RequestTab.PostFlight)
         }
 
         TabsView(
@@ -582,6 +583,29 @@ fun RequestEditorView(
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth(),
                     )
+
+                RequestTab.PreFlight -> Column(modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                ) {
+                    AppText("Execute code before sending request", modifier = Modifier.padding(top = 8.dp))
+                    KotliteCodeEditorView(
+                        text = selectedExample.preFlight.executeCode,
+                        onTextChange = {
+                            onRequestModified(
+                                request.copy(
+                                    examples = request.examples.copyWithChange(
+                                        selectedExample.copy(
+                                            preFlight = selectedExample.preFlight.copy(
+                                                executeCode = it
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        },
+                        modifier = Modifier.padding(top = 4.dp).fillMaxSize()
+                    )
+                }
 
                 RequestTab.PostFlight -> Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     AppText(
@@ -1408,7 +1432,7 @@ fun StreamingPayloadEditorView(
 }
 
 private enum class RequestTab(val displayText: String) {
-    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PostFlight("Post Flight")
+    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PreFlight("Pre Flight"), PostFlight("Post Flight")
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)
