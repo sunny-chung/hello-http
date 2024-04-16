@@ -584,28 +584,13 @@ fun RequestEditorView(
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                RequestTab.PreFlight -> Column(modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                ) {
-                    AppText("Execute code before sending request", modifier = Modifier.padding(top = 8.dp))
-                    KotliteCodeEditorView(
-                        text = selectedExample.preFlight.executeCode,
-                        onTextChange = {
-                            onRequestModified(
-                                request.copy(
-                                    examples = request.examples.copyWithChange(
-                                        selectedExample.copy(
-                                            preFlight = selectedExample.preFlight.copy(
-                                                executeCode = it
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        },
-                        modifier = Modifier.padding(top = 4.dp).fillMaxSize()
+                RequestTab.PreFlight ->
+                    PreFlightEditorView(
+                        selectedExample = selectedExample,
+                        onRequestModified = onRequestModified,
+                        request = request,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     )
-                }
 
                 RequestTab.PostFlight -> Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     AppText(
@@ -703,6 +688,58 @@ fun RequestEditorView(
                 connectionStatus = connectionStatus,
             )
         }
+    }
+}
+
+@Composable
+private fun PreFlightEditorView(
+    modifier: Modifier = Modifier,
+    selectedExample: UserRequestExample,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    request: UserRequestTemplate
+) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
+            if (!request.isExampleBase(selectedExample)) {
+                OverrideCheckboxWithLabel(
+                    selectedExample = selectedExample,
+                    onRequestModified = onRequestModified,
+                    request = request,
+                    translateToValue = { overrides ->
+                        overrides.isOverridePreFlightScript
+                    },
+                    translateToNewOverrides = { isChecked, overrides ->
+                        overrides.copy(isOverridePreFlightScript = isChecked)
+                    },
+                )
+            }
+        }
+        val isEnabled = request.isExampleBase(selectedExample) || (selectedExample.overrides?.isOverridePreFlightScript == true)
+        val example = if (!request.isExampleBase(selectedExample) && (selectedExample.overrides?.isOverridePreFlightScript == false)) {
+            request.examples.first()
+        } else {
+            selectedExample
+        }
+        KotliteCodeEditorView(
+            text = example.preFlight.executeCode,
+            onTextChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            example.copy(
+                                preFlight = example.preFlight.copy(
+                                    executeCode = it
+                                )
+                            )
+                        )
+                    )
+                )
+            },
+            isEnabled = isEnabled,
+            isReadOnly = !isEnabled,
+            modifier = Modifier.padding(top = 4.dp).fillMaxSize(),
+        )
     }
 }
 
@@ -1173,28 +1210,31 @@ private fun RequestBodyEditor(
 
 @Composable
 private fun OverrideCheckboxWithLabel(
+    modifier: Modifier = Modifier,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     selectedExample: UserRequestExample,
     translateToValue: (UserRequestExample.Overrides) -> Boolean,
     translateToNewOverrides: (Boolean, UserRequestExample.Overrides) -> UserRequestExample.Overrides,
 ) {
-    AppText("Is Override Base? ")
-    AppCheckbox(
-        checked = translateToValue(selectedExample.overrides!!),
-        onCheckedChange = {
-            onRequestModified(
-                request.copy(
-                    examples = request.examples.copyWithChange(
-                        selectedExample.run {
-                            copy(overrides = translateToNewOverrides(it, overrides!!))
-                        }
+    Row(modifier) {
+        AppText("Is Override Base? ")
+        AppCheckbox(
+            checked = translateToValue(selectedExample.overrides!!),
+            onCheckedChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = translateToNewOverrides(it, overrides!!))
+                            }
+                        )
                     )
                 )
-            )
-        },
-        size = 16.dp,
-    )
+            },
+            size = 16.dp,
+        )
+    }
 }
 
 @Composable

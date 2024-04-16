@@ -40,6 +40,10 @@ data class UserRequestTemplate(
         }
     }
 
+    fun isExampleBase(example: UserRequestExample): Boolean {
+        return examples.indexOfFirst { it.id == example.id } == 0
+    }
+
     fun copyForApplication(application: ProtocolApplication, method: String) =
         if (application == ProtocolApplication.WebSocket && payloadExamples.isNullOrEmpty()) {
             copy(
@@ -252,6 +256,8 @@ data class UserRequestExample(
         val isOverrideBodyVariables: Boolean = true,
 
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
+
+        val isOverridePreFlightScript: Boolean = true,
 
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     )

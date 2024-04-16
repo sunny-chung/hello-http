@@ -91,6 +91,12 @@ class NetworkClientManager : CallDataStore {
                 }
             }
             request.examples.firstOrNull { it.id == requestExampleId }?.let {
+                if (!request.isExampleBase(it) && it.overrides?.isOverridePreFlightScript == false) {
+                    request.examples.first()
+                } else {
+                    it
+                }
+            }?.let {
                 CustomCodeExecutor(code = it.preFlight.executeCode)
                     .executePreFlight(networkRequest, environment)
             }

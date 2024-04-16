@@ -10,15 +10,22 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 fun KotliteCodeEditorView(
     modifier: Modifier = Modifier,
     isReadOnly: Boolean = false,
+    isEnabled: Boolean = true,
     text: String,
     onTextChange: ((String) -> Unit)? = null,
     transformations: List<VisualTransformation> = emptyList(),
 ) {
+    val textColor: Color = if (isEnabled) {
+        LocalColor.current.text
+    } else {
+        LocalColor.current.disabled
+    }
     CodeEditorView(
         modifier = modifier,
         isReadOnly = isReadOnly,
         text = text,
         onTextChange = onTextChange,
+        textColor = textColor,
         transformations = transformations,
     )
 }
