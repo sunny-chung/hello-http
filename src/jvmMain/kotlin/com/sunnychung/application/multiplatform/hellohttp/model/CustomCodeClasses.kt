@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.lib.multiplatform.kotlite.Parser
+import com.sunnychung.lib.multiplatform.kotlite.Interpreter
 import com.sunnychung.lib.multiplatform.kotlite.extension.fullClassName
 import com.sunnychung.lib.multiplatform.kotlite.lexer.Lexer
 import com.sunnychung.lib.multiplatform.kotlite.model.AnyType
@@ -29,7 +30,11 @@ import com.sunnychung.lib.multiplatform.kotlite.model.UnitValue
 import com.sunnychung.lib.multiplatform.kotlite.stdlib.byte.ByteArrayValue
 import com.sunnychung.lib.multiplatform.kotlite.stdlib.collections.MapValue
 import java.io.File
+import java.security.KeyFactory
 import java.security.MessageDigest
+import java.security.PrivateKey
+import java.security.Signature
+import java.security.spec.PKCS8EncodedKeySpec
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -414,6 +419,115 @@ object CustomCodeClasses {
         )
     }
 
+    object EnvironmentClass {
+        val clazz = ProvidedClassDefinition(
+            position = SourcePosition("HelloHTTP", 1, 1),
+            fullQualifiedName = "Environment",
+            typeParameters = emptyList(),
+            isInstanceCreationAllowed = false,
+            primaryConstructorParameters = emptyList(),
+            constructInstance = { _, _, _ -> throw UnsupportedOperationException() },
+        )
+
+        val properties = listOf(
+            ExtensionProperty(
+                receiver = "Environment",
+                declaredName = "name",
+                type = "String",
+                getter = { interpreter, receiver, typeArgs ->
+                    (receiver as DelegatedValue<Environment>)
+                        .value
+                        .name
+                        .toRuntimeValue(interpreter.symbolTable())
+                }
+            ),
+            ExtensionProperty(
+                receiver = "Environment",
+                declaredName = "variables",
+                type = "List<UserKeyValuePair>",
+                getter = { interpreter, receiver, typeArgs ->
+                    (receiver as DelegatedValue<Environment>)
+                        .value
+                        .variables
+                        .filter { it.isEnabled }
+                        .map { DelegatedValue(it, UserKeyValuePairClass.clazz, symbolTable = interpreter.symbolTable()) }
+                        .toRuntimeValue(interpreter.symbolTable())
+                }
+            ),
+            ExtensionProperty(
+                receiver = "Environment",
+                declaredName = "userFiles",
+                type = "List<ImportedFile>",
+                getter = { interpreter, receiver, typeArgs ->
+                    (receiver as DelegatedValue<Environment>)
+                        .value
+                        .userFiles
+                        .filter { it.isEnabled }
+                        .map { DelegatedValue(it, ImportedFileClass.clazz, symbolTable = interpreter.symbolTable()) }
+                        .toRuntimeValue(interpreter.symbolTable())
+                }
+            ),
+        )
+    }
+
+    object ImportedFileClass {
+        val clazz = ProvidedClassDefinition(
+            position = SourcePosition("HelloHTTP", 1, 1),
+            fullQualifiedName = "ImportedFile",
+            typeParameters = emptyList(),
+            isInstanceCreationAllowed = false,
+            primaryConstructorParameters = emptyList(),
+            constructInstance = { _, _, _ -> throw UnsupportedOperationException() },
+        )
+
+        val properties = listOf(
+            ExtensionProperty(
+                receiver = "ImportedFile",
+                declaredName = "name",
+                type = "String",
+                getter = { interpreter, receiver, typeArgs ->
+                    (receiver as DelegatedValue<ImportedFile>)
+                        .value
+                        .name
+                        .toRuntimeValue(interpreter.symbolTable())
+                }
+            ),
+            ExtensionProperty(
+                receiver = "ImportedFile",
+                declaredName = "originalFilename",
+                type = "String",
+                getter = { interpreter, receiver, typeArgs ->
+                    (receiver as DelegatedValue<ImportedFile>)
+                        .value
+                        .originalFilename
+                        .toRuntimeValue(interpreter.symbolTable())
+                }
+            ),
+            ExtensionProperty(
+                receiver = "ImportedFile",
+                declaredName = "createdWhen",
+                type = "KInstant",
+                getter = { interpreter, receiver, typeArgs ->
+                    (receiver as DelegatedValue<ImportedFile>)
+                        .value
+                        .createdWhen
+                        .toRuntimeValue(interpreter.symbolTable())
+                }
+            ),
+            ExtensionProperty(
+                receiver = "ImportedFile",
+                declaredName = "content",
+                type = "ByteArray",
+                getter = { interpreter, receiver, typeArgs ->
+                    (receiver as DelegatedValue<ImportedFile>)
+                        .value
+                        .content
+                        .toRuntimeValue(interpreter.symbolTable())
+                }
+            ),
+        )
+    }
+
     object Encoding {
         @OptIn(ExperimentalEncodingApi::class)
         val functions = listOf(
@@ -471,8 +585,27 @@ object CustomCodeClasses {
         )
     }
 
-    object Hashing {
+    object Crypto {
+        val PublicKeyClazz = ProvidedClassDefinition(
+            position = SourcePosition("HelloHTTP", 1, 1),
+            fullQualifiedName = "PublicKey",
+            typeParameters = emptyList(),
+            isInstanceCreationAllowed = false,
+            primaryConstructorParameters = emptyList(),
+            constructInstance = { _, _, _ -> throw UnsupportedOperationException() },
+        )
+        val PrivateKeyClazz = ProvidedClassDefinition(
+            position = SourcePosition("HelloHTTP", 1, 1),
+            fullQualifiedName = "PrivateKey",
+            typeParameters = emptyList(),
+            isInstanceCreationAllowed = false,
+            primaryConstructorParameters = emptyList(),
+            constructInstance = { _, _, _ -> throw UnsupportedOperationException() },
+        )
+
         val functions = listOf(
+            // Hash ------------------
+
             CustomFunctionDefinition(
                 position = SourcePosition("HelloHTTP", 1, 1),
                 receiverType = "ByteArray",
@@ -527,7 +660,7 @@ object CustomCodeClasses {
                 functionName = "toMd5Hash",
                 returnType = "ByteArray",
                 parameterTypes = emptyList(),
-                executable = { interpreter, receiver, args, typeArgs ->
+                executable = { interpreter: Interpreter, receiver: RuntimeValue?, args: List<RuntimeValue>, typeArgs: Map<String, DataType> ->
                     val bytes = (receiver as DelegatedValue<ByteArray>).value
                     val hashed = MessageDigest.getInstance("MD5")
                         .let {
@@ -537,12 +670,83 @@ object CustomCodeClasses {
                     ByteArrayValue(hashed, interpreter.symbolTable())
                 },
             ),
+
+            // Signature ------------------
+
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "ByteArray",
+                functionName = "toSha1WithRsaSignature",
+                returnType = "ByteArray",
+                parameterTypes = listOf(CustomFunctionParameter("rsaPrivateKey", "PrivateKey")),
+                executable = { interpreter, receiver, args, typeArgs ->
+                    val bytes = (receiver as DelegatedValue<ByteArray>).value
+                    val rsaPrivateKey = (args[0] as DelegatedValue<PrivateKey>).value
+                    val hashed = Signature.getInstance("SHA1withRSA")
+                        .let {
+                            it.initSign(rsaPrivateKey)
+                            it.update(bytes)
+                            it.sign()
+                        }
+                    ByteArrayValue(hashed, interpreter.symbolTable())
+                },
+            ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "ByteArray",
+                functionName = "toSha256WithRsaSignature",
+                returnType = "ByteArray",
+                parameterTypes = listOf(CustomFunctionParameter("rsaPrivateKey", "PrivateKey")),
+                executable = { interpreter, receiver, args, typeArgs ->
+                    val bytes = (receiver as DelegatedValue<ByteArray>).value
+                    val rsaPrivateKey = (args[0] as DelegatedValue<PrivateKey>).value
+                    val hashed = Signature.getInstance("SHA256withRSA")
+                        .let {
+                            it.initSign(rsaPrivateKey)
+                            it.update(bytes)
+                            it.sign()
+                        }
+                    ByteArrayValue(hashed, interpreter.symbolTable())
+                },
+            ),
+
+            // Encryption Key ------------------
+
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "ByteArray",
+                functionName = "toPkcs8RsaPublicKey",
+                returnType = "PublicKey",
+                parameterTypes = emptyList(),
+                executable = { interpreter: Interpreter, receiver: RuntimeValue?, args: List<RuntimeValue>, typeArgs: Map<String, DataType> ->
+                    val bytes = (receiver as DelegatedValue<ByteArray>).value
+                    val keySpec = PKCS8EncodedKeySpec(bytes)
+                    val key = KeyFactory.getInstance("RSA").generatePublic(keySpec)
+                    DelegatedValue(key, PublicKeyClazz, symbolTable = interpreter.symbolTable())
+                },
+            ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "ByteArray",
+                functionName = "toPkcs8RsaPrivateKey",
+                returnType = "PrivateKey",
+                parameterTypes = emptyList(),
+                executable = { interpreter: Interpreter, receiver: RuntimeValue?, args: List<RuntimeValue>, typeArgs: Map<String, DataType> ->
+                    val bytes = (receiver as DelegatedValue<ByteArray>).value
+                    val keySpec = PKCS8EncodedKeySpec(bytes)
+                    val key = KeyFactory.getInstance("RSA").generatePrivate(keySpec)
+                    DelegatedValue(key, PrivateKeyClazz, symbolTable = interpreter.symbolTable())
+                },
+            ),
         )
     }
 
     val HelloHTTPUtilModule = object : LibraryModule("HelloHTTP-Util") {
-        override val classes: List<ProvidedClassDefinition> = emptyList()
-        override val functions: List<CustomFunctionDefinition> = Encoding.functions + Hashing.functions
+        override val classes: List<ProvidedClassDefinition> = listOf(
+            Crypto.PublicKeyClazz,
+            Crypto.PrivateKeyClazz,
+        )
+        override val functions: List<CustomFunctionDefinition> = Encoding.functions + Crypto.functions
         override val globalProperties: List<GlobalProperty> = emptyList()
         override val properties: List<ExtensionProperty> = emptyList()
     }
@@ -557,6 +761,8 @@ object CustomCodeClasses {
             MultipartBodyClass.clazz,
             FileBodyClass.clazz,
             GraphqlBodyClass.clazz,
+            EnvironmentClass.clazz,
+            ImportedFileClass.clazz,
         )
         override val functions: List<CustomFunctionDefinition> = UserKeyValuePairClass.functions +
                 FileBodyClass.functions +
@@ -569,7 +775,9 @@ object CustomCodeClasses {
                 FormUrlEncodedBodyClass.properties +
                 MultipartBodyClass.properties +
                 FileBodyClass.properties +
-                GraphqlBodyClass.properties
+                GraphqlBodyClass.properties +
+                EnvironmentClass.properties +
+                ImportedFileClass.properties
     }
 }
 
@@ -617,6 +825,8 @@ private fun Any?.toRuntimeValue(symbolTable: SymbolTable): RuntimeValue {
         is String -> StringValue(this, symbolTable)
         is List<*> -> ListValue(map { it.toRuntimeValue(symbolTable) }, AnyType(isNullable = true), symbolTable = symbolTable)
         is Map<*, *> -> MapValue(toRuntimeValue(symbolTable), AnyType(isNullable = true), AnyType(isNullable = true), symbolTable)
+        is ByteArray -> ByteArrayValue(this, symbolTable)
+        is RuntimeValue -> this
         else -> throw UnsupportedOperationException("Unsupported type $fullClassName while converting to RuntimeValue")
     }
 }

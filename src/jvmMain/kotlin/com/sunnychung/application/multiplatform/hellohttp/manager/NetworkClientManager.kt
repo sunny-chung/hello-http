@@ -92,7 +92,7 @@ class NetworkClientManager : CallDataStore {
             }
             request.examples.firstOrNull { it.id == requestExampleId }?.let {
                 CustomCodeExecutor(code = it.preFlight.executeCode)
-                    .executePreFlight(networkRequest)
+                    .executePreFlight(networkRequest, environment)
             }
 
             val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(
