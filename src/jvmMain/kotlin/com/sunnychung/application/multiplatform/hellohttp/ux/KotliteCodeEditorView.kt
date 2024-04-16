@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.VisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.KotlinSyntaxHighlightTransformation
 
 @Composable
 fun KotliteCodeEditorView(
@@ -26,6 +27,10 @@ fun KotliteCodeEditorView(
         text = text,
         onTextChange = onTextChange,
         textColor = textColor,
-        transformations = transformations,
+        transformations = transformations + if (isEnabled) {
+            listOf(KotlinSyntaxHighlightTransformation(LocalColor.current))
+        } else {
+            emptyList()
+        },
     )
 }

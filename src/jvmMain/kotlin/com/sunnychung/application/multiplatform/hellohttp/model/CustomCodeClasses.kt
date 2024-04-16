@@ -2,10 +2,8 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
-import com.sunnychung.lib.multiplatform.kotlite.Parser
 import com.sunnychung.lib.multiplatform.kotlite.Interpreter
 import com.sunnychung.lib.multiplatform.kotlite.extension.fullClassName
-import com.sunnychung.lib.multiplatform.kotlite.lexer.Lexer
 import com.sunnychung.lib.multiplatform.kotlite.model.AnyType
 import com.sunnychung.lib.multiplatform.kotlite.model.CustomFunctionDefinition
 import com.sunnychung.lib.multiplatform.kotlite.model.CustomFunctionParameter
@@ -838,7 +836,3 @@ private fun Map<*, *>.toRuntimeValue(symbolTable: SymbolTable): Map<RuntimeValue
         }
     }
 }
-
-fun String.toDataType(symbolTable: SymbolTable) =
-    Parser(Lexer("HelloHTTP", this)).type()
-        .let { symbolTable.assertToDataType(it) }

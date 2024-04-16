@@ -73,14 +73,13 @@ data class SyntaxColor(
     val nothingLiteral: Color,
     val objectKey: Color,
 
-    // graphql query only
     val comment: Color,
     val keyword: Color,
     val type: Color,
     val variable: Color,
     val field: Color,
     val directive: Color,
-    val otherName: Color, // operation name or fragment name
+    val otherName: Color, // graphql operation name or fragment name
 )
 
 val LocalColor = compositionLocalOf { darkColorScheme() }
