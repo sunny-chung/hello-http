@@ -4,6 +4,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 data class AppColor(
+    val isDark: Boolean,
+
     val background: Color,
     val backgroundLight: Color,
     val backgroundSemiLight: Color,
@@ -86,6 +88,8 @@ data class SyntaxColor(
 val LocalColor = compositionLocalOf { darkColorScheme() }
 
 fun darkColorScheme(): AppColor = AppColor(
+    isDark = true,
+
     background = Color(red = 0.1f, green = 0.1f, blue = 0.1f),
     backgroundLight = Color(red = 0.2f, green = 0.2f, blue = 0.2f),
     backgroundSemiLight = Color(red = 0.15f, green = 0.15f, blue = 0.15f),
@@ -157,6 +161,8 @@ fun darkColorScheme(): AppColor = AppColor(
 )
 
 fun lightColorScheme(): AppColor = AppColor(
+    isDark = false,
+
     background = Color(red = 0.9f, green = 0.9f, blue = 0.9f),
     backgroundLight = Color(red = 0.8f, green = 0.8f, blue = 0.8f),
     backgroundSemiLight = Color(red = 0.85f, green = 0.85f, blue = 0.85f),

@@ -722,6 +722,7 @@ private fun PreFlightEditorView(
             selectedExample
         }
         KotliteCodeEditorView(
+            cacheKey = example.id,
             text = example.preFlight.executeCode,
             onTextChange = {
                 onRequestModified(

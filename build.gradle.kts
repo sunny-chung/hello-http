@@ -73,6 +73,8 @@ kotlin {
 
                 implementation("io.github.sunny-chung:kotlite-interpreter:1.0.0")
                 implementation("io.github.sunny-chung:kotlite-stdlib:1.0.0")
+
+                implementation("dev.snipme:highlights:0.8.0")
             }
 
             resources.srcDir("$buildDir/resources")
