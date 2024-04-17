@@ -13,7 +13,7 @@ import com.sunnychung.lib.multiplatform.kotlite.model.TokenType
 
 class KotlinSyntaxHighlightTransformation(private val colours: AppColor) : VisualTransformation {
     fun Token.toSpanStyleRange(style: SpanStyle): AnnotatedString.Range<SpanStyle> =
-        AnnotatedString.Range(style, position.index, position.index + ((value as? String)?.length ?: 1))
+        AnnotatedString.Range(style, position.index, endExclusive.index)
 
     override fun filter(text: AnnotatedString): TransformedText {
         val styles = text.spanStyles.toMutableList()
