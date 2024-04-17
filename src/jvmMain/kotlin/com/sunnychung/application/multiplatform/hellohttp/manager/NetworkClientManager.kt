@@ -96,9 +96,39 @@ class NetworkClientManager : CallDataStore {
                 } else {
                     it
                 }
-            }?.let {
-                CustomCodeExecutor(code = it.preFlight.executeCode)
-                    .executePreFlight(networkRequest, environment)
+            }?.let { // TODO change it to non-blocking
+                if (it.preFlight.executeCode.isNotBlank()) {
+                    var hasKilled = false
+                    var executeException: Throwable? = null
+                    val scriptExecuteThread = Thread {
+                        try {
+                            CustomCodeExecutor(code = it.preFlight.executeCode)
+                                .executePreFlight(networkRequest, environment)
+                        } catch (e: Throwable) {
+                            executeException = e
+                        }
+                    }
+                    val killThread = Thread {
+                        Thread.sleep(1000L) // maximum execute for 1s
+                        if (scriptExecuteThread.isAlive) {
+                            hasKilled = true
+                            log.d { "Killing script thread" }
+                            try {
+                                scriptExecuteThread.interrupt()
+                                scriptExecuteThread.stop()
+                            } catch (_: Throwable) {}
+                        }
+                    }
+                    scriptExecuteThread.start()
+                    killThread.start()
+                    scriptExecuteThread.join()
+                    killThread.interrupt()
+                    if (hasKilled) {
+                        throw RuntimeException("Custom script was running for too long time and has been killed")
+                    } else if (executeException != null) {
+                        throw executeException!!
+                    }
+                }
             }
 
             val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(

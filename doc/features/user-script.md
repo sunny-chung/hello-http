@@ -6,13 +6,13 @@ title: User Script
 
 Hello HTTP allows the use of custom script to perform a limited set of operations that are not possible or difficult to do via the UI. The supported programming language is [Kotlite](https://sunny-chung.github.io/kotlite/#_the_kotlite_language), a subset of the **Common** variant of the [Kotlin](https://kotlinlang.org/docs/basic-syntax.html) 1.9 **script** language. Script means it does not require a `main` function and the statements at the outermost scope will be executed sequentially.
 
-It is not quite possible to do anything harmful by user scripts, because both the language and the APIs available to be used are limited. For example, it is not possible to make another HTTP request directly from the script, nor modify the URL of the current script, nor execute system commands.
+It is not quite possible to do anything harmful by user scripts, because both the language and the APIs available to be used are limited. For example, it is not possible to make another HTTP request directly from the script, nor modify the URL of the current script, nor execute system commands. There is also a short time limit on execution.
 
-An example use case of user script is to generate some hash or signature with some encryption keys and embed into a request before sending it.
+An example use case of user scripts is to generate some hash or signature with some encryption keys and embed into a request before sending it.
 
 ## Providing custom files for user script use
 
-Files can be imported into an [Environment](environments) to be used by user script. Only small files can be imported.
+Files can be imported into an [Environment](environments) to be consumed by user script. Only small files can be imported.
 
 ![User Files](../user-files.png)
 

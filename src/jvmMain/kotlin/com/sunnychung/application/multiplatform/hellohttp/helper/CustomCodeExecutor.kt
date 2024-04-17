@@ -82,7 +82,7 @@ class CustomCodeExecutor(val code: String) {
             ).eval()
         } catch (e: Throwable) {
             log.i(e) { "Execute user script fail" }
-            println("cus fail")
+            println("cus fail $e")
             throw e
         }
 
