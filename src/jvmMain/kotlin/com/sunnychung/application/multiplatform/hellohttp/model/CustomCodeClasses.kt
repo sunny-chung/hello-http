@@ -292,7 +292,7 @@ object CustomCodeClasses {
             ExtensionProperty(
                 receiver = "FormUrlEncodedBody",
                 declaredName = "value",
-                type = "List<FormUrlEncodedBody>",
+                type = "List<UserKeyValuePair>",
                 getter = { interpreter, receiver, typeArgs ->
                     (receiver as DelegatedValue<FormUrlEncodedBody>).value.value.toRuntimeValue2(
                         interpreter.symbolTable(),
@@ -317,7 +317,7 @@ object CustomCodeClasses {
             ExtensionProperty(
                 receiver = "MultipartBody",
                 declaredName = "value",
-                type = "List<MultipartBody>",
+                type = "List<UserKeyValuePair>",
                 getter = { interpreter, receiver, typeArgs ->
                     (receiver as DelegatedValue<MultipartBody>).value.value.toRuntimeValue2(
                         interpreter.symbolTable(),
