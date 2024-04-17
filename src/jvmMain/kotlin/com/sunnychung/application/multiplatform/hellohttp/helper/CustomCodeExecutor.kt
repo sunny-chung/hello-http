@@ -37,7 +37,7 @@ class CustomCodeExecutor(val code: String) {
         }
 
         try {
-            setKotliteLogMinLevel(Severity.Debug)
+//            setKotliteLogMinLevel(Severity.Debug)
             KotliteInterpreter(
                 filename = "User Script",
                 code = code,
@@ -82,9 +82,11 @@ class CustomCodeExecutor(val code: String) {
             ).eval()
         } catch (e: Throwable) {
             log.i(e) { "Execute user script fail" }
+            println("cus fail")
             throw e
         }
 
         log.d { "Execute Pre Flight code -- End" }
+        println("cus end")
     }
 }
