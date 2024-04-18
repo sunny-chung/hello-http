@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -492,7 +493,7 @@ fun RequestEditorView(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
                 RequestTab.Header, RequestTab.PostFlight
             )
-            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PreFlight, RequestTab.PostFlight)
         }
 
         TabsView(
@@ -581,6 +582,14 @@ fun RequestEditorView(
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+
+                RequestTab.PreFlight ->
+                    PreFlightEditorView(
+                        selectedExample = selectedExample,
+                        onRequestModified = onRequestModified,
+                        request = request,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     )
 
                 RequestTab.PostFlight -> Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -679,6 +688,58 @@ fun RequestEditorView(
                 connectionStatus = connectionStatus,
             )
         }
+    }
+}
+
+@Composable
+private fun PreFlightEditorView(
+    modifier: Modifier = Modifier,
+    selectedExample: UserRequestExample,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    request: UserRequestTemplate
+) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
+            if (!request.isExampleBase(selectedExample)) {
+                OverrideCheckboxWithLabel(
+                    selectedExample = selectedExample,
+                    onRequestModified = onRequestModified,
+                    request = request,
+                    translateToValue = { overrides ->
+                        overrides.isOverridePreFlightScript
+                    },
+                    translateToNewOverrides = { isChecked, overrides ->
+                        overrides.copy(isOverridePreFlightScript = isChecked)
+                    },
+                )
+            }
+        }
+        val isEnabled = request.isExampleBase(selectedExample) || (selectedExample.overrides?.isOverridePreFlightScript == true)
+        val example = if (!request.isExampleBase(selectedExample) && (selectedExample.overrides?.isOverridePreFlightScript == false)) {
+            request.examples.first()
+        } else {
+            selectedExample
+        }
+        KotliteCodeEditorView(
+            text = example.preFlight.executeCode,
+            onTextChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            example.copy(
+                                preFlight = example.preFlight.copy(
+                                    executeCode = it
+                                )
+                            )
+                        )
+                    )
+                )
+            },
+            isEnabled = isEnabled,
+            isReadOnly = !isEnabled,
+            modifier = Modifier.padding(top = 4.dp).fillMaxSize(),
+        )
     }
 }
 
@@ -1149,28 +1210,31 @@ private fun RequestBodyEditor(
 
 @Composable
 private fun OverrideCheckboxWithLabel(
+    modifier: Modifier = Modifier,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     selectedExample: UserRequestExample,
     translateToValue: (UserRequestExample.Overrides) -> Boolean,
     translateToNewOverrides: (Boolean, UserRequestExample.Overrides) -> UserRequestExample.Overrides,
 ) {
-    AppText("Is Override Base? ")
-    AppCheckbox(
-        checked = translateToValue(selectedExample.overrides!!),
-        onCheckedChange = {
-            onRequestModified(
-                request.copy(
-                    examples = request.examples.copyWithChange(
-                        selectedExample.run {
-                            copy(overrides = translateToNewOverrides(it, overrides!!))
-                        }
+    Row(modifier) {
+        AppText("Is Override Base? ")
+        AppCheckbox(
+            checked = translateToValue(selectedExample.overrides!!),
+            onCheckedChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = translateToNewOverrides(it, overrides!!))
+                            }
+                        )
                     )
                 )
-            )
-        },
-        size = 16.dp,
-    )
+            },
+            size = 16.dp,
+        )
+    }
 }
 
 @Composable
@@ -1408,7 +1472,7 @@ fun StreamingPayloadEditorView(
 }
 
 private enum class RequestTab(val displayText: String) {
-    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PostFlight("Post Flight")
+    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PreFlight("Pre Flight"), PostFlight("Post Flight")
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)

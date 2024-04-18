@@ -58,6 +58,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
 import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.util.formatByteSize
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -359,13 +360,7 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateT
 @Composable
 fun ResponseSizeLabel(modifier: Modifier = Modifier, response: UserResponse) {
     val size = response.responseSizeInBytes ?: return
-    val text = if (size >= 10 * 1024L * 1024L) {
-        "${"%.1f".format(size / 1024.0 / 1024.0)} MB"
-    } else if (size >= 10 * 1024L) {
-        "${"%.1f".format(size / 1024.0)} KB"
-    } else {
-        "${size} B"
-    }
+    val text = formatByteSize(size)
     DataLabel(modifier = modifier, text = text)
 }
 

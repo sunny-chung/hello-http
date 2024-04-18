@@ -40,6 +40,10 @@ data class UserRequestTemplate(
         }
     }
 
+    fun isExampleBase(example: UserRequestExample): Boolean {
+        return examples.indexOfFirst { it.id == example.id } == 0
+    }
+
     fun copyForApplication(application: ProtocolApplication, method: String) =
         if (application == ProtocolApplication.WebSocket && payloadExamples.isNullOrEmpty()) {
             copy(
@@ -126,6 +130,7 @@ data class UserRequestTemplate(
                     headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    preFlight = it.preFlight.copy(),
                     postFlight = with (it.postFlight) {
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
@@ -224,6 +229,7 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
+    val preFlight: PreFlightSpec = PreFlightSpec(),
     val postFlight: PostFlightSpec = PostFlightSpec(),
     val overrides: Overrides? = null, // only the Base example can be null
 ) : Identifiable {
@@ -250,6 +256,8 @@ data class UserRequestExample(
         val isOverrideBodyVariables: Boolean = true,
 
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
+
+        val isOverridePreFlightScript: Boolean = true,
 
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     )
@@ -289,6 +297,12 @@ data class PayloadExample(
     val name: String,
     val body: String,
 ) : Identifiable
+
+@Persisted
+@Serializable
+data class PreFlightSpec(
+    val executeCode: String = ""
+)
 
 @Persisted
 @Serializable
