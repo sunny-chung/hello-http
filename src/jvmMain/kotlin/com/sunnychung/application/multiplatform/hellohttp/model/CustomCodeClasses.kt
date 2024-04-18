@@ -830,8 +830,9 @@ private fun Any?.toRuntimeValue(symbolTable: SymbolTable): RuntimeValue {
 }
 
 private fun Map<*, *>.toRuntimeValue(symbolTable: SymbolTable): Map<RuntimeValue, RuntimeValue> {
+    val subject = this
     return buildMap {
-        forEach {
+        subject.forEach {
             put(it.key.toRuntimeValue(symbolTable), it.value.toRuntimeValue(symbolTable))
         }
     }

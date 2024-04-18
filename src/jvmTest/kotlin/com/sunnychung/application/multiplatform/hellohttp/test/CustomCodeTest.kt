@@ -75,4 +75,50 @@ class CustomCodeTest {
 
         assertEquals(0, httpRequest.queryParameters.size)
     }
+
+    @Test
+    fun decodeJsonToMap() {
+        val httpRequest = HttpRequest(
+            method = "GET",
+            url = "https://httpbin.org/get",
+            contentType = ContentType.None,
+            application = ProtocolApplication.Http,
+        )
+        assertEquals(0, httpRequest.headers.size)
+        assertEquals(0, httpRequest.queryParameters.size)
+
+        CustomCodeExecutor("""
+            val m = "{\"abc\":[{\"def\":{\"a\":\"b123\"}}]}".decodeJsonStringToMap() as Map<String, List<Map<String, Map<String, String>>>>
+            request.addQueryParameter("a", m["abc"]!![0]!!["def"]!!["a"]!!)
+        """.trimIndent())
+            .executePreFlight(
+                request = httpRequest,
+                environment = Environment(
+                    id = uuidString(),
+                    name = "test",
+                    variables = mutableListOf(
+                        UserKeyValuePair("merchantReference", "1712890486962"),
+                        UserKeyValuePair("clientId", "000000000000001"),
+                    ),
+                    userFiles = listOf(
+                        ImportedFile(
+                            id = uuidString(),
+                            name = "my RSA private key",
+                            originalFilename = "private.key",
+                            createdWhen = KInstant.now(),
+                            isEnabled = true,
+                            content = (this::class.java.getResourceAsStream("/rsa/private.der") ?: throw RuntimeException("Missing test resource file ./rsa/private.der"))
+                                .use {
+                                    it.readAllBytes()
+                                },
+                        )
+                    ),
+                )
+            )
+
+        assertEquals(0, httpRequest.headers.size)
+
+        assertEquals(1, httpRequest.queryParameters.size)
+        assertEquals("b123", httpRequest.queryParameters.first().second)
+    }
 }
