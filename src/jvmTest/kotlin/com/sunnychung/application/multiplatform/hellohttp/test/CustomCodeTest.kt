@@ -93,27 +93,7 @@ class CustomCodeTest {
         """.trimIndent())
             .executePreFlight(
                 request = httpRequest,
-                environment = Environment(
-                    id = uuidString(),
-                    name = "test",
-                    variables = mutableListOf(
-                        UserKeyValuePair("merchantReference", "1712890486962"),
-                        UserKeyValuePair("clientId", "000000000000001"),
-                    ),
-                    userFiles = listOf(
-                        ImportedFile(
-                            id = uuidString(),
-                            name = "my RSA private key",
-                            originalFilename = "private.key",
-                            createdWhen = KInstant.now(),
-                            isEnabled = true,
-                            content = (this::class.java.getResourceAsStream("/rsa/private.der") ?: throw RuntimeException("Missing test resource file ./rsa/private.der"))
-                                .use {
-                                    it.readAllBytes()
-                                },
-                        )
-                    ),
-                )
+                environment = null,
             )
 
         assertEquals(0, httpRequest.headers.size)
