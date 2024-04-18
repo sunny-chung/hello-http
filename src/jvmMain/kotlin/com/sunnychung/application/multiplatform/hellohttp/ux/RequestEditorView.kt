@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -72,7 +73,6 @@ import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMetho
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
-import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
@@ -105,6 +105,7 @@ fun RequestEditorView(
     onClickCancel: () -> Unit,
     onClickCopyCurl: () -> Boolean,
     onClickCopyGrpcurl: (selectedPayloadExampleId: String, method: GrpcMethod) -> Boolean,
+    onClickCopyPowershellInvokeWebrequest: () -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     connectionStatus: ConnectionStatus,
     onClickConnect: () -> Unit,
@@ -308,15 +309,12 @@ fun RequestEditorView(
                 ProtocolApplication.Grpc -> currentGrpcMethod?.isClientStreaming != true
                 else -> true
             }
-            val dropdownItems: List<String> = when (currentOS()) {
-                WindowsOS -> emptyList() // disable because not able to escape newlines inside double-quoted string
-                else -> when (request.application) {
-                    ProtocolApplication.WebSocket -> emptyList()
-                    ProtocolApplication.Graphql -> if (isOneOffRequest) listOf("Copy as cURL command") else emptyList()
-                    ProtocolApplication.Grpc -> listOf("Copy as grpcurl command")
-                    else -> listOf("Copy as cURL command")
-                }
-            } + listOf("Load Test")
+            val dropdownItems: List<SendButtonDropdown> = when (request.application) {
+                ProtocolApplication.WebSocket -> emptyList()
+                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows) else emptyList()
+                ProtocolApplication.Grpc -> listOf(SendButtonDropdown.GrpcurlForLinux)
+                else -> listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows)
+            }// TODO: + listOf("Load Test")
             val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
             } else {
@@ -353,15 +351,18 @@ fun RequestEditorView(
                 if (dropdownItems.isNotEmpty()) {
                     DropDownView(
                         iconSize = 24.dp,
-                        items = dropdownItems.map { DropDownValue(it) },
+                        items = dropdownItems.map { DropDownValue(it.displayText) },
                         isShowLabel = false,
                         onClickItem = {
                             var isSuccess = true
                             when (it.displayText) {
-                                "Copy as cURL command" -> {
+                                SendButtonDropdown.CurlForLinux.displayText -> {
                                     isSuccess = onClickCopyCurl()
                                 }
-                                "Copy as grpcurl command" -> {
+                                SendButtonDropdown.PowershellInvokeWebrequestForWindows.displayText -> {
+                                    isSuccess = onClickCopyPowershellInvokeWebrequest()
+                                }
+                                SendButtonDropdown.GrpcurlForLinux.displayText -> {
                                     isSuccess = try {
                                         onClickCopyGrpcurl(selectedPayloadExampleId!!, currentGrpcMethod!!)
                                     } catch (e: Throwable) {
@@ -507,7 +508,7 @@ fun RequestEditorView(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
                 RequestTab.Header, RequestTab.PostFlight
             )
-            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PreFlight, RequestTab.PostFlight)
         }
 
         TabsView(
@@ -596,6 +597,14 @@ fun RequestEditorView(
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+
+                RequestTab.PreFlight ->
+                    PreFlightEditorView(
+                        selectedExample = selectedExample,
+                        onRequestModified = onRequestModified,
+                        request = request,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     )
 
                 RequestTab.PostFlight -> Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -694,6 +703,58 @@ fun RequestEditorView(
                 connectionStatus = connectionStatus,
             )
         }
+    }
+}
+
+@Composable
+private fun PreFlightEditorView(
+    modifier: Modifier = Modifier,
+    selectedExample: UserRequestExample,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    request: UserRequestTemplate
+) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
+            if (!request.isExampleBase(selectedExample)) {
+                OverrideCheckboxWithLabel(
+                    selectedExample = selectedExample,
+                    onRequestModified = onRequestModified,
+                    request = request,
+                    translateToValue = { overrides ->
+                        overrides.isOverridePreFlightScript
+                    },
+                    translateToNewOverrides = { isChecked, overrides ->
+                        overrides.copy(isOverridePreFlightScript = isChecked)
+                    },
+                )
+            }
+        }
+        val isEnabled = request.isExampleBase(selectedExample) || (selectedExample.overrides?.isOverridePreFlightScript == true)
+        val example = if (!request.isExampleBase(selectedExample) && (selectedExample.overrides?.isOverridePreFlightScript == false)) {
+            request.examples.first()
+        } else {
+            selectedExample
+        }
+        KotliteCodeEditorView(
+            text = example.preFlight.executeCode,
+            onTextChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            example.copy(
+                                preFlight = example.preFlight.copy(
+                                    executeCode = it
+                                )
+                            )
+                        )
+                    )
+                )
+            },
+            isEnabled = isEnabled,
+            isReadOnly = !isEnabled,
+            modifier = Modifier.padding(top = 4.dp).fillMaxSize(),
+        )
     }
 }
 
@@ -1164,28 +1225,31 @@ private fun RequestBodyEditor(
 
 @Composable
 private fun OverrideCheckboxWithLabel(
+    modifier: Modifier = Modifier,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     selectedExample: UserRequestExample,
     translateToValue: (UserRequestExample.Overrides) -> Boolean,
     translateToNewOverrides: (Boolean, UserRequestExample.Overrides) -> UserRequestExample.Overrides,
 ) {
-    AppText("Is Override Base? ")
-    AppCheckbox(
-        checked = translateToValue(selectedExample.overrides!!),
-        onCheckedChange = {
-            onRequestModified(
-                request.copy(
-                    examples = request.examples.copyWithChange(
-                        selectedExample.run {
-                            copy(overrides = translateToNewOverrides(it, overrides!!))
-                        }
+    Row(modifier) {
+        AppText("Is Override Base? ")
+        AppCheckbox(
+            checked = translateToValue(selectedExample.overrides!!),
+            onCheckedChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = translateToNewOverrides(it, overrides!!))
+                            }
+                        )
                     )
                 )
-            )
-        },
-        size = 16.dp,
-    )
+            },
+            size = 16.dp,
+        )
+    }
 }
 
 @Composable
@@ -1423,7 +1487,13 @@ fun StreamingPayloadEditorView(
 }
 
 private enum class RequestTab(val displayText: String) {
-    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PostFlight("Post Flight")
+    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PreFlight("Pre Flight"), PostFlight("Post Flight")
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)
+
+private enum class SendButtonDropdown(val displayText: String) {
+    CurlForLinux("Copy as cURL command (for Linux / macOS)"),
+    GrpcurlForLinux("Copy as grpcurl command (for Linux / macOS)"),
+    PowershellInvokeWebrequestForWindows("Copy as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)")
+}

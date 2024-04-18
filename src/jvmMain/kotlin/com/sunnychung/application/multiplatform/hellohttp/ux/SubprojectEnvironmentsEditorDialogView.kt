@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,10 +52,14 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
+import com.sunnychung.application.multiplatform.hellohttp.util.copyWithout
+import com.sunnychung.application.multiplatform.hellohttp.util.formatByteSize
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import java.io.File
 
 @Composable
@@ -71,7 +77,7 @@ fun SubprojectEnvironmentsEditorDialogView(
     val selectedEnvironment = selectedEnvironmentId?.let { id -> subproject.environments.firstOrNull { it.id == id } }
 
     Row(modifier = modifier) {
-        Column(modifier = Modifier.weight(0.3f).defaultMinSize(minWidth = 160.dp)) {
+        Column(modifier = Modifier.weight(0.25f).defaultMinSize(minWidth = 160.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
                 AppText(text = "Environments", modifier = Modifier.weight(1f))
                 AppImageButton(resource = "add.svg", size = 24.dp, onClick = {
@@ -102,7 +108,7 @@ fun SubprojectEnvironmentsEditorDialogView(
                 }
             }
         }
-        val remainModifier = Modifier.padding(start = 10.dp).weight(0.7f)
+        val remainModifier = Modifier.padding(start = 10.dp).weight(0.75f)
         selectedEnvironment?.let { env ->
             EnvironmentEditorView(
                 environment = env,
@@ -191,6 +197,12 @@ fun EnvironmentEditorView(
             )
 
             EnvironmentEditorTab.SSL -> EnvironmentSslTabContent(
+                environment = environment,
+                onUpdateEnvironment = onUpdateEnvironment,
+                modifier = modifier.verticalScroll(rememberScrollState()),
+            )
+
+            EnvironmentEditorTab.`User Files` -> EnvironmentUserFilesTabContent(
                 environment = environment,
                 onUpdateEnvironment = onUpdateEnvironment,
                 modifier = modifier.verticalScroll(rememberScrollState()),
@@ -486,7 +498,7 @@ fun CertificateEditorView(
                             .padding(all = 8.dp)
                     )
                     AppText(
-                        text = it.createdWhen.atZoneOffset(KZoneOffset.local()).format("yyyy-MM-dd HH:mm"),
+                        text = it.createdWhen.atLocalZoneOffset().format("yyyy-MM-dd HH:mm"),
                         modifier = Modifier.weight(0.3f)
                             .fillMaxHeight()
                             .border(width = 1.dp, color = colours.placeholder, RectangleShape)
@@ -599,12 +611,215 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
     }
 }
 
+@Composable
+fun EnvironmentUserFilesTabContent(
+    modifier: Modifier = Modifier,
+    environment: Environment,
+    onUpdateEnvironment: (Environment) -> Unit,
+) {
+    val colours = LocalColor.current
+
+    fun onUpdateImportedFile(entry: ImportedFile) {
+        onUpdateEnvironment(
+            environment.copy(
+                userFiles = environment.userFiles.copyWithChange(entry)
+            )
+        )
+    }
+
+    fun onDeleteImportedFile(entry: ImportedFile) {
+        onUpdateEnvironment(
+            environment.copy(
+                userFiles = environment.userFiles.copyWithout(entry)
+            )
+        )
+    }
+
+    Column(modifier = modifier
+        .fillMaxWidth()
+        .padding(all = 8.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
+            AppText(
+                text = "Name",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(0.4f)
+                    .fillMaxHeight()
+                    .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                    .padding(all = 8.dp)
+            )
+            AppText(
+                text = "Original Filename",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(0.4f)
+                    .fillMaxHeight()
+                    .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                    .padding(all = 8.dp)
+            )
+            AppText(
+                text = "Import Time",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .width(120.dp)
+                    .fillMaxHeight()
+                    .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                    .padding(all = 8.dp)
+            )
+            AppText(
+                text = "Size",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .width(60.dp)
+                    .fillMaxHeight()
+                    .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                    .padding(all = 8.dp)
+            )
+            Spacer(modifier = Modifier.width(24.dp + 24.dp))
+        }
+        environment.userFiles.forEach { entry ->
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
+                AppTextField(
+                    value = entry.name,
+                    onValueChange = { onUpdateImportedFile(entry.copy(name = it)) },
+                    modifier = Modifier.weight(0.4f)
+                        .fillMaxHeight()
+                        .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                        .padding(all = 8.dp)
+                )
+                AppText(
+                    text = entry.originalFilename,
+                    modifier = Modifier.weight(0.4f)
+                        .fillMaxHeight()
+                        .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                        .padding(all = 8.dp)
+                )
+                AppText(
+                    text = entry.createdWhen.atLocalZoneOffset().format("yyyy-MM-dd HH:mm"),
+                    modifier = Modifier
+                        .width(120.dp)
+                        .fillMaxHeight()
+                        .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                        .padding(all = 8.dp)
+                )
+                AppText(
+                    text = formatByteSize(entry.content.size.toLong()),
+                    modifier = Modifier
+                        .width(60.dp)
+                        .fillMaxHeight()
+                        .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                        .padding(all = 8.dp)
+                )
+                AppCheckbox(
+                    checked = entry.isEnabled,
+                    onCheckedChange = { v -> onUpdateImportedFile(entry.copy(isEnabled = v)) },
+                    size = 16.dp,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+                AppDeleteButton(
+                    onClickDelete = { onDeleteImportedFile(entry) },
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+        }
+        if (environment.userFiles.isEmpty()) {
+            Row {
+                AppText(
+                    text = "No entry",
+                    modifier = Modifier.weight(1f)
+                        .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                        .padding(all = 8.dp)
+                )
+                Spacer(modifier = Modifier.width(24.dp + 24.dp))
+            }
+        }
+
+        ImportUserFileForm(
+            onImportFile = {
+                onUpdateEnvironment(
+                    environment.copy(
+                        userFiles = environment.userFiles + it
+                    )
+                )
+            },
+            modifier = Modifier.padding(top = 12.dp, start = 4.dp)
+        )
+    }
+}
+
+@Composable
+fun ImportUserFileForm(modifier: Modifier = Modifier, onImportFile: (ImportedFile) -> Unit) {
+    val headerColumnWidth = 200.dp
+
+    var name by remember { mutableStateOf("") }
+    var isFileDialogVisible by remember { mutableStateOf(false) }
+    var chosenFile by remember { mutableStateOf<File?>(null) }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppText(text = "Name", modifier = Modifier.width(headerColumnWidth))
+            AppTextField(
+                value = name,
+                onValueChange = { name = it },
+                modifier = Modifier.defaultMinSize(minWidth = 200.dp)
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppText(text = "File", modifier = Modifier.width(headerColumnWidth))
+            AppTextButton(
+                text = chosenFile?.name ?: "Choose a File to Import",
+                onClick = { isFileDialogVisible = true },
+            )
+        }
+        Row(modifier = Modifier.align(Alignment.End)) {
+            AppTextButton(
+                text = "Import",
+                isEnabled = name.isNotBlank() && chosenFile != null,
+                onClick = {
+                    try {
+                        val file = chosenFile ?: return@AppTextButton
+                        if (file.length() > 12 * 1024L * 1024L) {
+                            throw IllegalArgumentException("The file is too large. Maximum supported file size is around 10 MB.")
+                        }
+                        val fileBytes = file.readBytes()
+                        onImportFile(
+                            ImportedFile(
+                                id = uuidString(),
+                                name = name,
+                                originalFilename = file.name,
+                                createdWhen = KInstant.now(),
+                                isEnabled = true,
+                                content = fileBytes
+                            )
+                        )
+
+                        // reset after successful import
+                        name = ""
+                        chosenFile = null
+                    } catch (e: Throwable) {
+                        AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: e::class.simpleName!!)
+                        return@AppTextButton
+                    }
+                },
+            )
+        }
+    }
+
+    if (isFileDialogVisible) {
+        FileDialog(state = rememberFileDialogState(), title = "Choose a file") {
+            isFileDialogVisible = false
+            if (!it.isNullOrEmpty()) {
+                chosenFile = it.first()
+            }
+        }
+    }
+}
+
 private enum class CertificateKeyPairFileChooserType {
     None, Certificate, PrivateKey
 }
 
 private enum class EnvironmentEditorTab {
-    Variables, HTTP, SSL
+    Variables, HTTP, SSL, `User Files`
 }
 
 private enum class BooleanConfigValueText(val value: Boolean?) {

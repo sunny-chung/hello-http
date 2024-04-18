@@ -36,3 +36,9 @@ fun <T> List<T>.copyWithRemoval(removeIf: (T) -> Boolean): List<T> {
         .apply { removeIf(removeIf) }
         .toList()
 }
+
+fun <T : Identifiable> List<T>.copyWithout(item: T): List<T> {
+    return copyWithRemoval {
+        it.id == item.id
+    }
+}

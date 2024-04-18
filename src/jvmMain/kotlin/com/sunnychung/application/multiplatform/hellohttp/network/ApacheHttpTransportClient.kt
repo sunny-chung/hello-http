@@ -60,6 +60,7 @@ import org.apache.hc.core5.http2.hpack.HPackInspectHeader
 import org.apache.hc.core5.http2.impl.nio.H2InspectListener
 import org.apache.hc.core5.io.CloseMode
 import org.apache.hc.core5.reactor.IOReactorConfig
+import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.security.Principal
@@ -302,6 +303,40 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             }
         )
 
+        return httpClient
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun sendRequest(
+        request: HttpRequest,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): CallData {
+        val (apacheHttpRequest, approximateRequestBodySize) = request.toApacheHttpRequest()
+        val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
+
+        val data = createCallData(
+            requestBodySize = approximateRequestBodySize.toInt(),
+            requestExampleId = requestExampleId,
+            requestId = requestId,
+            subprojectId = subprojectId,
+            sslConfig = sslConfig
+        )
+        val callId = data.id
+
+        val httpClient = buildHttpClient(
+            callId = callId,
+            callData = data,
+            httpConfig = httpConfig,
+            sslConfig = sslConfig,
+            outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
+            incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
+            responseSize = data.optionalResponseSize
+        )
         httpClient.start()
 
         // TODO: Should we remove push promise support completely?
@@ -404,11 +439,21 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
             val out = callData.response
             out.requestData = RequestData().also {
-                val bytes = ByteArray(requestBodySize.toInt())
+                val bytes = ByteArrayOutputStream(maxOf(approximateRequestBodySize.toInt(), 32))
                 val channel = object : DataStreamChannel {
+                    val writeLock = Any()
+
                     override fun write(bb: ByteBuffer): Int {
-                        bb.get(bytes, 0, bb.remaining())
-                        return bb.remaining()
+//                        bb.get(bytes, 0, bb.remaining())
+
+                        synchronized(writeLock) {
+                            val pos = bb.position()
+                            val len = bb.remaining()
+                            bytes.writeBytes(bb.array().copyOfRange(pos, pos + len))
+                            bb.position(pos + len)
+
+                            return bb.remaining()
+                        }
                     }
 
                     override fun endStream(p0: MutableList<out Header>?) {
@@ -428,7 +473,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 apacheHttpRequestCopied.releaseResources()
                 it.method = request.method
                 it.url = request.getResolvedUri().toASCIIString()
-                it.body = bytes
+                it.body = bytes.toByteArray()
             }
             out.startAt = KInstant.now()
             out.isCommunicating = true

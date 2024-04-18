@@ -30,6 +30,7 @@ data class Environment(
     val variables: MutableList<UserKeyValuePair>,
     val httpConfig: HttpConfig = HttpConfig(),
     val sslConfig: SslConfig = SslConfig(),
+    val userFiles: List<ImportedFile> = listOf(),
 ) : DropDownable {
 
     override val key: String
