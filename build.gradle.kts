@@ -24,7 +24,7 @@ val grpcVersion = "1.59.1"
 
 kotlin {
     jvm {
-        jvmToolchain(11)
+        jvmToolchain(17)
         withJava()
     }
     sourceSets {

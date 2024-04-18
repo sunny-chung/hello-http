@@ -33,6 +33,7 @@ import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
+import java.util.HexFormat
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -561,7 +562,7 @@ object CustomCodeClasses {
                 parameterTypes = emptyList(),
                 executable = { interpreter, receiver, args, typeArgs ->
                     val bytes = (receiver as DelegatedValue<ByteArray>).value
-                    val encoded = bytes.toHexString()
+                    val encoded = HexFormat.of().formatHex(bytes)
                     StringValue(encoded, interpreter.symbolTable())
                 },
             ),
@@ -806,12 +807,6 @@ private fun List<UserKeyValuePair>.toRuntimeValue2(symbolTable: SymbolTable, lis
         symbolTable = symbolTable,
         typeArgument = (listType as ObjectType).arguments.first(),
     )
-}
-
-private fun ByteArray.toHexString() = buildString {
-    forEach { b ->
-        append(String.format("%02x", b))
-    }
 }
 
 private fun Any?.toRuntimeValue(symbolTable: SymbolTable): RuntimeValue {
