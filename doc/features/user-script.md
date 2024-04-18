@@ -190,6 +190,12 @@ class PublicKey
 class PrivateKey
 ```
 
+#### `SecretKey`
+
+```kotlin
+class SecretKey
+```
+
 ### Extensions
 
 #### Encoding
@@ -198,6 +204,10 @@ class PrivateKey
 fun ByteArray.encodeToBase64String(): String
 fun ByteArray.encodeToBase64UrlString(): String
 fun ByteArray.encodeToHexString(): String
+
+fun String.decodeBase64StringToByteArray(): ByteArray
+fun String.decodeBase64UrlStringToByteArray(): ByteArray
+fun String.decodeHexStringToByteArray(): ByteArray
 
 fun String.decodeJsonStringToMap(): Map<Any?, Any?>
 ````
@@ -214,4 +224,11 @@ fun ByteArray.toSha256WithRsaSignature(rsaPrivateKey: PrivateKey): ByteArray
 
 fun ByteArray.toPkcs8RsaPublicKey(): PublicKey
 fun ByteArray.toPkcs8RsaPrivateKey(): PrivateKey
+fun ByteArray.toAesSecretKey(): SecretKey
+
+/**
+ * Example value of parameter `algorithm`: "AES/CBC/PKCS5Padding"
+ */
+fun ByteArray.asEncrypted(algorithm: String, key: SecretKey, iv: ByteArray? = null): ByteArray
+fun ByteArray.asDecrypted(algorithm: String, key: SecretKey, iv: ByteArray? = null): ByteArray
 ````

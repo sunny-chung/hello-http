@@ -101,4 +101,41 @@ class CustomCodeTest {
         assertEquals(1, httpRequest.queryParameters.size)
         assertEquals("b123", httpRequest.queryParameters.first().second)
     }
+
+    @Test
+    fun aesEncryptDecrypt() {
+        val httpRequest = HttpRequest(
+            method = "GET",
+            url = "https://httpbin.org/get",
+            contentType = ContentType.None,
+            application = ProtocolApplication.Http,
+        )
+        assertEquals(0, httpRequest.headers.size)
+        assertEquals(0, httpRequest.queryParameters.size)
+
+        CustomCodeExecutor("""
+            val key: SecretKey = "aDN6UTM5YlBLR3BoNGdydzMzb3hUTHpNam9ibFVrWnk=".decodeBase64StringToByteArray().toAesSecretKey()
+            val iv: ByteArray = "f2e95da7ae1a20857c4c619c0018fd67".decodeHexStringToByteArray()
+
+            val dataToBeEncrypted = "abcD123_45aavs".encodeToByteArray()
+
+            val encrypted: ByteArray = dataToBeEncrypted.asEncrypted("AES/CBC/PKCS5Padding", key, iv)
+
+            request.addQueryParameter("encrypted", encrypted.encodeToHexString())
+
+            val decrypted: ByteArray = encrypted.asDecrypted("AES/CBC/PKCS5Padding", key, iv)
+
+            request.addQueryParameter("decrypted", decrypted.decodeToString())
+        """.trimIndent())
+            .executePreFlight(
+                request = httpRequest,
+                environment = null,
+            )
+
+        assertEquals(0, httpRequest.headers.size)
+
+        assertEquals(2, httpRequest.queryParameters.size)
+        assertEquals("51d65fe1fe9750891a9e91f2aa7247f6", httpRequest.queryParameters.first { it.first == "encrypted" }.second)
+        assertEquals("abcD123_45aavs", httpRequest.queryParameters.first { it.first == "decrypted" }.second)
+    }
 }

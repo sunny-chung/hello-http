@@ -25,6 +25,7 @@ import com.sunnychung.lib.multiplatform.kotlite.model.StringValue
 import com.sunnychung.lib.multiplatform.kotlite.model.SymbolTable
 import com.sunnychung.lib.multiplatform.kotlite.model.TypeParameter
 import com.sunnychung.lib.multiplatform.kotlite.model.UnitValue
+import com.sunnychung.lib.multiplatform.kotlite.stdlib.byte.ByteArrayClass
 import com.sunnychung.lib.multiplatform.kotlite.stdlib.byte.ByteArrayValue
 import com.sunnychung.lib.multiplatform.kotlite.stdlib.collections.MapValue
 import java.io.File
@@ -34,6 +35,10 @@ import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.HexFormat
+import javax.crypto.Cipher
+import javax.crypto.SecretKey
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -566,6 +571,42 @@ object CustomCodeClasses {
                     StringValue(encoded, interpreter.symbolTable())
                 },
             ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "String",
+                functionName = "decodeBase64StringToByteArray",
+                returnType = "ByteArray",
+                parameterTypes = emptyList(),
+                executable = { interpreter, receiver, args, typeArgs ->
+                    val input = (receiver as StringValue).value
+                    val decoded = Base64.decode(input)
+                    ByteArrayValue(decoded, interpreter.symbolTable())
+                },
+            ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "String",
+                functionName = "decodeBase64UrlStringToByteArray",
+                returnType = "ByteArray",
+                parameterTypes = emptyList(),
+                executable = { interpreter, receiver, args, typeArgs ->
+                    val input = (receiver as StringValue).value
+                    val decoded = Base64.UrlSafe.decode(input)
+                    ByteArrayValue(decoded, interpreter.symbolTable())
+                },
+            ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "String",
+                functionName = "decodeHexStringToByteArray",
+                returnType = "ByteArray",
+                parameterTypes = emptyList(),
+                executable = { interpreter, receiver, args, typeArgs ->
+                    val input = (receiver as StringValue).value
+                    val decoded = HexFormat.of().parseHex(input)
+                    ByteArrayValue(decoded, interpreter.symbolTable())
+                },
+            ),
 
             // JSON
             CustomFunctionDefinition(
@@ -596,6 +637,14 @@ object CustomCodeClasses {
         val PrivateKeyClazz = ProvidedClassDefinition(
             position = SourcePosition("HelloHTTP", 1, 1),
             fullQualifiedName = "PrivateKey",
+            typeParameters = emptyList(),
+            isInstanceCreationAllowed = false,
+            primaryConstructorParameters = emptyList(),
+            constructInstance = { _, _, _ -> throw UnsupportedOperationException() },
+        )
+        val SecretKeyClazz = ProvidedClassDefinition(
+            position = SourcePosition("HelloHTTP", 1, 1),
+            fullQualifiedName = "SecretKey",
             typeParameters = emptyList(),
             isInstanceCreationAllowed = false,
             primaryConstructorParameters = emptyList(),
@@ -737,6 +786,73 @@ object CustomCodeClasses {
                     DelegatedValue(key, PrivateKeyClazz, symbolTable = interpreter.symbolTable())
                 },
             ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "ByteArray",
+                functionName = "toAesSecretKey",
+                returnType = "SecretKey",
+                parameterTypes = emptyList(),
+                executable = { interpreter: Interpreter, receiver: RuntimeValue?, args: List<RuntimeValue>, typeArgs: Map<String, DataType> ->
+                    val bytes = (receiver as DelegatedValue<ByteArray>).value
+                    val key = SecretKeySpec(/* key = */ bytes, /* algorithm = */ "AES")
+                    DelegatedValue(key, SecretKeyClazz, symbolTable = interpreter.symbolTable())
+                },
+            ),
+
+            // Encryption ------------------
+
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "ByteArray",
+                functionName = "asEncrypted",
+                returnType = "ByteArray",
+                parameterTypes = listOf(
+                    CustomFunctionParameter(name = "algorithm", type = "String"),
+                    CustomFunctionParameter(name = "key", type = "SecretKey"),
+                    CustomFunctionParameter(name = "iv", type = "ByteArray?", defaultValueExpression = "null"),
+                ),
+                executable = { interpreter: Interpreter, receiver: RuntimeValue?, args: List<RuntimeValue>, typeArgs: Map<String, DataType> ->
+                    val input = (receiver as DelegatedValue<ByteArray>).value
+                    val algorithm = (args[0] as StringValue).value
+                    val key = (args[1] as DelegatedValue<SecretKey>).value
+                    val iv = (args[2] as? DelegatedValue<ByteArray>)?.value
+
+                    val cipher = Cipher.getInstance(algorithm)
+                    if (iv == null) {
+                        cipher.init(Cipher.ENCRYPT_MODE, key)
+                    } else {
+                        cipher.init(Cipher.ENCRYPT_MODE, key, IvParameterSpec(iv))
+                    }
+                    val encrypted = cipher.doFinal(input)
+                    DelegatedValue(encrypted, ByteArrayClass.clazz, symbolTable = interpreter.symbolTable())
+                },
+            ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "ByteArray",
+                functionName = "asDecrypted",
+                returnType = "ByteArray",
+                parameterTypes = listOf(
+                    CustomFunctionParameter(name = "algorithm", type = "String"),
+                    CustomFunctionParameter(name = "key", type = "SecretKey"),
+                    CustomFunctionParameter(name = "iv", type = "ByteArray?", defaultValueExpression = "null"),
+                ),
+                executable = { interpreter: Interpreter, receiver: RuntimeValue?, args: List<RuntimeValue>, typeArgs: Map<String, DataType> ->
+                    val input = (receiver as DelegatedValue<ByteArray>).value
+                    val algorithm = (args[0] as StringValue).value
+                    val key = (args[1] as DelegatedValue<SecretKey>).value
+                    val iv = (args[2] as? DelegatedValue<ByteArray>)?.value
+
+                    val cipher = Cipher.getInstance(algorithm)
+                    if (iv == null) {
+                        cipher.init(Cipher.DECRYPT_MODE, key)
+                    } else {
+                        cipher.init(Cipher.DECRYPT_MODE, key, IvParameterSpec(iv))
+                    }
+                    val decrypted = cipher.doFinal(input)
+                    DelegatedValue(decrypted, ByteArrayClass.clazz, symbolTable = interpreter.symbolTable())
+                },
+            ),
         )
     }
 
@@ -744,6 +860,7 @@ object CustomCodeClasses {
         override val classes: List<ProvidedClassDefinition> = listOf(
             Crypto.PublicKeyClazz,
             Crypto.PrivateKeyClazz,
+            Crypto.SecretKeyClazz,
         )
         override val functions: List<CustomFunctionDefinition> = Encoding.functions + Crypto.functions
         override val globalProperties: List<GlobalProperty> = emptyList()
