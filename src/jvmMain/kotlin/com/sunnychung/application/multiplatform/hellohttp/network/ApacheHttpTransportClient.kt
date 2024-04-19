@@ -303,40 +303,6 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             }
         )
 
-        return httpClient
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    override fun sendRequest(
-        request: HttpRequest,
-        requestExampleId: String,
-        requestId: String,
-        subprojectId: String,
-        postFlightAction: ((UserResponse) -> Unit)?,
-        httpConfig: HttpConfig,
-        sslConfig: SslConfig
-    ): CallData {
-        val (apacheHttpRequest, approximateRequestBodySize) = request.toApacheHttpRequest()
-        val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
-
-        val data = createCallData(
-            requestBodySize = approximateRequestBodySize.toInt(),
-            requestExampleId = requestExampleId,
-            requestId = requestId,
-            subprojectId = subprojectId,
-            sslConfig = sslConfig
-        )
-        val callId = data.id
-
-        val httpClient = buildHttpClient(
-            callId = callId,
-            callData = data,
-            httpConfig = httpConfig,
-            sslConfig = sslConfig,
-            outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
-            incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
-            responseSize = data.optionalResponseSize
-        )
         httpClient.start()
 
         // TODO: Should we remove push promise support completely?
@@ -405,11 +371,11 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         fireType: UserResponse.Type,
         parentLoadTestState: LoadTestState?,
     ): CallData {
-        val (apacheHttpRequest, requestBodySize) = request.toApacheHttpRequest()
+        val (apacheHttpRequest, approximateRequestBodySize) = request.toApacheHttpRequest()
         val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
 
         val data = createCallData(
-            requestBodySize = requestBodySize.toInt(),
+            requestBodySize = approximateRequestBodySize.toInt(),
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
