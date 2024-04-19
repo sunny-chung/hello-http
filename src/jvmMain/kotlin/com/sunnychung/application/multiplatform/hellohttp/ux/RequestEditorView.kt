@@ -314,7 +314,11 @@ fun RequestEditorView(
                 ProtocolApplication.Graphql -> if (isOneOffRequest) listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows) else emptyList()
                 ProtocolApplication.Grpc -> listOf(SendButtonDropdown.GrpcurlForLinux)
                 else -> listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows)
-            }// TODO: + listOf("Load Test")
+            } + if (isOneOffRequest) {
+                listOf(SendButtonDropdown.LoadTest)
+            } else {
+                emptyList()
+            }
             val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
             } else {
@@ -370,7 +374,7 @@ fun RequestEditorView(
                                         false
                                     }
                                 }
-                                "Load Test" -> {
+                                SendButtonDropdown.LoadTest.displayText -> {
                                     isShowLoadTestDialog = true
                                 }
                             }
@@ -1495,5 +1499,6 @@ private data class ProtocolMethod(val application: ProtocolApplication, val meth
 private enum class SendButtonDropdown(val displayText: String) {
     CurlForLinux("Copy as cURL command (for Linux / macOS)"),
     GrpcurlForLinux("Copy as grpcurl command (for Linux / macOS)"),
-    PowershellInvokeWebrequestForWindows("Copy as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)")
+    PowershellInvokeWebrequestForWindows("Copy as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)"),
+    LoadTest("Load Test"),
 }
