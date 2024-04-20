@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.io.Closeable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -396,8 +397,11 @@ class NetworkClientManager : CallDataStore {
                             )
                             call.awaitComplete()
                             log.v { "LoadTest complete C#$i" }
-                            onCompleteResponse(call)
-                            log.v { "LoadTest onCompleteResponse C#$i" }
+                            launch {
+                                onCompleteResponse(call)
+                                callDataMap.remove(call.id) // must discard child CallData to avoid memory leak
+                                log.v { "LoadTest onCompleteResponse C#$i" }
+                            }
                         } while (
                             callData.status != ConnectionStatus.DISCONNECTED // not cancelled
                             && !call.response.isError // not client-side error
@@ -422,6 +426,13 @@ class NetworkClientManager : CallDataStore {
                 reportJob.join()
                 callData.response.loadTestResult = loadTestState.toResult(1000L)
                 callData.status = ConnectionStatus.DISCONNECTED
+                when (client) {
+                    is Closeable -> {
+                        client.close()
+                        log.d { "Closed long client" }
+                    }
+                }
+                System.gc()
                 networkManager.emitEvent(callData.id, "Completed")
                 log.d { "Complete load test. Result: ${callData.response.loadTestResult}" }
             }
