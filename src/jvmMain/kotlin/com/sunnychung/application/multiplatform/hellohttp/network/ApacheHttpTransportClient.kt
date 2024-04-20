@@ -405,6 +405,12 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
             val out = callData.response
             out.requestData = RequestData().also {
+                it.method = request.method
+                it.url = request.getResolvedUri().toASCIIString()
+                if (callData.fireType == UserResponse.Type.LoadTestChild) {
+                    return@also
+                }
+
                 val bytes = ByteArrayOutputStream(maxOf(approximateRequestBodySize.toInt(), 32))
                 val channel = object : DataStreamChannel {
                     val writeLock = Any()
@@ -437,8 +443,6 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 }
                 apacheHttpRequestCopied.produce(channel)
                 apacheHttpRequestCopied.releaseResources()
-                it.method = request.method
-                it.url = request.getResolvedUri().toASCIIString()
                 it.body = bytes.toByteArray()
             }
             out.startAt = KInstant.now()
