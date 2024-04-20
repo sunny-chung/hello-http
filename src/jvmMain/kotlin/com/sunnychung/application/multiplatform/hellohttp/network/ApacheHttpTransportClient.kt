@@ -204,7 +204,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                 override fun onHeaderInputDecoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
                     val serialized = http2FrameSerializer.serializeHeaders(headers)
-                    val frame = suspendedHeaderFrames[streamId]!!
+                    val frame = suspendedHeaderFrames[streamId] ?: return
                     suspendedHeaderFrames.remove(streamId)
                     frame.block = serialized
                     runBlocking {
