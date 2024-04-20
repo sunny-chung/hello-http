@@ -28,6 +28,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.yield
 import org.apache.hc.client5.http.SystemDefaultDnsResolver
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse
 import org.apache.hc.client5.http.async.methods.SimpleResponseConsumer
@@ -282,6 +283,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                                 isCancelled.set(true)
                             }
                         }
+                        yield()
                     }
                 }
 
@@ -589,6 +591,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
             emitEvent(callId, "Response completed")
             completeResponse(callId = callId, response = out)
+
+            // workaround the coroutine bug: https://youtrack.jetbrains.com/issue/KT-33986/Null-out-result-field-when-suspending-a-coroutine
+            yield()
         }
         return data
     }
