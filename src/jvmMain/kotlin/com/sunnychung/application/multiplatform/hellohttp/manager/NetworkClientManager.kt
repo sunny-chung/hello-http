@@ -365,6 +365,7 @@ class NetworkClientManager : CallDataStore {
                     callData.response.loadTestResult = runBlocking { loadTestState.toResult(1000L) }
                     networkManager.emitEvent(callData.id, "Completed")
                     coroutineContext.cancel(e?.let { CancellationException("Cancelled due to error: ${e.message}", e) })
+                    callData.cancel = {}
                 }
                 callData.status = ConnectionStatus.CONNECTING
                 callData.response.startAt = KInstant.now()

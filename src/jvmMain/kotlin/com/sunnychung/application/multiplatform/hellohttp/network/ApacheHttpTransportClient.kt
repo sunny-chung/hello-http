@@ -553,6 +553,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         data.status = ConnectionStatus.DISCONNECTED
                         completeResponse(callId = callId, response = out)
                         this.cancel(error?.let { CancellationException(it.message, it) })
+
+                        data.cancel = {}
                     }
                 }
 
