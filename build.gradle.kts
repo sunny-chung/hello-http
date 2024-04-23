@@ -73,6 +73,16 @@ kotlin {
 
                 implementation("io.github.sunny-chung:kotlite-interpreter:1.1.0-snapshot.2")
                 implementation("io.github.sunny-chung:kotlite-stdlib:1.1.0-snapshot.1")
+                
+//                implementation("io.github.sunny-chung:composable-table:1.2.0")
+//                implementation("io.github.koalaplot:koalaplot-core:0.5.2")
+                implementation("io.github.koalaplot:koalaplot-core:0.6.0-dev4")
+//                implementation("io.github.thechance101:chart:Beta-0.0.5")
+
+//                implementation(files("lib/charts-desktop-sources.jar"))
+//                implementation(files("lib/charts-desktop.jar"))
+
+//                implementation("io.github.sunny-chung:KMMYCharts:1.0.0-SNAPSHOT")
             }
 
             resources.srcDir("$buildDir/resources")
