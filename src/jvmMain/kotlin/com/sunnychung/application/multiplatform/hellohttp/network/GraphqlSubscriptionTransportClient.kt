@@ -42,6 +42,8 @@ import kotlin.coroutines.resumeWithException
 class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientManager) : WebSocketTransportClient(networkClientManager) {
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
         client: Any?,
         request: HttpRequest,
         requestExampleId: String,
@@ -56,6 +58,8 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
         val payload = request.extra as GraphqlRequestBody
 
         val data = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
@@ -74,7 +78,6 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
             url = uri.toASCIIString(),
         )
 
-        val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
             val jsonMapper = jacksonObjectMapper()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)

@@ -3,11 +3,9 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
-import com.sunnychung.application.multiplatform.hellohttp.model.LongDuplicateContainer
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
-import com.sunnychung.application.multiplatform.hellohttp.model.UserResponseByResponseTime
 import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllSslCertificateManager
@@ -22,12 +20,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
@@ -61,7 +58,8 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
     }
 
     override fun emitEvent(callId: String, event: String, isForce: Boolean) {
-        if (!isForce && (callData[callId]?.let { it.fireType == UserResponse.Type.LoadTestChild } != false)) {
+        val data = callData[callId] ?: return Unit.also { log.w { "callId not found: $callId" } }
+        if (!isForce && (data.fireType == UserResponse.Type.LoadTestChild)) {
             return
         }
         val instant = KInstant.now()
@@ -69,8 +67,24 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             eventSharedFlow.emit(
                 NetworkEvent(
                     callId = callId,
+                    callData = data,
                     instant = instant,
                     event = event
+                )
+            )
+        }
+    }
+
+    fun emitEndEvent(callId: String, callData: CallData) {
+        val instant = KInstant.now()
+        runBlocking {
+            eventSharedFlow.emit(
+                NetworkEvent(
+                    callId = callId,
+                    callData = callData,
+                    instant = instant,
+                    event = "<End>",
+                    isEnd = true,
                 )
             )
         }
@@ -146,6 +160,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun createCallData(
         callId: String?,
+        coroutineScope: CoroutineScope,
         requestBodySize: Int?,
         requestExampleId: String,
         requestId: String,
@@ -162,43 +177,58 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
         val data = CallData(
             id = callId,
+            coroutineScope = coroutineScope,
             subprojectId = subprojectId,
             sslConfig = sslConfig.copy(),
-            events = eventSharedFlow.asSharedFlow()
+            events = eventSharedFlow
+//            .asSharedFlow()
                 .filter { it.callId == callId }
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
+                .takeWhile {
+                    log.v { "takeWhile $callId ${it.event} ${it.isEnd}" }
+//                log.v { "takeWhile ${it.event} ${data.isCompleted()}" }
+                    (!it.isEnd).also {
+//                    if (!it) coroutineScope.cancel(ResumableCancelException(data))
+                    }
+                }
+//            .flowOn(Dispatchers.IO)
+                .shareIn(coroutineScope, started = SharingStarted.Eagerly),
             eventsStateFlow = eventStateFlow,
             outgoingBytes = outgoingBytesFlow,
             incomingBytes = incomingBytesFlow,
+//            requestBodySize = requestBodySize,
             optionalResponseSize = optionalResponseSize,
-            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId, type = fireType),
+            response = UserResponse(
+                id = uuidString(),
+                requestId = requestId,
+                requestExampleId = requestExampleId,
+                type = fireType
+            ),
             fireType = fireType,
             loadTestState = loadTestState,
             cancel = {}
         )
         callData[callId] = data
 
-        if (fireType != UserResponse.Type.LoadTestChild) {
+        if (data.fireType != UserResponse.Type.LoadTestChild) {
             data.events
                 .onEach {
-                    synchronized(data.response.rawExchange.exchanges) {
+                    synchronized(it.callData.response.rawExchange.exchanges) {
                         if (true || it.event == "Response completed") { // deadline fighter
-                            data.response.rawExchange.exchanges.forEach {
+                            it.callData.response.rawExchange.exchanges.forEach {
                                 it.consumePayloadBuilder()
                             }
                         } else { // lazy
-                            val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
+                            val lastExchange = it.callData.response.rawExchange.exchanges.lastOrNull()
                             lastExchange?.consumePayloadBuilder()
                         }
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
+                        it.callData.response.rawExchange.exchanges += RawExchange.Exchange(
                             instant = it.instant,
                             direction = RawExchange.Direction.Unspecified,
                             detail = it.event
                         )
                     }
                 }
-                .launchIn(CoroutineScope(Dispatchers.IO))
+                .launchIn(coroutineScope)
 
             data.outgoingBytes
                 .onEach {
@@ -226,7 +256,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         log.v { it.payload.decodeToString() }
                     }
                 }
-                .launchIn(CoroutineScope(Dispatchers.IO))
+                .launchIn(coroutineScope)
 
             data.incomingBytes
                 .onEach {
@@ -240,7 +270,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                                 detail = null,
                                 payloadBuilder = ByteArrayOutputStream(
                                     maxOf(
-                                        optionalResponseSize.get(),
+                                        data.optionalResponseSize.get(),
                                         it.payload.size + 1 * 1024 * 1024
                                     )
                                 )
@@ -254,7 +284,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         log.v { it.payload.decodeToString() }
                     }
                 }
-                .launchIn(CoroutineScope(Dispatchers.IO))
+                .launchIn(coroutineScope)
         }
 
         return data
@@ -297,5 +327,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
     fun completeResponse(callId: String, response: UserResponse) {
         val call = callData[callId] ?: return
         call.complete()
+        callData.remove(callId) // avoid memory leak
+        emitEndEvent(callId, call) // Make an event to call.eventsStateFlow to cancel the flow. This event will not be collected.
     }
 }

@@ -73,7 +73,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             val instant = KInstant.now()
             runBlocking {
                 log.d { "Network Event: $event" }
-                eventSharedFlow.emit(NetworkEvent(callId = callId, instant = instant, event = event))
+                eventSharedFlow.emit(NetworkEvent(callId = callId, instant = instant, event = event, callData[callId] ?: return@runBlocking))
             }
         }
 
@@ -226,6 +226,8 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
     }
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
         client: Any?,
         request: HttpRequest,
         requestExampleId: String,
@@ -240,6 +242,8 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
         val okHttpRequest = request.toOkHttpRequest()
 
         val data = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = okHttpRequest.body?.contentLength()?.toInt(),
             requestExampleId = requestExampleId,
             requestId = requestId,
@@ -262,7 +266,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             call = httpClient.newCall(okHttpRequest),
         )
 
-        CoroutineScope(Dispatchers.IO).launch {
+        coroutineScope.launch {
             val callData = callData[call.id]!!
             callData.waitForPreparation()
             log.d { "Call ${call.id} is prepared" }
@@ -294,7 +298,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
                 executePostFlightAction(callId, out, postFlightAction)
             }
 
-            eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed"))
+            eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed", callData))
         }
         return data
     }

@@ -431,6 +431,8 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
     }
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
         client: Any?,
         request: HttpRequest,
         requestExampleId: String,
@@ -445,6 +447,8 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         val uri = URI.create(request.url)
 
         val call = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,

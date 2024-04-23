@@ -11,9 +11,13 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
@@ -26,17 +30,19 @@ class PersistResponseManager {
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     fun registerCall(callData: CallData) {
-        callData.events.onEach {
-            log.d { "PersistResponseManager receives call ${callData.id} event ${it.event}" }
-            persistCallResponse(callData)
-        }.launchIn(coroutineScope)
+        callData.events
+            .takeWhile { !it.isEnd }
+            .onEach { // callData cannot be directly referenced in onEach {}, or it would be leaked
+                log.d { "PersistResponseManager receives call ${it.callData.id} event ${it.event}" }
+                persistCallResponse(it.callData)
+            }.launchIn(coroutineScope)
         if (callData.response.isError) {
             coroutineScope.launch {
                 persistCallResponse(callData)
 
                 // force refresh UI
                 (callData.eventsStateFlow as MutableStateFlow<NetworkEvent?>).value =
-                    NetworkEvent("", KInstant.now(), "")
+                    NetworkEvent("", KInstant.now(), "", callData)
             }
         }
     }

@@ -57,7 +57,10 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
                     while (updates.isNotEmpty()) {
                         val it = updates.poll()
                         if (submittedUpdates.contains(it)) continue
-                        CoroutineScope(Dispatchers.IO).launch { update(it) }
+                        CoroutineScope(Dispatchers.IO).launch {
+                            update(it)
+                            yield()
+                        }
                         submittedUpdates.add(it)
                     }
                 }

@@ -13,6 +13,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.Inspected
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.CoroutineScope
 import org.java_websocket.client.DnsResolver
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
@@ -32,6 +33,8 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
     }
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
         client: Any?,
         request: HttpRequest,
         requestExampleId: String,
@@ -44,6 +47,8 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         parentLoadTestState: LoadTestState?,
     ): CallData {
         val data = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
@@ -52,7 +57,6 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
             fireType = fireType,
             loadTestState = parentLoadTestState,
         )
-        val callId = data.id
         val uri: URI = request.getResolvedUri()
         val out = data.response
         out.application = ProtocolApplication.WebSocket

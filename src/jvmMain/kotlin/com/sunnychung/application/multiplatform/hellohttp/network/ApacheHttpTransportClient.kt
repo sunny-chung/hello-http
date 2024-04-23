@@ -362,6 +362,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
         oldClient: Any?,
         request: HttpRequest,
         requestExampleId: String,
@@ -377,6 +379,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
 
         val data = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = approximateRequestBodySize.toInt(),
             requestExampleId = requestExampleId,
             requestId = requestId,
@@ -397,7 +401,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             responseSize = data.optionalResponseSize
         )
 
-        CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
+        coroutineScope.launch(coroutineExceptionHandler()) {
             val callData = callData[callId]!!
             callData.waitForPreparation()
             log.d { "Call $callId is prepared" }
@@ -594,7 +598,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             emitEvent(callId, "Response completed")
             completeResponse(callId = callId, response = out)
 
-            // workaround the coroutine bug: https://youtrack.jetbrains.com/issue/KT-33986/Null-out-result-field-when-suspending-a-coroutine
+            // workaround the coroutine bug:
+            // https://youtrack.jetbrains.com/issue/KT-33986/Null-out-result-field-when-suspending-a-coroutine
+            // https://github.com/Kotlin/kotlinx.coroutines/issues/2355
             yield()
         }
         return data

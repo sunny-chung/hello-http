@@ -6,6 +6,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ interface TransportClient {
 
     fun createCallData(
         callId: String? = null,
+        coroutineScope: CoroutineScope,
         requestBodySize: Int?,
         requestExampleId: String,
         requestId: String,
@@ -32,6 +34,8 @@ interface TransportClient {
     ): CallData
 
     fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
         client: Any? = null,
         request: HttpRequest,
         requestExampleId: String,
@@ -53,16 +57,17 @@ interface TransportClient {
     ): Any?
 }
 
-class NetworkEvent(val callId: String, val instant: KInstant, val event: String)
+class NetworkEvent(val callId: String, val instant: KInstant, val event: String, val callData: CallData, val isEnd: Boolean = false)
 class CallData(
     val id: String,
     val subprojectId: String,
     var isPrepared: Boolean = false,
     var status: ConnectionStatus = ConnectionStatus.PREPARING,
+    val coroutineScope: CoroutineScope,
 
     val sslConfig: SslConfig,
 
-    val events: SharedFlow<NetworkEvent>,
+    val events: SharedFlow<NetworkEvent>
     val eventsStateFlow: StateFlow<NetworkEvent?>,
     val outgoingBytes: SharedFlow<RawPayload>,
     val incomingBytes: SharedFlow<RawPayload>,
@@ -89,6 +94,8 @@ class CallData(
             .filter { it == true }
             .first()
     }
+
+    fun isCompleted(): Boolean = isCompleted.value
 }
 
 class LiteCallData(
