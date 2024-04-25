@@ -67,7 +67,7 @@ class CallData(
 
     val sslConfig: SslConfig,
 
-    val events: SharedFlow<NetworkEvent>
+    val events: SharedFlow<NetworkEvent>,
     val eventsStateFlow: StateFlow<NetworkEvent?>,
     val outgoingBytes: SharedFlow<RawPayload>,
     val incomingBytes: SharedFlow<RawPayload>,

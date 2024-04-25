@@ -292,14 +292,13 @@ class NetworkClientManager : CallDataStore {
                 ),
                 fireType = fireType,
 
-//                events = emptySharedFlow(),
+                events = emptySharedFlow(),
                 eventsStateFlow = MutableStateFlow(null),
                 outgoingBytes = emptySharedFlow(),
                 incomingBytes = emptySharedFlow(),
                 optionalResponseSize = AtomicInteger(0),
                 cancel = {},
             )
-            d.events = emptySharedFlow()
             log.d(error) { "Got error while firing request" }
 
             if (parentLoadTestState != null) {
