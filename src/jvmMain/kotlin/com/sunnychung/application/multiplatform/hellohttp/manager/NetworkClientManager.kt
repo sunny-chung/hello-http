@@ -527,7 +527,7 @@ class NetworkClientManager : CallDataStore {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendEndOfStream() }
     }
 
-    fun cancel(selectedRequestExampleId: String) {
+    fun cancel(selectedRequestExampleId: String) = runBlocking {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel(null) }
     }
 

@@ -75,9 +75,9 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         }
     }
 
-    fun emitEndEvent(callId: String, callData: CallData) {
+    suspend fun emitEndEvent(callId: String, callData: CallData) {
         val instant = KInstant.now()
-        runBlocking {
+//        runBlocking { // `runBlocking` with `emit` causes deadlock
             eventSharedFlow.emit(
                 NetworkEvent(
                     callId = callId,
@@ -87,7 +87,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                     isEnd = true,
                 )
             )
-        }
+//        }
     }
 
     protected fun coroutineExceptionHandler() = CoroutineExceptionHandler { context, ex ->
@@ -324,7 +324,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         }
     }
 
-    fun completeResponse(callId: String, response: UserResponse) {
+    suspend fun completeResponse(callId: String, response: UserResponse) {
         val call = callData[callId] ?: return
         call.complete()
         callData.remove(callId) // avoid memory leak

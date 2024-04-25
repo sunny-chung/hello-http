@@ -25,6 +25,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.CallDataU
 import com.sunnychung.application.multiplatform.hellohttp.network.util.flowAndStreamObserver
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.suspended
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import io.grpc.CallOptions
@@ -577,14 +578,16 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
                 try {
-                    val cancel = { _: Throwable? ->
+                    val cancel = suspended { _: Throwable? ->
                         if (call.status.isConnectionActive()) {
                             try {
                                 responseObserver.onCompleted()
-                            } catch (_: Throwable) {}
+                            } catch (_: Throwable) {
+                            }
                             try {
                                 channel0.shutdown()
-                            } catch (_: Throwable) {}
+                            } catch (_: Throwable) {
+                            }
                             call.status = ConnectionStatus.DISCONNECTED
                         }
                     }
@@ -634,7 +637,9 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 requestObserver.onNext(request)
                             } catch (e: Throwable) {
                                 setStreamError(e)
-                                call.cancel(e)
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    call.cancel(e)
+                                }
                             }
                         }
                     }
@@ -648,7 +653,9 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 if (!hasInvokedCancelDueToError) {
                                     hasInvokedCancelDueToError = true
                                     setStreamError(e)
-                                    call.cancel(e)
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        call.cancel(e)
+                                    }
                                 }
                             }
                         }

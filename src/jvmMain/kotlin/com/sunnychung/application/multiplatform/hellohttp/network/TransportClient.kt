@@ -78,7 +78,7 @@ class CallData(
     val fireType: UserResponse.Type,
     val loadTestState: LoadTestState? = null,
 
-    var cancel: (Throwable?) -> Unit,
+    var cancel: suspend (Throwable?) -> Unit,
     var sendPayload: (String) -> Unit = {},
     var sendEndOfStream: () -> Unit = {},
 ) {
