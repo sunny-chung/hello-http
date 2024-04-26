@@ -166,6 +166,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
         } else {
             listOf(ResponseTab.Body, ResponseTab.Header, ResponseTab.Raw)
         }
+        selectedTabIndex = minOf(selectedTabIndex, tabs.lastIndex)
         TabsView(
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
             selectedIndex = selectedTabIndex,

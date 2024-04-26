@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
@@ -59,11 +60,12 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun emitEvent(callId: String, event: String, isForce: Boolean) {
         val data = callData[callId] ?: return Unit.also { log.w { "callId not found: $callId" } }
+        log.v { "call event $callId $event" }
         if (!isForce && (data.fireType == UserResponse.Type.LoadTestChild)) {
             return
         }
         val instant = KInstant.now()
-        runBlocking {
+        CoroutineScope(Dispatchers.IO).launch {
             eventSharedFlow.emit(
                 NetworkEvent(
                     callId = callId,
@@ -181,7 +183,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             subprojectId = subprojectId,
             sslConfig = sslConfig.copy(),
             events = eventSharedFlow
-//            .asSharedFlow()
+//                .asSharedFlow()
                 .filter { it.callId == callId }
                 .takeWhile {
                     log.v { "takeWhile $callId ${it.event} ${it.isEnd}" }
@@ -209,7 +211,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         )
         callData[callId] = data
 
-        if (data.fireType != UserResponse.Type.LoadTestChild) {
+        if (data.fireType == UserResponse.Type.Regular) {
             data.events
                 .onEach {
                     synchronized(it.callData.response.rawExchange.exchanges) {

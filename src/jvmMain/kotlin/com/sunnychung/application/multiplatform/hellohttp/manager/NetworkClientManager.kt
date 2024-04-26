@@ -439,7 +439,7 @@ class NetworkClientManager : CallDataStore {
                     while (!isCompleted) {
                         callData.response.loadTestResult = loadTestState.toResult(1000L)
                         networkManager.emitEvent(callData.id, "update report")
-                        delay(1000)
+                        delay(1000L)
                     }
                     callData.response.loadTestResult = loadTestState.toResult(1000L)
                     networkManager.emitEvent(callData.id, "update report")
@@ -451,9 +451,10 @@ class NetworkClientManager : CallDataStore {
                         launch {
                             do {
                                 val call = withTimeout(input.intendedDuration.toMilliseconds()) {
-                                    log.v { "LoadTest fireRequest C#$i" }
+                                    val subCallId = uuidString()
+                                    log.v { "LoadTest fireRequest C#$i $subCallId" }
                                     val call = suspendingFireRequest(
-                                        callId = uuidString(),
+                                        callId = subCallId,
                                         request = request,
                                         requestExampleId = requestExampleId,
                                         environment = environment,

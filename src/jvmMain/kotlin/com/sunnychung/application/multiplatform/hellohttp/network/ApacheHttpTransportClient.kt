@@ -92,7 +92,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
-        responseSize: AtomicInteger
+        responseSize: AtomicInteger,
+        isLargeConnectionPoolNeeded: Boolean,
     ): MinimalHttpAsyncClient {
         val http2FrameSerializer = Http2FrameSerializer()
 
@@ -122,6 +123,12 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     .setSslContext(createSslContext(sslConfig).sslContext)
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
+                .apply {
+                    if (isLargeConnectionPoolNeeded) {
+                        setMaxConnTotal(200)
+                        setMaxConnPerRoute(200)
+                    }
+                }
                 .setConnectionListener(object : ConnectionListener {
                     override fun onConnectStart(remoteAddress: String) {
                         emitEvent(callId, "Connecting to $remoteAddress")
@@ -203,8 +210,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 val isCancelled = AtomicBoolean(false)
 
                 override fun onHeaderInputDecoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
-                    val serialized = http2FrameSerializer.serializeHeaders(headers)
+                    log.d { "onHeaderInputDecoded $streamId" }
                     val frame = suspendedHeaderFrames[streamId] ?: return
+                    val serialized = http2FrameSerializer.serializeHeaders(headers)
                     suspendedHeaderFrames.remove(streamId)
                     frame.block = serialized
                     runBlocking {
@@ -356,7 +364,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             sslConfig = sslConfig,
             outgoingBytesFlow = MutableSharedFlow(),
             incomingBytesFlow = MutableSharedFlow(),
-            responseSize = AtomicInteger(0)
+            responseSize = AtomicInteger(0),
+            isLargeConnectionPoolNeeded = true,
         )
     }
 
@@ -398,7 +407,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             sslConfig = sslConfig,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
             incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
-            responseSize = data.optionalResponseSize
+            responseSize = data.optionalResponseSize,
+            isLargeConnectionPoolNeeded = false,
         )
 
         coroutineScope.launch(coroutineExceptionHandler()) {
@@ -584,6 +594,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 out.isCommunicating = false
                 data.status = ConnectionStatus.DISCONNECTED
             }
+
+            log.v { "Call responded $callId" }
 
             if (!out.isError && postFlightAction != null) {
                 executePostFlightAction(callId, out, postFlightAction)
