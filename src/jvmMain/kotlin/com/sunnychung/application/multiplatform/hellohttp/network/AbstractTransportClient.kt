@@ -297,7 +297,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         withTimeout(3000) {
             while (!callData.isPrepared) {
                 log.d { "Wait for preparation" }
-                delay(100)
+                delay(5)
                 yield()
             }
         }

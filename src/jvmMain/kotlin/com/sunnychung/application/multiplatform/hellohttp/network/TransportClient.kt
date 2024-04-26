@@ -52,6 +52,7 @@ interface TransportClient {
 
     fun createReusableNonInspectableClient(
         parentCallId: String,
+        concurrency: Int,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
     ): Any?

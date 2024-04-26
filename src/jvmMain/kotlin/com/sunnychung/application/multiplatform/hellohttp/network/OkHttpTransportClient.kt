@@ -305,6 +305,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
 
     override fun createReusableNonInspectableClient(
         parentCallId: String,
+        concurrency: Int,
         httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): Any? {

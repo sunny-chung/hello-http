@@ -93,7 +93,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
         responseSize: AtomicInteger,
-        isLargeConnectionPoolNeeded: Boolean,
+        numThreads: Int?,
     ): MinimalHttpAsyncClient {
         val http2FrameSerializer = Http2FrameSerializer()
 
@@ -124,9 +124,10 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     .setHostnameVerifier(createHostnameVerifier(sslConfig))
                     .build())
                 .apply {
-                    if (isLargeConnectionPoolNeeded) {
-                        setMaxConnTotal(200)
-                        setMaxConnPerRoute(200)
+                    if (numThreads != null) {
+                        require(numThreads > 0) { "numThreads should be positive" }
+                        setMaxConnTotal(numThreads)
+                        setMaxConnPerRoute(numThreads)
                     }
                 }
                 .setConnectionListener(object : ConnectionListener {
@@ -354,6 +355,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
     override fun createReusableNonInspectableClient(
         parentCallId: String,
+        concurrency: Int,
         httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): MinimalHttpAsyncClient {
@@ -365,7 +367,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             outgoingBytesFlow = MutableSharedFlow(),
             incomingBytesFlow = MutableSharedFlow(),
             responseSize = AtomicInteger(0),
-            isLargeConnectionPoolNeeded = true,
+            numThreads = concurrency,
         )
     }
 
@@ -408,7 +410,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
             incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
             responseSize = data.optionalResponseSize,
-            isLargeConnectionPoolNeeded = false,
+            numThreads = null,
         )
 
         coroutineScope.launch(coroutineExceptionHandler()) {

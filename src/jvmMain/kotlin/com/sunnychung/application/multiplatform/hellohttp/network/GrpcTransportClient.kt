@@ -758,6 +758,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
     override fun createReusableNonInspectableClient(
         parentCallId: String,
+        concurrency: Int,
         httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): Any? {

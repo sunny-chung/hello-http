@@ -325,12 +325,14 @@ class NetworkClientManager : CallDataStore {
 
             persistResponseManager.registerCall(callData)
         }
+        log.v { "call end prepare soon $callId" }
         if (!callData.response.isError) {
             callData.isPrepared = true
             if (parentLoadTestState != null) {
                 parentLoadTestState.numRequestsSent.incrementAndGet()
             }
         }
+        log.v { "call just before return $callId" }
         callData
     }
 
@@ -391,6 +393,7 @@ class NetworkClientManager : CallDataStore {
 
                 val client = networkManager.createReusableNonInspectableClient(
                     parentCallId = loadTestState.callId,
+                    concurrency = input.numConcurrent,
                     httpConfig = environment?.httpConfig ?: HttpConfig(),
                     sslConfig = environment?.sslConfig ?: SslConfig(),
                 )
@@ -450,6 +453,7 @@ class NetworkClientManager : CallDataStore {
                     (1..input.numConcurrent).forEach { i ->
                         launch {
                             do {
+                                val networkManager = networkRequest.createNetworkManager()
                                 val call = withTimeout(input.intendedDuration.toMilliseconds()) {
                                     val subCallId = uuidString()
                                     log.v { "LoadTest fireRequest C#$i $subCallId" }
@@ -466,9 +470,9 @@ class NetworkClientManager : CallDataStore {
                                         networkManager = networkManager,
                                         persistResponseManager = persistResponseManager,
                                     )
-                                    log.v { "LoadTest await C#$i" }
+                                    log.v { "LoadTest await C#$i $subCallId" }
                                     call.awaitComplete()
-                                    log.v { "LoadTest complete C#$i" }
+                                    log.v { "LoadTest complete C#$i $subCallId" }
                                     launch {
                                         onCompleteResponse(call)
 //                                    callDataMap.remove(call.id) // must discard child CallData to avoid memory leak

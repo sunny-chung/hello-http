@@ -229,6 +229,7 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
 
     override fun createReusableNonInspectableClient(
         parentCallId: String,
+        concurrency: Int,
         httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): Any? {
