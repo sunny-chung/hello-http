@@ -45,6 +45,31 @@ class EchoApi {
             },
         )
     }
+
+    @RequestMapping("echoWithoutBody")
+    suspend fun echoWithoutBody(request: ServerHttpRequest, exchange: ServerWebExchange): RequestData {
+        return RequestData(
+            path = request.path.value(),
+            method = request.method.name(),
+            headers = request.headers.toParameterList(),
+            queryParameters = request.queryParams.toParameterList(),
+            formData = exchange.awaitFormData().toParameterList(),
+            multiparts = exchange.awaitMultipartData().flatMap { it.value.map {
+                val data = it.content().toByteArray()
+                PartData(
+                    name = it.name(),
+                    headers = it.headers().toParameterList(),
+                    size = data?.size ?: 0,
+                    data = null,
+                )
+            } },
+            body = try {
+                request.body.toByteArray()?.size?.toString()
+            } catch (_: IllegalStateException) {
+                null
+            },
+        )
+    }
 }
 
 fun MultiValueMap<String, String>.toParameterList(): List<Parameter> =
