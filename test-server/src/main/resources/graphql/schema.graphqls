@@ -1,0 +1,24 @@
+type Query {
+    sum(input: SomeInput!): SomeOutput
+}
+
+type Subscription {
+    interval(seconds: Int!, stopAt: Int, errorAt: Int): SubData
+}
+
+input SomeInput {
+    a: String!
+    b: Int!
+    c: Int!
+}
+
+type SomeOutput {
+    a: String!
+    sum: Int!
+}
+
+type SubData {
+    id: Int!
+    instant: String!
+}
+

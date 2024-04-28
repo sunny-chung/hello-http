@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: test-server
+  graphql:
+    websocket:
+      path: /graphql
+      connection-init-timeout: 10s
+    graphiql:
+      enabled: true
+      path: /graphiql
+
+server:
+  port: 18081
+
+grpc:
+  server:
+    port: 18082
