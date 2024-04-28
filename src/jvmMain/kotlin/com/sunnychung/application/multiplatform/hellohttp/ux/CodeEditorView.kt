@@ -76,6 +76,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Sear
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
 
+val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024
+
 @Composable
 fun CodeEditorView(
     modifier: Modifier = Modifier,
@@ -104,7 +106,13 @@ fun CodeEditorView(
 
     var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
     var cursorDelta by remember { mutableStateOf(0) }
-    val newText = text.filterForTextField()
+    val newText = text.filterForTextField().let {
+        if (it.length > MAX_TEXT_FIELD_LENGTH) {
+            it.substring(0 .. MAX_TEXT_FIELD_LENGTH) + "\n... (trimmed. total ${it.length} bytes)"
+        } else {
+            it
+        }
+    }
     var textLayoutResult by rememberLast(newText) { mutableStateOf<TextLayoutResult?>(null) }
     var lineTops by rememberLast(newText, textLayoutResult) { mutableStateOf<List<Float>?>(null) }
     log.d { "len newText ${newText.length}, textValue.text ${textValue.text.length}, text ${text.length}" }
@@ -330,6 +338,10 @@ fun CodeEditorView(
     }
 
     val visualTransformationToUse = visualTransformations.let {
+        if (newText.length > 1 * 1024 * 1024 /* 1 MB */) {
+            // disable all styles to avoid hanging
+            return@let VisualTransformation.None
+        }
         if (it.size > 1) {
             MultipleVisualTransformation(it)
         } else if (it.size == 1) {
