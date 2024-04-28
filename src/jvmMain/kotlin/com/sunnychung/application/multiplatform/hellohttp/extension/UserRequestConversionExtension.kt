@@ -36,6 +36,7 @@ import org.apache.hc.core5.http.nio.AsyncRequestProducer
 import org.apache.hc.core5.http.nio.entity.AsyncEntityProducers
 import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder
 import org.apache.hc.core5.net.URIBuilder
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -220,7 +221,10 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
                 .build()
             // TODO memory bomb!
             AsyncEntityProducers.create(
-                entity.content.readAllBytes().also {
+                ByteArrayOutputStream().let {
+                    entity.writeTo(it)
+                    it.toByteArray()
+                }.also {
                     // Apache is buggy, entity.contentLength returns -1
                     approximateContentSize = it.size.toLong()
                 },
