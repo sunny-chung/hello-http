@@ -18,3 +18,4 @@ rootProject.name = "hello-http"
 
 include("test-server")
 include("test-common")
+include("ux-and-transport-test")

@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
@@ -286,6 +287,7 @@ fun RequestEditorView(
                 ),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
+                    .testTag(TestTag.RequestUrlTextField.name)
             )
 
             val isOneOffRequest = when (request.application) {
@@ -327,6 +329,7 @@ fun RequestEditorView(
                         }
                     }
                     .padding(start = 10.dp, end = if (dropdownItems.isNotEmpty()) 4.dp else 10.dp)
+                    .testTag(TestTag.RequestFireOrDisconnectButton.name)
                 ) {
                     AppText(
                         text = label,

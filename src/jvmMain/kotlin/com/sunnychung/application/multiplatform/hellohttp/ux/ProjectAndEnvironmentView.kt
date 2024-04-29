@@ -29,6 +29,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
@@ -144,12 +145,14 @@ fun ProjectAndEnvironmentViewV2(
                             false
                         }
                     }
-                    .defaultMinSize(minWidth = 200.dp),
+                    .defaultMinSize(minWidth = 200.dp)
+                    .testTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name),
             )
             AppTextButton(
                 text = "Done",
                 onClick = { onDone() },
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 4.dp)
+                    .testTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name),
             )
         }
 
@@ -205,6 +208,7 @@ fun ProjectAndEnvironmentViewV2(
                                 dialogTextFieldValue = ""
                                 dialogIsCreate = true
                             }
+                            .testTag(TestTag.FirstTimeCreateProjectButton.name)
                     )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -287,6 +291,7 @@ fun ProjectAndEnvironmentViewV2(
                                     dialogTextFieldValue = ""
                                     dialogIsCreate = true
                                 }
+                                .testTag(TestTag.FirstTimeCreateSubprojectButton.name)
                         )
                     } else {
                         LazyColumn(

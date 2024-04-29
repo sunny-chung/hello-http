@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -340,7 +341,12 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectio
         Pair("", colors.errorResponseBackground)
     }
     if (text.isNotEmpty()) {
-        DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
+        DataLabel(
+            modifier = modifier.testTag(TestTag.ResponseStatus.name),
+            text = text,
+            backgroundColor = backgroundColor,
+            textColor = colors.bright,
+        )
     }
 }
 
@@ -539,6 +545,7 @@ fun BodyViewerView(
                     } else {
                         emptyList()
                     },
+                    testTag = TestTag.ResponseBody.name,
                 )
             }
         } else {

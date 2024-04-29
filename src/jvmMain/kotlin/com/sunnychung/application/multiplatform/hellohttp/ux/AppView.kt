@@ -47,6 +47,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -107,7 +108,7 @@ fun AppView() {
             val dialogViewModel = AppContext.DialogViewModel
             val dialogState = dialogViewModel.state.collectAsState().value // needed for updating UI by flow
             log.d { "Dialog State = $dialogState" }
-            Box(modifier = Modifier.background(colors.background).fillMaxSize()) {
+            Box(modifier = Modifier.background(colors.background).fillMaxSize().testTag(TestTag.ContainerView.name)) {
                 AppContentView()
 
                 dialogState?.let { dialog ->
@@ -148,6 +149,7 @@ fun AppView() {
                             .align(
                                 Alignment.Center
                             )
+                            .testTag(TestTag.DialogContainerView.name)
                     ) {
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
