@@ -7,5 +7,6 @@ import org.springframework.boot.runApplication
 class TestServerApplication
 
 fun main(args: Array<String>) {
+	System.setProperty("reactor.netty.http.server.accessLogEnabled", "true")
 	runApplication<TestServerApplication>(*args)
 }
