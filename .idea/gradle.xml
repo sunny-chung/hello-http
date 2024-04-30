@@ -10,6 +10,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/test-common" />
             <option value="$PROJECT_DIR$/test-server" />
+            <option value="$PROJECT_DIR$/ux-and-transport-test" />
           </set>
         </option>
       </GradleProjectSettings>

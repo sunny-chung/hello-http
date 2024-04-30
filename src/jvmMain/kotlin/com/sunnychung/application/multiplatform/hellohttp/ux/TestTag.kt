@@ -8,23 +8,29 @@ enum class TestTag {
     FirstTimeCreateProjectButton,
     FirstTimeCreateSubprojectButton,
     CreateRequestOrFolderButton,
-    RequestMethodDropdownButton,
     RequestUrlTextField,
     RequestParameterTypeTab,
+    RequestStringBodyTextField,
     RequestFireOrDisconnectButton,
     ResponseStatus,
     ResponseBody,
 }
 
 enum class TestTagPart {
+    RequestMethodDropdown,
     RequestHeader,
     RequestQueryParameter,
+    RequestBodyTypeDropdown,
+    RequestBodyFormUrlEncodedForm,
+    RequestBodyMultipartForm,
     Inherited,
     Current,
     Key,
     Value,
     FileButton,
     ValueTypeDropdown,
+    DropdownButton,
+    DropdownItem,
 }
 
 fun buildTestTag(vararg parts: Any?): String? {

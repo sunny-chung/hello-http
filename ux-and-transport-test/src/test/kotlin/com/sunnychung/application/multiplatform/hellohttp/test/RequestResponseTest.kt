@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasTextExactly
@@ -25,10 +26,12 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
@@ -116,7 +119,7 @@ class RequestResponseTest {
                         name = "Base",
                         headers = listOf(
                             UserKeyValuePair("h1", "abcd"),
-                            UserKeyValuePair("x-My-Header", "defg"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
                         ),
                         queryParameters = listOf(
                             UserKeyValuePair("abc", "def"),
@@ -141,7 +144,7 @@ class RequestResponseTest {
                         name = "Base",
                         headers = listOf(
                             UserKeyValuePair("h1", "abcd"),
-                            UserKeyValuePair("x-My-Header", "defg"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
                         ),
                     )
                 )
@@ -162,13 +165,187 @@ class RequestResponseTest {
                         name = "Base",
                         headers = listOf(
                             UserKeyValuePair("h1", "abcd"),
-                            UserKeyValuePair("x-My-Header", "defg"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
                         ),
                         queryParameters = listOf(
                             UserKeyValuePair("abc", "中文字"),
                             UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
                             UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
                         ),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithoutBody() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithRawBody() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Raw,
+                        body = StringBody("abcde\n\tfgh中文字_;-+/\\n✌🏽"),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithRawBodyAndHeaderAndQueryParameters() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                        contentType = ContentType.Raw,
+                        body = StringBody("abcde\n\tfgh中文字_;-+/\\n✌🏽"),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithJsonBody() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Json,
+                        body = StringBody("""
+                            {
+                                "s": "abcde\\n\tfgh中文字_;-+/\\\\n✌🏽",
+                                "abc": 123,
+                                "de": true,
+                                "fgh": 45.67
+                            }
+                        """.trimIndent()),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithJsonBodyAndHeaderAndQueryParameters() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                        contentType = ContentType.Json,
+                        body = StringBody("""
+                            {
+                                "s": "abcde\\n\tfgh中文字_;-+/\\\\n✌🏽",
+                                "abc": 123,
+                                "de": true,
+                                "fgh": 45.67
+                            }
+                        """.trimIndent()),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithFormUrlEncoded() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.FormUrlEncoded,
+                        body = FormUrlEncodedBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                        )),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithFormUrlEncodedAndHeaderAndQueryParameters() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                        contentType = ContentType.FormUrlEncoded,
+                        body = FormUrlEncodedBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                        )),
                     )
                 )
             )
@@ -232,33 +409,103 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     val baseExample = request.examples.first()
 
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
-        .performClick()
+        .assertIsDisplayed()
+        .performClickWithRetry(this)
     waitUntilExactlyOneExists(hasTextExactly("Request", includeEditableText = false))
     onNodeWithText("Request")
-        .performClick()
+        .assertIsDisplayed()
+        .performClickWithRetry(this)
     waitUntilExactlyOneExists(hasTestTag(TestTag.RequestUrlTextField.name), 1000L)
 
-    // TODO method
+    delayShort()
+
+    if (request.application == ProtocolApplication.Http && request.method != "GET") {
+        // TODO support custom method
+        onNodeWithTag(buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownButton)!!)
+            .assertIsDisplayed()
+            .performClickWithRetry(this)
+
+        val nextTag = buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownItem, request.method)!!
+        waitUntilExactlyOneExists(hasTestTag(nextTag))
+        onNodeWithTag(nextTag)
+            .assertIsDisplayed()
+            .performClickWithRetry(this)
+
+        delayShort()
+    }
 
     onNodeWithTag(TestTag.RequestUrlTextField.name)
+        .assertIsDisplayed()
         .performTextInput(request.url)
 
     delayShort()
-    waitForIdle()
+
+    if (baseExample.contentType != ContentType.None) {
+        onNodeWithTag(buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownButton)!!)
+            .assertIsDisplayed()
+            .performClickWithRetry(this)
+
+        val nextTag = buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownItem, baseExample.contentType.displayText)!!
+        waitUntilExactlyOneExists(hasTestTag(nextTag))
+        onNodeWithTag(nextTag)
+            .assertIsDisplayed()
+            .performClickWithRetry(this)
+
+        delayShort()
+
+        when (baseExample.contentType) {
+            ContentType.Json, ContentType.Raw -> {
+                val body = (baseExample.body as StringBody).value
+                if (body.isNotEmpty()) {
+                    onNodeWithTag(TestTag.RequestStringBodyTextField.name)
+                        .assertIsDisplayed()
+                        .performTextInput(body)
+                    delayShort()
+                }
+            }
+            ContentType.Multipart -> TODO()
+            ContentType.FormUrlEncoded -> {
+                val body = (baseExample.body as FormUrlEncodedBody).value
+                body.forEachIndexed { index, it ->
+                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Value, index)!!))
+                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                        .assertIsDisplayed()
+                        .performTextInput(it.key)
+                    delayShort()
+
+                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                        .assertIsDisplayed()
+                        .assertTextEquals(it.key)
+                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Value, index)!!))
+                        .assertIsDisplayed()
+                        .performTextInput(it.value)
+                    delayShort()
+                }
+            }
+            ContentType.BinaryFile -> TODO()
+            ContentType.Graphql -> TODO()
+            ContentType.None -> throw IllegalStateException()
+        }
+    }
 
     if (baseExample.queryParameters.isNotEmpty()) {
         onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Query")))
+            .assertIsDisplayed()
             .performClickWithRetry(this)
 
         baseExample.queryParameters.forEachIndexed { index, it ->
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
+                .assertIsDisplayed()
                 .performTextInput(it.key)
             delayShort()
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
+                .assertIsDisplayed()
                 .assertTextEquals(it.key)
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
+                .assertIsDisplayed()
                 .performTextInput(it.value)
             delayShort()
         }
@@ -266,14 +513,17 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
 
     if (baseExample.headers.isNotEmpty()) {
         onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
+            .assertIsDisplayed()
             .performClickWithRetry(this)
         baseExample.headers.forEachIndexed { index, it ->
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
+                .assertIsDisplayed()
                 .performTextInput(it.key)
             delayShort()
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
+                .assertIsDisplayed()
                 .performTextInput(it.value)
             delayShort()
         }
@@ -285,6 +535,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     waitForIdle()
 
     onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+        .assertIsDisplayed()
         .performClickWithRetry(this)
     waitForIdle()
 
@@ -305,7 +556,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
         .getTexts()
         .single()
     val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
-    assertEquals("GET", resp.method)
+    assertEquals(request.method, resp.method)
     assertEquals("/rest/echo", resp.path)
     assertTrue(resp.headers.size >= 2) // at least have "Host" and "User-Agent" headers
     if (baseExample.headers.isNotEmpty()) {
@@ -333,7 +584,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
 }
 
 suspend fun ComposeUiTest.delayShort() {
-    delay(200L)
+    delay(250L)
     waitForIdle()
 }
 

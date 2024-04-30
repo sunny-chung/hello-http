@@ -273,6 +273,7 @@ fun RequestEditorView(
                     onRequestModified(request.copyForApplication(application = it.key.application, method = it.key.method))
                     true
                 },
+                testTagPart = TestTagPart.RequestMethodDropdown,
                 modifier = Modifier.fillMaxHeight()
             )
 
@@ -970,7 +971,8 @@ private fun RequestBodyEditor(
                                     )
                                 )
                                 true
-                            }
+                            },
+                            testTagPart = TestTagPart.RequestBodyTypeDropdown,
                         )
                     } else {
                         AppText(selectedContentType.displayText)
@@ -1104,6 +1106,7 @@ private fun RequestBodyEditor(
                     },
                     knownVariables = environmentVariableKeys,
                     isSupportFileValue = false,
+                    testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm,
                     modifier = remainModifier,
                 )
 
@@ -1137,6 +1140,7 @@ private fun RequestBodyEditor(
                     },
                     knownVariables = environmentVariableKeys,
                     isSupportFileValue = true,
+                    testTagPart = TestTagPart.RequestBodyMultipartForm,
                     modifier = remainModifier,
                 )
 
@@ -1280,6 +1284,7 @@ private fun RequestBodyTextEditor(
                 )
             },
             transformations = transformations,
+            testTag = TestTag.RequestStringBodyTextField.name,
         )
     } else {
         CodeEditorView(

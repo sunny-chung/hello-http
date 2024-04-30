@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -52,8 +53,9 @@ fun <T: DropDownable> DropDownView(
         )
     },
     arrowPadding: PaddingValues = PaddingValues(0.dp),
+    testTagPart: TestTagPart? = null,
     selectedItem: T? = null,
-    onClickItem: (T) -> Boolean
+    onClickItem: (T) -> Boolean,
 ) {
     val colors = LocalColor.current
     val populatedItems = populateItems(items)
@@ -67,11 +69,22 @@ fun <T: DropDownable> DropDownView(
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
         populatedItems.forEach { item ->
-            Column(modifier = Modifier.clickable {
-                if (onClickItem(item)) {
-                    isShowContextMenu = false
+            Column(modifier = Modifier
+                .clickable {
+                    if (onClickItem(item)) {
+                        isShowContextMenu = false
+                    }
                 }
-            }.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth()) {
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .fillMaxWidth()
+                .run {
+                    if (testTagPart != null) {
+                        testTag(buildTestTag(testTagPart, TestTagPart.DropdownItem, item.displayText)!!)
+                    } else {
+                        this
+                    }
+                }
+            ) {
                 Row {
                     contentView(item, false, item.key == selectedItem?.key, isClickable)
                 }
@@ -86,6 +99,12 @@ fun <T: DropDownable> DropDownView(
                 clickable {
                     isShowContextMenu = !isShowContextMenu
                 }
+            } else {
+                this
+            }
+        }.run {
+            if (testTagPart != null) {
+                testTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
             } else {
                 this
             }
