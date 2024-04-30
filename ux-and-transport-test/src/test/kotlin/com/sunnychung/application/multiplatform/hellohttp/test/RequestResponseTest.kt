@@ -8,6 +8,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasTextExactly
@@ -24,12 +25,22 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
+import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
+import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
+import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
+import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.delay
@@ -62,25 +73,106 @@ class RequestResponseTest {
 
     @Test
     fun echoGet() = runTest {
-        createAndSendHttpRequest(
+        createAndSendRestEchoRequestAndAssertResponse(
             UserRequestTemplate(
                 id = uuidString(),
                 method = "GET",
                 url = echoUrl,
             )
         )
-        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
-        val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
-            .getTexts()
-            .single()
-        val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
-        assertEquals("GET", resp.method)
-        assertEquals("/rest/echo", resp.path)
-        assertTrue { resp.headers.size > 1 }
-        assertEquals(0, resp.queryParameters.size)
-        assertEquals(0, resp.formData.size)
-        assertEquals(0, resp.multiparts.size)
-        assertEquals(null, resp.body)
+    }
+
+    @Test
+    fun echoGetWithQueryParameters() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "GET",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "def"),
+                            UserKeyValuePair("ghijK", "lmnopqrS"),
+                        ),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoGetWithQueryParametersAndHeaders() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "GET",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "def"),
+                            UserKeyValuePair("ghijK", "lmnopqrS"),
+                        ),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoGetWithHeaders() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "GET",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg"),
+                        ),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoGetWithUnicodeSpecialCharacterQueryParameters() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "GET",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                    )
+                )
+            )
+        )
     }
 }
 
@@ -137,6 +229,7 @@ fun ComposeUiTest.createProjectIfNeeded() {
 
 suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), isOneOffRequest: Boolean = true) {
     createProjectIfNeeded()
+    val baseExample = request.examples.first()
 
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
         .performClick()
@@ -145,23 +238,116 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
         .performClick()
     waitUntilExactlyOneExists(hasTestTag(TestTag.RequestUrlTextField.name), 1000L)
 
+    // TODO method
+
     onNodeWithTag(TestTag.RequestUrlTextField.name)
         .performTextInput(request.url)
 
+    delayShort()
+    waitForIdle()
+
+    if (baseExample.queryParameters.isNotEmpty()) {
+        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Query")))
+            .performClickWithRetry(this)
+
+        baseExample.queryParameters.forEachIndexed { index, it ->
+            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
+            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
+            onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
+                .performTextInput(it.key)
+            delayShort()
+            onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
+                .assertTextEquals(it.key)
+            onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
+                .performTextInput(it.value)
+            delayShort()
+        }
+    }
+
+    if (baseExample.headers.isNotEmpty()) {
+        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
+            .performClickWithRetry(this)
+        baseExample.headers.forEachIndexed { index, it ->
+            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
+            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
+            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
+                .performTextInput(it.key)
+            delayShort()
+            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
+                .performTextInput(it.value)
+            delayShort()
+        }
+    }
+
     waitForIdle()
 //    mainClock.advanceTimeBy(500L)
-    delay(400L)
-    waitForIdle() // prevent illegal state after sleeping
+    delayShort()
+    waitForIdle()
 
     onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .performClick()
+        .performClickWithRetry(this)
     waitForIdle()
 
     // wait for response
-    delay(400L)
+    delay(500L)
     waitForIdle()
     if (isOneOffRequest) {
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+    }
+}
+
+suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate) {
+    val baseExample = request.examples.first()
+    createAndSendHttpRequest(request)
+
+    onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
+    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+        .getTexts()
+        .single()
+    val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
+    assertEquals("GET", resp.method)
+    assertEquals("/rest/echo", resp.path)
+    assertTrue(resp.headers.size >= 2) // at least have "Host" and "User-Agent" headers
+    if (baseExample.headers.isNotEmpty()) {
+        assertTrue(resp.headers.containsAll(baseExample.headers.map { Parameter(it.key, it.value) }))
+    }
+    assertEquals(
+        baseExample.queryParameters.map { Parameter(it.key, it.value) }.sortedBy { it.name },
+        resp.queryParameters.sortedBy { it.name }
+    )
+    if (baseExample.body is FormUrlEncodedBody) {
+        assertEquals(
+            (baseExample.body as FormUrlEncodedBody).value.map { Parameter(it.key, it.value) }.sortedBy { it.name },
+            resp.formData.sortedBy { it.name }
+        )
+    } else {
+        assertEquals(0, resp.formData.size)
+    }
+    assertEquals(0, resp.multiparts.size)
+    when (val body = baseExample.body) {
+        null, is FormUrlEncodedBody, is MultipartBody -> assertEquals(null, resp.body)
+        is FileBody -> TODO()
+        is GraphqlBody -> TODO()
+        is StringBody -> assertEquals(body.value, resp.body)
+    }
+}
+
+suspend fun ComposeUiTest.delayShort() {
+    delay(200L)
+    waitForIdle()
+}
+
+/**
+ * retry to prevent illegal state after sleeping
+ */
+fun SemanticsNodeInteraction.performClickWithRetry(host: ComposeUiTest): SemanticsNodeInteraction {
+    while (true) {
+        try {
+            performClick()
+            return this
+        } catch (e: IllegalArgumentException) {
+            host.waitForIdle()
+        }
     }
 }
 

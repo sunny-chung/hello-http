@@ -10,7 +10,26 @@ enum class TestTag {
     CreateRequestOrFolderButton,
     RequestMethodDropdownButton,
     RequestUrlTextField,
+    RequestParameterTypeTab,
     RequestFireOrDisconnectButton,
     ResponseStatus,
     ResponseBody,
+}
+
+enum class TestTagPart {
+    RequestHeader,
+    RequestQueryParameter,
+    Inherited,
+    Current,
+    Key,
+    Value,
+    FileButton,
+    ValueTypeDropdown,
+}
+
+fun buildTestTag(vararg parts: Any?): String? {
+    if (parts.any { it == null }) {
+        return null
+    }
+    return parts.joinToString("/")
 }

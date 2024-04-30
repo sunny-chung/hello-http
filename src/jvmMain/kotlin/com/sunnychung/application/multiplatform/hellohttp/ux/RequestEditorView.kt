@@ -505,7 +505,8 @@ fun RequestEditorView(
             onSelectTab = { selectedRequestTabIndex = it },
             contents = tabs.map {
                 { AppTabLabel(text = it.displayText) }
-            }
+            },
+            testTag = TestTag.RequestParameterTypeTab.name,
         )
         Box(
             modifier = if (!hasPayloadEditor) {
@@ -552,6 +553,7 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
+                        testTagPart = TestTagPart.RequestHeader,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
@@ -584,6 +586,7 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
+                        testTagPart = TestTagPart.RequestQueryParameter,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
@@ -856,6 +859,7 @@ private fun RequestKeyValueEditorView(
     isSupportFileValue: Boolean,
     keyPlaceholder: String = "Key",
     valuePlaceholder: String = "Value",
+    testTagPart: TestTagPart? = null,
 ) {
     val data = value ?: listOf()
     val activeBaseValues = baseValue?.filter { it.isEnabled }
@@ -876,6 +880,8 @@ private fun RequestKeyValueEditorView(
                 onItemAddLast = {_ ->},
                 onItemDelete = {_ ->},
                 onDisableChange = onDisableUpdate,
+                testTagPart1 = testTagPart,
+                testTagPart2 = TestTagPart.Inherited,
             )
 
             InputFormHeader(text = "This Example", modifier = Modifier.padding(top = 12.dp))
@@ -904,6 +910,8 @@ private fun RequestKeyValueEditorView(
             },
             onDisableChange = {_ ->},
 //                modifier = modifier,
+            testTagPart1 = testTagPart,
+            testTagPart2 = TestTagPart.Current,
         )
     }
 }
