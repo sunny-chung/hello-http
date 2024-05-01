@@ -197,7 +197,7 @@ fun KeyValueEditorView(
                             } else null,
                             modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder)
                                 .run {
-                                    buildTestTag(testTagPart1, testTagPart2, TestTagPart.FileButton, index)?.let {
+                                    buildTestTag(testTagPart1, testTagPart2, index, TestTagPart.FileButton)?.let {
                                         testTag(it)
                                     } ?: this
                                 },
@@ -216,6 +216,7 @@ fun KeyValueEditorView(
                                     onItemChange(index, it.copy(valueType = valueType))
                                     true
                                 },
+                                testTagParts = arrayOf(testTagPart1, testTagPart2, index, TestTagPart.ValueTypeDropdown),
                                 modifier = Modifier.padding(horizontal = 4.dp)
                             )
                         }

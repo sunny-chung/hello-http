@@ -27,6 +27,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
+import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
@@ -44,6 +45,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
+import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.delay
@@ -351,6 +353,112 @@ class RequestResponseTest {
             )
         )
     }
+
+    @Test
+    fun echoPostWithMultipartStrings() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Multipart,
+                        body = MultipartBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                        )),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithMultipartFiles() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Multipart,
+                        body = MultipartBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = "file2",
+                                value = "src/test/resources/testFile2.txt",
+                                valueType = FieldValueType.File,
+                                isEnabled = true,
+                            ),
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = "file1",
+                                value = "src/test/resources/testFile1中文字.txt",
+                                valueType = FieldValueType.File,
+                                isEnabled = true,
+                            ),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                        )),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithMultipartFilesAndHeaderAndQueryParameters() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                        contentType = ContentType.Multipart,
+                        body = MultipartBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = "file2",
+                                value = "src/test/resources/testFile2.txt",
+                                valueType = FieldValueType.File,
+                                isEnabled = true,
+                            ),
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = "file1",
+                                value = "src/test/resources/testFile1中文字.txt",
+                                valueType = FieldValueType.File,
+                                isEnabled = true,
+                            ),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                        )),
+                    )
+                )
+            )
+        )
+    }
 }
 
 fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
@@ -463,7 +571,54 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
                     delayShort()
                 }
             }
-            ContentType.Multipart -> TODO()
+
+            ContentType.Multipart -> {
+                val body = (baseExample.body as MultipartBody).value
+                body.forEachIndexed { index, it ->
+                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Value, index)!!))
+                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                        .assertIsDisplayedWithRetry(this)
+                        .performTextInput(it.key)
+                    delayShort()
+                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                        .assertIsDisplayedWithRetry(this)
+                        .assertTextEquals(it.key)
+
+                    when (it.valueType) {
+                        FieldValueType.String -> {
+                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Value, index)!!))
+                                .assertIsDisplayedWithRetry(this)
+                                .performTextInput(it.value)
+                            delayShort()
+                        }
+                        FieldValueType.File -> {
+                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.ValueTypeDropdown, TestTagPart.DropdownButton)!!))
+                                .assertIsDisplayedWithRetry(this)
+                                .performClickWithRetry(this)
+                            delayShort()
+
+                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.ValueTypeDropdown, TestTagPart.DropdownItem, "File")!!))
+                                .assertIsDisplayedWithRetry(this)
+                                .performClickWithRetry(this)
+                            delayShort()
+
+                            testChooseFile = File(it.value)
+                            val filename = testChooseFile!!.name
+                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.FileButton)!!))
+                                .assertIsDisplayedWithRetry(this)
+                                .performClickWithRetry(this)
+
+                            delay(100)
+                            delayShort()
+                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.FileButton)!!))
+                                .assertTextEquals(filename, includeEditableText = false)
+
+                        }
+                    }
+                }
+            }
+
             ContentType.FormUrlEncoded -> {
                 val body = (baseExample.body as FormUrlEncodedBody).value
                 body.forEachIndexed { index, it ->
@@ -574,7 +729,25 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     } else {
         assertEquals(0, resp.formData.size)
     }
-    assertEquals(0, resp.multiparts.size)
+    if (baseExample.body is MultipartBody) {
+        val body = (baseExample.body as MultipartBody).value.sortedBy { it.key }
+        resp.multiparts.sortedBy { it.name }.forEachIndexed { index, part ->
+            val reqPart = body[index]
+            assertEquals(reqPart.key, part.name)
+            when (reqPart.valueType) {
+                FieldValueType.String -> assertEquals(reqPart.value, part.data)
+                FieldValueType.File -> {
+                    val file = File(reqPart.value)
+                    assertEquals(file.length().toInt(), part.size)
+                    if (part.data != null) {
+                        assertEquals(file.readText(), part.data)
+                    }
+                }
+            }
+        }
+    } else {
+        assertEquals(0, resp.multiparts.size)
+    }
     when (val body = baseExample.body) {
         null, is FormUrlEncodedBody, is MultipartBody -> assertEquals(null, resp.body)
         is FileBody -> TODO()

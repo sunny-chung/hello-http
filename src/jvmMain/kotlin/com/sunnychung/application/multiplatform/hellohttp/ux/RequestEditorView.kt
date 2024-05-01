@@ -273,7 +273,7 @@ fun RequestEditorView(
                     onRequestModified(request.copyForApplication(application = it.key.application, method = it.key.method))
                     true
                 },
-                testTagPart = TestTagPart.RequestMethodDropdown,
+                testTagParts = arrayOf(TestTagPart.RequestMethodDropdown),
                 modifier = Modifier.fillMaxHeight()
             )
 
@@ -972,7 +972,7 @@ private fun RequestBodyEditor(
                                 )
                                 true
                             },
-                            testTagPart = TestTagPart.RequestBodyTypeDropdown,
+                            testTagParts = arrayOf(TestTagPart.RequestBodyTypeDropdown),
                         )
                     } else {
                         AppText(selectedContentType.displayText)

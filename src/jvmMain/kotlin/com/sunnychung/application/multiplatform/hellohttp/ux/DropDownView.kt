@@ -53,7 +53,7 @@ fun <T: DropDownable> DropDownView(
         )
     },
     arrowPadding: PaddingValues = PaddingValues(0.dp),
-    testTagPart: TestTagPart? = null,
+    testTagParts: Array<Any?>? = null,
     selectedItem: T? = null,
     onClickItem: (T) -> Boolean,
 ) {
@@ -78,8 +78,8 @@ fun <T: DropDownable> DropDownView(
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .fillMaxWidth()
                 .run {
-                    if (testTagPart != null) {
-                        testTag(buildTestTag(testTagPart, TestTagPart.DropdownItem, item.displayText)!!)
+                    if (testTagParts != null) {
+                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownItem, item.displayText)!!)
                     } else {
                         this
                     }
@@ -103,8 +103,8 @@ fun <T: DropDownable> DropDownView(
                 this
             }
         }.run {
-            if (testTagPart != null) {
-                testTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
+            if (testTagParts != null) {
+                testTag(buildTestTag(*testTagParts, TestTagPart.DropdownButton)!!)
             } else {
                 this
             }
