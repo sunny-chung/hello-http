@@ -380,24 +380,24 @@ fun ComposeUiTest.createProjectIfNeeded() {
     if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty()) {
         // create first project
         onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
-            .performClick()
+            .performClickWithRetry(this)
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
             .performTextInput("Test Project")
         waitForIdle()
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
-            .performClick()
+            .performClickWithRetry(this)
 
         // create first subproject
         waitUntilExactlyOneExists(hasTestTag(TestTag.FirstTimeCreateSubprojectButton.name), 500L)
         onNodeWithTag(TestTag.FirstTimeCreateSubprojectButton.name)
-            .performClick()
+            .performClickWithRetry(this)
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
             .performTextInput("Test Subproject")
         waitForIdle()
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
-            .performClick()
+            .performClickWithRetry(this)
 
         println("created first project and subproject")
     }
@@ -409,11 +409,11 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     val baseExample = request.examples.first()
 
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
-        .assertIsDisplayed()
+        .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
     waitUntilExactlyOneExists(hasTextExactly("Request", includeEditableText = false))
     onNodeWithText("Request")
-        .assertIsDisplayed()
+        .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
     waitUntilExactlyOneExists(hasTestTag(TestTag.RequestUrlTextField.name), 1000L)
 
@@ -422,33 +422,33 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     if (request.application == ProtocolApplication.Http && request.method != "GET") {
         // TODO support custom method
         onNodeWithTag(buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownButton)!!)
-            .assertIsDisplayed()
+            .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
         val nextTag = buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownItem, request.method)!!
         waitUntilExactlyOneExists(hasTestTag(nextTag))
         onNodeWithTag(nextTag)
-            .assertIsDisplayed()
+            .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
         delayShort()
     }
 
     onNodeWithTag(TestTag.RequestUrlTextField.name)
-        .assertIsDisplayed()
+        .assertIsDisplayedWithRetry(this)
         .performTextInput(request.url)
 
     delayShort()
 
     if (baseExample.contentType != ContentType.None) {
         onNodeWithTag(buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownButton)!!)
-            .assertIsDisplayed()
+            .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
         val nextTag = buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownItem, baseExample.contentType.displayText)!!
         waitUntilExactlyOneExists(hasTestTag(nextTag))
         onNodeWithTag(nextTag)
-            .assertIsDisplayed()
+            .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
         delayShort()
@@ -458,7 +458,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
                 val body = (baseExample.body as StringBody).value
                 if (body.isNotEmpty()) {
                     onNodeWithTag(TestTag.RequestStringBodyTextField.name)
-                        .assertIsDisplayed()
+                        .assertIsDisplayedWithRetry(this)
                         .performTextInput(body)
                     delayShort()
                 }
@@ -470,15 +470,15 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
                     waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
                     waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Value, index)!!))
                     onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
-                        .assertIsDisplayed()
+                        .assertIsDisplayedWithRetry(this)
                         .performTextInput(it.key)
                     delayShort()
 
                     onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
-                        .assertIsDisplayed()
+                        .assertIsDisplayedWithRetry(this)
                         .assertTextEquals(it.key)
                     onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Value, index)!!))
-                        .assertIsDisplayed()
+                        .assertIsDisplayedWithRetry(this)
                         .performTextInput(it.value)
                     delayShort()
                 }
@@ -491,21 +491,21 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
 
     if (baseExample.queryParameters.isNotEmpty()) {
         onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Query")))
-            .assertIsDisplayed()
+            .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
         baseExample.queryParameters.forEachIndexed { index, it ->
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
-                .assertIsDisplayed()
+                .assertIsDisplayedWithRetry(this)
                 .performTextInput(it.key)
             delayShort()
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
-                .assertIsDisplayed()
+                .assertIsDisplayedWithRetry(this)
                 .assertTextEquals(it.key)
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
-                .assertIsDisplayed()
+                .assertIsDisplayedWithRetry(this)
                 .performTextInput(it.value)
             delayShort()
         }
@@ -513,17 +513,17 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
 
     if (baseExample.headers.isNotEmpty()) {
         onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
-            .assertIsDisplayed()
+            .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
         baseExample.headers.forEachIndexed { index, it ->
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
             waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
-                .assertIsDisplayed()
+                .assertIsDisplayedWithRetry(this)
                 .performTextInput(it.key)
             delayShort()
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
-                .assertIsDisplayed()
+                .assertIsDisplayedWithRetry(this)
                 .performTextInput(it.value)
             delayShort()
         }
@@ -535,7 +535,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     waitForIdle()
 
     onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayed()
+        .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
     waitForIdle()
 
@@ -595,6 +595,17 @@ fun SemanticsNodeInteraction.performClickWithRetry(host: ComposeUiTest): Semanti
     while (true) {
         try {
             performClick()
+            return this
+        } catch (e: IllegalArgumentException) {
+            host.waitForIdle()
+        }
+    }
+}
+
+fun SemanticsNodeInteraction.assertIsDisplayedWithRetry(host: ComposeUiTest): SemanticsNodeInteraction {
+    while (true) {
+        try {
+            assertIsDisplayed()
             return this
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
