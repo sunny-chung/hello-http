@@ -461,7 +461,7 @@ class RequestResponseTest {
     }
 }
 
-fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
+fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) = runBlocking {
     runComposeUiTest {
         setContent {
             Window(
@@ -483,6 +483,8 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
             testBlock()
         }
     }
+//    delay(1000L)
+}
 
 fun ComposeUiTest.createProjectIfNeeded() {
     if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty()) {
@@ -609,7 +611,8 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
                                 .assertIsDisplayedWithRetry(this)
                                 .performClickWithRetry(this)
 
-                            delay(100)
+                            delay(100L)
+                            mainClock.advanceTimeBy(100L)
                             delayShort()
                             onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.FileButton)!!))
                                 .assertTextEquals(filename, includeEditableText = false)
@@ -696,6 +699,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
 
     // wait for response
     delay(500L)
+    mainClock.advanceTimeBy(500L)
     waitForIdle()
     if (isOneOffRequest) {
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
@@ -757,6 +761,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
 }
 
 suspend fun ComposeUiTest.delayShort() {
+    mainClock.advanceTimeBy(250L)
     delay(250L)
     waitForIdle()
 }
