@@ -3,6 +3,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.test
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onNodeWithTag
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -14,6 +16,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeAll
@@ -56,6 +60,7 @@ class RequestResponseTest {
         val httpUrlPrefix = "http://localhost:18081"
         val echoUrl = "$httpUrlPrefix/rest/echo"
         val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
+        val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
 
 
     }
@@ -543,5 +548,30 @@ class RequestResponseTest {
             ),
             timeout = 5.seconds(),
         )
+    }
+
+    /************** Special Cases **************/
+
+    @Test
+    fun earlyErrorWithBigFile() = runTest {
+        val request = UserRequestTemplate(
+            id = uuidString(),
+            method = "POST",
+            url = earlyErrorUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    contentType = ContentType.BinaryFile,
+                    body = FileBody(bigDataFile.absolutePath),
+                )
+            )
+        )
+        createAndSendHttpRequest(request, 600.milliseconds())
+
+        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
+        onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+            .getTexts()
+            .isEmpty()
     }
 }
