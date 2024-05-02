@@ -20,6 +20,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -61,6 +62,7 @@ class RequestResponseTest {
         val echoUrl = "$httpUrlPrefix/rest/echo"
         val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
         val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
+        val errorUrl = "$httpUrlPrefix/rest/error"
 
 
     }
@@ -573,5 +575,37 @@ class RequestResponseTest {
         onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
             .getTexts()
             .isEmpty()
+    }
+
+    @Test
+    fun error() = runTest {
+        val request = UserRequestTemplate(
+            id = uuidString(),
+            method = "GET",
+            url = errorUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    queryParameters = listOf(
+                        UserKeyValuePair("abc", "中文字"),
+                        UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                        UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        UserKeyValuePair("code", "409"),
+                    ),
+                )
+            )
+        )
+        createAndSendHttpRequest(request)
+
+        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("409 Conflict")
+        val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+            .getTexts()
+            .single()
+        assertEquals("""
+            {
+              "error": "Some message"
+            }
+        """.trimIndent(), responseBody.trim())
     }
 }
