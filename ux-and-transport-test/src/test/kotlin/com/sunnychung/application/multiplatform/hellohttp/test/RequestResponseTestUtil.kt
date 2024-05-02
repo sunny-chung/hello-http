@@ -35,6 +35,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplicat
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
+import com.sunnychung.application.multiplatform.hellohttp.test.RequestResponseTest.Companion.echoUrl
+import com.sunnychung.application.multiplatform.hellohttp.test.RequestResponseTest.Companion.httpUrlPrefix
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
@@ -44,14 +46,15 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import java.awt.Dimension
 import java.io.File
 
-fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) = runBlocking {
+fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
     runComposeUiTest {
         setContent {
             Window(
@@ -73,8 +76,6 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) = runBlocking {
             testBlock()
         }
     }
-//    delay(1000L)
-}
 
 fun ComposeUiTest.createProjectIfNeeded() {
     if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty()) {
@@ -101,7 +102,14 @@ fun ComposeUiTest.createProjectIfNeeded() {
 
         println("created first project and subproject")
     }
-    waitUntilExactlyOneExists(hasTestTag(TestTag.CreateRequestOrFolderButton.name), 5000L)
+//    while (true) {
+//        try {
+            waitUntilExactlyOneExists(hasTestTag(TestTag.CreateRequestOrFolderButton.name), 5000L)
+//        } catch (_: IllegalArgumentException) {
+//            println("waiting")
+//            waitForIdle()
+//        }
+//    }
 }
 
 suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), isOneOffRequest: Boolean = true) {
@@ -111,6 +119,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
+    delayShort()
     waitUntilExactlyOneExists(hasTextExactly("Request", includeEditableText = false))
     onNodeWithText("Request")
         .assertIsDisplayedWithRetry(this)
@@ -144,6 +153,8 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
         onNodeWithTag(buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownButton)!!)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
+
+        delayShort()
 
         val nextTag = buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownItem, baseExample.contentType.displayText)!!
         waitUntilExactlyOneExists(hasTestTag(nextTag))
@@ -302,28 +313,28 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     waitForIdle()
 
     // wait for response
-    delay(500L)
-    mainClock.advanceTimeBy(500L)
-    waitForIdle()
+    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
     if (isOneOffRequest) {
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
     }
 }
 
-suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate) {
+suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds()) {
     val baseExample = request.examples.first()
-    createAndSendHttpRequest(request)
+    val isAssertBodyContent = request.url == echoUrl
+    createAndSendHttpRequest(request, timeout)
 
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
         .getTexts()
         .single()
+    println(responseBody)
     val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
     assertEquals(request.method, resp.method)
-    assertEquals("/rest/echo", resp.path)
-    Assertions.assertTrue(resp.headers.size >= 2) // at least have "Host" and "User-Agent" headers
+    assertEquals(request.url.removePrefix(httpUrlPrefix), resp.path)
+    assertTrue(resp.headers.size >= 2) // at least have "Host" and "User-Agent" headers
     if (baseExample.headers.isNotEmpty()) {
-        Assertions.assertTrue(resp.headers.containsAll(baseExample.headers.map { Parameter(it.key, it.value) }))
+        assertTrue(resp.headers.containsAll(baseExample.headers.map { Parameter(it.key, it.value) }))
     }
     assertEquals(
         baseExample.queryParameters.map { Parameter(it.key, it.value) }.sortedBy { it.name },
@@ -343,11 +354,16 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
             val reqPart = body[index]
             assertEquals(reqPart.key, part.name)
             when (reqPart.valueType) {
-                FieldValueType.String -> assertEquals(reqPart.value, part.data)
+                FieldValueType.String -> {
+                    assertEquals(reqPart.value.encodeToByteArray().size, part.size)
+                    if (isAssertBodyContent) {
+                        assertEquals(reqPart.value, part.data)
+                    }
+                }
                 FieldValueType.File -> {
                     val file = File(reqPart.value)
                     assertEquals(file.length().toInt(), part.size)
-                    if (part.data != null) {
+                    if (isAssertBodyContent) {
                         assertEquals(file.readText(), part.data)
                     }
                 }
@@ -358,9 +374,21 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     }
     when (val body = baseExample.body) {
         null, is FormUrlEncodedBody, is MultipartBody -> assertEquals(null, resp.body)
-        is FileBody -> assertEquals(File(body.filePath).readText(), resp.body)
+        is FileBody -> {
+            if (isAssertBodyContent) {
+                assertEquals(File(body.filePath).readText(), resp.body)
+            } else {
+                assertEquals(File(body.filePath).length().toString(), resp.body)
+            }
+        }
         is GraphqlBody -> TODO()
-        is StringBody -> assertEquals(body.value, resp.body)
+        is StringBody -> {
+            if (isAssertBodyContent) {
+                assertEquals(body.value, resp.body)
+            } else {
+                assertEquals(body.value.encodeToByteArray().size.toString(), resp.body)
+            }
+        }
     }
 }
 

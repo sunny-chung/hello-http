@@ -14,26 +14,48 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.random.Random
 
 class RequestResponseTest {
 
     companion object {
+        lateinit var bigDataFile: File
+
         @BeforeAll
         @JvmStatic
         fun initTests() {
+            File("build/testrun").apply {
+                if (exists()) {
+                    deleteRecursively()
+                }
+            }
+
             val appDir = File("build/testrun/data")
             AppContext.dataDir = appDir
             AppContext.SingleInstanceProcessService.apply { dataDir = appDir }.enforce()
             runBlocking {
                 AppContext.PersistenceManager.initialize()
             }
+
+            bigDataFile = File("build/testrun/resources/bigfile.dat").apply {
+                if (exists()) return@apply
+                parentFile.mkdirs()
+                val bytesBlock = Random.nextBytes(1 * 1024 * 1024) // 1 MB
+                repeat(70) { // 70 MB
+                    appendBytes(bytesBlock)
+                }
+                appendBytes(byteArrayOf(0, -5, 3, 124, 59))
+            }
         }
 
-        val echoUrl = "http://localhost:18081/rest/echo"
+        val httpUrlPrefix = "http://localhost:18081"
+        val echoUrl = "$httpUrlPrefix/rest/echo"
+        val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
 
 
     }
@@ -447,6 +469,79 @@ class RequestResponseTest {
                     )
                 )
             )
+        )
+    }
+
+    @Test
+    fun echoPostWithBigFileBody() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoWithoutBodyUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.BinaryFile,
+                        body = FileBody(bigDataFile.absolutePath),
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun echoPostWithBigMultipartFiles() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            request = UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoWithoutBodyUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                        contentType = ContentType.Multipart,
+                        body = MultipartBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = "file2",
+                                value = "src/test/resources/testFile2.txt",
+                                valueType = FieldValueType.File,
+                                isEnabled = true,
+                            ),
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = "file1",
+                                value = "src/test/resources/testFile1中文字.txt",
+                                valueType = FieldValueType.File,
+                                isEnabled = true,
+                            ),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                            UserKeyValuePair(
+                                id = uuidString(),
+                                key = "big_file",
+                                value = bigDataFile.absolutePath,
+                                valueType = FieldValueType.File,
+                                isEnabled = true,
+                            ),
+                        )),
+                    )
+                )
+            ),
+            timeout = 5.seconds(),
         )
     }
 }
