@@ -1334,7 +1334,10 @@ fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFile
             AppTextButton(
                 text = filePath?.let { File(it).name } ?: "Choose a File",
                 onClick = { isShowFileDialog = true },
-                modifier = Modifier.align(Alignment.Center).border(width = 1.dp, color = colours.placeholder),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .border(width = 1.dp, color = colours.placeholder)
+                    .testTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!),
             )
         }
     }

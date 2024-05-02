@@ -23,6 +23,7 @@ enum class TestTagPart {
     RequestBodyTypeDropdown,
     RequestBodyFormUrlEncodedForm,
     RequestBodyMultipartForm,
+    RequestBodyFileForm,
     Inherited,
     Current,
     Key,

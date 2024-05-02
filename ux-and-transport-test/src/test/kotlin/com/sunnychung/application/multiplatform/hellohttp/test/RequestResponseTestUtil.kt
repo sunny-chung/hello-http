@@ -47,6 +47,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import java.awt.Dimension
 import java.io.File
 
@@ -230,7 +231,21 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
                     delayShort()
                 }
             }
-            ContentType.BinaryFile -> TODO()
+
+            ContentType.BinaryFile -> {
+                val body = baseExample.body as FileBody
+                testChooseFile = File(body.filePath!!)
+                val filename = testChooseFile!!.name
+                onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!))
+                    .assertIsDisplayedWithRetry(this)
+                    .performClickWithRetry(this)
+
+                delay(100L)
+                mainClock.advanceTimeBy(100L)
+                delayShort()
+                onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!))
+                    .assertTextEquals(filename, includeEditableText = false)
+            }
             ContentType.Graphql -> TODO()
             ContentType.None -> throw IllegalStateException()
         }
@@ -304,48 +319,48 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
         .getTexts()
         .single()
     val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
-    Assertions.assertEquals(request.method, resp.method)
-    Assertions.assertEquals("/rest/echo", resp.path)
+    assertEquals(request.method, resp.method)
+    assertEquals("/rest/echo", resp.path)
     Assertions.assertTrue(resp.headers.size >= 2) // at least have "Host" and "User-Agent" headers
     if (baseExample.headers.isNotEmpty()) {
         Assertions.assertTrue(resp.headers.containsAll(baseExample.headers.map { Parameter(it.key, it.value) }))
     }
-    Assertions.assertEquals(
+    assertEquals(
         baseExample.queryParameters.map { Parameter(it.key, it.value) }.sortedBy { it.name },
         resp.queryParameters.sortedBy { it.name }
     )
     if (baseExample.body is FormUrlEncodedBody) {
-        Assertions.assertEquals(
+        assertEquals(
             (baseExample.body as FormUrlEncodedBody).value.map { Parameter(it.key, it.value) }.sortedBy { it.name },
             resp.formData.sortedBy { it.name }
         )
     } else {
-        Assertions.assertEquals(0, resp.formData.size)
+        assertEquals(0, resp.formData.size)
     }
     if (baseExample.body is MultipartBody) {
         val body = (baseExample.body as MultipartBody).value.sortedBy { it.key }
         resp.multiparts.sortedBy { it.name }.forEachIndexed { index, part ->
             val reqPart = body[index]
-            Assertions.assertEquals(reqPart.key, part.name)
+            assertEquals(reqPart.key, part.name)
             when (reqPart.valueType) {
-                FieldValueType.String -> Assertions.assertEquals(reqPart.value, part.data)
+                FieldValueType.String -> assertEquals(reqPart.value, part.data)
                 FieldValueType.File -> {
                     val file = File(reqPart.value)
-                    Assertions.assertEquals(file.length().toInt(), part.size)
+                    assertEquals(file.length().toInt(), part.size)
                     if (part.data != null) {
-                        Assertions.assertEquals(file.readText(), part.data)
+                        assertEquals(file.readText(), part.data)
                     }
                 }
             }
         }
     } else {
-        Assertions.assertEquals(0, resp.multiparts.size)
+        assertEquals(0, resp.multiparts.size)
     }
     when (val body = baseExample.body) {
-        null, is FormUrlEncodedBody, is MultipartBody -> Assertions.assertEquals(null, resp.body)
-        is FileBody -> TODO()
+        null, is FormUrlEncodedBody, is MultipartBody -> assertEquals(null, resp.body)
+        is FileBody -> assertEquals(File(body.filePath).readText(), resp.body)
         is GraphqlBody -> TODO()
-        is StringBody -> Assertions.assertEquals(body.value, resp.body)
+        is StringBody -> assertEquals(body.value, resp.body)
     }
 }
 
