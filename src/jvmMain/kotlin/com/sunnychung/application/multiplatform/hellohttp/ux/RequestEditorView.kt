@@ -1017,7 +1017,8 @@ private fun RequestBodyEditor(
                                     )
                                 )
                                 true
-                            }
+                            },
+                            testTagParts = arrayOf(TestTagPart.RequestGraphqlOperationName.name),
                         )
                     }
                 }
@@ -1181,6 +1182,7 @@ private fun RequestBodyEditor(
                         )
                     },
                     transformations = listOf(GraphqlQuerySyntaxHighlightTransformation(colours = colors)),
+                    testTag = TestTag.RequestGraphqlDocumentTextField.name,
                     modifier = Modifier.fillMaxWidth().weight(0.62f),
                 )
 
@@ -1214,6 +1216,7 @@ private fun RequestBodyEditor(
                         )
                     },
                     transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    testTag = TestTag.RequestGraphqlVariablesTextField.name,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 200.dp).weight(0.38f),
                 )
             }
@@ -1263,6 +1266,7 @@ private fun RequestBodyTextEditor(
     translateToText: (UserRequestExample) -> String?,
     translateTextChangeToNewUserRequestExample: (String) -> UserRequestExample,
     transformations: List<VisualTransformation>,
+    testTag: String? = null,
 ) {
     val colors = LocalColor.current
     val baseExample = request.examples.first()
@@ -1284,7 +1288,7 @@ private fun RequestBodyTextEditor(
                 )
             },
             transformations = transformations,
-            testTag = TestTag.RequestStringBodyTextField.name,
+            testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
         )
     } else {
         CodeEditorView(

@@ -112,7 +112,20 @@ fun ComposeUiTest.createProjectIfNeeded() {
 //    }
 }
 
-suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), isOneOffRequest: Boolean = true) {
+fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
+    // TODO support custom method
+    onNodeWithTag(buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownButton)!!)
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+
+    val nextTag = buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownItem, itemDisplayText)!!
+    waitUntilExactlyOneExists(hasTestTag(nextTag))
+    onNodeWithTag(nextTag)
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+}
+
+suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate) {
     createProjectIfNeeded()
     val baseExample = request.examples.first()
 
@@ -129,17 +142,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     delayShort()
 
     if (request.application == ProtocolApplication.Http && request.method != "GET") {
-        // TODO support custom method
-        onNodeWithTag(buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownButton)!!)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
-
-        val nextTag = buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownItem, request.method)!!
-        waitUntilExactlyOneExists(hasTestTag(nextTag))
-        onNodeWithTag(nextTag)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
-
+        selectRequestMethod(request.method)
         delayShort()
     }
 
@@ -149,14 +152,18 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
 
     delayShort()
 
-    if (baseExample.contentType != ContentType.None) {
+    if (request.application == ProtocolApplication.Http && baseExample.contentType != ContentType.None) {
         onNodeWithTag(buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownButton)!!)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
         delayShort()
 
-        val nextTag = buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownItem, baseExample.contentType.displayText)!!
+        val nextTag = buildTestTag(
+            TestTagPart.RequestBodyTypeDropdown,
+            TestTagPart.DropdownItem,
+            baseExample.contentType.displayText
+        )!!
         waitUntilExactlyOneExists(hasTestTag(nextTag))
         onNodeWithTag(nextTag)
             .assertIsDisplayedWithRetry(this)
@@ -178,44 +185,129 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
             ContentType.Multipart -> {
                 val body = (baseExample.body as MultipartBody).value
                 body.forEachIndexed { index, it ->
-                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Key, index)!!))
-                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Value, index)!!))
-                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                    waitUntilExactlyOneExists(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyMultipartForm,
+                                TestTagPart.Current,
+                                TestTagPart.Key,
+                                index
+                            )!!
+                        )
+                    )
+                    waitUntilExactlyOneExists(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyMultipartForm,
+                                TestTagPart.Current,
+                                TestTagPart.Value,
+                                index
+                            )!!
+                        )
+                    )
+                    onNode(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyMultipartForm,
+                                TestTagPart.Current,
+                                TestTagPart.Key,
+                                index
+                            )!!
+                        )
+                    )
                         .assertIsDisplayedWithRetry(this)
                         .performTextInput(it.key)
                     delayShort()
-                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                    onNode(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyMultipartForm,
+                                TestTagPart.Current,
+                                TestTagPart.Key,
+                                index
+                            )!!
+                        )
+                    )
                         .assertIsDisplayedWithRetry(this)
                         .assertTextEquals(it.key)
 
                     when (it.valueType) {
                         FieldValueType.String -> {
-                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, TestTagPart.Value, index)!!))
+                            onNode(
+                                hasTestTag(
+                                    buildTestTag(
+                                        TestTagPart.RequestBodyMultipartForm,
+                                        TestTagPart.Current,
+                                        TestTagPart.Value,
+                                        index
+                                    )!!
+                                )
+                            )
                                 .assertIsDisplayedWithRetry(this)
                                 .performTextInput(it.value)
                             delayShort()
                         }
+
                         FieldValueType.File -> {
-                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.ValueTypeDropdown, TestTagPart.DropdownButton)!!))
+                            onNode(
+                                hasTestTag(
+                                    buildTestTag(
+                                        TestTagPart.RequestBodyMultipartForm,
+                                        TestTagPart.Current,
+                                        index,
+                                        TestTagPart.ValueTypeDropdown,
+                                        TestTagPart.DropdownButton
+                                    )!!
+                                )
+                            )
                                 .assertIsDisplayedWithRetry(this)
                                 .performClickWithRetry(this)
                             delayShort()
 
-                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.ValueTypeDropdown, TestTagPart.DropdownItem, "File")!!))
+                            onNode(
+                                hasTestTag(
+                                    buildTestTag(
+                                        TestTagPart.RequestBodyMultipartForm,
+                                        TestTagPart.Current,
+                                        index,
+                                        TestTagPart.ValueTypeDropdown,
+                                        TestTagPart.DropdownItem,
+                                        "File"
+                                    )!!
+                                )
+                            )
                                 .assertIsDisplayedWithRetry(this)
                                 .performClickWithRetry(this)
                             delayShort()
 
                             testChooseFile = File(it.value)
                             val filename = testChooseFile!!.name
-                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.FileButton)!!))
+                            onNode(
+                                hasTestTag(
+                                    buildTestTag(
+                                        TestTagPart.RequestBodyMultipartForm,
+                                        TestTagPart.Current,
+                                        index,
+                                        TestTagPart.FileButton
+                                    )!!
+                                )
+                            )
                                 .assertIsDisplayedWithRetry(this)
                                 .performClickWithRetry(this)
 
                             delay(100L)
                             mainClock.advanceTimeBy(100L)
                             delayShort()
-                            onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyMultipartForm, TestTagPart.Current, index, TestTagPart.FileButton)!!))
+                            onNode(
+                                hasTestTag(
+                                    buildTestTag(
+                                        TestTagPart.RequestBodyMultipartForm,
+                                        TestTagPart.Current,
+                                        index,
+                                        TestTagPart.FileButton
+                                    )!!
+                                )
+                            )
                                 .assertTextEquals(filename, includeEditableText = false)
 
                         }
@@ -226,17 +318,62 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
             ContentType.FormUrlEncoded -> {
                 val body = (baseExample.body as FormUrlEncodedBody).value
                 body.forEachIndexed { index, it ->
-                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
-                    waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Value, index)!!))
-                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                    waitUntilExactlyOneExists(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyFormUrlEncodedForm,
+                                TestTagPart.Current,
+                                TestTagPart.Key,
+                                index
+                            )!!
+                        )
+                    )
+                    waitUntilExactlyOneExists(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyFormUrlEncodedForm,
+                                TestTagPart.Current,
+                                TestTagPart.Value,
+                                index
+                            )!!
+                        )
+                    )
+                    onNode(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyFormUrlEncodedForm,
+                                TestTagPart.Current,
+                                TestTagPart.Key,
+                                index
+                            )!!
+                        )
+                    )
                         .assertIsDisplayedWithRetry(this)
                         .performTextInput(it.key)
                     delayShort()
 
-                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Key, index)!!))
+                    onNode(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyFormUrlEncodedForm,
+                                TestTagPart.Current,
+                                TestTagPart.Key,
+                                index
+                            )!!
+                        )
+                    )
                         .assertIsDisplayedWithRetry(this)
                         .assertTextEquals(it.key)
-                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFormUrlEncodedForm, TestTagPart.Current, TestTagPart.Value, index)!!))
+                    onNode(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.RequestBodyFormUrlEncodedForm,
+                                TestTagPart.Current,
+                                TestTagPart.Value,
+                                index
+                            )!!
+                        )
+                    )
                         .assertIsDisplayedWithRetry(this)
                         .performTextInput(it.value)
                     delayShort()
@@ -257,6 +394,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
                 onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!))
                     .assertTextEquals(filename, includeEditableText = false)
             }
+
             ContentType.Graphql -> TODO()
             ContentType.None -> throw IllegalStateException()
         }
@@ -268,16 +406,61 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
             .performClickWithRetry(this)
 
         baseExample.queryParameters.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
-            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
+            waitUntilExactlyOneExists(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.RequestQueryParameter,
+                        TestTagPart.Current,
+                        TestTagPart.Key,
+                        index
+                    )!!
+                )
+            )
+            waitUntilExactlyOneExists(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.RequestQueryParameter,
+                        TestTagPart.Current,
+                        TestTagPart.Value,
+                        index
+                    )!!
+                )
+            )
+            onNode(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.RequestQueryParameter,
+                        TestTagPart.Current,
+                        TestTagPart.Key,
+                        index
+                    )!!
+                )
+            )
                 .assertIsDisplayedWithRetry(this)
                 .performTextInput(it.key)
             delayShort()
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Key, index)!!))
+            onNode(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.RequestQueryParameter,
+                        TestTagPart.Current,
+                        TestTagPart.Key,
+                        index
+                    )!!
+                )
+            )
                 .assertIsDisplayedWithRetry(this)
                 .assertTextEquals(it.key)
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestQueryParameter, TestTagPart.Current, TestTagPart.Value, index)!!))
+            onNode(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.RequestQueryParameter,
+                        TestTagPart.Current,
+                        TestTagPart.Value,
+                        index
+                    )!!
+                )
+            )
                 .assertIsDisplayedWithRetry(this)
                 .performTextInput(it.value)
             delayShort()
@@ -289,8 +472,26 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
         baseExample.headers.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
-            waitUntilExactlyOneExists(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
+            waitUntilExactlyOneExists(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.RequestHeader,
+                        TestTagPart.Current,
+                        TestTagPart.Key,
+                        index
+                    )!!
+                )
+            )
+            waitUntilExactlyOneExists(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.RequestHeader,
+                        TestTagPart.Current,
+                        TestTagPart.Value,
+                        index
+                    )!!
+                )
+            )
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
                 .assertIsDisplayedWithRetry(this)
                 .performTextInput(it.key)
@@ -301,6 +502,10 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
             delayShort()
         }
     }
+}
+
+suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), isOneOffRequest: Boolean = true) {
+    createRequest(request)
 
     waitForIdle()
 //    mainClock.advanceTimeBy(500L)
