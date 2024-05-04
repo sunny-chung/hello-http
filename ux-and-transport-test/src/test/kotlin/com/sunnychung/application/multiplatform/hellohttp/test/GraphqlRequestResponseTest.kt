@@ -12,17 +12,21 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextInput
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
+import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.GraphqlResponseBody
+import com.sunnychung.application.multiplatform.hellohttp.test.payload.IntervalResource
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.SomeOutputResource
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
@@ -54,6 +58,7 @@ class GraphqlRequestResponseTest {
                 UserRequestExample(
                     id = uuidString(),
                     name = "Base",
+                    contentType = ContentType.Graphql,
                     body = GraphqlBody(
                         document = """
                             query {
@@ -90,6 +95,7 @@ class GraphqlRequestResponseTest {
                 UserRequestExample(
                     id = uuidString(),
                     name = "Base",
+                    contentType = ContentType.Graphql,
                     body = GraphqlBody(
                         document = """
                             query MyQuery(${'$'}in: SomeInput!) {
@@ -130,6 +136,16 @@ class GraphqlRequestResponseTest {
                 UserRequestExample(
                     id = uuidString(),
                     name = "Base",
+                    headers = listOf(
+                        UserKeyValuePair("h1", "abcd"),
+                        UserKeyValuePair("x-My-Header", "defg HIjk"),
+                    ),
+                    queryParameters = listOf(
+                        UserKeyValuePair("abc", "中文字"),
+                        UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                        UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                    ),
+                    contentType = ContentType.Graphql,
                     body = GraphqlBody(
                         document = """
                             query MyQuery(${'$'}in: SomeInput!) {
@@ -157,6 +173,110 @@ class GraphqlRequestResponseTest {
         val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<SomeOutputResource>>(body!!)
         assertEquals("abcdc", resp.data.sum.a)
         assertEquals(25, resp.data.sum.sum)
+    }
+
+    @Test
+    fun subscription() = runTest {
+        createAndSendGraphqlRequest(UserRequestTemplate(
+            id = uuidString(),
+            method = "POST",
+            application = ProtocolApplication.Graphql,
+            url = graphqlUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    contentType = ContentType.Graphql,
+                    body = GraphqlBody(
+                        document = """
+                            subscription MySubscription {
+                              interval(seconds: 1, stopAt: 3) {
+                                id
+                                instant
+                              }
+                            }
+                        """.trimIndent(),
+                        variables = "",
+                        operationName = null,
+                    )
+                )
+            )
+        ))
+
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("Disconnect")
+
+        wait(400.milliseconds())
+        (0..3).forEach { i ->
+            val body = assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequest = true)!!
+            val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<IntervalResource>>(body)
+            assertEquals(i, resp.data.interval.id)
+            wait(1.seconds())
+        }
+
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("Connect")
+    }
+
+    @Test
+    fun subscriptionWithVariablesAndOperationName() = runTest {
+        createAndSendGraphqlRequest(UserRequestTemplate(
+            id = uuidString(),
+            method = "POST",
+            application = ProtocolApplication.Graphql,
+            url = graphqlUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    headers = listOf(
+                        UserKeyValuePair("h1", "abcd"),
+                        UserKeyValuePair("x-My-Header", "defg HIjk"),
+                    ),
+                    queryParameters = listOf(
+                        UserKeyValuePair("abc", "中文字"),
+                        UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                        UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                    ),
+                    contentType = ContentType.Graphql,
+                    body = GraphqlBody(
+                        document = """
+                            subscription MySubscription(${'$'}seconds: Int!, ${'$'}stopAt: Int) {
+                              interval(seconds: ${'$'}seconds, stopAt: ${'$'}stopAt) {
+                                id
+                                instant
+                              }
+                            }
+                        """.trimIndent(),
+                        variables = """
+                            {
+                                "seconds": 1,
+                                "stopAt": 4
+                            }
+                        """.trimIndent(),
+                        operationName = "MySubscription",
+                    )
+                )
+            )
+        ))
+
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("Disconnect")
+
+        wait(400.milliseconds())
+        (0..4).forEach { i ->
+            val body = assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequest = true)!!
+            val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<IntervalResource>>(body)
+            assertEquals(i, resp.data.interval.id)
+            wait(1.seconds())
+        }
+
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("Connect")
     }
 }
 
@@ -222,6 +342,10 @@ fun ComposeUiTest.assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequ
     } else {
         "101 Switching Protocols"
     })
+    if (isSubscriptionRequest) {
+        onNodeWithTag(TestTag.ResponseStreamLog.name)
+            .assertIsDisplayedWithRetry(this)
+    }
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
         .getTexts()
         .singleOrNull()

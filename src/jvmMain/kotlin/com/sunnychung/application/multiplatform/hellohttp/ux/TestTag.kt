@@ -16,6 +16,7 @@ enum class TestTag {
     RequestFireOrDisconnectButton,
     ResponseStatus,
     ResponseBody,
+    ResponseStreamLog,
 }
 
 enum class TestTagPart {

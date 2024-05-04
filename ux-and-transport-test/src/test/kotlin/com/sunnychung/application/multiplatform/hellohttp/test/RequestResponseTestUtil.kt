@@ -598,10 +598,19 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
 }
 
 suspend fun ComposeUiTest.delayShort() {
-    mainClock.advanceTimeBy(250L)
-    delay(250L)
+    wait(250L)
+}
+
+suspend fun ComposeUiTest.wait(duration: KDuration) {
+    wait(duration.toMilliseconds())
+}
+
+suspend fun ComposeUiTest.wait(ms: Long) {
+    mainClock.advanceTimeBy(ms)
+    delay(ms)
     waitForIdle()
 }
+
 
 /**
  * retry to prevent illegal state after sleeping

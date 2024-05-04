@@ -720,7 +720,7 @@ fun ResponseStreamView(response: UserResponse) {
             }
         )
 
-        Box(modifier = Modifier.weight(0.4f)) {
+        Box(modifier = Modifier.weight(0.4f).testTag(TestTag.ResponseStreamLog.name)) {
             Box(
                 Modifier
                     .width(TIMESTAMP_COLUMN_WIDTH_DP + TYPE_COLUMN_WIDTH_DP)
