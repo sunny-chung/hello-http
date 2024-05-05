@@ -58,7 +58,8 @@ class RequestResponseTest {
             }
         }
 
-        val httpUrlPrefix = "http://localhost:18081"
+        val hostAndPort = "localhost:18081"
+        val httpUrlPrefix = "http://$hostAndPort"
         val echoUrl = "$httpUrlPrefix/rest/echo"
         val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
         val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"

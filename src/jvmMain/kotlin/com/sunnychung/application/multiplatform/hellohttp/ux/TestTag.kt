@@ -14,9 +14,14 @@ enum class TestTag {
     RequestGraphqlDocumentTextField,
     RequestGraphqlVariablesTextField,
     RequestFireOrDisconnectButton,
+    RequestSendPayloadButton,
+    RequestCompleteStreamButton,
+    RequestAddPayloadExampleButton,
+    RequestPayloadTextField,
     ResponseStatus,
     ResponseBody,
     ResponseStreamLog,
+    ResponseStreamLogItemTime,
 }
 
 enum class TestTagPart {

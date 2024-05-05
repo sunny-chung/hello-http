@@ -346,8 +346,5 @@ fun ComposeUiTest.assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequ
         onNodeWithTag(TestTag.ResponseStreamLog.name)
             .assertIsDisplayedWithRetry(this)
     }
-    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
-        .getTexts()
-        .singleOrNull()
-    return responseBody
+    return getResponseBody()
 }

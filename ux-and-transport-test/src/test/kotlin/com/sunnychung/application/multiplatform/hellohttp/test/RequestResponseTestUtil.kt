@@ -45,8 +45,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -597,6 +597,49 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     }
 }
 
+suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: Boolean = true) {
+    fun getStreamPayloadLatestTimeString(): String {
+        waitForIdle()
+        return (onAllNodesWithTag(TestTag.ResponseStreamLogItemTime.name, useUnmergedTree = true)
+            .fetchSemanticsNodes()//.also { println("getStreamPayloadLatestTimeString() size ${it.size}") }
+            .firstOrNull()
+            ?.getTexts()
+            ?.firstOrNull()
+            ?: "")
+            .also {
+                println("getStreamPayloadLatestTimeString() = $it")
+            }
+    }
+
+    if (isCreatePayloadExample) {
+        delayShort()
+
+        onNodeWithTag(TestTag.RequestAddPayloadExampleButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+
+        delayShort()
+
+        onNodeWithTag(TestTag.RequestPayloadTextField.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("")
+    }
+
+    onNodeWithTag(TestTag.RequestPayloadTextField.name)
+        .assertIsDisplayedWithRetry(this)
+        .performTextInput(payload)
+
+    delayShort()
+
+    val streamCountBeforeSend = getStreamPayloadLatestTimeString()
+
+    onNodeWithTag(TestTag.RequestSendPayloadButton.name)
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+
+    waitUntil(600.milliseconds().millis) { getStreamPayloadLatestTimeString() != streamCountBeforeSend }
+}
+
 suspend fun ComposeUiTest.delayShort() {
     wait(250L)
 }
@@ -609,6 +652,13 @@ suspend fun ComposeUiTest.wait(ms: Long) {
     mainClock.advanceTimeBy(ms)
     delay(ms)
     waitForIdle()
+}
+
+fun ComposeUiTest.getResponseBody(): String? {
+    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+        .getTexts()
+        .singleOrNull()
+    return responseBody
 }
 
 

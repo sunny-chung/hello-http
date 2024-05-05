@@ -755,6 +755,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 fontSize = fonts.streamFontSize,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
+                                    .testTag(TestTag.ResponseStreamLogItemTime.name)
                             )
                             AppText(
                                 text = when (it.type) {

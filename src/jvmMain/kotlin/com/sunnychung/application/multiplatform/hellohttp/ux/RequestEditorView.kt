@@ -1396,14 +1396,19 @@ fun StreamingPayloadEditorView(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Payload")
             Spacer(modifier = Modifier.weight(1f))
-            AppTextButton(text = "Send", isEnabled = isEnableSend) {
+            AppTextButton(
+                text = "Send",
+                isEnabled = isEnableSend,
+                modifier = Modifier.testTag(TestTag.RequestSendPayloadButton.name),
+            ) {
                 triggerSendPayload()
             }
             if (hasCompleteButton) {
                 AppTextButton(
                     text = "Complete",
                     isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING,
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier.padding(start = 4.dp)
+                        .testTag(TestTag.RequestCompleteStreamButton.name),
                 ) {
                     onClickCompleteStream()
                 }
@@ -1469,6 +1474,7 @@ fun StreamingPayloadEditorView(
                     editExampleNameViewModel.onStartEdit(newExample.id)
                 },
                 modifier = Modifier.padding(4.dp)
+                    .testTag(TestTag.RequestAddPayloadExampleButton.name)
             )
         }
 
@@ -1490,6 +1496,7 @@ fun StreamingPayloadEditorView(
                 )
             },
             transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)),
+            testTag = TestTag.RequestPayloadTextField.name,
         )
     }
 }
