@@ -800,6 +800,7 @@ private fun RequestServiceMethodSelector(
             selectedItem = DropDownKeyValue(apiSpec?.id ?: "", apiSpec?.name ?: ""),
             onClickItem = { onSelectApiSpec(it.key); true },
             isLabelFillMaxWidth = true,
+            testTagParts = arrayOf(TestTagPart.RequestApiSpecDropdown),
             modifier = Modifier.weight(0.2f).padding(vertical = 4.dp).fillMaxHeight(),
         )
         DropDownView(
@@ -816,6 +817,7 @@ private fun RequestServiceMethodSelector(
                     modifier = Modifier.weight(1f)
                 )
             },
+            testTagParts = arrayOf(TestTagPart.RequestGrpcServiceDropdown),
             modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
         )
         DropDownView(
@@ -823,6 +825,7 @@ private fun RequestServiceMethodSelector(
             selectedItem = DropDownValue(method),
             onClickItem = { onSelectMethod(it.displayText); true },
             isLabelFillMaxWidth = true,
+            testTagParts = arrayOf(TestTagPart.RequestGrpcMethodDropdown),
             modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
         )
 
@@ -832,7 +835,8 @@ private fun RequestServiceMethodSelector(
                     resource = "download-list.svg",
                     size = 24.dp,
                     onClick = onClickFetchApiSpec,
-                    modifier = Modifier.padding(4.dp),
+                    modifier = Modifier.padding(4.dp)
+                        .testTag(TestTag.RequestFetchApiSpecButton.name),
                 )
             }
         } else {
@@ -841,7 +845,8 @@ private fun RequestServiceMethodSelector(
                     resource = "close.svg",
                     size = 24.dp,
                     onClick = onClickCancelFetchApiSpec,
-                    modifier = Modifier.padding(4.dp),
+                    modifier = Modifier.padding(4.dp)
+                        .testTag(TestTag.RequestCancelFetchApiSpecButton.name),
                 )
             }
         }

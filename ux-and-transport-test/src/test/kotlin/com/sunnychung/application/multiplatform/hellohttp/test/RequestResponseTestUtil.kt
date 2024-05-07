@@ -114,11 +114,15 @@ fun ComposeUiTest.createProjectIfNeeded() {
 
 fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
     // TODO support custom method
-    onNodeWithTag(buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownButton)!!)
+    selectDropdownItem(TestTagPart.RequestMethodDropdown.name, itemDisplayText)
+}
+
+fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String) {
+    onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
 
-    val nextTag = buildTestTag(TestTagPart.RequestMethodDropdown, TestTagPart.DropdownItem, itemDisplayText)!!
+    val nextTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
     waitUntilExactlyOneExists(hasTestTag(nextTag))
     onNodeWithTag(nextTag)
         .assertIsDisplayedWithRetry(this)
@@ -638,6 +642,21 @@ suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: B
         .performClickWithRetry(this)
 
     waitUntil(600.milliseconds().millis) { getStreamPayloadLatestTimeString() != streamCountBeforeSend }
+}
+
+suspend fun ComposeUiTest.fireRequest(timeout: KDuration = 1.seconds(), isClientStreaming: Boolean = false, isServerStreaming: Boolean = false) {
+    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+        .assertIsDisplayedWithRetry(this)
+        .assertTextEquals(if (isClientStreaming) "Connect" else "Send")
+        .performClickWithRetry(this)
+
+    delayShort()
+
+    // wait for response
+    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
+    if (!isClientStreaming && !isServerStreaming) {
+        waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+    }
 }
 
 suspend fun ComposeUiTest.delayShort() {

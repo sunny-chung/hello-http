@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -96,7 +97,7 @@ fun <T: DropDownable> DropDownView(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.run {
             if (isClickable) {
-                clickable {
+                clickable(role = Role.Button) {
                     isShowContextMenu = !isShowContextMenu
                 }
             } else {

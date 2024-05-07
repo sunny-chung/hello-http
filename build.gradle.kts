@@ -86,16 +86,18 @@ kotlin {
     }
 }
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group in setOf("io.github.sunny-chung", "io.grpc") && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
-            if (requested.version == grpcVersion) {
-                useTarget("io.github.sunny-chung:${requested.name}:$grpcVersion-patch1")
-                because("transport inspection")
+allprojects {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group in setOf("io.github.sunny-chung", "io.grpc") && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
+                if (requested.version == grpcVersion) {
+                    useTarget("io.github.sunny-chung:${requested.name}:$grpcVersion-patch1")
+                    because("transport inspection")
+                }
+            } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
+                useVersion(grpcVersion)
+                because("not built")
             }
-        } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
-            useVersion(grpcVersion)
-            because("not built")
         }
     }
 }
