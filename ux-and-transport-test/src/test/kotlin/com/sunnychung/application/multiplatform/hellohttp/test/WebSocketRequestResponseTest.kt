@@ -137,20 +137,6 @@ suspend fun ComposeUiTest.createAndFireWebSocketRequest(requestDecorator: (UserR
     return request
 }
 
-fun ComposeUiTest.disconnect() {
-    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .assertTextEquals("Disconnect")
-        .performClickWithRetry(this)
-
-    waitUntil(2.seconds().millis) {
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .fetchSemanticsNode()
-            .getTexts() == listOf("Connect")
-    }
-}
-
 fun ComposeUiTest.assertHttpStatus() {
     onNodeWithTag(TestTag.ResponseStatus.name)
         .assertTextEquals("101 Switching Protocols")

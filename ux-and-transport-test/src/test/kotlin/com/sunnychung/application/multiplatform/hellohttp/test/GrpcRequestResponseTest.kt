@@ -14,17 +14,21 @@ import androidx.compose.ui.test.performTextInput
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.test.GrpcRequestResponseTest.Companion.hostAndPort
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.random.Random
+import kotlin.random.nextInt
 
 class GrpcRequestResponseTest {
 
@@ -76,6 +80,10 @@ class GrpcRequestResponseTest {
                 ),
                 examples = req.examples.map { ex ->
                     ex.copy(
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
                         body = StringBody("{\"name\": \"$input\"}")
                     )
                 }
@@ -107,6 +115,127 @@ class GrpcRequestResponseTest {
         }
         fireRequest()
         assertStatus("5 NOT_FOUND")
+    }
+
+    @Test
+    fun clientStreaming() = runTest {
+        val random = Random
+        val input = (0 until 5).map { random.nextInt(0..20) }
+        createGrpcRequest { req ->
+            req.copy(
+                grpc = UserGrpcRequest(
+                    service = "sunnychung.grpc.services.MyService",
+                    method = "ClientStream",
+                ),
+            )
+        }
+        fireRequest(isClientStreaming = true)
+        input.forEachIndexed { index, it ->
+            sendPayload("""
+                {
+                    "data": $it
+                }
+            """.trimIndent(), index > 0)
+            waitForIdle()
+            assert(getResponseBody().isNullOrEmpty())
+        }
+        completeRequest()
+        wait(1.seconds())
+        assertSuccessStatus()
+        assertEquals("""
+            {
+              "data": ${input.sum()}
+            }
+        """.trimIndent(), getResponseBody())
+    }
+
+    @Test
+    fun cancelStream() = runTest {
+        createGrpcRequest { req ->
+            req.copy(
+                grpc = UserGrpcRequest(
+                    service = "sunnychung.grpc.services.MyService",
+                    method = "ClientStream",
+                ),
+            )
+        }
+        fireRequest(isClientStreaming = true)
+        sendPayload("""
+                {
+                  "data": 25
+                }
+            """.trimIndent(), isCreatePayloadExample = false)
+        sendPayload("""
+                {
+                  "data": 6
+                }
+            """.trimIndent())
+        disconnect()
+        assertStatus("No error")
+    }
+
+    @Test
+    fun serverStreaming() = runTest {
+        createGrpcRequest { req ->
+            req.copy(
+                grpc = UserGrpcRequest(
+                    service = "sunnychung.grpc.services.MyService",
+                    method = "ServerStream",
+                ),
+                examples = req.examples.map { ex ->
+                    ex.copy(
+                        body = StringBody("{\"data\":5}")
+                    )
+                }
+            )
+        }
+        fireRequest(isServerStreaming = true)
+        wait(400.milliseconds())
+        (1..5).forEach { i ->
+            wait(1.seconds())
+            if (i < 5) {
+                assertStatus("Communicating")
+            }
+            assertEquals("""
+                {
+                  "data": $i
+                }
+            """.trimIndent(), getResponseBody())
+        }
+        assertSuccessStatus()
+
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("Send")
+    }
+
+    @Test
+    fun bidirectionalStreaming() = runTest {
+        val random = Random
+        val input = (0 until 6).map { random.nextInt(0..20) }
+        createGrpcRequest { req ->
+            req.copy(
+                grpc = UserGrpcRequest(
+                    service = "sunnychung.grpc.services.MyService",
+                    method = "BiStream",
+                ),
+            )
+        }
+        fireRequest(isClientStreaming = true, isServerStreaming = true)
+        input.forEachIndexed { index, it ->
+            assertStatus("Communicating")
+            sendPayload("""{"data":$it}""", index > 0)
+            wait(500.milliseconds())
+            assertEquals("""
+                {
+                  "data": ${it + 100}
+                }
+            """.trimIndent(), getResponseBody())
+            assertStatus("Communicating")
+        }
+        completeRequest()
+        wait(1.seconds())
+        assertSuccessStatus()
     }
 }
 

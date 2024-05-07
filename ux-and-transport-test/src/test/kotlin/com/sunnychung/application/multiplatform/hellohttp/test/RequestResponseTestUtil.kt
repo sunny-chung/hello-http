@@ -656,6 +656,28 @@ suspend fun ComposeUiTest.fireRequest(timeout: KDuration = 1.seconds(), isClient
     waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
     if (!isClientStreaming && !isServerStreaming) {
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+    } else {
+        waitUntil(1.seconds().millis) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isNotEmpty() }
+    }
+}
+
+suspend fun ComposeUiTest.completeRequest() {
+    onNodeWithTag(TestTag.RequestCompleteStreamButton.name)
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+}
+
+fun ComposeUiTest.disconnect() {
+    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+        .assertIsDisplayedWithRetry(this)
+        .assertTextEquals("Disconnect")
+        .performClickWithRetry(this)
+
+    waitUntil(2.seconds().millis) {
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .fetchSemanticsNode()
+            .getTexts() == listOf("Connect")
     }
 }
 
