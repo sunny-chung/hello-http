@@ -10,4 +10,5 @@ for attempt in {1..20}; do sleep 1; if curl -sI --fail-early -f http://localhost
 [ "$READY" = true ] || (echo "Test Server is not UP" && exit 1)
 echo "Test Server is UP"
 
+export JAVA_OPTS='"-Xmx2048m"'
 ./gradlew check -PisCI=true
