@@ -23,9 +23,9 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertEquals
+import org.junit.BeforeClass
+import org.junit.Test
 import java.io.File
 import kotlin.random.Random
 import kotlin.random.nextInt
@@ -35,7 +35,7 @@ class GrpcRequestResponseTest {
     companion object {
         lateinit var bigDataFile: File
 
-        @BeforeAll
+        @BeforeClass
         @JvmStatic
         fun initTests() {
             RequestResponseTest.initTests()

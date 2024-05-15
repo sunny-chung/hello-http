@@ -16,8 +16,9 @@ repositories {
 }
 
 dependencies {
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+//    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
+//    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+    testImplementation("junit:junit:4.13.2")
 
     testImplementation(project(":test-common"))
     testImplementation(rootProject)
@@ -31,7 +32,8 @@ dependencies {
 }
 
 tasks.withType<Test> {
-    useJUnitPlatform()
+//    useJUnitPlatform()
+    useJUnit()
 
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)

@@ -20,9 +20,9 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertEquals
+import org.junit.BeforeClass
+import org.junit.Test
 import java.io.File
 import kotlin.random.Random
 
@@ -31,7 +31,7 @@ class RequestResponseTest {
     companion object {
         lateinit var bigDataFile: File
 
-        @BeforeAll
+        @BeforeClass
         @JvmStatic
         fun initTests() {
             File("build/testrun").apply {

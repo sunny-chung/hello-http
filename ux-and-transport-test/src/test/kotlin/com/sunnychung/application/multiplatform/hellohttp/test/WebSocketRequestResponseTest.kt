@@ -20,10 +20,10 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.BeforeClass
+import org.junit.Test
 import java.io.File
 import java.net.URI
 
@@ -32,7 +32,7 @@ class WebSocketRequestResponseTest {
     companion object {
         lateinit var bigDataFile: File
 
-        @BeforeAll
+        @BeforeClass
         @JvmStatic
         fun initTests() {
             RequestResponseTest.initTests()
