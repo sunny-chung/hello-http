@@ -11,4 +11,5 @@ for attempt in {1..20}; do sleep 1; if curl -sI --fail-early -f http://localhost
 echo "Test Server is UP"
 
 export JAVA_OPTS='"-Xmx2048m"'
+export GRADLE_OPTS='"-Dorg.gradle.jvmargs=-Xmx2048m"'
 ./gradlew check -PisCI=true
