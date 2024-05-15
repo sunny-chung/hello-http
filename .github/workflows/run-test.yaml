@@ -15,4 +15,4 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '17'
-      - run: ./gradlew check
+      - run: ./gradlew check -PisCI=true
