@@ -35,6 +35,8 @@ tasks.withType<Test> {
 //    useJUnitPlatform()
     useJUnit()
 
+    jvmArgs("-Xmx2048m")
+
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
     }

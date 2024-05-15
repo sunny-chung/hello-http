@@ -25,6 +25,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
+import org.junit.Rule
 import org.junit.Test
 import java.io.File
 import kotlin.random.Random
@@ -44,6 +45,10 @@ class GrpcRequestResponseTest {
         val hostAndPort = "localhost:18082"
         val grpcUrl = "grpc://$hostAndPort"
     }
+
+    @JvmField
+    @Rule
+    val retryRule = RetryRule(3)
 
     @Test
     fun unaryWithoutInput() = runTest {

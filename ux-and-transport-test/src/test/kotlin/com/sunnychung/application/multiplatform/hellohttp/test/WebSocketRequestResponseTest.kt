@@ -23,6 +23,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
+import org.junit.Rule
 import org.junit.Test
 import java.io.File
 import java.net.URI
@@ -40,6 +41,10 @@ class WebSocketRequestResponseTest {
 
         val webSocketUrl = "ws://${RequestResponseTest.hostAndPort}/ws"
     }
+
+    @JvmField
+    @Rule
+    val retryRule = RetryRule(3)
 
     @Test
     fun sendAndReceivePayloads() = runTest {

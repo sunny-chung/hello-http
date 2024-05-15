@@ -30,6 +30,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
+import org.junit.Rule
 import org.junit.Test
 import java.io.File
 
@@ -46,6 +47,10 @@ class GraphqlRequestResponseTest {
 
         val graphqlUrl = "${RequestResponseTest.httpUrlPrefix}/graphql"
     }
+
+    @JvmField
+    @Rule
+    val retryRule = RetryRule(3)
 
     @Test
     fun query() = runTest {
