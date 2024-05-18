@@ -18,5 +18,5 @@ for attempt in {1..30}; do sleep 1; if curl -sI --fail-early -f http://localhost
 [ "$READY" = true ] || (echo "Test Server is not UP" && exit 1)
 echo "Test Server is UP"
 
-export GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx2048m"'
+export GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3072m"'
 ./gradlew check -PisCI=true

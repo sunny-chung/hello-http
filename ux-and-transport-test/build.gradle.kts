@@ -35,7 +35,7 @@ tasks.withType<Test> {
 //    useJUnitPlatform()
     useJUnit()
 
-    jvmArgs("-Xmx2048m")
+    jvmArgs("-Xmx3072m")
 
     onlyIf {
         // In GitHub Actions CI, GUI windows cannot be created in Ubuntu instances
