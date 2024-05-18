@@ -56,6 +56,6 @@ tasks.withType<Test> {
 
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
-        showStandardStreams = true
+//        showStandardStreams = true
     }
 }
