@@ -7,7 +7,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2019, macos-12]
+        # macos-12 for Intel Mac, macos-14 for Apple Chips Mac
+        os: [ubuntu-20.04, windows-2019, macos-12, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
