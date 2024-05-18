@@ -45,35 +45,41 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.awt.Dimension
 import java.io.File
 
 fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
-    runComposeUiTest {
-        setContent {
-            Window(
-                title = "Hello HTTP",
-                onCloseRequest = {},
-                state = rememberWindowState(width = 1024.dp, height = 560.dp)
-            ) {
-                with(LocalDensity.current) {
-                    window.minimumSize = if (isMacOs()) {
-                        Dimension(800, 450)
-                    } else {
-                        Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+    runBlocking {
+        withTimeout(30.seconds().millis) {
+            runComposeUiTest {
+                setContent {
+                    Window(
+                        title = "Hello HTTP",
+                        onCloseRequest = {},
+                        state = rememberWindowState(width = 1024.dp, height = 560.dp)
+                    ) {
+                        with(LocalDensity.current) {
+                            window.minimumSize = if (isMacOs()) {
+                                Dimension(800, 450)
+                            } else {
+                                Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                            }
+                        }
+                        AppView()
                     }
                 }
-                AppView()
+                runBlocking {
+                    testBlock()
+                }
             }
-        }
-        runBlocking {
-            testBlock()
         }
     }
 
