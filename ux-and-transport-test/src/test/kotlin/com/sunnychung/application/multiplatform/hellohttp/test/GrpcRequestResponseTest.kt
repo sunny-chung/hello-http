@@ -48,7 +48,7 @@ class GrpcRequestResponseTest {
 
     @JvmField
     @Rule
-    val retryRule = RetryRule(3)
+    val retryRule = RetryRule()
 
     @Test
     fun unaryWithoutInput() = runTest {

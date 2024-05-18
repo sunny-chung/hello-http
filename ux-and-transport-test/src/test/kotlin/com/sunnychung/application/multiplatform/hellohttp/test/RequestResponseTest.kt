@@ -71,7 +71,7 @@ class RequestResponseTest {
 
     @JvmField
     @Rule
-    val retryRule = RetryRule(3)
+    val retryRule = RetryRule()
 
     @Test
     fun echoGet() = runTest {

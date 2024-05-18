@@ -44,7 +44,7 @@ class WebSocketRequestResponseTest {
 
     @JvmField
     @Rule
-    val retryRule = RetryRule(3)
+    val retryRule = RetryRule()
 
     @Test
     fun sendAndReceivePayloads() = runTest {

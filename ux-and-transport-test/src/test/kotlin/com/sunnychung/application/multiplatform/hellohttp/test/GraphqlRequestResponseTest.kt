@@ -50,7 +50,7 @@ class GraphqlRequestResponseTest {
 
     @JvmField
     @Rule
-    val retryRule = RetryRule(3)
+    val retryRule = RetryRule()
 
     @Test
     fun query() = runTest {

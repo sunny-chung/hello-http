@@ -4,7 +4,7 @@ import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
-class RetryRule(val maxRetryCount: Int) : TestRule {
+class RetryRule(val maxRetryCount: Int = 5) : TestRule {
     init {
         if (maxRetryCount < 1) {
             throw IllegalArgumentException("maxRetryCount should be at least 1")
