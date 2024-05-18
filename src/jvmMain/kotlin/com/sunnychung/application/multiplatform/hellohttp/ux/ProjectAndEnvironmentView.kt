@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -63,6 +64,8 @@ fun ProjectAndEnvironmentViewV2(
     var showDialogType by remember { mutableStateOf(EditDialogType.None) }
     var dialogTextFieldValue by remember { mutableStateOf("") }
     var dialogIsCreate by remember { mutableStateOf<Boolean>(true) }
+
+    log.v { "P&E selectedProject = ${selectedProject?.id}" }
 
     if (selectedProject == null && projects.size == 1) {
         // invoking `onSelectProject()` directly doesn't trigger recomposition

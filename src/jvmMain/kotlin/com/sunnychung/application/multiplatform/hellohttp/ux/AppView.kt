@@ -219,14 +219,19 @@ fun AppContentView() {
     val projectCollectionRepository = AppContext.ProjectCollectionRepository
     val responseCollectionRepository = AppContext.ResponseCollectionRepository
     val apiSpecificationCollectionRepository = AppContext.ApiSpecificationCollectionRepository
-    val projectCollection = remember {
+    val projectCollection = // remember {
         runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
-    }
+//    }
     val clipboardManager = LocalClipboardManager.current
     val errorMessageVM = AppContext.ErrorMessagePromptViewModel
 
     val coroutineScope = rememberCoroutineScope()
     var selectedProject by remember { mutableStateOf<Project?>(null) }
+    log.v { "projectCollection = [${projectCollection.projects.map { it.id }.joinToString()}]" }
+    if (selectedProject != null && selectedProject?.id !in projectCollection.projects.map { it.id }) {
+        selectedProject = null
+    }
+    log.v { "selectedProject = ${selectedProject?.id}" }
     var selectedSubprojectId by remember { mutableStateOf<String?>(null) }
     val selectedSubproject = selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null, Dispatchers.Main.immediate).value?.first }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }

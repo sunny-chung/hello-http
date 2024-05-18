@@ -77,19 +77,21 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
         }
     }
 
-fun ComposeUiTest.createProjectIfNeeded() {
+suspend fun ComposeUiTest.createProjectIfNeeded() {
     if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty()) {
         // create first project
         onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
             .performClickWithRetry(this)
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
-            .performTextInput("Test Project")
+            .performTextInput("Test Project ${KInstant.now().format("HH:mm:ss")}")
         waitForIdle()
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
             .performClickWithRetry(this)
 
         // create first subproject
+        delayShort()
+        waitForIdle()
         waitUntilExactlyOneExists(hasTestTag(TestTag.FirstTimeCreateSubprojectButton.name), 500L)
         onNodeWithTag(TestTag.FirstTimeCreateSubprojectButton.name)
             .performClickWithRetry(this)

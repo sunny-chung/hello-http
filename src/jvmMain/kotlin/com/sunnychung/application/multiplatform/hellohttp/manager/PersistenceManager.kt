@@ -64,6 +64,11 @@ class PersistenceManager {
     }
 
     suspend fun initialize() {
+        // clear cache
+        documentCaches.clear()
+        documentLocks.clear()
+
+        // initialize cache
         AppContext.ProjectCollectionRepository.readOrCreate(ProjectAndEnvironmentsDI()) { id ->
             ProjectCollection(id = id, projects = mutableListOf())
         }
