@@ -39,7 +39,7 @@ class WebSocketRequestResponseTest {
             RequestResponseTest.initTests()
         }
 
-        val webSocketUrl = "ws://${RequestResponseTest.hostAndPort}/ws"
+        val webSocketUrl = "ws://${RequestResponseTest.hostAndPort(isHttp1Only = true)}/ws"
     }
 
     @JvmField

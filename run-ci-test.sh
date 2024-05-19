@@ -4,11 +4,19 @@ set -e
 
 ./gradlew :test-server:bootJar
 
-GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx500m"' ./gradlew :test-server:bootRun &
+TEST_SERVER_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx400m"'
+GRADLE_OPTS="$TEST_SERVER_OPTS" \
+  ./gradlew :test-server:bootRun &
 TEST_SERVER_PID=$!
 
+GRADLE_OPTS="$TEST_SERVER_OPTS" \
+  ./gradlew :test-server:bootRun --args="--spring.profiles.active=h1" &
+TEST_SERVER_H1_PID=$!
+
 function cleanup {
+  set +e # on error resume next
   [ "$TEST_SERVER_PID" ] && kill $TEST_SERVER_PID
+  [ "$TEST_SERVER_H1_PID" ] && kill $TEST_SERVER_H1_PID
 }
 
 trap cleanup EXIT

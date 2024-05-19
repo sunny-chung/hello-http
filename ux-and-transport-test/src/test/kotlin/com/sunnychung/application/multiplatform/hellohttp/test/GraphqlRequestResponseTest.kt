@@ -32,9 +32,13 @@ import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
-class GraphqlRequestResponseTest {
+@RunWith(Parameterized::class)
+class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -45,8 +49,15 @@ class GraphqlRequestResponseTest {
             RequestResponseTest.initTests()
         }
 
-        val graphqlUrl = "${RequestResponseTest.httpUrlPrefix}/graphql"
+        @JvmStatic
+        @Parameters(name = "{0}")
+        fun parameters(): Collection<Array<Any>> = listOf(
+            arrayOf("HTTP/2", false),
+            arrayOf("HTTP/1 only", true),
+        )
     }
+
+    val graphqlUrl = "http://${RequestResponseTest.hostAndPort(isHttp1Only = isHttp1Only)}/graphql"
 
     @JvmField
     @Rule

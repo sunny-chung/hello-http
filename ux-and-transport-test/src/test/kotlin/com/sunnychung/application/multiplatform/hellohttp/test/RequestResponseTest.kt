@@ -24,10 +24,14 @@ import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
 import java.io.File
 import kotlin.random.Random
 
-class RequestResponseTest {
+@RunWith(Parameterized::class)
+class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -59,15 +63,27 @@ class RequestResponseTest {
             }
         }
 
-        val hostAndPort = "localhost:18081"
-        val httpUrlPrefix = "http://$hostAndPort"
-        val echoUrl = "$httpUrlPrefix/rest/echo"
-        val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
-        val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
-        val errorUrl = "$httpUrlPrefix/rest/error"
+        @JvmStatic
+        @Parameters(name = "{0}")
+        fun parameters(): Collection<Array<Any>> = listOf(
+            arrayOf("HTTP/2", false),
+            arrayOf("HTTP/1 only", true),
+        )
 
+        fun hostAndPort(isHttp1Only: Boolean) = when {
+            !isHttp1Only -> "localhost:18081"
+            isHttp1Only -> "localhost:18083"
+            else -> throw UnsupportedOperationException()
+        }
 
     }
+
+    val hostAndPort = hostAndPort(isHttp1Only = isHttp1Only)
+    val httpUrlPrefix = "http://$hostAndPort"
+    val echoUrl = "$httpUrlPrefix/rest/echo"
+    val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
+    val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
+    val errorUrl = "$httpUrlPrefix/rest/error"
 
     @JvmField
     @Rule

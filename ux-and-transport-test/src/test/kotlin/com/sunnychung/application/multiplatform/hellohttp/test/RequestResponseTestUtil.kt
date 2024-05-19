@@ -35,8 +35,6 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplicat
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
-import com.sunnychung.application.multiplatform.hellohttp.test.RequestResponseTest.Companion.echoUrl
-import com.sunnychung.application.multiplatform.hellohttp.test.RequestResponseTest.Companion.httpUrlPrefix
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
@@ -55,6 +53,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.awt.Dimension
 import java.io.File
+import java.net.URL
 
 fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
     runBlocking {
@@ -538,7 +537,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
 
 suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds()) {
     val baseExample = request.examples.first()
-    val isAssertBodyContent = request.url == echoUrl
+    val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request, timeout)
 
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
@@ -548,7 +547,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     println(responseBody)
     val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
     assertEquals(request.method, resp.method)
-    assertEquals(request.url.removePrefix(httpUrlPrefix), resp.path)
+    assertEquals(URL(request.url).path, resp.path)
     assertTrue(resp.headers.size >= 2) // at least have "Host" and "User-Agent" headers
     if (baseExample.headers.isNotEmpty()) {
         assertTrue(resp.headers.containsAll(baseExample.headers.map { Parameter(it.key, it.value) }))

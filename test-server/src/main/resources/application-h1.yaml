@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: test-server-http1
+
+server:
+  port: 18083
+  http2:
+    enabled: false
+
+grpc:
+  server:
+    port: -1 # turn off

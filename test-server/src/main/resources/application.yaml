@@ -11,6 +11,8 @@ spring:
 
 server:
   port: 18081
+  http2:
+    enabled: true
 
 grpc:
   server:
