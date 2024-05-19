@@ -22,9 +22,14 @@ function cleanup {
 trap cleanup EXIT
 
 READY=false
-for attempt in {1..30}; do sleep 1; if curl -sI --fail-early -f http://localhost:18081/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server to be UP"; done
+for attempt in {1..90}; do sleep 1; if curl -sI --fail-early -f http://localhost:18081/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server to be UP"; done
 [ "$READY" = true ] || (echo "Test Server is not UP" && exit 1)
 echo "Test Server is UP"
+
+READY=false
+for attempt in {1..60}; do sleep 1; if curl -sI --fail-early -f http://localhost:18083/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (HTTP/1) to be UP"; done
+[ "$READY" = true ] || (echo "Test Server (HTTP/1) is not UP" && exit 1)
+echo "Test Server (HTTP/1) is UP"
 
 export GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3072m"'
 ./gradlew check -PisCI=true
