@@ -28,10 +28,16 @@ data class RawExchange(
         var payload: ByteArray? = null,
         var payloadSize: Long? = null,
     ) {
-        fun consumePayloadBuilder() {
-            if ((payload?.size ?: 0) < (payloadBuilder?.size() ?: 0)) {
-                payload = payloadBuilder!!.toByteArray()
-//                payloadBuilder = null
+        fun consumePayloadBuilder(isComplete: Boolean) {
+            payloadBuilder?.let { payloadBuilder ->
+                synchronized(payloadBuilder) {
+                    if ((payload?.size ?: 0) < payloadBuilder.size()) {
+                        payload = payloadBuilder.toByteArray()
+                        if (isComplete) {
+                            this.payloadBuilder = null
+                        }
+                    }
+                }
             }
         }
 
