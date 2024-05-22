@@ -11,6 +11,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllS
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
@@ -166,12 +168,17 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
                     if (true || it.event == "Response completed") { // deadline fighter
-                        data.response.rawExchange.exchanges.forEach {
-                            it.consumePayloadBuilder()
+                        data.consumePayloads()
+                        if (it.event == "Response completed") {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                delay(3.seconds().millis)
+                                data.response.rawExchange.exchanges.lastOrNull()
+                                    ?.consumePayloadBuilder(isComplete = true)
+                            }
                         }
                     } else { // lazy
                         val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                        lastExchange?.consumePayloadBuilder()
+                        lastExchange?.consumePayloadBuilder(isComplete = false)
                     }
                     data.response.rawExchange.exchanges += RawExchange.Exchange(
                         instant = it.instant,
@@ -245,8 +252,8 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
     }
 
     protected fun CallData.consumePayloads() {
-        response.rawExchange.exchanges.forEach {
-            it.consumePayloadBuilder()
+        response.rawExchange.exchanges.forEachIndexed { index, it ->
+            it.consumePayloadBuilder(isComplete = index < response.rawExchange.exchanges.lastIndex)
         }
     }
 
