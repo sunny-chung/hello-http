@@ -33,9 +33,9 @@ data class RawExchange(
                 synchronized(payloadBuilder) {
                     if ((payload?.size ?: 0) < payloadBuilder.size()) {
                         payload = payloadBuilder.toByteArray()
-                        if (isComplete) {
-                            this.payloadBuilder = null
-                        }
+                    }
+                    if (isComplete) {
+                        this.payloadBuilder = null
                     }
                 }
             }
