@@ -61,9 +61,7 @@ class CallData(
         this.end?.invoke()
         CoroutineScope(Dispatchers.IO).launch {
             delay(1.seconds().millis)
-            response.rawExchange.exchanges.forEach {
-                it.consumePayloadBuilder(isComplete = true)
-            }
+            consumePayloads(isComplete = true)
         }
         sendPayload = {}
         sendEndOfStream = {}

@@ -251,12 +251,6 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         assert(callData.isPrepared)
     }
 
-    protected fun CallData.consumePayloads(isComplete: Boolean = false) {
-        response.rawExchange.exchanges.forEachIndexed { index, it ->
-            it.consumePayloadBuilder(isComplete = isComplete || index < response.rawExchange.exchanges.lastIndex)
-        }
-    }
-
     fun executePostFlightAction(callId: String, out: UserResponse, postFlightAction: ((UserResponse) -> Unit)) {
         emitEvent(callId, "Executing Post Flight Actions")
         try {
@@ -265,6 +259,14 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         } catch (e: Throwable) {
             out.postFlightErrorMessage = e.message
             emitEvent(callId, "Post Flight Actions Stopped with Error -- ${e.message}")
+        }
+    }
+}
+
+fun CallData.consumePayloads(isComplete: Boolean = false) {
+    synchronized(response.rawExchange.exchanges) {
+        response.rawExchange.exchanges.forEachIndexed { index, it ->
+            it.consumePayloadBuilder(isComplete = isComplete || index < response.rawExchange.exchanges.lastIndex)
         }
     }
 }
