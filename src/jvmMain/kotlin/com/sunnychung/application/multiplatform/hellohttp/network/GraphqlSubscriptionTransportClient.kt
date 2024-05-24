@@ -213,6 +213,7 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
             out.isCommunicating = false
             data.status = ConnectionStatus.DISCONNECTED
             client.close()
+            data.end()
         }
 
         return data

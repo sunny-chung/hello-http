@@ -133,6 +133,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
                     data = "Connection closed by ${if (remote) "server" else "us"} with code $code$appendReason".encodeToByteArray()
                 )
                 super.onClose(code, reason, remote)
+                data.end()
             }
         }
         configureWebSocketClient(client = client, callId = callId, sslConfig = sslConfig)

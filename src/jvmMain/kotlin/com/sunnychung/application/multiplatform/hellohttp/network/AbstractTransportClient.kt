@@ -251,9 +251,9 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         assert(callData.isPrepared)
     }
 
-    protected fun CallData.consumePayloads() {
+    protected fun CallData.consumePayloads(isComplete: Boolean = false) {
         response.rawExchange.exchanges.forEachIndexed { index, it ->
-            it.consumePayloadBuilder(isComplete = index < response.rawExchange.exchanges.lastIndex)
+            it.consumePayloadBuilder(isComplete = isComplete || index < response.rawExchange.exchanges.lastIndex)
         }
     }
 

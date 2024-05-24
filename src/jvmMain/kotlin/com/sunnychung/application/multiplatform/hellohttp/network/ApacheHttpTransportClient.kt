@@ -514,6 +514,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                         // httpClient.close is buggy. Do not rely on it
                         data.status = ConnectionStatus.DISCONNECTED
+                        data.consumePayloads(isComplete = true)
+                        data.end()
                         this.cancel(error?.let { CancellationException(it.message, it) })
                     }
                 }
