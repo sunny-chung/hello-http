@@ -404,10 +404,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     override fun requestOutput() {
 
                     }
-
                 }
                 apacheHttpRequestCopied.produce(channel)
-                apacheHttpRequestCopied.releaseResources()
+                apacheHttpRequestCopied.releaseResources() // note that it releases nothing
                 it.method = request.method
                 it.url = request.getResolvedUri().toASCIIString()
                 it.body = bytes.toByteArray()
@@ -425,7 +424,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     val call = httpClient.execute(object : AsyncClientExchangeHandler {
                         override fun releaseResources() {
                             println("releaseResources")
-                            producer.releaseResources()
+                            producer.releaseResources() // note that it releases nothing
                             consumer.releaseResources()
                         }
 
@@ -454,6 +453,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         override fun failed(exception: Exception) {
                             println("failed ${exception}")
                             exception.printStackTrace()
+                            producer.failed(exception)
                             consumer.failed(exception)
                             continuation.cancel(exception)
                         }
@@ -550,6 +550,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             data.consumePayloads()
 
             emitEvent(callId, "Response completed")
+            data.end()
         }
         return data
     }

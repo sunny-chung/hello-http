@@ -725,6 +725,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                     call.consumePayloads()
                     emitEvent(call.id, "Response completed")
+                    call.end()
                 }
             } catch (e: Throwable) {
                 log.d(e) { "Grpc Outer Error" }
@@ -734,6 +735,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                 out.isError = true
 
                 emitEvent(call.id, "Terminated with error")
+                call.end()
             }
         }
         return call
