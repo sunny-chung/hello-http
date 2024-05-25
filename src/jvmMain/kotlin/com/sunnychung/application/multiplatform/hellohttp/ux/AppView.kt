@@ -234,14 +234,17 @@ fun AppContentView() {
     log.v { "selectedProject = ${selectedProject?.id}" }
     var selectedSubprojectId by remember { mutableStateOf<String?>(null) }
     val selectedSubproject = selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null, Dispatchers.Main.immediate).value?.first }
+    log.d { "read selectedSubproject" }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
     val requestCollection = requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null).value?.first }
+    log.d { "read requestCollection" }
     var selectedRequestId by rememberLast(selectedSubprojectId) { mutableStateOf<String?>(null) }
     val request = let(requestCollection?.id, selectedRequestId) { di, selectedRequestId ->
         // collect immediately, or fast typing would lead to race conditions
         requestCollectionRepository.subscribeLatestRequest(di, selectedRequestId)
             .collectAsState(null, Dispatchers.Main.immediate).value
+            .also { log.d { "read requestCollection selectedRequestId" } }
     }?.let {
         // Bug: https://issuetracker.google.com/issues/205590513
 //        if (it.id == selectedRequestId) {
@@ -293,7 +296,7 @@ fun AppContentView() {
     }
 
     fun loadRequestsForSubproject(subproject: Subproject) {
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             val r = requestCollectionRepository.readOrCreate(RequestsDI(subprojectId = subproject.id)) { id ->
                 RequestCollection(id = id, requests = mutableListOf())
             }
@@ -390,8 +393,12 @@ fun AppContentView() {
                             onSelectEnvironment = { selectedEnvironment = it },
                             onSelectProject = { selectedProject = it },
                             onSelectSubproject = {
-                                selectedSubprojectId = it?.id
-                                it?.let { loadRequestsForSubproject(it) }
+                                if (it?.id != selectedSubprojectId) {
+                                    selectedSubprojectId = it?.id
+                                    selectedRequestId = null
+                                    selectedRequestExampleId = null
+                                    it?.let { loadRequestsForSubproject(it) }
+                                }
 //                                response = UserResponse("-", "-", "-")
                             },
                             onUpdateSubproject = {

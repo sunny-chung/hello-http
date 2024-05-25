@@ -45,6 +45,14 @@ object AppContext {
     val ApiSpecificationCollectionRepository = ApiSpecificationCollectionRepository()
     val UserPreferenceRepository = UserPreferenceRepository()
     val OperationalRepository = OperationalRepository()
+    val allRepositories = listOf(
+        RequestCollectionRepository,
+        ProjectCollectionRepository,
+        ResponseCollectionRepository,
+        ApiSpecificationCollectionRepository,
+        UserPreferenceRepository,
+        OperationalRepository,
+    )
 
     val DialogViewModel = DialogViewModel()
     val ErrorMessagePromptViewModel = ErrorMessagePromptViewModel()

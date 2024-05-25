@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -57,6 +58,7 @@ import java.net.URL
 
 fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
     executeWithTimeout(40.seconds()) {
+        try {
             runComposeUiTest {
                 setContent {
                     Window(
@@ -78,6 +80,15 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
                     testBlock()
                 }
             }
+        } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
+            println("UX test case ends, await all repositories updates")
+            runBlocking {
+                AppContext.allRepositories.forEach {
+                    it.awaitAllUpdates()
+                }
+            }
+            println("All repositories updated. Finish test case.")
+        }
     }
 
 suspend fun ComposeUiTest.createProjectIfNeeded() {
