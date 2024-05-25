@@ -82,7 +82,12 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
             }
         } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
             println("UX test case ends, await all repositories updates")
+            val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
             runBlocking {
+                if (numActiveCalls > 0) {
+                    delay(2.seconds().millis) // wait for cancelling calls
+                }
+
                 AppContext.allRepositories.forEach {
                     it.awaitAllUpdates()
                 }

@@ -277,6 +277,19 @@ class NetworkClientManager : CallDataStore {
     @Composable
     fun subscribeToNewRequests() = callIdFlow.collectAsState(null)
 
+    fun cancelAllCalls(): Int {
+        val threads = callDataMap.mapNotNull { (_, call) ->
+            if (call.status != ConnectionStatus.DISCONNECTED) {
+                Thread {
+                    call.cancel(null)
+                }.also { it.start() }
+            } else {
+                null
+            }
+        }
+        return threads.size
+    }
+
     private fun createLiteCallData(): LiteCallData {
         return LiteCallData(
             id = uuidString(),
