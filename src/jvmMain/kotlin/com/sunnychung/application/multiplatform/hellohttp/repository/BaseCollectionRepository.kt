@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.yield
@@ -47,6 +48,8 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
 
     private val persistenceManager by lazy { AppContext.PersistenceManager }
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
+    private val name = javaClass.simpleName
 
     private val updates = ConcurrentLinkedQueue<ID>()
     private val timerFlow = flow {
@@ -69,7 +72,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
             .combine(updateManualTriggerChannel.receiveAsFlow()) { _, _ -> }
             .onEach {
                 if (updates.isNotEmpty()) {
-                    log.d { "Request updates: ${updates.size}" }
+                    log.d { "$name Request updates: ${updates.size}" }
                     val submittedUpdates = mutableSetOf<ID>()
                     while (updates.isNotEmpty()) {
                         val it = updates.poll()
@@ -84,6 +87,12 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
                 }
             }
             .launchIn(coroutineScope)
+
+        runBlocking {
+            // make sure updateManualTriggerChannel is not empty so that
+            // the above flow can "combine" and run
+            updateManualTriggerChannel.send(Unit)
+        }
     }
 
     /**

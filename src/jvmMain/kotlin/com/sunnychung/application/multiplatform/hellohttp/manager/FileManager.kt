@@ -47,7 +47,9 @@ class FileManager {
                 it.write(fileSchemaVersion.toString().toByteArray())
                 it.write(byteArrayOf(separatorByte))
 
-                writeOperation(it.outputStream().buffered())
+                val outputStream = it.outputStream().buffered()
+                writeOperation(outputStream)
+                outputStream.flush() // must
             }
         }
     }
