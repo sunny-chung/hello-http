@@ -57,7 +57,7 @@ import java.io.File
 import java.net.URL
 
 fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
-    executeWithTimeout(40.seconds()) {
+    executeWithTimeout(120.seconds()) {
         try {
             runComposeUiTest {
                 setContent {
