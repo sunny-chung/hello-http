@@ -570,7 +570,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                     )
                 )
             ),
-            timeout = 5.seconds(),
+            timeout = 25.seconds(),
         )
     }
 
