@@ -80,6 +80,10 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
                     testBlock()
                 }
             }
+        } catch (e: Throwable) {
+            RuntimeException("Exception thrown during test", e)
+                .printStackTrace()
+            throw e
         } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
             println("UX test case ends, await all repositories updates")
             val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
