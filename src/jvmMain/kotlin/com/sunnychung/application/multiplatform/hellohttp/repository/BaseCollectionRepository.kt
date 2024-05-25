@@ -104,14 +104,14 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         if (log.config.minSeverity <= Severity.Verbose && identifier is ResponsesDI) {
             log.v(Throwable()) { "getLock $identifier" }
         } else {
-            log.v { "getLock $identifier" }
+            log.d { "getLock $identifier" }
         }
         return persistenceManager.documentLocks.getOrPut(identifier) { Mutex() }
-            .also { log.v { "obtained lock $identifier $it" } }
+            .also { log.d { "obtained lock $identifier $it" } }
             .withLock {
-                log.v { "accquired lock $identifier" }
+                log.d { "accquired lock $identifier" }
                 operation()
-                    .also { log.v { "release lock $identifier" } }
+                    .also { log.d { "release lock $identifier" } }
             }
     }
 
