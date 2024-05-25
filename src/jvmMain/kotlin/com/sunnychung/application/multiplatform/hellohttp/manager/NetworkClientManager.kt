@@ -25,9 +25,11 @@ import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import kotlinx.coroutines.CancellationException
@@ -98,35 +100,9 @@ class NetworkClientManager : CallDataStore {
                 }
             }?.let { // TODO change it to non-blocking
                 if (it.preFlight.executeCode.isNotBlank()) {
-                    var hasKilled = false
-                    var executeException: Throwable? = null
-                    val scriptExecuteThread = Thread {
-                        try {
-                            CustomCodeExecutor(code = it.preFlight.executeCode)
-                                .executePreFlight(networkRequest, environment)
-                        } catch (e: Throwable) {
-                            executeException = e
-                        }
-                    }
-                    val killThread = Thread {
-                        Thread.sleep(1000L) // maximum execute for 1s
-                        if (scriptExecuteThread.isAlive) {
-                            hasKilled = true
-                            log.d { "Killing script thread" }
-                            try {
-                                scriptExecuteThread.interrupt()
-                                scriptExecuteThread.stop()
-                            } catch (_: Throwable) {}
-                        }
-                    }
-                    scriptExecuteThread.start()
-                    killThread.start()
-                    scriptExecuteThread.join()
-                    killThread.interrupt()
-                    if (hasKilled) {
-                        throw RuntimeException("Custom script was running for too long time and has been killed")
-                    } else if (executeException != null) {
-                        throw executeException!!
+                    executeWithTimeout(1.seconds()) {
+                        CustomCodeExecutor(code = it.preFlight.executeCode)
+                            .executePreFlight(networkRequest, environment)
                     }
                 }
             }

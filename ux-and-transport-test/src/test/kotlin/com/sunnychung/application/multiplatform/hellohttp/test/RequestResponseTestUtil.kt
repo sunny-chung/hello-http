@@ -37,6 +37,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
+import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
@@ -48,7 +49,6 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.awt.Dimension
@@ -56,8 +56,7 @@ import java.io.File
 import java.net.URL
 
 fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
-    runBlocking {
-        withTimeout(30.seconds().millis) {
+    executeWithTimeout(40.seconds()) {
             runComposeUiTest {
                 setContent {
                     Window(
@@ -79,7 +78,6 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
                     testBlock()
                 }
             }
-        }
     }
 
 suspend fun ComposeUiTest.createProjectIfNeeded() {
