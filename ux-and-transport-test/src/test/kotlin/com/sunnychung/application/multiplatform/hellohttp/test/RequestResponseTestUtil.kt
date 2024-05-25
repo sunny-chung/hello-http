@@ -109,9 +109,10 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
 
         println("created first project and subproject")
     }
+    waitForIdle()
 //    while (true) {
 //        try {
-            waitUntilExactlyOneExists(hasTestTag(TestTag.CreateRequestOrFolderButton.name), 5000L)
+            waitUntilExactlyOneExists(hasTestTag(TestTag.CreateRequestOrFolderButton.name), 10.seconds().millis)
 //        } catch (_: IllegalArgumentException) {
 //            println("waiting")
 //            waitForIdle()
