@@ -15,8 +15,8 @@ server:
 grpc:
   server:
     port: 18085
-  security:
-    enabled: true
-    certificate-chain: classpath:tls/serverCertChain.pem
-    private-key: classpath:tls/serverKey.pkcs8.pem
-    client-auth: none
+    security:
+      enabled: true
+      certificate-chain: classpath:tls/serverCertChain.pem
+      private-key: classpath:tls/serverKey.pkcs8.pem
+      client-auth: none
