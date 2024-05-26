@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: test-server-mtls
+
+server:
+  port: 18086
+  http2:
+    enabled: true
+  ssl:
+    enabled: true
+    certificate: classpath:tls/serverCertChain.crt
+    certificate-private-key: classpath:tls/serverKey.pem
+    client-auth: need
+    trust-certificate: classpath:tls/clientCACert.pem
+
+grpc:
+  server:
+    port: 18087
+  security:
+    enabled: true
+    certificate-chain: classpath:tls/serverCertChain.pem
+    private-key: classpath:tls/serverKey.pkcs8.pem
+    client-auth: require
+    trust-cert-collection: classpath:tls/clientCACert.pem
