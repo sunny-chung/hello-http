@@ -12,12 +12,17 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTextExactly
+import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.isFocusable
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.waitUntilExactlyOneExists
@@ -100,6 +105,12 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
         }
     }
 
+enum class TestEnvironment(val displayName: String) {
+    Local("Local"),
+    LocalSsl("Local-SSL"),
+    LocalMTls("Local-mTLS"),
+}
+
 suspend fun ComposeUiTest.createProjectIfNeeded() {
     if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty()) {
         // create first project
@@ -123,9 +134,143 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
             .performTextInput("Test Subproject")
         waitForIdle()
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
+            .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
+        waitUntil {
+            onAllNodesWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
+                .fetchSemanticsNodes()
+                .isEmpty()
+        }
 
         println("created first project and subproject")
+
+        waitForIdle()
+        onNodeWithTag(TestTag.EditEnvironmentsButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+        waitUntilExactlyOneExists(hasTestTag(TestTag.EnvironmentDialogCreateButton.name))
+
+        createEnvironmentInEnvDialog(TestEnvironment.Local.displayName)
+
+        fun switchToSslTabAndAddServerCaCert() {
+            onNode(hasTestTag(TestTag.EnvironmentEditorTab.name).and(hasTextExactly("SSL")))
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+
+            waitUntil {
+                onAllNodesWithTag(buildTestTag(TestTagPart.EnvironmentSslTrustedServerCertificates, TestTagPart.CreateButton)!!)
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+            }
+
+            mockChosenFile(File("../test-common/src/main/resources/tls/serverCACert.pem"))
+            onNodeWithTag(buildTestTag(TestTagPart.EnvironmentSslTrustedServerCertificates, TestTagPart.CreateButton)!!)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+            waitUntil(3.seconds().millis) {
+                onAllNodes(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.EnvironmentSslTrustedServerCertificates,
+                            TestTagPart.ListItemLabel
+                        )!!
+                    )
+                        .and(hasText("CN=Test Server CA", substring = true)),
+                    useUnmergedTree = true
+                )
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+            }
+        }
+
+        createEnvironmentInEnvDialog(TestEnvironment.LocalSsl.displayName)
+        switchToSslTabAndAddServerCaCert()
+
+        createEnvironmentInEnvDialog(TestEnvironment.LocalMTls.displayName)
+        switchToSslTabAndAddServerCaCert()
+        selectDropdownItem(TestTagPart.EnvironmentDisableSystemCaCertificates.name, "Yes")
+        onNodeWithTag(TestTag.EnvironmentEditorSslTabContent.name, useUnmergedTree = true)
+            .performScrollToNode(hasTestTag(buildTestTag(
+                TestTagPart.EnvironmentSslClientCertificates,
+                TestTagPart.CreateButton,
+            )!!))
+        waitUntil {
+            onNodeWithTag(buildTestTag(
+                TestTagPart.EnvironmentSslClientCertificates,
+                TestTagPart.CreateButton,
+            )!!)
+                .isDisplayed()
+        }
+        delay(1.seconds().millis)
+        waitForIdle()
+        val certFile = mockChosenFile(File("../test-common/src/main/resources/tls/clientCert.pem"))
+        onNodeWithTag(buildTestTag(
+            TestTagPart.EnvironmentSslClientCertificates,
+            TestTagPart.ClientCertificate,
+            TestTagPart.FileButton,
+        )!!)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+        waitForIdle()
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(buildTestTag(
+                TestTagPart.EnvironmentSslClientCertificates,
+                TestTagPart.ClientCertificate,
+                TestTagPart.FileButton,
+            )!!)
+                .fetchSemanticsNode()
+                .getTexts()
+                .firstOrNull() == certFile.name
+        }
+        val keyFile = mockChosenFile(File("../test-common/src/main/resources/tls/clientKey.pkcs8.der"))
+        onNodeWithTag(buildTestTag(
+            TestTagPart.EnvironmentSslClientCertificates,
+            TestTagPart.PrivateKey,
+            TestTagPart.FileButton,
+        )!!)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+        waitForIdle()
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(buildTestTag(
+                TestTagPart.EnvironmentSslClientCertificates,
+                TestTagPart.PrivateKey,
+                TestTagPart.FileButton,
+            )!!)
+                .fetchSemanticsNode()
+                .getTexts()
+                .firstOrNull() == keyFile.name
+        }
+        onNodeWithTag(buildTestTag(
+            TestTagPart.EnvironmentSslClientCertificates,
+            TestTagPart.CreateButton,
+        )!!)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+        waitUntil(3.seconds().millis) {
+            onAllNodes(
+                hasTestTag(
+                    buildTestTag(
+                        TestTagPart.EnvironmentSslClientCertificates,
+                        TestTagPart.ListItemLabel
+                    )!!
+                )
+                    .and(hasText("CN=Test Client", substring = true)),
+                useUnmergedTree = true
+            )
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+//                .firstOrNull()
+//                ?.getTexts()
+//                ?.firstOrNull().also { println(">>> CC = $it") }
+//                ?.contains("CN=Test Client") == true
+        }
+
+        onNodeWithTag(TestTag.DialogCloseButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+        waitUntil { onAllNodesWithTag(TestTag.DialogCloseButton.name).fetchSemanticsNodes().isEmpty() }
+        waitForIdle()
     }
 //    while (true) {
 //        try {
@@ -135,6 +280,60 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
 //            waitForIdle()
 //        }
 //    }
+}
+
+fun ComposeUiTest.mockChosenFile(file: File): File {
+    testChooseFile = file
+    return file
+}
+
+suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
+    if (onNodeWithTag(buildTestTag(TestTagPart.EnvironmentDropdown, TestTagPart.DropdownLabel)!!, useUnmergedTree = true)
+        .assertIsDisplayedWithRetry(this)
+        .fetchSemanticsNode()
+        .getTexts()
+        .first() == environment.displayName
+    ) {
+        return
+    }
+
+    selectDropdownItem(TestTagPart.EnvironmentDropdown.name, environment.displayName)
+    delayShort()
+    waitForIdle()
+}
+
+/**
+ * @param name A unique name.
+ */
+suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
+    onNodeWithTag(TestTag.EnvironmentDialogCreateButton.name)
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+
+    waitUntil {
+        onAllNodes(
+            hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                .and(isFocusable())
+                .and(hasTextExactly("New Environment"))
+        )
+            .fetchSemanticsNodes()
+            .isNotEmpty()
+    }
+
+    onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+        .assertIsDisplayedWithRetry(this)
+        .performTextClearance()
+
+    delayShort()
+    waitForIdle()
+
+    onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+        .performTextInput(name)
+
+    waitUntil(3.seconds().millis) {
+        // one in list view and one in text field
+        onAllNodesWithText(name).fetchSemanticsNodes().size == 2
+    }
 }
 
 fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
@@ -154,8 +353,9 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
         .performClickWithRetry(this)
 }
 
-suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate) {
+suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment = TestEnvironment.Local) {
     createProjectIfNeeded()
+    selectEnvironment(environment)
     val baseExample = request.examples.first()
 
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
@@ -309,8 +509,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate) {
                                 .performClickWithRetry(this)
                             delayShort()
 
-                            testChooseFile = File(it.value)
-                            val filename = testChooseFile!!.name
+                            val filename = mockChosenFile(File(it.value)).name
                             onNode(
                                 hasTestTag(
                                     buildTestTag(
@@ -533,8 +732,8 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate) {
     }
 }
 
-suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), isOneOffRequest: Boolean = true) {
-    createRequest(request)
+suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), isOneOffRequest: Boolean = true, environment: TestEnvironment = TestEnvironment.Local) {
+    createRequest(request = request, environment = environment)
 
     waitForIdle()
 //    mainClock.advanceTimeBy(500L)
@@ -553,10 +752,10 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     }
 }
 
-suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds()) {
+suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), environment: TestEnvironment = TestEnvironment.Local) {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
-    createAndSendHttpRequest(request, timeout)
+    createAndSendHttpRequest(request = request, timeout = timeout, environment = environment)
 
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()

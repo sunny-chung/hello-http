@@ -50,7 +50,14 @@ fun <T: DropDownable> DropDownView(
             },
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
-            modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false)
+            modifier = (if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false))
+                .run {
+                    if (isLabel && testTagParts != null) {
+                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownLabel)!!.also { println(">>> Dropdown Use TTag: $it") })
+                    } else {
+                        this
+                    }
+                }
         )
     },
     arrowPadding: PaddingValues = PaddingValues(0.dp),

@@ -161,6 +161,7 @@ fun AppView() {
                             size = 24.dp,
                             onClick = { dialogViewModel.updateState(null) },
                             modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = -28.dp)
+                                .testTag(TestTag.DialogCloseButton.name)
                         )
                     }
                 }

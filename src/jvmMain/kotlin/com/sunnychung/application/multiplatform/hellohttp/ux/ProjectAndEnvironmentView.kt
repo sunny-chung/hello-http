@@ -342,7 +342,7 @@ fun ProjectAndEnvironmentViewV2(
                                 showDialogType = EditDialogType.EditSubproject
                                 dialogTextFieldValue = selectedSubproject!!.name
                                 dialogIsCreate = false
-                            }
+                            },
                         )
                         AppDeleteButton {
                             selectedSubproject ?: return@AppDeleteButton
@@ -370,7 +370,8 @@ fun ProjectAndEnvironmentViewV2(
                 AppImageButton(
                     resource = "edit.svg",
                     size = 20.dp,
-                    onClick = { showDialogType = EditDialogType.Environment }
+                    onClick = { showDialogType = EditDialogType.Environment },
+                    modifier = Modifier.testTag(TestTag.EditEnvironmentsButton.name)
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -379,7 +380,8 @@ fun ProjectAndEnvironmentViewV2(
                     selectedItem = selectedEnvironment,
                     items = selectedSubproject.environments,
                     isLabelFillMaxWidth = true,
-                    onClickItem = { onSelectEnvironment(it); true }
+                    onClickItem = { onSelectEnvironment(it); true },
+                    testTagParts = arrayOf(TestTagPart.EnvironmentDropdown),
                 )
             }
         }
