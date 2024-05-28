@@ -127,8 +127,7 @@ ${
     if (requestData?.body?.isNotEmpty() == true) {
 """Body:
 $BODY_BLOCK_DELIMITER
-${requestData?.body?.decodeToString()?.endWithNewLine().orEmpty()}
-$BODY_BLOCK_DELIMITER
+${requestData?.body?.decodeToString().orEmpty()}
 
 """ } else ""
 }Response
