@@ -4,13 +4,15 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.extension.endWithNewLine
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormattable
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import java.text.DecimalFormat
 import java.util.*
+
+const val MAX_CAPTURED_REQUEST_BODY_SIZE = 2 * 1024 * 1024 // 2 MB
 
 @Persisted
 @Serializable
@@ -92,6 +94,7 @@ class RequestData(
     var url: String? = null,
     var headers: List<Pair<String, String>>? = null,
     var body: ByteArray? = null,
+    var bodySize: Long? = null,
 ) {
     fun isNotEmpty() = headers != null
 }
@@ -127,8 +130,19 @@ ${
     if (requestData?.body?.isNotEmpty() == true) {
 """Body:
 $BODY_BLOCK_DELIMITER
-${requestData?.body?.decodeToString()?.endWithNewLine().orEmpty()}
-$BODY_BLOCK_DELIMITER
+${requestData?.body?.decodeToString().orEmpty()}
+$BODY_BLOCK_DELIMITER${
+    com.sunnychung.application.multiplatform.hellohttp.util.let(
+        requestData?.body,
+        requestData?.bodySize
+    ) { body, actualSize ->
+        if (body.size < actualSize) {
+            " (truncated, total size: ${DecimalFormat("#,###").format(actualSize)} bytes)"
+        } else {
+            null
+        }
+    } ?: ""
+}
 
 """ } else ""
 }Response

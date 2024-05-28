@@ -77,7 +77,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Sear
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
 
-val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024
+val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024 // 4 MB
 
 @Composable
 fun CodeEditorView(
@@ -110,7 +110,7 @@ fun CodeEditorView(
     var cursorDelta by remember { mutableStateOf(0) }
     val newText = text.filterForTextField().let {
         if (it.length > MAX_TEXT_FIELD_LENGTH) {
-            it.substring(0 .. MAX_TEXT_FIELD_LENGTH) + "\n... (trimmed. total ${it.length} bytes)"
+            it.substring(0 .. MAX_TEXT_FIELD_LENGTH - 1) + "\n... (trimmed. total ${it.length} bytes)"
         } else {
             it
         }
