@@ -377,6 +377,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             val out = callData.response
             out.requestData = RequestData().also {
                 val bytes = ByteArrayOutputStream(maxOf(approximateRequestBodySize.toInt(), 32))
+                var hasRemaining = true
                 val channel = object : DataStreamChannel {
                     val writeLock = Any()
 
@@ -394,11 +395,11 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     }
 
                     override fun endStream(p0: MutableList<out Header>?) {
-
+                        hasRemaining = false
                     }
 
                     override fun endStream() {
-
+                        hasRemaining = false
                     }
 
                     override fun requestOutput() {
@@ -406,7 +407,9 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                     }
 
                 }
-                apacheHttpRequestCopied.produce(channel)
+                while (hasRemaining) {
+                    apacheHttpRequestCopied.produce(channel)
+                }
                 apacheHttpRequestCopied.releaseResources()
                 it.method = request.method
                 it.url = request.getResolvedUri().toASCIIString()
