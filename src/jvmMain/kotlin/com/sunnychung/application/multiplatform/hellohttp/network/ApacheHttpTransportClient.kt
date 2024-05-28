@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toApacheHttp
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.MAX_CAPTURED_REQUEST_BODY_SIZE
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -413,7 +414,14 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 apacheHttpRequestCopied.releaseResources()
                 it.method = request.method
                 it.url = request.getResolvedUri().toASCIIString()
-                it.body = bytes.toByteArray()
+                it.bodySize = bytes.size().toLong()
+                it.body = bytes.toByteArray().let {
+                    if (it.size > MAX_CAPTURED_REQUEST_BODY_SIZE) {
+                        it.copyOfRange(0, minOf(it.size, MAX_CAPTURED_REQUEST_BODY_SIZE))
+                    } else {
+                        it
+                    }
+                }
             }
             out.startAt = KInstant.now()
             out.isCommunicating = true
