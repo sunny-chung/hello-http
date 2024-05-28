@@ -25,10 +25,13 @@ import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 import java.io.File
 import java.net.URI
 
-class WebSocketRequestResponseTest {
+@RunWith(Parameterized::class)
+class WebSocketRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -39,8 +42,23 @@ class WebSocketRequestResponseTest {
             RequestResponseTest.initTests()
         }
 
-        val webSocketUrl = "ws://${RequestResponseTest.hostAndPort(isHttp1Only = true)}/ws"
+        @JvmStatic
+        @Parameterized.Parameters(name = "{0}")
+        fun parameters(): Collection<Array<Any>> = listOf(
+            arrayOf("HTTP", false, false),
+            arrayOf("SSL", true, false),
+            arrayOf("mTLS", true, true),
+        )
     }
+
+    val webSocketUrl = "ws${if (isSsl) "s" else ""}://${
+        RequestResponseTest.hostAndPort(
+            isHttp1Only = true,
+            isSsl = isSsl,
+            isMTls = isMTls
+        )
+    }/ws"
+    val environment = RequestResponseTest.environment(isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
     @Rule
@@ -48,7 +66,7 @@ class WebSocketRequestResponseTest {
 
     @Test
     fun sendAndReceivePayloads() = runTest {
-        val request = createAndFireWebSocketRequest()
+        val request = createAndFireWebSocketRequest(environment = environment)
         assertHttpStatus()
 
         sendPayload("abc", isCreatePayloadExample = false)
@@ -72,7 +90,7 @@ class WebSocketRequestResponseTest {
 
     @Test
     fun withCustomHeadersAndQueryParameters() = runTest {
-        val request = createAndFireWebSocketRequest { request ->
+        val request = createAndFireWebSocketRequest(environment = environment) { request ->
             request.copy(
                 examples = request.examples.map { ex ->
                     ex.copy(
@@ -105,41 +123,44 @@ class WebSocketRequestResponseTest {
 
         disconnect()
     }
-}
 
-suspend fun ComposeUiTest.createAndFireWebSocketRequest(requestDecorator: (UserRequestTemplate) -> UserRequestTemplate = { it }): UserRequestTemplate {
-    val request = UserRequestTemplate(
-        id = uuidString(),
-        method = "",
-        application = ProtocolApplication.WebSocket,
-        url = WebSocketRequestResponseTest.webSocketUrl,
-        examples = listOf(
-            UserRequestExample(
-                id = uuidString(),
-                name = "Base",
-            )
-        ),
-        payloadExamples = listOf(PayloadExample(id = uuidString(), name = "New Payload", body = ""))
-    ).let(requestDecorator)
-    createRequest(request)
-    selectRequestMethod("WebSocket")
-    delayShort()
-    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .assertTextEquals("Connect")
-        .performClickWithRetry(this)
+    suspend fun ComposeUiTest.createAndFireWebSocketRequest(
+        environment: TestEnvironment,
+        requestDecorator: (UserRequestTemplate) -> UserRequestTemplate = { it }
+    ): UserRequestTemplate {
+        val request = UserRequestTemplate(
+            id = uuidString(),
+            method = "",
+            application = ProtocolApplication.WebSocket,
+            url = webSocketUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                )
+            ),
+            payloadExamples = listOf(PayloadExample(id = uuidString(), name = "New Payload", body = ""))
+        ).let(requestDecorator)
+        createRequest(request = request, environment = environment)
+        selectRequestMethod("WebSocket")
+        delayShort()
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("Connect")
+            .performClickWithRetry(this)
 
-    delayShort()
+        delayShort()
 
-    waitUntil(1.seconds().millis) {
-        onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty()
+        waitUntil(1.seconds().millis) {
+            onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty()
+        }
+
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals("Disconnect")
+
+        return request
     }
-
-    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .assertTextEquals("Disconnect")
-
-    return request
 }
 
 fun ComposeUiTest.assertHttpStatus() {
@@ -149,7 +170,7 @@ fun ComposeUiTest.assertHttpStatus() {
 
 fun verifyEchoResponse(request: UserRequestTemplate, echoResponse: String) {
     val r = jacksonObjectMapper().readValue<RequestData>(echoResponse)
-    assertEquals(URI.create(WebSocketRequestResponseTest.webSocketUrl).path, r.path)
+    assertEquals(URI.create(request.url).path, r.path)
     assertEquals("GET", r.method)
     assertTrue(r.headers.any { it.name == "Connection" && it.value == "Upgrade" })
     assertTrue(r.headers.any { it.name == "Host" })

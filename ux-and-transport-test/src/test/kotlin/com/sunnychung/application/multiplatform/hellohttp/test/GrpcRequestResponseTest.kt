@@ -16,7 +16,6 @@ import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
-import com.sunnychung.application.multiplatform.hellohttp.test.GrpcRequestResponseTest.Companion.hostAndPort
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
@@ -27,11 +26,14 @@ import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 import java.io.File
 import kotlin.random.Random
 import kotlin.random.nextInt
 
-class GrpcRequestResponseTest {
+@RunWith(Parameterized::class)
+class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -42,9 +44,25 @@ class GrpcRequestResponseTest {
             RequestResponseTest.initTests()
         }
 
-        val hostAndPort = "localhost:18082"
-        val grpcUrl = "grpc://$hostAndPort"
+        @JvmStatic
+        @Parameterized.Parameters(name = "{0}")
+        fun parameters(): Collection<Array<Any>> = listOf(
+            arrayOf("HTTP", false, false),
+            arrayOf("SSL", true, false),
+            arrayOf("mTLS", true, true),
+        )
     }
+
+    val hostAndPort = "localhost:${
+        when {
+            !isSsl && !isMTls -> "18082"
+            isSsl && !isMTls -> "18085"
+            isSsl && isMTls -> "18087"
+            else -> throw UnsupportedOperationException()
+        }
+    }"
+    val grpcUrl = "grpc${if (isSsl) "s" else ""}://$hostAndPort"
+    val environment = RequestResponseTest.environment(isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
     @Rule
@@ -52,7 +70,7 @@ class GrpcRequestResponseTest {
 
     @Test
     fun unaryWithoutInput() = runTest {
-        createGrpcRequest { req ->
+        createGrpcRequest(environment = environment) { req ->
             req.copy(
                 grpc = UserGrpcRequest(
                     service = "sunnychung.grpc.services.MyService",
@@ -77,7 +95,7 @@ class GrpcRequestResponseTest {
     @Test
     fun unaryWithInput() = runTest {
         val input = "中文字${uuidString()}✌🏽😎abcd"
-        createGrpcRequest { req ->
+        createGrpcRequest(environment = environment) { req ->
             req.copy(
                 grpc = UserGrpcRequest(
                     service = "sunnychung.grpc.services.MyService",
@@ -105,7 +123,7 @@ class GrpcRequestResponseTest {
 
     @Test
     fun error() = runTest {
-        createGrpcRequest { req ->
+        createGrpcRequest(environment = environment) { req ->
             req.copy(
                 grpc = UserGrpcRequest(
                     service = "sunnychung.grpc.services.MyService",
@@ -126,7 +144,7 @@ class GrpcRequestResponseTest {
     fun clientStreaming() = runTest {
         val random = Random
         val input = (0 until 5).map { random.nextInt(0..20) }
-        createGrpcRequest { req ->
+        createGrpcRequest(environment = environment) { req ->
             req.copy(
                 grpc = UserGrpcRequest(
                     service = "sunnychung.grpc.services.MyService",
@@ -156,7 +174,7 @@ class GrpcRequestResponseTest {
 
     @Test
     fun cancelStream() = runTest {
-        createGrpcRequest { req ->
+        createGrpcRequest(environment = environment) { req ->
             req.copy(
                 grpc = UserGrpcRequest(
                     service = "sunnychung.grpc.services.MyService",
@@ -181,7 +199,7 @@ class GrpcRequestResponseTest {
 
     @Test
     fun serverStreaming() = runTest {
-        createGrpcRequest { req ->
+        createGrpcRequest(environment = environment) { req ->
             req.copy(
                 grpc = UserGrpcRequest(
                     service = "sunnychung.grpc.services.MyService",
@@ -218,7 +236,7 @@ class GrpcRequestResponseTest {
     fun bidirectionalStreaming() = runTest {
         val random = Random
         val input = (0 until 6).map { random.nextInt(0..20) }
-        createGrpcRequest { req ->
+        createGrpcRequest(environment = environment) { req ->
             req.copy(
                 grpc = UserGrpcRequest(
                     service = "sunnychung.grpc.services.MyService",
@@ -242,59 +260,96 @@ class GrpcRequestResponseTest {
         wait(1.seconds())
         assertSuccessStatus()
     }
-}
 
-suspend fun ComposeUiTest.createGrpcRequest(requestDecorator: (UserRequestTemplate) -> UserRequestTemplate) {
-    val request = UserRequestTemplate(
-        id = uuidString(),
-        application = ProtocolApplication.Grpc,
-        url = GrpcRequestResponseTest.grpcUrl,
-    ).let(requestDecorator)
-    createRequest(request)
-    selectRequestMethod("gRPC")
-    delayShort()
-
-    var apiSpecNodeInteraction = onAllNodes(hasTestTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!).and(
-        hasRole(Role.Button)
-    ))
-    var apiSpecNodes = apiSpecNodeInteraction.fetchSemanticsNodes()
-
-    if (apiSpecNodes.isEmpty()) {
-        onNodeWithTag(TestTag.RequestFetchApiSpecButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
-
+    suspend fun ComposeUiTest.createGrpcRequest(environment: TestEnvironment, requestDecorator: (UserRequestTemplate) -> UserRequestTemplate) {
+        val request = UserRequestTemplate(
+            id = uuidString(),
+            application = ProtocolApplication.Grpc,
+            url = grpcUrl,
+        ).let(requestDecorator)
+        createRequest(request = request, environment = environment)
+        selectRequestMethod("gRPC")
         delayShort()
 
-        waitUntil(3.seconds().millis) {
-            onAllNodesWithTag(TestTag.RequestFetchApiSpecButton.name).fetchSemanticsNodes().isNotEmpty()
+        var apiSpecNodeInteraction = onAllNodes(
+            hasTestTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!).and(
+                hasRole(Role.Button)
+            )
+        )
+        var apiSpecNodes = apiSpecNodeInteraction.fetchSemanticsNodes()
+        var hasOpenedMenu = false
+
+        val hasApiSpec = if (apiSpecNodes.isNotEmpty()) {
+            val label = apiSpecNodes.single().getTexts().firstOrNull()
+            if (label == "--") {
+                onNodeWithTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!)
+                    .assertIsDisplayedWithRetry(this)
+                    .performClickWithRetry(this)
+                hasOpenedMenu = true
+
+                delayShort()
+                waitForIdle()
+
+                val nextTag = buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownItem, hostAndPort)!!
+                onAllNodesWithTag(nextTag).fetchSemanticsNodes().isNotEmpty()
+            } else {
+                label == hostAndPort
+            }
+        } else {
+            false
         }
 
+        if (!hasApiSpec) {
+            if (hasOpenedMenu) {
+                // click somewhere else to close the dropdown menu first
+                onNodeWithTag(TestTag.RequestUrlTextField.name)
+                    .performClickWithRetry(this)
+                hasOpenedMenu = false
+
+                delayShort()
+                waitForIdle()
+            }
+
+            onNodeWithTag(TestTag.RequestFetchApiSpecButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+
+            waitUntil(3.seconds().millis) { // assert change to "loading"
+                onAllNodesWithTag(TestTag.RequestFetchApiSpecButton.name).fetchSemanticsNodes().isEmpty()
+            }
+
+            waitUntil(5.seconds().millis) { // assert change back to "fetch" button
+                onAllNodesWithTag(TestTag.RequestFetchApiSpecButton.name).fetchSemanticsNodes().isNotEmpty()
+            }
+
+            delayShort()
+
+            apiSpecNodeInteraction = onAllNodes(
+                hasTestTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!).and(
+                    hasRole(Role.Button)
+                )
+            )
+                .assertCountEquals(1)
+            apiSpecNodes = apiSpecNodeInteraction.fetchSemanticsNodes()
+        }
+
+        if (apiSpecNodes.single().getTexts() == listOf("--")) {
+            selectDropdownItem(TestTagPart.RequestApiSpecDropdown.name, hostAndPort)
+            delayShort()
+        }
+
+        selectDropdownItem(TestTagPart.RequestGrpcServiceDropdown.name, request.grpc!!.service)
         delayShort()
 
-        apiSpecNodeInteraction = onAllNodes(hasTestTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!).and(
-            hasRole(Role.Button)
-        ))
-            .assertCountEquals(1)
-        apiSpecNodes = apiSpecNodeInteraction.fetchSemanticsNodes()
-    }
-
-    if (apiSpecNodes.single().getTexts() == listOf("--")) {
-        selectDropdownItem(TestTagPart.RequestApiSpecDropdown.name, hostAndPort)
+        selectDropdownItem(TestTagPart.RequestGrpcMethodDropdown.name, request.grpc!!.method)
         delayShort()
-    }
 
-    selectDropdownItem(TestTagPart.RequestGrpcServiceDropdown.name, request.grpc!!.service)
-    delayShort()
-
-    selectDropdownItem(TestTagPart.RequestGrpcMethodDropdown.name, request.grpc!!.method)
-    delayShort()
-
-    if (request.examples.first().body is StringBody) {
-        onNodeWithTag(TestTag.RequestStringBodyTextField.name)
-            .assertIsDisplayedWithRetry(this)
-            .performTextInput((request.examples.first().body as StringBody).value)
-        delayShort()
+        if (request.examples.first().body is StringBody) {
+            onNodeWithTag(TestTag.RequestStringBodyTextField.name)
+                .assertIsDisplayedWithRetry(this)
+                .performTextInput((request.examples.first().body as StringBody).value)
+            delayShort()
+        }
     }
 }
 

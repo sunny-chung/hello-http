@@ -116,7 +116,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
         // create first project
         onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
             .performClickWithRetry(this)
-        waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 500L)
+        waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
             .performTextInput("Test Project ${KInstant.now().format("HH:mm:ss")}")
         waitForIdle()
@@ -126,10 +126,10 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
         // create first subproject
         delayShort()
         waitForIdle()
-        waitUntilExactlyOneExists(hasTestTag(TestTag.FirstTimeCreateSubprojectButton.name), 500L)
+        waitUntilExactlyOneExists(hasTestTag(TestTag.FirstTimeCreateSubprojectButton.name), 1500L)
         onNodeWithTag(TestTag.FirstTimeCreateSubprojectButton.name)
             .performClickWithRetry(this)
-        waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 500L)
+        waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
             .performTextInput("Test Subproject")
         waitForIdle()
@@ -342,18 +342,21 @@ fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
 }
 
 fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String) {
-    onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    val itemTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
+    // if drop down menu is expanded, click the item directly; otherwise, open the menu first.
+    if (onAllNodesWithTag(itemTag).fetchSemanticsNodes().isEmpty()) {
+        onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
 
-    val nextTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
-    waitUntilExactlyOneExists(hasTestTag(nextTag))
-    onNodeWithTag(nextTag)
+        waitUntilExactlyOneExists(hasTestTag(itemTag), 3.seconds().millis)
+    }
+    onNodeWithTag(itemTag)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
 }
 
-suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment = TestEnvironment.Local) {
+suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment) {
     createProjectIfNeeded()
     selectEnvironment(environment)
     val baseExample = request.examples.first()
@@ -523,20 +526,37 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                                 .assertIsDisplayedWithRetry(this)
                                 .performClickWithRetry(this)
 
-                            delay(100L)
-                            mainClock.advanceTimeBy(100L)
-                            delayShort()
-                            onNode(
-                                hasTestTag(
-                                    buildTestTag(
-                                        TestTagPart.RequestBodyMultipartForm,
-                                        TestTagPart.Current,
-                                        index,
-                                        TestTagPart.FileButton
-                                    )!!
+                            waitUntil(3.seconds().millis) {
+                                onAllNodes(
+                                    hasTestTag(
+                                        buildTestTag(
+                                            TestTagPart.RequestBodyMultipartForm,
+                                            TestTagPart.Current,
+                                            index,
+                                            TestTagPart.FileButton
+                                        )!!
+                                    ).and(
+                                        hasTextExactly(filename, includeEditableText = false)
+                                    )
                                 )
-                            )
-                                .assertTextEquals(filename, includeEditableText = false)
+                                    .fetchSemanticsNodes()
+                                    .isNotEmpty()
+                            }
+
+//                            delay(100L)
+//                            mainClock.advanceTimeBy(100L)
+//                            delayShort()
+//                            onNode(
+//                                hasTestTag(
+//                                    buildTestTag(
+//                                        TestTagPart.RequestBodyMultipartForm,
+//                                        TestTagPart.Current,
+//                                        index,
+//                                        TestTagPart.FileButton
+//                                    )!!
+//                                )
+//                            )
+//                                .assertTextEquals(filename, includeEditableText = false)
 
                         }
                     }
@@ -732,7 +752,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
     }
 }
 
-suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), isOneOffRequest: Boolean = true, environment: TestEnvironment = TestEnvironment.Local) {
+suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, environment: TestEnvironment) {
     createRequest(request = request, environment = environment)
 
     waitForIdle()
@@ -752,7 +772,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     }
 }
 
-suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), environment: TestEnvironment = TestEnvironment.Local) {
+suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), environment: TestEnvironment) {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment)

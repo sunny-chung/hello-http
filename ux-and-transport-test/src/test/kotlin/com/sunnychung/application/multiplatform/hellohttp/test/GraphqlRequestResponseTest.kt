@@ -38,7 +38,7 @@ import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
 @RunWith(Parameterized::class)
-class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
+class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -52,12 +52,16 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
         @JvmStatic
         @Parameters(name = "{0}")
         fun parameters(): Collection<Array<Any>> = listOf(
-            arrayOf("HTTP/2", false),
-            arrayOf("HTTP/1 only", true),
+            arrayOf("HTTP/2", false, false, false),
+            arrayOf("HTTP/1 only", true, false, false),
+            arrayOf("HTTP/1 SSL", true, true, false),
+            arrayOf("SSL", false, true, false),
+            arrayOf("mTLS", false, true, true),
         )
     }
 
-    val graphqlUrl = "http://${RequestResponseTest.hostAndPort(isHttp1Only = isHttp1Only)}/graphql"
+    val graphqlUrl = "http${if (isSsl) "s" else ""}://${RequestResponseTest.hostAndPort(isHttp1Only = isHttp1Only, isSsl = isSsl, isMTls = isMTls)}/graphql"
+    val environment = RequestResponseTest.environment(isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
     @Rule
@@ -93,7 +97,7 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
                     )
                 )
             )
-        ))
+        ), environment = environment)
         val body = assertHttpSuccessResponseAndGetResponseBody()
         val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<SomeOutputResource>>(body!!)
         assertEquals("abcde", resp.data.sum.a)
@@ -134,7 +138,7 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
                     )
                 )
             )
-        ))
+        ), environment = environment)
         val body = assertHttpSuccessResponseAndGetResponseBody()
         val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<SomeOutputResource>>(body!!)
         assertEquals("abcd", resp.data.sum.a)
@@ -184,7 +188,7 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
                     )
                 )
             )
-        ))
+        ), environment = environment)
         val body = assertHttpSuccessResponseAndGetResponseBody()
         val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<SomeOutputResource>>(body!!)
         assertEquals("abcdc", resp.data.sum.a)
@@ -217,7 +221,7 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
                     )
                 )
             )
-        ))
+        ), environment = environment)
 
         onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
             .assertIsDisplayedWithRetry(this)
@@ -276,7 +280,7 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
                     )
                 )
             )
-        ))
+        ), environment = environment)
 
         onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
             .assertIsDisplayedWithRetry(this)
@@ -296,8 +300,8 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean) {
     }
 }
 
-suspend fun ComposeUiTest.createGraphqlRequest(request: UserRequestTemplate) {
-    createRequest(request)
+suspend fun ComposeUiTest.createGraphqlRequest(request: UserRequestTemplate, environment: TestEnvironment) {
+    createRequest(request = request, environment = environment)
     selectRequestMethod("GraphQL")
     delayShort()
 
@@ -336,8 +340,8 @@ suspend fun ComposeUiTest.createGraphqlRequest(request: UserRequestTemplate) {
     }
 }
 
-suspend fun ComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTemplate, timeout: KDuration = 1.seconds()) {
-    createGraphqlRequest(request)
+suspend fun ComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment) {
+    createGraphqlRequest(request = request, environment = environment)
 
     delayShort()
     waitForIdle()
@@ -348,7 +352,7 @@ suspend fun ComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTempla
     waitForIdle()
 
     // wait for response
-    waitUntil(1.seconds().toMilliseconds()) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
+    waitUntil(5.seconds().toMilliseconds()) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
     waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
 }
 

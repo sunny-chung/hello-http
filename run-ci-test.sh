@@ -13,10 +13,25 @@ GRADLE_OPTS="$TEST_SERVER_OPTS" \
   ./gradlew :test-server:bootRun --args="--spring.profiles.active=h1" &
 TEST_SERVER_H1_PID=$!
 
+GRADLE_OPTS="$TEST_SERVER_OPTS" \
+  ./gradlew :test-server:bootRun --args="--spring.profiles.active=h1-ssl" &
+TEST_SERVER_H1_SSL_PID=$!
+
+GRADLE_OPTS="$TEST_SERVER_OPTS" \
+  ./gradlew :test-server:bootRun --args="--spring.profiles.active=ssl" &
+TEST_SERVER_SSL_PID=$!
+
+GRADLE_OPTS="$TEST_SERVER_OPTS" \
+  ./gradlew :test-server:bootRun --args="--spring.profiles.active=mtls" &
+TEST_SERVER_MTLS_PID=$!
+
 function cleanup {
   set +e # on error resume next
   [ "$TEST_SERVER_PID" ] && kill $TEST_SERVER_PID
   [ "$TEST_SERVER_H1_PID" ] && kill $TEST_SERVER_H1_PID
+  [ "$TEST_SERVER_H1_SSL_PID" ] && kill $TEST_SERVER_H1_SSL_PID
+  [ "$TEST_SERVER_SSL_PID" ] && kill $TEST_SERVER_SSL_PID
+  [ "$TEST_SERVER_MTLS_PID" ] && kill $TEST_SERVER_MTLS_PID
 }
 
 trap cleanup EXIT

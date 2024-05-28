@@ -21,6 +21,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +32,7 @@ import java.io.File
 import kotlin.random.Random
 
 @RunWith(Parameterized::class)
-class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
+class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -66,28 +67,53 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
         @JvmStatic
         @Parameters(name = "{0}")
         fun parameters(): Collection<Array<Any>> = listOf(
-            arrayOf("HTTP/2", false),
-            arrayOf("HTTP/1 only", true),
+            arrayOf("HTTP/2", false, false, false),
+            arrayOf("HTTP/1 only", true, false, false),
+            arrayOf("HTTP/1 SSL", true, true, false),
+            arrayOf("SSL", false, true, false),
+            arrayOf("mTLS", false, true, true),
         )
 
-        fun hostAndPort(isHttp1Only: Boolean) = when {
-            !isHttp1Only -> "localhost:18081"
-            isHttp1Only -> "localhost:18083"
+        fun hostAndPort(isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) = when {
+            isSsl && isMTls -> "localhost:18086"
+            !isHttp1Only && isSsl && !isMTls -> "localhost:18084"
+            isHttp1Only && isSsl && !isMTls -> "localhost:18088"
+            !isHttp1Only && !isSsl && !isMTls -> "localhost:18081"
+            isHttp1Only && !isSsl && !isMTls -> "localhost:18083"
             else -> throw UnsupportedOperationException()
         }
 
+        fun environment(isSsl: Boolean, isMTls: Boolean): TestEnvironment = when {
+            !isSsl -> TestEnvironment.Local
+            isSsl && isMTls -> TestEnvironment.LocalMTls
+            isSsl && !isMTls -> TestEnvironment.LocalSsl
+            else -> throw UnsupportedOperationException()
+        }
+
+        private var lastExecutedEnvironment: TestEnvironment? = null
     }
 
-    val hostAndPort = hostAndPort(isHttp1Only = isHttp1Only)
-    val httpUrlPrefix = "http://$hostAndPort"
+    val hostAndPort = hostAndPort(isHttp1Only = isHttp1Only, isSsl = isSsl, isMTls = isMTls)
+    val httpUrlPrefix = "http${if (isSsl) "s" else ""}://$hostAndPort"
     val echoUrl = "$httpUrlPrefix/rest/echo"
     val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
     val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
     val errorUrl = "$httpUrlPrefix/rest/error"
+    val environment = environment(isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
     @Rule
     val retryRule = RetryRule()
+
+    @Before
+    fun beforeEach() {
+        if (environment != lastExecutedEnvironment) {
+            println("beforeEach re-init")
+            lastExecutedEnvironment = environment
+        } else {
+            println("No init is needed")
+        }
+    }
 
     @Test
     fun echoGet() = runTest {
@@ -96,7 +122,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                 id = uuidString(),
                 method = "GET",
                 url = echoUrl,
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -117,7 +144,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         ),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -142,7 +170,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         ),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -163,7 +192,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         ),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -189,7 +219,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         ),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -200,7 +231,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                 id = uuidString(),
                 method = "POST",
                 url = echoUrl,
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -219,7 +251,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         body = StringBody("abcde\n\tfgh中文字_;-+/\\n✌🏽"),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -247,7 +280,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         body = StringBody("abcde\n\tfgh中文字_;-+/\\n✌🏽"),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -273,7 +307,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         """.trimIndent()),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -308,7 +343,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         """.trimIndent()),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -331,7 +367,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         )),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -363,7 +400,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         )),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -386,7 +424,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         )),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -423,7 +462,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         )),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -469,7 +509,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         )),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -497,7 +538,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         body = FileBody("src/test/resources/testFile1中文字.txt"),
                     )
                 )
-            )
+            ),
+            environment = environment,
         )
     }
 
@@ -516,7 +558,9 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                         body = FileBody(bigDataFile.absolutePath),
                     )
                 )
-            )
+            ),
+            timeout = 25.seconds(),
+            environment = environment,
         )
     }
 
@@ -571,6 +615,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                 )
             ),
             timeout = 25.seconds(),
+            environment = environment,
         )
     }
 
@@ -591,7 +636,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                 )
             )
         )
-        createAndSendHttpRequest(request, 600.milliseconds())
+        createAndSendHttpRequest(request = request, timeout = 600.milliseconds(), environment = environment)
 
         onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
         onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
@@ -618,7 +663,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean) {
                 )
             )
         )
-        createAndSendHttpRequest(request)
+        createAndSendHttpRequest(request = request, environment = environment)
 
         onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("409 Conflict")
         val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()

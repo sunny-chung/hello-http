@@ -750,6 +750,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         sslConfig: SslConfig
     ): GrpcApiSpec {
         val uri = URI.create(url)
+        log.d { "fetchServiceSpec $uri" }
         val channel = buildChannel("", uri, sslConfig, null, null, null, null)
         try {
             return fetchServiceSpec("${uri.host}:${uri.port}", channel)
