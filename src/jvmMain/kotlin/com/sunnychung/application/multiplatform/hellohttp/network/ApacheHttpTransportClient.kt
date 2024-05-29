@@ -388,10 +388,16 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         synchronized(writeLock) {
                             val pos = bb.position()
                             val len = bb.remaining()
+
+                            if (len <= 0) {
+                                hasRemaining = false
+                                return 0
+                            }
+
                             bytes.writeBytes(bb.array().copyOfRange(pos, pos + len))
                             bb.position(pos + len)
 
-                            return bb.remaining()
+                            return len
                         }
                     }
 
@@ -407,10 +413,14 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                     }
                 }
-                while (hasRemaining) {
+                while (hasRemaining && apacheHttpRequestCopied.available() > 0) {
+                    log.d { "apa p" }
                     apacheHttpRequestCopied.produce(channel)
                 }
+                log.d { "apa r" }
                 apacheHttpRequestCopied.releaseResources() // note that it releases nothing
+
+                log.d { "apa f" }
                 it.method = request.method
                 it.url = request.getResolvedUri().toASCIIString()
                 it.bodySize = bytes.size().toLong()
