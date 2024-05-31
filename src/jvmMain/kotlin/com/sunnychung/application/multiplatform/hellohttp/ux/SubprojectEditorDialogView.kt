@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +31,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
@@ -37,6 +39,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import kotlinx.coroutines.Dispatchers
@@ -100,79 +103,21 @@ fun SubprojectEditorDialogView(
             contents = SubprojectEditorTab.values().map { { AppTabLabel(text = it.displayText) } },
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth().weight(1f),
-        ) {
-            var selectedGrpcApiSpecId by remember { mutableStateOf<String?>(null) }
-            val selectedGrpcApiSpec = grpcApiSpecs.firstOrNull { it.id == selectedGrpcApiSpecId }
+        when (SubprojectEditorTab.values()[selectedTabIndex]) {
+            SubprojectEditorTab.Configuration -> ConfigurationEditor(
+                subproject = subproject,
+                onSubprojectUpdate = { onSubprojectUpdate() },
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            )
 
-            LazyColumn(
-                modifier = Modifier
-                    .background(color = colours.backgroundInputField)
-                    .weight(0.3f)
-                    .defaultMinSize(minWidth = 160.dp)
-                    .fillMaxHeight()
-            ) {
-                items(items = grpcApiSpecs) {
-                    AppText(
-                        text = it.name,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(6.dp).defaultMinSize(minHeight = 24.dp).fillMaxWidth().clickable {
-                            selectedGrpcApiSpecId = it.id
-                        }
-                    )
-                }
-            }
-            Column(modifier = Modifier.weight(0.7f).fillMaxHeight()) {
-                selectedGrpcApiSpec?.let { selectedGrpcApiSpec ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        AppText("Spec Name")
-                        AppTextFieldWithPlaceholder(
-                            value = selectedGrpcApiSpec.name,
-                            onValueChange = { newName ->
-                                // name should be unique within a Subproject
-                                if (grpcApiSpecs.any { it.name == newName }) {
-                                    // TODO show some error hints?
-                                    return@AppTextFieldWithPlaceholder
-                                }
-
-                                projectApiSpecCollection!!.grpcApiSpecs.replaceIf(
-                                    selectedGrpcApiSpec.copy(name = newName)
-                                ) { it.id == selectedGrpcApiSpec.id }
-                                onProjectApiSpecUpdate()
-                            },
-                            placeholder = { AppText(text = "API Spec Name", color = colours.placeholder) },
-                            modifier = Modifier.weight(1f),
-                        )
-                        AppDeleteButton(size = 24.dp) {
-                            if (subproject.grpcApiSpecIds.remove(selectedGrpcApiSpec.id)) {
-                                onSubprojectUpdate()
-                            }
-                            if (projectApiSpecCollection?.grpcApiSpecs?.removeIf { it.id == selectedGrpcApiSpec.id } == true) {
-                                onProjectApiSpecUpdate()
-                            }
-                        }
-                    }
-                    Column(modifier = Modifier.padding(top = 4.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
-                        AppText(text = "Source: ${selectedGrpcApiSpec.source}", modifier = Modifier.padding(top = 12.dp))
-                        AppText(
-                            text = "Last Updated: ${
-                                selectedGrpcApiSpec.updateTime.atZoneOffset(KZoneOffset.local())
-                                    .format("yyyy-MM-dd HH:mm:ss (Z)")
-                            }", modifier = Modifier.padding(top = 12.dp)
-                        )
-                        AppText(text = "Methods:", modifier = Modifier.padding(top = 12.dp))
-                        selectedGrpcApiSpec.methods.sortedBy { "${it.serviceFullName}/${it.methodName}" }.forEach {
-                            AppText(text = "${it.serviceFullName}/${it.methodName}", modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 0.dp))
-                        }
-                    }
-                }
-            }
+            SubprojectEditorTab.GrpcApiSpec -> GrpcApiSpecEditor(
+                grpcApiSpecs = grpcApiSpecs,
+                projectApiSpecCollection = projectApiSpecCollection,
+                subproject = subproject,
+                onSubprojectUpdate = { onSubprojectUpdate() },
+                onProjectApiSpecUpdate = { onProjectApiSpecUpdate() },
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            )
         }
     }
 
@@ -181,6 +126,168 @@ fun SubprojectEditorDialogView(
     }
 }
 
+@Composable
+private fun ConfigurationEditor(
+    modifier: Modifier = Modifier,
+    subproject: Subproject,
+    onSubprojectUpdate: () -> Unit,
+) {
+    val HEADER_COLUMN_WIDTH = 250.dp
+
+    var maxOutboundBytes by rememberLast(subproject.id) {
+        mutableStateOf(subproject.configuration.outboundPayloadStorageLimit.toString())
+    }
+    var maxInboundBytes by rememberLast(subproject.id) {
+        mutableStateOf(subproject.configuration.inboundPayloadStorageLimit.toString())
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            AppText(
+                text = "Display Limit per Outbound Payload in Raw Transport Log",
+                modifier = Modifier.width(HEADER_COLUMN_WIDTH)
+            )
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    AppTextField(
+                        value = maxOutboundBytes,
+                        onValueChange = {
+                            if (it.length > "104857600".length) return@AppTextField
+
+                            maxOutboundBytes = it
+                            it.toLongOrNull()?.let {
+                                if (it < 0 || it in (8 * 1024)..(100 * 1024 * 1024)) {
+                                    subproject.configuration.outboundPayloadStorageLimit = it
+                                    onSubprojectUpdate()
+                                }
+                            }
+                        }
+                    )
+                    AppText("bytes")
+                }
+                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (2 MB)")
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            AppText(
+                text = "Display Limit per Inbound Payload in Raw Transport Log",
+                modifier = Modifier.width(HEADER_COLUMN_WIDTH)
+            )
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    AppTextField(
+                        value = maxInboundBytes,
+                        onValueChange = {
+                            if (it.length > "104857600".length) return@AppTextField
+
+                            maxInboundBytes = it
+                            it.toLongOrNull()?.let {
+                                if (it < 0 || it in (8 * 1024)..(100 * 1024 * 1024)) {
+                                    subproject.configuration.inboundPayloadStorageLimit = it
+                                    onSubprojectUpdate()
+                                }
+                            }
+                        }
+                    )
+                    AppText("bytes")
+                }
+                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (2 MB)")
+            }
+        }
+    }
+}
+
+@Composable
+private fun GrpcApiSpecEditor(
+    modifier: Modifier = Modifier,
+    grpcApiSpecs: List<GrpcApiSpec>,
+    projectApiSpecCollection: ApiSpecCollection?,
+    subproject: Subproject,
+    onSubprojectUpdate: () -> Unit,
+    onProjectApiSpecUpdate: () -> Unit,
+) {
+    val colours = LocalColor.current
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier,
+    ) {
+        var selectedGrpcApiSpecId by remember { mutableStateOf<String?>(null) }
+        val selectedGrpcApiSpec = grpcApiSpecs.firstOrNull { it.id == selectedGrpcApiSpecId }
+
+        LazyColumn(
+            modifier = Modifier
+                .background(color = colours.backgroundInputField)
+                .weight(0.3f)
+                .defaultMinSize(minWidth = 160.dp)
+                .fillMaxHeight()
+        ) {
+            items(items = grpcApiSpecs) {
+                AppText(
+                    text = it.name,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(6.dp).defaultMinSize(minHeight = 24.dp).fillMaxWidth().clickable {
+                        selectedGrpcApiSpecId = it.id
+                    }
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(0.7f).fillMaxHeight()) {
+            selectedGrpcApiSpec?.let { selectedGrpcApiSpec ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    AppText("Spec Name")
+                    AppTextFieldWithPlaceholder(
+                        value = selectedGrpcApiSpec.name,
+                        onValueChange = { newName ->
+                            // name should be unique within a Subproject
+                            if (grpcApiSpecs.any { it.name == newName }) {
+                                // TODO show some error hints?
+                                return@AppTextFieldWithPlaceholder
+                            }
+
+                            projectApiSpecCollection!!.grpcApiSpecs.replaceIf(
+                                selectedGrpcApiSpec.copy(name = newName)
+                            ) { it.id == selectedGrpcApiSpec.id }
+                            onProjectApiSpecUpdate()
+                        },
+                        placeholder = { AppText(text = "API Spec Name", color = colours.placeholder) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    AppDeleteButton(size = 24.dp) {
+                        if (subproject.grpcApiSpecIds.remove(selectedGrpcApiSpec.id)) {
+                            onSubprojectUpdate()
+                        }
+                        if (projectApiSpecCollection?.grpcApiSpecs?.removeIf { it.id == selectedGrpcApiSpec.id } == true) {
+                            onProjectApiSpecUpdate()
+                        }
+                    }
+                }
+                Column(modifier = Modifier.padding(top = 4.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
+                    AppText(text = "Source: ${selectedGrpcApiSpec.source}", modifier = Modifier.padding(top = 12.dp))
+                    AppText(
+                        text = "Last Updated: ${
+                            selectedGrpcApiSpec.updateTime.atZoneOffset(KZoneOffset.local())
+                                .format("yyyy-MM-dd HH:mm:ss (Z)")
+                        }", modifier = Modifier.padding(top = 12.dp)
+                    )
+                    AppText(text = "Methods:", modifier = Modifier.padding(top = 12.dp))
+                    selectedGrpcApiSpec.methods.sortedBy { "${it.serviceFullName}/${it.methodName}" }.forEach {
+                        AppText(
+                            text = "${it.serviceFullName}/${it.methodName}",
+                            modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 0.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 private enum class SubprojectEditorTab(override val key: Any?, override val displayText: String) : DropDownable {
+    Configuration(key = "Configuration", displayText = "Configuration"),
     GrpcApiSpec(key = "GrpcApiSpec", displayText = "gRPC API Spec")
 }
