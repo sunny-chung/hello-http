@@ -165,7 +165,7 @@ private fun ConfigurationEditor(
                     )
                     AppText("bytes")
                 }
-                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (2 MB)")
+                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (512 KB)")
             }
         }
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -191,7 +191,7 @@ private fun ConfigurationEditor(
                     )
                     AppText("bytes")
                 }
-                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (2 MB)")
+                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (512 KB)")
             }
         }
     }
