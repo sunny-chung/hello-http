@@ -204,7 +204,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                             direction = RawExchange.Direction.Outgoing,
                             streamId = if (it is Http2Frame) it.streamId else null,
                             detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(requestBodySize ?: 0, it.payload.size + 1 * 1024 * 1024))
+                            payloadBuilder = ByteArrayOutputStream(minOf(requestBodySize ?: Int.MAX_VALUE, it.payload.size + 64 * 1024))
                         ).apply {
                             unsafeWritePayloadBytes(bytes = it.payload, limit = outboundPayloadStorageLimit)
                         }
