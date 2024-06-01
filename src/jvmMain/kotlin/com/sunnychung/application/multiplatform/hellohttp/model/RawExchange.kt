@@ -53,8 +53,7 @@ data class RawExchange(
                 } else if (payloadBuilder.size() <= limit && bytes.isNotEmpty()) {
                     payloadBuilder.write(bytes, 0, (limit - payloadBuilder.size()).toInt())
                 } else {
-                    consumePayloadBuilder()
-                    this.payloadBuilder = null
+                    consumePayloadBuilder(isComplete = true)
                 }
             }
             log.d { "unsafe write ${bytes.size} => $payloadSize" }
