@@ -60,6 +60,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
+import java.text.DecimalFormat
 
 private val DATE_TIME_FORMAT = KDateTimeFormat("HH:mm:ss.lll")
 private val TIMESTAMP_COLUMN_WIDTH_DP = 110.dp
@@ -398,9 +399,17 @@ private fun TransportTimelineContentView(
 ) {
     var totalLines = 0
     exchange.exchanges.forEachIndexed { index, it ->
-        var text = it.detail ?: it.payload?.decodeToString()
-        ?: it.payloadBuilder?.toByteArray()
-            ?.decodeToString() ?: "<Payload Lost>"
+        var text = it.detail
+            ?: (it.payload ?: it.payloadBuilder?.toByteArray())
+                ?.let { bytes ->
+                    val text = bytes.decodeToString()
+                    if (bytes.size < (it.payloadSize ?: 0)) {
+                        "$text (truncated, total size: ${DecimalFormat("#,###").format(it.payloadSize)} bytes)"
+                    } else {
+                        text
+                    }
+                }
+            ?: "<Payload Lost>"
 //      text = text.substring(0 .. minOf(1000, text.length - 1)) + " (${text.length} length)"
 
         // workaround this Compose bug:

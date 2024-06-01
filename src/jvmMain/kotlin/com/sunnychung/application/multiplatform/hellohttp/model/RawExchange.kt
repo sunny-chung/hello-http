@@ -1,12 +1,14 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import java.io.ByteArrayOutputStream
+
+const val DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT: Long = 2 * 1024 * 1024 // 2 MB
 
 @Persisted
 @Serializable
@@ -24,12 +26,32 @@ data class RawExchange(
         @Transient var payloadBuilder: ByteArrayOutputStream? = null,
         val streamId: Int? = null,
         var payload: ByteArray? = null,
+        var payloadSize: Long? = null,
     ) {
         fun consumePayloadBuilder() {
             if ((payload?.size ?: 0) < (payloadBuilder?.size() ?: 0)) {
                 payload = payloadBuilder!!.toByteArray()
 //                payloadBuilder = null
             }
+        }
+
+        /**
+         * Caller must wrap calls to this function with a lock, e.g.
+         * `synchronized(rawExchange.exchanges)`
+         */
+        fun unsafeWritePayloadBytes(bytes: ByteArray, limit: Long) {
+            payloadSize = (payloadSize ?: 0) + bytes.size
+            payloadBuilder?.let { payloadBuilder ->
+                if (payloadBuilder.size() + bytes.size <= limit) {
+                    payloadBuilder.write(bytes)
+                } else if (payloadBuilder.size() <= limit && bytes.isNotEmpty()) {
+                    payloadBuilder.write(bytes, 0, (limit - payloadBuilder.size()).toInt())
+                } else {
+                    consumePayloadBuilder()
+                    this.payloadBuilder = null
+                }
+            }
+            log.d { "unsafe write ${bytes.size} => $payloadSize" }
         }
     }
 

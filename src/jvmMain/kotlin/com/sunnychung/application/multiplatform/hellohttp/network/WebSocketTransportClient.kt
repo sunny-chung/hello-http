@@ -7,6 +7,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.InspectedWebSocketClient
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -37,7 +38,8 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
-        sslConfig: SslConfig
+        sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val data = createCallData(
             requestBodySize = null,
@@ -45,6 +47,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            subprojectConfig = subprojectConfig,
         )
         val callId = data.id
         val uri: URI = request.getResolvedUri()

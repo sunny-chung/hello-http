@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.ContentEncodingDecompressProcessor
 import com.sunnychung.application.multiplatform.hellohttp.network.apache.Http2FrameSerializer
@@ -168,7 +169,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 })
                 .build(),
             { bytes, pos, len ->
-                println("<< " + bytes.copyOfRange(pos, pos + len).decodeToString())
+                log.v { "<< " + bytes.copyOfRange(pos, pos + len).decodeToString() }
                 runBlocking {
                     incomingBytesFlow.emit(
                         Http1Payload(
@@ -187,7 +188,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         )
                     )
                 }
-//                println(">> " + bytes.copyOfRange(pos, pos + len).decodeToString())
+                log.v { ">> ($pos,$len,${bytes.size}?) " + bytes.copyOfRange(pos, pos + len).decodeToString() }
             },
             object : H2InspectListener {
                 val suspendedHeaderFrames = ConcurrentHashMap<Int, H2HeaderFrame>()
@@ -308,7 +309,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
-        sslConfig: SslConfig
+        sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val (apacheHttpRequest, approximateRequestBodySize) = request.toApacheHttpRequest()
         val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
@@ -318,7 +320,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
-            sslConfig = sslConfig
+            sslConfig = sslConfig,
+            subprojectConfig = subprojectConfig,
         )
         val callId = data.id
 
@@ -415,13 +418,13 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                 }
                 while (hasRemaining && apacheHttpRequestCopied.available() > 0) {
-                    log.d { "apa p" }
+                    log.v { "apa p" }
                     apacheHttpRequestCopied.produce(channel)
                 }
-                log.d { "apa r" }
+                log.v { "apa r" }
                 apacheHttpRequestCopied.releaseResources() // note that it releases nothing
 
-                log.d { "apa f" }
+                log.v { "apa f" }
                 it.method = request.method
                 it.url = request.getResolvedUri().toASCIIString()
                 it.bodySize = bytes.size().toLong()

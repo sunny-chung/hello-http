@@ -19,6 +19,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.CallDataUserResponseUtil
 import com.sunnychung.application.multiplatform.hellohttp.network.util.flowAndStreamObserver
@@ -437,6 +438,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val uri = URI.create(request.url)
 
@@ -446,6 +448,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            subprojectConfig = subprojectConfig,
         )
 
         val extra = request.extra as GrpcRequestExtra
