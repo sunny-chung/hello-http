@@ -404,7 +404,7 @@ private fun TransportTimelineContentView(
                 ?.let { bytes ->
                     val text = bytes.decodeToString()
                     if (bytes.size < (it.payloadSize ?: 0)) {
-                        "$text (truncated, total size: ${DecimalFormat("#,###").format(it.payloadSize)} bytes)"
+                        "$text ...(truncated, total size: ${DecimalFormat("#,###").format(it.payloadSize)} bytes)"
                     } else {
                         text
                     }

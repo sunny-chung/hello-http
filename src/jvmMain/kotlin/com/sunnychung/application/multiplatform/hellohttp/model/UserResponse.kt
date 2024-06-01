@@ -137,7 +137,7 @@ $BODY_BLOCK_DELIMITER${
         requestData?.bodySize
     ) { body, actualSize ->
         if (body.size < actualSize) {
-            " (truncated, total size: ${DecimalFormat("#,###").format(actualSize)} bytes)"
+            " ...(truncated, total size: ${DecimalFormat("#,###").format(actualSize)} bytes)"
         } else {
             null
         }
