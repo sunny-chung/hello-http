@@ -525,7 +525,8 @@ fun AppContentView() {
                                         requestExampleId = selectedRequestExampleId!!,
                                         environment = selectedEnvironment,
                                         projectId = selectedProject!!.id,
-                                        subprojectId = selectedSubproject!!.id
+                                        subprojectId = selectedSubproject!!.id,
+                                        subprojectConfig = selectedSubproject.configuration.copy(),
                                     )
                                 }
 

@@ -137,7 +137,7 @@ $BODY_BLOCK_DELIMITER${
         requestData?.bodySize
     ) { body, actualSize ->
         if (body.size < actualSize) {
-            " (truncated, total size: ${DecimalFormat("#,###").format(actualSize)} bytes)"
+            " ...(truncated, total size: ${DecimalFormat("#,###").format(actualSize)} bytes)"
         } else {
             null
         }
@@ -288,8 +288,15 @@ fun UserResponse.describeTransportLayer(isRelativeTimeDisplay: Boolean) = buildS
             },
             it.streamId?.toString() ?: if (protocol?.isHttp2() == true) "*" else "",
             it.detail
-                ?: it.payload?.decodeToString()
-                ?: it.payloadBuilder?.toByteArray()?.decodeToString()
+                ?: (it.payload ?: it.payloadBuilder?.toByteArray())
+                    ?.let { bytes ->
+                        val text = bytes.decodeToString()
+                        if (bytes.size < (it.payloadSize ?: 0)) {
+                            "$text ...(truncated, total size: ${DecimalFormat("#,###").format(it.payloadSize)} bytes)"
+                        } else {
+                            text
+                        }
+                    }
                 ?: "<Payload Lost>",
         )
     }

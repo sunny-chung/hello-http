@@ -2,8 +2,10 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
+import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
@@ -140,12 +142,22 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun getCallData(callId: String) = callData[callId]
 
-    protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String, sslConfig: SslConfig): CallData {
+    protected fun createCallData(
+        requestBodySize: Int?,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
+    ): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
         val incomingBytesFlow = MutableSharedFlow<RawPayload>()
         val optionalResponseSize = AtomicInteger()
 
         val callId = uuidString()
+
+        val outboundPayloadStorageLimit = subprojectConfig.outboundPayloadStorageLimit.takeIf { it >= 0 } ?: DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
+        val inboundPayloadStorageLimit = subprojectConfig.inboundPayloadStorageLimit.takeIf { it >= 0 } ?: DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
 
         val data = CallData(
             id = callId,
@@ -199,12 +211,12 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                             direction = RawExchange.Direction.Outgoing,
                             streamId = if (it is Http2Frame) it.streamId else null,
                             detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(requestBodySize ?: 0, it.payload.size + 1 * 1024 * 1024))
+                            payloadBuilder = ByteArrayOutputStream(minOf(requestBodySize ?: Int.MAX_VALUE, it.payload.size + 64 * 1024))
                         ).apply {
-                            payloadBuilder!!.write(it.payload)
+                            unsafeWritePayloadBytes(bytes = it.payload, limit = outboundPayloadStorageLimit)
                         }
                     } else {
-                        lastExchange.payloadBuilder!!.write(it.payload)
+                        lastExchange.unsafeWritePayloadBytes(bytes = it.payload, limit = outboundPayloadStorageLimit)
                         lastExchange.lastUpdateInstant = it.instant
                     }
                     log.v { it.payload.decodeToString() }
@@ -224,10 +236,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                             detail = null,
                             payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.payload.size + 1 * 1024 * 1024))
                         ).apply {
-                            payloadBuilder!!.write(it.payload)
+                            unsafeWritePayloadBytes(bytes = it.payload, limit = inboundPayloadStorageLimit)
                         }
                     } else {
-                        lastExchange.payloadBuilder!!.write(it.payload)
+                        lastExchange.unsafeWritePayloadBytes(bytes = it.payload, limit = inboundPayloadStorageLimit)
                         lastExchange.lastUpdateInstant = it.instant
                     }
                     log.v { it.payload.decodeToString() }
