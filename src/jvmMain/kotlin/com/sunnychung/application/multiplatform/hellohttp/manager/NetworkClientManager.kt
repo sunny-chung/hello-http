@@ -279,6 +279,9 @@ class NetworkClientManager : CallDataStore {
     @Composable
     fun subscribeToNewRequests() = callIdFlow.collectAsState(null)
 
+    /**
+     * For UX tests only, NOT for production.
+     */
     fun cancelAllCalls(): Int {
         val threads = callDataMap.mapNotNull { (_, call) ->
             if (call.status != ConnectionStatus.DISCONNECTED) {
@@ -289,6 +292,11 @@ class NetworkClientManager : CallDataStore {
                 null
             }
         }
+        if (threads.isNotEmpty()) {
+            Thread.sleep(3000L + 30 * threads.size)
+        }
+        callDataMap.clear()
+        requestExampleToCallMapping.clear()
         return threads.size
     }
 
