@@ -201,49 +201,59 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
+        fun processRawPayload(it: RawPayload, direction: RawExchange.Direction, approximateSize: Int?, storageLimit: Long) {
+            synchronized(data.response.rawExchange.exchanges) {
+                val lastIndex = data.response.rawExchange.exchanges.lastIndex
+                val lastExchange = lastIndex.takeIf { it >= 0 }?.let { i -> data.response.rawExchange.exchanges[i] }
+                if (it is Http2Frame || lastExchange == null || lastExchange.direction != direction) {
+                    data.response.rawExchange.exchanges += RawExchange.Exchange(
+                        instant = it.instant,
+                        direction = direction,
+                        streamId = if (it is Http2Frame) it.streamId else null,
+                        detail = null,
+                        payloadBuilder = ByteArrayOutputStream(minOf(approximateSize ?: Int.MAX_VALUE, it.payload.size + 64 * 1024))
+                    ).apply {
+                        unsafeWritePayloadBytes(bytes = it.payload, limit = storageLimit)
+                    }
+                    if (lastExchange?.direction != direction) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            delay(1.seconds().millis)
+                            with(data.response.rawExchange.exchanges) {
+                                synchronized(this) {
+                                    (0..lastIndex).forEach { i ->
+                                        this[i].consumePayloadBuilder(isComplete = true)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    lastExchange.unsafeWritePayloadBytes(bytes = it.payload, limit = storageLimit)
+                    lastExchange.lastUpdateInstant = it.instant
+                }
+                log.v { it.payload.decodeToString() }
+            }
+        }
+
         data.outgoingBytes
             .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Outgoing,
-                            streamId = if (it is Http2Frame) it.streamId else null,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(minOf(requestBodySize ?: Int.MAX_VALUE, it.payload.size + 64 * 1024))
-                        ).apply {
-                            unsafeWritePayloadBytes(bytes = it.payload, limit = outboundPayloadStorageLimit)
-                        }
-                    } else {
-                        lastExchange.unsafeWritePayloadBytes(bytes = it.payload, limit = outboundPayloadStorageLimit)
-                        lastExchange.lastUpdateInstant = it.instant
-                    }
-                    log.v { it.payload.decodeToString() }
-                }
+                processRawPayload(
+                    it = it,
+                    direction = RawExchange.Direction.Outgoing,
+                    approximateSize = requestBodySize,
+                    storageLimit = outboundPayloadStorageLimit,
+                )
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
         data.incomingBytes
             .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Incoming,
-                            streamId = if (it is Http2Frame) it.streamId else null,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.payload.size + 1 * 1024 * 1024))
-                        ).apply {
-                            unsafeWritePayloadBytes(bytes = it.payload, limit = inboundPayloadStorageLimit)
-                        }
-                    } else {
-                        lastExchange.unsafeWritePayloadBytes(bytes = it.payload, limit = inboundPayloadStorageLimit)
-                        lastExchange.lastUpdateInstant = it.instant
-                    }
-                    log.v { it.payload.decodeToString() }
-                }
+                processRawPayload(
+                    it = it,
+                    direction = RawExchange.Direction.Incoming,
+                    approximateSize = optionalResponseSize.get(),
+                    storageLimit = inboundPayloadStorageLimit,
+                )
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
