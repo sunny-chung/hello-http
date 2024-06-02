@@ -2,11 +2,13 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.toApacheHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
+import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MAX_CAPTURED_REQUEST_BODY_SIZE
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
+import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
@@ -92,6 +94,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
+        http2AccumulatedOutboundDataSerializeLimit: Int,
+        http2AccumulatedInboundDataSerializeLimit: Int,
         responseSize: AtomicInteger
     ): MinimalHttpAsyncClient {
         val http2FrameSerializer = Http2FrameSerializer()
@@ -195,6 +199,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 val openedStreamIds = Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
                 val lock = Mutex()
                 val isCancelled = AtomicBoolean(false)
+                val outboundDataSerializeCredit = AtomicInteger(http2AccumulatedOutboundDataSerializeLimit)
+                val inboundDataSerializeCredit = AtomicInteger(http2AccumulatedInboundDataSerializeLimit)
 
                 override fun onHeaderInputDecoded(connection: HttpConnection, streamId: Int?, headers: MutableList<HPackInspectHeader>) {
                     val serialized = http2FrameSerializer.serializeHeaders(headers)
@@ -224,16 +230,23 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
 
                 override fun onFrameInput(connection: HttpConnection, streamId: Int?, frame: RawFrame) {
                     log.d { "onFrameInput $streamId" }
-                    processFrame(streamId = streamId, frame = frame, receiverFlow = incomingBytesFlow)
+                    processFrame(streamId = streamId, frame = frame, direction = RawExchange.Direction.Incoming, receiverFlow = incomingBytesFlow)
                 }
 
                 override fun onFrameOutput(connection: HttpConnection, streamId: Int?, frame: RawFrame) {
                     log.d { "onFrameOutput $streamId" }
-                    processFrame(streamId = streamId, frame = frame, receiverFlow = outgoingBytesFlow)
+                    processFrame(streamId = streamId, frame = frame, direction = RawExchange.Direction.Outgoing, receiverFlow = outgoingBytesFlow)
                 }
 
-                fun processFrame(streamId: Int?, frame: RawFrame, receiverFlow: MutableSharedFlow<RawPayload>) {
-                    val serialized = http2FrameSerializer.serializeFrame(frame)
+                fun processFrame(streamId: Int?, frame: RawFrame, direction: RawExchange.Direction, receiverFlow: MutableSharedFlow<RawPayload>) {
+                    val serialized = http2FrameSerializer.serializeFrame(
+                        frame = frame,
+                        dataFrameBodySizeCredit = when (direction) {
+                            RawExchange.Direction.Outgoing -> outboundDataSerializeCredit
+                            RawExchange.Direction.Incoming -> inboundDataSerializeCredit
+                            else -> throw UnsupportedOperationException()
+                        },
+                    )
                     val type = FrameType.valueOf(frame.type)
                     log.d { "processFrame $streamId $type" }
                     if (type == FrameType.HEADERS) {
@@ -332,6 +345,10 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             sslConfig = sslConfig,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
             incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
+            http2AccumulatedOutboundDataSerializeLimit = (subprojectConfig.accumulatedOutboundDataStorageLimitPerCall.takeIf { it >= 0 }
+                ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
+            http2AccumulatedInboundDataSerializeLimit = (subprojectConfig.accumulatedInboundDataStorageLimitPerCall.takeIf { it >= 0 }
+                ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
             responseSize = data.optionalResponseSize
         )
         httpClient.start()

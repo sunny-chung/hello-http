@@ -9,6 +9,7 @@ import kotlinx.serialization.Transient
 import java.io.ByteArrayOutputStream
 
 const val DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT: Long = 512 * 1024 // 512 KB
+const val DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT: Long = 2 * 1024 * 1024 // 2 MB
 
 @Persisted
 @Serializable

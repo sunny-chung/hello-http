@@ -5,12 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecCollection
@@ -40,7 +37,6 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import kotlinx.coroutines.Dispatchers
@@ -135,10 +131,11 @@ private fun ConfigurationEditor(
     subproject: Subproject,
     onSubprojectUpdate: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier) {
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier.verticalScroll(rememberScrollState())) {
         PayloadLimitEditorView(
             title = "Display Limit per Outbound Payload in Raw Transport Log",
-            hint = "Maximum no. of bytes to be displayed for each outbound payload in Raw Transport Timeline. If the limit is exceeded, the payload would be truncated to this limit.\n\nIn HTTP/2, it is common to have multiple payloads if the request data size is large, whereas in HTTP/1 it is usually only maximum one payload per direction.",
+            hint = "Maximum no. of bytes to be displayed and persisted for each outbound payload in Raw Transport Timeline. If the limit is exceeded, the payload would be truncated to this limit.\n\nIn HTTP/2, it is common to have multiple payloads if the request data size is large, whereas in HTTP/1 it is usually only maximum one payload per direction.\n\nThis setting only applies to new calls, and does not affect data transmission.",
+            defaultValue = "512 KB",
             propertyGetter = { subproject.configuration.outboundPayloadStorageLimit },
             propertySetter = {
                 subproject.configuration.outboundPayloadStorageLimit = it
@@ -148,10 +145,33 @@ private fun ConfigurationEditor(
         )
         PayloadLimitEditorView(
             title = "Display Limit per Inbound Payload in Raw Transport Log",
-            hint = "Maximum no. of bytes to be displayed for each inbound payload in Raw Transport Timeline. If the limit is exceeded, the payload would be truncated to this limit.\n\nIn HTTP/2, it is common to have multiple payloads if the response data size is large, whereas in HTTP/1 it is usually only maximum one payload per direction.",
+            hint = "Maximum no. of bytes to be displayed and persisted for each inbound payload in Raw Transport Timeline. If the limit is exceeded, the payload would be truncated to this limit.\n\nIn HTTP/2, it is common to have multiple payloads if the response data size is large, whereas in HTTP/1 it is usually only maximum one payload per direction.\n\nThis setting only applies to new calls, and does not affect data transmission.",
+            defaultValue = "512 KB",
             propertyGetter = { subproject.configuration.inboundPayloadStorageLimit },
             propertySetter = {
                 subproject.configuration.inboundPayloadStorageLimit = it
+                onSubprojectUpdate()
+            },
+            subproject = subproject,
+        )
+        PayloadLimitEditorView(
+            title = "Total Displayed HTTP/2 Outbound Data Size Limit per Call in Raw Transport Log",
+            hint = "Maximum accumulated no. of body bytes of outbound DATA frames in a HTTP/2 call to be displayed and persisted in Raw Transport Timeline, excluding frame headers.\n\nThis setting only applies to new calls, and does not affect data transmission.",
+            defaultValue = "2 MB",
+            propertyGetter = { subproject.configuration.accumulatedOutboundDataStorageLimitPerCall },
+            propertySetter = {
+                subproject.configuration.accumulatedOutboundDataStorageLimitPerCall = it
+                onSubprojectUpdate()
+            },
+            subproject = subproject,
+        )
+        PayloadLimitEditorView(
+            title = "Total Displayed HTTP/2 Inbound Data Size Limit per Call in Raw Transport Log",
+            hint = "Maximum accumulated no. of body bytes of inbound DATA frames in a HTTP/2 call to be displayed and persisted in Raw Transport Timeline, excluding frame headers.\n\nThis setting only applies to new calls, and does not affect data transmission.",
+            defaultValue = "2 MB",
+            propertyGetter = { subproject.configuration.accumulatedInboundDataStorageLimitPerCall },
+            propertySetter = {
+                subproject.configuration.accumulatedInboundDataStorageLimitPerCall = it
                 onSubprojectUpdate()
             },
             subproject = subproject,
@@ -164,6 +184,7 @@ private fun PayloadLimitEditorView(
     modifier: Modifier = Modifier,
     title: String,
     hint: String? = null,
+    defaultValue: String,
     propertyGetter: () -> Long,
     propertySetter: (Long) -> Unit,
     subproject: Subproject,
@@ -198,7 +219,7 @@ private fun PayloadLimitEditorView(
                 )
                 AppText("bytes")
             }
-            AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (512 KB)")
+            AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default ($defaultValue)")
         }
     }
 }
