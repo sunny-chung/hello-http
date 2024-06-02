@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.serializer.SynchronizedListSerializer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
@@ -14,7 +15,7 @@ const val DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT: Long = 2 * 1024 * 1024 //
 @Persisted
 @Serializable
 data class RawExchange(
-    val exchanges: MutableList<Exchange>,
+    @Serializable(with = SynchronizedListSerializer::class) val exchanges: MutableList<Exchange>,
     @Transient var uiVersion: String = uuidString(),
 ) {
     @Persisted
