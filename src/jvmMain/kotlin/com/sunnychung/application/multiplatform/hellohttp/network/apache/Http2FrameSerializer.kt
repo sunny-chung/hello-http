@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.network.apache
 
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import org.apache.hc.core5.http2.H2Error
 import org.apache.hc.core5.http2.config.H2Param
 import org.apache.hc.core5.http2.frame.FrameFlag
@@ -8,17 +9,19 @@ import org.apache.hc.core5.http2.frame.RawFrame
 import org.apache.hc.core5.http2.hpack.HPackInspectHeader
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.text.DecimalFormat
+import java.util.concurrent.atomic.AtomicInteger
 
 private const val LONGEST_HEADER_LOG_PREFIX = "NAME INDEXED (123)"
 private val HEADER_LOG_PREFIX_SPACES = " ".repeat("[$LONGEST_HEADER_LOG_PREFIX] ".length)
 
 class Http2FrameSerializer {
 
-    fun serializeFrame(frame: RawFrame): String {
+    fun serializeFrame(frame: RawFrame, dataFrameBodySizeCredit: AtomicInteger): String {
         val s = StringBuilder()
         serializeFrameHeader(frame, s)
         s.append('\n')
-        if (serializeFramePayload(frame, s)) {
+        if (serializeFramePayload(frame, s, dataFrameBodySizeCredit)) {
             s.append('\n')
         }
         return s.toString()
@@ -74,7 +77,7 @@ class Http2FrameSerializer {
             .append(frame.length.toString())
     }
 
-    private fun serializeFramePayload(frame: RawFrame, s: Appendable): Boolean {
+    private fun serializeFramePayload(frame: RawFrame, s: Appendable, dataFrameBodySizeCredit: AtomicInteger): Boolean {
         val type = FrameType.valueOf(frame.type)
         val buf = frame.payloadContent
         if (buf != null) {
@@ -146,15 +149,35 @@ class Http2FrameSerializer {
                     s.append("Invalid\r\n")
                 }
 
-                else -> printData(frame.payload, s)
+                else -> printData(frame.payload, s, dataFrameBodySizeCredit)
             }
             return true
         }
         return false
     }
 
-    private fun printData(data: ByteBuffer, s: Appendable) {
-        s.append(data.array().copyOfRange(data.position(), data.limit()).decodeToString())
+    private fun printData(data: ByteBuffer, s: Appendable, dataFrameBodySizeCredit: AtomicInteger? = null) {
+        val availableDataSize = data.limit() - data.position()
+        val (dataBytesToBeTaken, isTruncated) = if (dataFrameBodySizeCredit != null) {
+            synchronized(dataFrameBodySizeCredit) {
+                val dataSizeToBeTaken = minOf(dataFrameBodySizeCredit.get(), availableDataSize)
+                val newCredit = dataFrameBodySizeCredit.addAndGet(- dataSizeToBeTaken)
+                log.v { "new credit = $newCredit" }
+                dataSizeToBeTaken to (dataSizeToBeTaken < availableDataSize)
+            }
+        } else {
+            data.limit() - data.position() to false
+        }
+        if (dataBytesToBeTaken > 0) {
+            val dataBytes = data.array().copyOfRange(
+                data.position(),
+                data.position() + dataBytesToBeTaken
+            )
+            s.append(dataBytes.decodeToString())
+        }
+        if (isTruncated) {
+            s.append(" ...(truncated, total size: ${DecimalFormat("#,###").format(availableDataSize)} bytes)")
+        }
     }
 
     fun serializeHeaders(headers: List<HPackInspectHeader>): String {

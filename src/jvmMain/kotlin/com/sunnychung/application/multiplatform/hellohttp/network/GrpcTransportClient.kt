@@ -8,6 +8,7 @@ import com.google.protobuf.util.JsonFormat
 import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestExtra
 import com.sunnychung.application.multiplatform.hellohttp.helper.CountDownLatch
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
+import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
@@ -73,8 +74,10 @@ import kotlinx.coroutines.runBlocking
 import org.apache.hc.core5.http2.H2Error
 import java.net.SocketAddress
 import java.net.URI
+import java.text.DecimalFormat
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.SSLSession
 
 class GrpcTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
@@ -83,6 +86,8 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         callId: String, uri: URI, sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>?,
         incomingBytesFlow: MutableSharedFlow<RawPayload>?,
+        http2AccumulatedOutboundDataSerializeLimit: Int,
+        http2AccumulatedInboundDataSerializeLimit: Int,
         callData: CallData?, out: UserResponse?
     ): ManagedChannel {
         val uri0 = uri.let {
@@ -108,6 +113,9 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     }
                 }
                 if (outgoingBytesFlow != null && incomingBytesFlow != null) {
+                    val outboundDataSerializeCredit = AtomicInteger(http2AccumulatedOutboundDataSerializeLimit)
+                    val inboundDataSerializeCredit = AtomicInteger(http2AccumulatedInboundDataSerializeLimit)
+
                     fun emitFrame(direction: Direction, streamId: Int?, content: String) = runBlocking {
                         when (direction) {
                             Direction.OUTBOUND -> outgoingBytesFlow
@@ -272,7 +280,13 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 "Frame: DATA; flags: ${
                                     serializeFlags(mapOf("END_STREAM" to endStream))
                                 }; length: ${data.readableBytes()}\n${
-                                    data.serialize()
+                                    data.serialize(
+                                        if (direction == Direction.OUTBOUND) {
+                                            outboundDataSerializeCredit
+                                        } else {
+                                            inboundDataSerializeCredit
+                                        }
+                                    )
                                 }"
                             )
                         }
@@ -361,10 +375,28 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                             )
                         }
 
-                        fun ByteBuf.serialize(): String {
-                            val bytes = ByteArray(readableBytes())
-                            getBytes(readerIndex(), bytes)
-                            return bytes.decodeToString()
+                        fun ByteBuf.serialize(readCredit: AtomicInteger? = null): String {
+                            val readableBytesCount = readableBytes()
+                            val bytesCountToRead = if (readCredit != null) {
+                                synchronized(readCredit) {
+                                    val bytesToRead = minOf(readCredit.get(), readableBytesCount)
+                                    val newCredit = readCredit.addAndGet(- bytesToRead)
+                                    log.v { "new credit = $newCredit" }
+                                    bytesToRead
+                                }
+                            } else {
+                                readableBytesCount
+                            }
+                            if (bytesCountToRead <= 0) {
+                                return ""
+                            }
+                            val bytes = ByteArray(bytesCountToRead)
+                            getBytes(readerIndex(), bytes, 0, bytesCountToRead)
+                            return bytes.decodeToString() + if (bytesCountToRead < readableBytesCount) {
+                                " ...(truncated, total size: ${DecimalFormat("#,###").format(readableBytesCount)} bytes)"
+                            } else {
+                                ""
+                            }
                         }
 
                         fun serializeErrorCode(errorCode: Long): String {
@@ -481,6 +513,10 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     sslConfig = sslConfig,
                     outgoingBytesFlow = call.outgoingBytes as MutableSharedFlow<RawPayload>,
                     incomingBytesFlow = call.incomingBytes as MutableSharedFlow<RawPayload>,
+                    http2AccumulatedOutboundDataSerializeLimit = (subprojectConfig.accumulatedOutboundDataStorageLimitPerCall.takeIf { it >= 0 }
+                        ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
+                    http2AccumulatedInboundDataSerializeLimit = (subprojectConfig.accumulatedInboundDataStorageLimitPerCall.takeIf { it >= 0 }
+                        ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
                     callData = call,
                     out = out,
                 ) // blocking call
@@ -754,7 +790,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
     ): GrpcApiSpec {
         val uri = URI.create(url)
         log.d { "fetchServiceSpec $uri" }
-        val channel = buildChannel("", uri, sslConfig, null, null, null, null)
+        val channel = buildChannel("", uri, sslConfig, null, null, 0, 0, null, null)
         try {
             return fetchServiceSpec("${uri.host}:${uri.port}", channel)
         } finally {
