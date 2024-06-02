@@ -35,7 +35,7 @@ tasks.withType<Test> {
 //    useJUnitPlatform()
     useJUnit()
 
-    jvmArgs("-Xmx3072m")
+    jvmArgs("-Xmx3072m", "-XX:+HeapDumpOnOutOfMemoryError")
 
     onlyIf {
         // In GitHub Actions CI, GUI windows cannot be created in Ubuntu instances
