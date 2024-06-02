@@ -138,6 +138,7 @@ private fun ConfigurationEditor(
     Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier) {
         PayloadLimitEditorView(
             title = "Display Limit per Outbound Payload in Raw Transport Log",
+            hint = "Maximum no. of bytes to be displayed for each outbound payload in Raw Transport Timeline. If the limit is exceeded, the payload would be truncated to this limit.\n\nIn HTTP/2, it is common to have multiple payloads if the request data size is large, whereas in HTTP/1 it is usually only maximum one payload per direction.",
             propertyGetter = { subproject.configuration.outboundPayloadStorageLimit },
             propertySetter = {
                 subproject.configuration.outboundPayloadStorageLimit = it
@@ -147,6 +148,7 @@ private fun ConfigurationEditor(
         )
         PayloadLimitEditorView(
             title = "Display Limit per Inbound Payload in Raw Transport Log",
+            hint = "Maximum no. of bytes to be displayed for each inbound payload in Raw Transport Timeline. If the limit is exceeded, the payload would be truncated to this limit.\n\nIn HTTP/2, it is common to have multiple payloads if the response data size is large, whereas in HTTP/1 it is usually only maximum one payload per direction.",
             propertyGetter = { subproject.configuration.inboundPayloadStorageLimit },
             propertySetter = {
                 subproject.configuration.inboundPayloadStorageLimit = it
@@ -161,6 +163,7 @@ private fun ConfigurationEditor(
 private fun PayloadLimitEditorView(
     modifier: Modifier = Modifier,
     title: String,
+    hint: String? = null,
     propertyGetter: () -> Long,
     propertySetter: (Long) -> Unit,
     subproject: Subproject,
@@ -168,11 +171,15 @@ private fun PayloadLimitEditorView(
     var textValue by rememberLast(subproject.id) {
         mutableStateOf(propertyGetter().toString())
     }
-    Row(modifier = modifier.fillMaxWidth()) {
-        AppText(
-            text = title,
-            modifier = Modifier.width(HEADER_COLUMN_WIDTH)
-        )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.width(HEADER_COLUMN_WIDTH)) {
+            AppText(text = title, modifier = Modifier.weight(1f))
+            if (!hint.isNullOrEmpty()) {
+                AppTooltipArea(tooltipText = hint) {
+                    AppImage(resource = "question.svg", size = 16.dp, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        }
         Column {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 AppTextField(
