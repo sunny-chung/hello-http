@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecCollection
@@ -126,73 +127,71 @@ fun SubprojectEditorDialogView(
     }
 }
 
+private val HEADER_COLUMN_WIDTH = 250.dp
+
 @Composable
 private fun ConfigurationEditor(
     modifier: Modifier = Modifier,
     subproject: Subproject,
     onSubprojectUpdate: () -> Unit,
 ) {
-    val HEADER_COLUMN_WIDTH = 250.dp
-
-    var maxOutboundBytes by rememberLast(subproject.id) {
-        mutableStateOf(subproject.configuration.outboundPayloadStorageLimit.toString())
-    }
-    var maxInboundBytes by rememberLast(subproject.id) {
-        mutableStateOf(subproject.configuration.inboundPayloadStorageLimit.toString())
-    }
-
     Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            AppText(
-                text = "Display Limit per Outbound Payload in Raw Transport Log",
-                modifier = Modifier.width(HEADER_COLUMN_WIDTH)
-            )
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    AppTextField(
-                        value = maxOutboundBytes,
-                        onValueChange = {
-                            if (it.length > "104857600".length) return@AppTextField
+        PayloadLimitEditorView(
+            title = "Display Limit per Outbound Payload in Raw Transport Log",
+            propertyGetter = { subproject.configuration.outboundPayloadStorageLimit },
+            propertySetter = {
+                subproject.configuration.outboundPayloadStorageLimit = it
+                onSubprojectUpdate()
+            },
+            subproject = subproject,
+        )
+        PayloadLimitEditorView(
+            title = "Display Limit per Inbound Payload in Raw Transport Log",
+            propertyGetter = { subproject.configuration.inboundPayloadStorageLimit },
+            propertySetter = {
+                subproject.configuration.inboundPayloadStorageLimit = it
+                onSubprojectUpdate()
+            },
+            subproject = subproject,
+        )
+    }
+}
 
-                            maxOutboundBytes = it
-                            it.toLongOrNull()?.let {
-                                if (it < 0 || it in (8 * 1024)..(100 * 1024 * 1024)) {
-                                    subproject.configuration.outboundPayloadStorageLimit = it
-                                    onSubprojectUpdate()
-                                }
+@Composable
+private fun PayloadLimitEditorView(
+    modifier: Modifier = Modifier,
+    title: String,
+    propertyGetter: () -> Long,
+    propertySetter: (Long) -> Unit,
+    subproject: Subproject,
+) {
+    var textValue by rememberLast(subproject.id) {
+        mutableStateOf(propertyGetter().toString())
+    }
+    Row(modifier = modifier.fillMaxWidth()) {
+        AppText(
+            text = title,
+            modifier = Modifier.width(HEADER_COLUMN_WIDTH)
+        )
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                AppTextField(
+                    value = textValue,
+                    onValueChange = {
+                        if (it.length > "104857600".length) return@AppTextField
+                        if (!it.matches("-?[0-9]*".toRegex())) return@AppTextField
+
+                        textValue = it
+                        it.toLongOrNull()?.let {
+                            if (it < 0 || it in (8 * 1024)..(100 * 1024 * 1024)) {
+                                propertySetter(it)
                             }
                         }
-                    )
-                    AppText("bytes")
-                }
-                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (512 KB)")
+                    }
+                )
+                AppText("bytes")
             }
-        }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            AppText(
-                text = "Display Limit per Inbound Payload in Raw Transport Log",
-                modifier = Modifier.width(HEADER_COLUMN_WIDTH)
-            )
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    AppTextField(
-                        value = maxInboundBytes,
-                        onValueChange = {
-                            if (it.length > "104857600".length) return@AppTextField
-
-                            maxInboundBytes = it
-                            it.toLongOrNull()?.let {
-                                if (it < 0 || it in (8 * 1024)..(100 * 1024 * 1024)) {
-                                    subproject.configuration.inboundPayloadStorageLimit = it
-                                    onSubprojectUpdate()
-                                }
-                            }
-                        }
-                    )
-                    AppText("bytes")
-                }
-                AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (512 KB)")
-            }
+            AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default (512 KB)")
         }
     }
 }
