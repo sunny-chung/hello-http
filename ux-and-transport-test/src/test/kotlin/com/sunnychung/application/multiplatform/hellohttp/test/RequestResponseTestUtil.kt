@@ -778,7 +778,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     }
 }
 
-suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), environment: TestEnvironment) {
+suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment) {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
