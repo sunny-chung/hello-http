@@ -787,7 +787,8 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     assertEquals(URL(request.url).path, resp.path)
     assertTrue(resp.headers.size >= 2) // at least have "Host" and "User-Agent" headers
     if (baseExample.headers.isNotEmpty()) {
-        assertTrue(resp.headers.containsAll(baseExample.headers.map { Parameter(it.key, it.value) }))
+        assertTrue(resp.headers.map { Parameter(it.name.lowercase(), it.value) }
+            .containsAll(baseExample.headers.map { Parameter(it.key.lowercase(), it.value) }))
     }
     assertEquals(
         baseExample.queryParameters.map { Parameter(it.key, it.value) }.sortedBy { it.name },
