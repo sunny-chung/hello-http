@@ -176,7 +176,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         )
         callData[callId] = data
 
-        data.events
+        data.jobs += data.events
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
                     if (true || it.event == "Response completed") { // deadline fighter
@@ -235,7 +235,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             }
         }
 
-        data.outgoingBytes
+        data.jobs += data.outgoingBytes
             .onEach {
                 processRawPayload(
                     it = it,
@@ -246,7 +246,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
-        data.incomingBytes
+        data.jobs += data.incomingBytes
             .onEach {
                 processRawPayload(
                     it = it,

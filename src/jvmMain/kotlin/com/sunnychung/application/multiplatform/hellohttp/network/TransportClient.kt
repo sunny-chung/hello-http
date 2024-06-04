@@ -9,6 +9,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -50,6 +51,8 @@ class CallData(
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
 
+    val jobs: MutableList<Job> = mutableListOf(),
+
     var cancel: (Throwable?) -> Unit,
     var sendPayload: (String) -> Unit = {},
     var sendEndOfStream: () -> Unit = {},
@@ -63,6 +66,7 @@ class CallData(
         this.end?.invoke()
         CoroutineScope(Dispatchers.IO).launch {
             delay(1.seconds().millis)
+            jobs.forEach { it.cancel() }
             consumePayloads(isComplete = true)
         }
         sendPayload = {}

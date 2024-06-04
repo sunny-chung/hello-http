@@ -559,6 +559,14 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                         data.end()
                         this.cancel(error?.let { CancellationException(it.message, it) })
                     }
+
+                    continuation.invokeOnCancellation {
+                        try {
+                            data.cancel(it)
+                        } finally {
+                            data.end()
+                        }
+                    }
                 }
 
                 out.statusCode = response?.code
