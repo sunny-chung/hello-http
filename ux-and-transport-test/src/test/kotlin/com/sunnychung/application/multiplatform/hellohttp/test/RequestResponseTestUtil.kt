@@ -752,7 +752,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
     }
 }
 
-suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, environment: TestEnvironment) {
+suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, isExpectResponseBody: Boolean = false, environment: TestEnvironment) {
     createRequest(request = request, environment = environment)
 
     waitForIdle()
@@ -770,12 +770,18 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     if (isOneOffRequest) {
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
     }
+
+    if (isExpectResponseBody) {
+        waitUntil(1500.milliseconds().millis) {
+            onAllNodesWithTag(TestTag.ResponseBody.name).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 }
 
 suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 1.seconds(), environment: TestEnvironment) {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
-    createAndSendHttpRequest(request = request, timeout = timeout, environment = environment)
+    createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
 
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
