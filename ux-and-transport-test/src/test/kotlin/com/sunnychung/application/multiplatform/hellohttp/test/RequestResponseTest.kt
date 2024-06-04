@@ -4,6 +4,7 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
@@ -21,6 +22,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -636,9 +638,18 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
                 )
             )
         )
-        createAndSendHttpRequest(request = request, timeout = 600.milliseconds(), environment = environment)
+        createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = true, environment = environment)
 
         onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
+
+        val durationText = onNodeWithTag(TestTag.ResponseDuration.name)
+            .fetchSemanticsNode()
+            .getTexts()
+            .first()
+        println("> durationText = $durationText")
+        assertTrue(durationText.endsWith(" ms"))
+        assertTrue(durationText.removeSuffix(" ms").toLong() in 0L..500L) // expected to fail fast
+
         onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
             .getTexts()
             .isEmpty()

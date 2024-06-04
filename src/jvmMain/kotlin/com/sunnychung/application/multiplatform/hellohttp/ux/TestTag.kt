@@ -27,6 +27,7 @@ enum class TestTag {
     RequestAddPayloadExampleButton,
     RequestPayloadTextField,
     ResponseStatus,
+    ResponseDuration,
     ResponseBody,
     ResponseStreamLog,
     ResponseStreamLogItemTime,

@@ -360,7 +360,7 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateT
     } else {
         "${duration.toMilliseconds()} ms"
     }
-    DataLabel(modifier = modifier, text = text)
+    DataLabel(modifier = modifier.testTag(TestTag.ResponseDuration.name), text = text)
 }
 
 @Composable
