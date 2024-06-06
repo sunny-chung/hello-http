@@ -17,3 +17,11 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
       - run: ./run-ci-test.sh
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ux-test-result
+          path: ux-and-transport-test/build/reports/tests/test
+      - uses: actions/upload-artifact@v3
+        with:
+          name: unit-test-result
+          path: build/reports/tests
