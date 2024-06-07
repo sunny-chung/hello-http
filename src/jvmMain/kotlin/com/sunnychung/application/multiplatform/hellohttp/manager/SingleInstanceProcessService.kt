@@ -24,4 +24,8 @@ class SingleInstanceProcessService {
             throw MultipleProcessError()
         }
     }
+
+    fun tryUnlock() {
+        processLock?.release()
+    }
 }

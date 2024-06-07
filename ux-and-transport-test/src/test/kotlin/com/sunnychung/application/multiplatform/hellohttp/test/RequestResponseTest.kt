@@ -43,6 +43,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
         @BeforeClass
         @JvmStatic
         fun initTests(): Unit = try {
+            // cleanup previous test files
+            AppContext.SingleInstanceProcessService.tryUnlock() // needed for Windows
             File("build/testrun").apply {
                 if (exists()) {
                     deleteRecursively()
