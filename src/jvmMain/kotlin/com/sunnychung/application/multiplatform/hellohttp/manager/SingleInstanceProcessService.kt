@@ -10,6 +10,7 @@ class SingleInstanceProcessService {
 
     lateinit var dataDir: File
 
+    private var lockFileChannel: FileChannel? = null
     private var processLock: FileLock? = null
 
     fun enforce() {
@@ -19,6 +20,7 @@ class SingleInstanceProcessService {
             lockFile.createNewFile()
         }
         val fc = FileChannel.open(lockFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+        lockFileChannel = fc
         processLock = fc.tryLock()
         if (processLock == null) {
             throw MultipleProcessError()
@@ -27,5 +29,8 @@ class SingleInstanceProcessService {
 
     fun tryUnlock() {
         processLock?.release()
+        processLock = null
+        lockFileChannel?.close()
+        lockFileChannel = null
     }
 }
