@@ -37,23 +37,6 @@ tasks.withType<Test> {
 
     jvmArgs("-Xmx3072m", "-XX:+HeapDumpOnOutOfMemoryError")
 
-    onlyIf {
-        // In GitHub Actions CI, GUI windows cannot be created in Ubuntu instances
-        // don't run UX tests in those instances
-
-        val os = System.getProperty("os.name")
-        if (project.hasProperty("isCI")) {
-            println("CI = ${project.property("isCI") != "false"}")
-        } else {
-            println("No CI")
-        }
-        !(project.hasProperty("isCI")
-            && project.property("isCI") != "false"
-            && os != "Mac OS X"
-            && !os.startsWith("Win")
-        )
-    }
-
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
         showStandardStreams = true
