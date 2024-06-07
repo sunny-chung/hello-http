@@ -42,7 +42,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
 
         @BeforeClass
         @JvmStatic
-        fun initTests() {
+        fun initTests(): Unit = try {
             File("build/testrun").apply {
                 if (exists()) {
                     deleteRecursively()
@@ -65,6 +65,9 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
                 }
                 appendBytes(byteArrayOf(0, -5, 3, 124, 59))
             }
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            throw e
         }
 
         @JvmStatic
