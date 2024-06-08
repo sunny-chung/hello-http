@@ -647,19 +647,25 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
         )
         createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = true, environment = environment)
 
-        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
+        runOnUiThread {
+            onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
+        }
 
-        val durationText = onNodeWithTag(TestTag.ResponseDuration.name)
-            .fetchSemanticsNode()
-            .getTexts()
-            .first()
+        val durationText = runOnUiThread {
+            onNodeWithTag(TestTag.ResponseDuration.name)
+                .fetchSemanticsNode()
+                .getTexts()
+                .first()
+        }
         println("> durationText = $durationText")
         assertTrue(durationText.endsWith(" ms"))
         assertTrue(durationText.removeSuffix(" ms").toLong() in 0L..500L) // expected to fail fast
 
-        onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
-            .getTexts()
-            .isEmpty()
+        runOnUiThread {
+            onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+                .getTexts()
+                .isEmpty()
+        }
     }
 
     @Test
@@ -683,10 +689,14 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
         )
         createAndSendHttpRequest(request = request, environment = environment)
 
-        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("409 Conflict")
-        val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
-            .getTexts()
-            .single()
+        runOnUiThread {
+            onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("409 Conflict")
+        }
+        val responseBody = runOnUiThread {
+            onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+                .getTexts()
+                .single()
+        }
         assertEquals("""
             {
               "error": "Some message"

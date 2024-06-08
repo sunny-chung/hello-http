@@ -113,74 +113,108 @@ enum class TestEnvironment(val displayName: String) {
 }
 
 suspend fun ComposeUiTest.createProjectIfNeeded() {
-    if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty()) {
+    if (runOnUiThread { onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty() }) {
         // create first project
-        onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
+                .performClickWithRetry(this)
+        }
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
-        onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
-            .performTextInput("Test Project ${KInstant.now().format("HH:mm:ss")}")
+        runOnUiThread {
+            onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
+                .performTextInput("Test Project ${KInstant.now().format("HH:mm:ss")}")
+        }
         waitForIdle()
-        onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
+                .performClickWithRetry(this)
+        }
 
         // create first subproject
         delayShort()
         waitForIdle()
         waitUntilExactlyOneExists(hasTestTag(TestTag.FirstTimeCreateSubprojectButton.name), 1500L)
-        onNodeWithTag(TestTag.FirstTimeCreateSubprojectButton.name)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(TestTag.FirstTimeCreateSubprojectButton.name)
+                .performClickWithRetry(this)
+        }
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
-        onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
-            .performTextInput("Test Subproject")
+        runOnUiThread {
+            onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
+                .performTextInput("Test Subproject")
+        }
         waitForIdle()
-        onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
         waitUntil {
-            onAllNodesWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
-                .fetchSemanticsNodes()
-                .isEmpty()
+            runOnUiThread {
+                onAllNodesWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
+                    .fetchSemanticsNodes()
+                    .isEmpty()
+            }
         }
 
         println("created first project and subproject")
 
         waitForIdle()
-        onNodeWithTag(TestTag.EditEnvironmentsButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(TestTag.EditEnvironmentsButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
         waitUntilExactlyOneExists(hasTestTag(TestTag.EnvironmentDialogCreateButton.name))
 
         createEnvironmentInEnvDialog(TestEnvironment.Local.displayName)
 
         fun switchToSslTabAndAddServerCaCert() {
-            onNode(hasTestTag(TestTag.EnvironmentEditorTab.name).and(hasTextExactly("SSL")))
-                .assertIsDisplayedWithRetry(this)
-                .performClickWithRetry(this)
+            runOnUiThread {
+                onNode(hasTestTag(TestTag.EnvironmentEditorTab.name).and(hasTextExactly("SSL")))
+                    .assertIsDisplayedWithRetry(this)
+                    .performClickWithRetry(this)
+            }
 
             waitUntil {
-                onAllNodesWithTag(buildTestTag(TestTagPart.EnvironmentSslTrustedServerCertificates, TestTagPart.CreateButton)!!)
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+                runOnUiThread {
+                    onAllNodesWithTag(
+                        buildTestTag(
+                            TestTagPart.EnvironmentSslTrustedServerCertificates,
+                            TestTagPart.CreateButton
+                        )!!
+                    )
+                        .fetchSemanticsNodes()
+                        .isNotEmpty()
+                }
             }
 
             mockChosenFile(File("../test-common/src/main/resources/tls/serverCACert.pem"))
-            onNodeWithTag(buildTestTag(TestTagPart.EnvironmentSslTrustedServerCertificates, TestTagPart.CreateButton)!!)
-                .assertIsDisplayedWithRetry(this)
-                .performClickWithRetry(this)
-            waitUntil(3.seconds().millis) {
-                onAllNodes(
-                    hasTestTag(
-                        buildTestTag(
-                            TestTagPart.EnvironmentSslTrustedServerCertificates,
-                            TestTagPart.ListItemLabel
-                        )!!
-                    )
-                        .and(hasText("CN=Test Server CA", substring = true)),
-                    useUnmergedTree = true
+            runOnUiThread {
+                onNodeWithTag(
+                    buildTestTag(
+                        TestTagPart.EnvironmentSslTrustedServerCertificates,
+                        TestTagPart.CreateButton
+                    )!!
                 )
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+                    .assertIsDisplayedWithRetry(this)
+                    .performClickWithRetry(this)
+            }
+            waitUntil(3.seconds().millis) {
+                runOnUiThread {
+                    onAllNodes(
+                        hasTestTag(
+                            buildTestTag(
+                                TestTagPart.EnvironmentSslTrustedServerCertificates,
+                                TestTagPart.ListItemLabel
+                            )!!
+                        )
+                            .and(hasText("CN=Test Server CA", substring = true)),
+                        useUnmergedTree = true
+                    )
+                        .fetchSemanticsNodes()
+                        .isNotEmpty()
+                }
             }
         }
 
@@ -190,97 +224,128 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
         createEnvironmentInEnvDialog(TestEnvironment.LocalMTls.displayName)
         switchToSslTabAndAddServerCaCert()
         selectDropdownItem(TestTagPart.EnvironmentDisableSystemCaCertificates.name, "Yes")
-        onNodeWithTag(TestTag.EnvironmentEditorSslTabContent.name, useUnmergedTree = true)
-            .performScrollToNode(hasTestTag(buildTestTag(
-                TestTagPart.EnvironmentSslClientCertificates,
-                TestTagPart.CreateButton,
-            )!!))
+        runOnUiThread {
+            onNodeWithTag(TestTag.EnvironmentEditorSslTabContent.name, useUnmergedTree = true)
+                .performScrollToNode(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.EnvironmentSslClientCertificates,
+                            TestTagPart.CreateButton,
+                        )!!
+                    )
+                )
+        }
         waitUntil {
-            onNodeWithTag(buildTestTag(
-                TestTagPart.EnvironmentSslClientCertificates,
-                TestTagPart.CreateButton,
-            )!!)
-                .isDisplayed()
+            runOnUiThread {
+                onNodeWithTag(buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.CreateButton,
+                )!!)
+                    .isDisplayed()
+            }
         }
         delay(1.seconds().millis)
         waitForIdle()
         val certFile = mockChosenFile(File("../test-common/src/main/resources/tls/clientCert.pem"))
-        onNodeWithTag(buildTestTag(
-            TestTagPart.EnvironmentSslClientCertificates,
-            TestTagPart.ClientCertificate,
-            TestTagPart.FileButton,
-        )!!)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(
+                buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.ClientCertificate,
+                    TestTagPart.FileButton,
+                )!!
+            )
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
         waitForIdle()
         waitUntil(3.seconds().millis) {
-            onNodeWithTag(buildTestTag(
-                TestTagPart.EnvironmentSslClientCertificates,
-                TestTagPart.ClientCertificate,
-                TestTagPart.FileButton,
-            )!!)
-                .fetchSemanticsNode()
-                .getTexts()
-                .firstOrNull() == certFile.name
-        }
-        val keyFile = mockChosenFile(File("../test-common/src/main/resources/tls/clientKey.pkcs8.der"))
-        onNodeWithTag(buildTestTag(
-            TestTagPart.EnvironmentSslClientCertificates,
-            TestTagPart.PrivateKey,
-            TestTagPart.FileButton,
-        )!!)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
-        waitForIdle()
-        waitUntil(3.seconds().millis) {
-            onNodeWithTag(buildTestTag(
-                TestTagPart.EnvironmentSslClientCertificates,
-                TestTagPart.PrivateKey,
-                TestTagPart.FileButton,
-            )!!)
-                .fetchSemanticsNode()
-                .getTexts()
-                .firstOrNull() == keyFile.name
-        }
-        onNodeWithTag(buildTestTag(
-            TestTagPart.EnvironmentSslClientCertificates,
-            TestTagPart.CreateButton,
-        )!!)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
-        waitUntil(3.seconds().millis) {
-            onAllNodes(
-                hasTestTag(
+            runOnUiThread {
+                onNodeWithTag(
                     buildTestTag(
                         TestTagPart.EnvironmentSslClientCertificates,
-                        TestTagPart.ListItemLabel
+                        TestTagPart.ClientCertificate,
+                        TestTagPart.FileButton,
                     )!!
                 )
-                    .and(hasText("CN=Test Client", substring = true)),
-                useUnmergedTree = true
+                    .fetchSemanticsNode()
+                    .getTexts()
+                    .firstOrNull() == certFile.name
+            }
+        }
+            val keyFile = mockChosenFile(File("../test-common/src/main/resources/tls/clientKey.pkcs8.der"))
+        runOnUiThread {
+            onNodeWithTag(
+                buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.PrivateKey,
+                    TestTagPart.FileButton,
+                )!!
             )
-                .fetchSemanticsNodes()
-                .isNotEmpty()
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
+        waitForIdle()
+        waitUntil(3.seconds().millis) {
+            runOnUiThread {
+                onNodeWithTag(
+                    buildTestTag(
+                        TestTagPart.EnvironmentSslClientCertificates,
+                        TestTagPart.PrivateKey,
+                        TestTagPart.FileButton,
+                    )!!
+                )
+                    .fetchSemanticsNode()
+                    .getTexts()
+                    .firstOrNull() == keyFile.name
+            }
+        }
+        runOnUiThread {
+            onNodeWithTag(
+                buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.CreateButton,
+                )!!
+            )
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
+        waitUntil(3.seconds().millis) {
+            runOnUiThread {
+                onAllNodes(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.EnvironmentSslClientCertificates,
+                            TestTagPart.ListItemLabel
+                        )!!
+                    )
+                        .and(hasText("CN=Test Client", substring = true)),
+                    useUnmergedTree = true
+                )
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
 //                .firstOrNull()
 //                ?.getTexts()
 //                ?.firstOrNull().also { println(">>> CC = $it") }
 //                ?.contains("CN=Test Client") == true
+            }
         }
 
-        onNodeWithTag(TestTag.DialogCloseButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
-        waitUntil { onAllNodesWithTag(TestTag.DialogCloseButton.name).fetchSemanticsNodes().isEmpty() }
+        runOnUiThread {
+            onNodeWithTag(TestTag.DialogCloseButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
+        waitUntil {
+            runOnUiThread {
+                onAllNodesWithTag(TestTag.DialogCloseButton.name).fetchSemanticsNodes().isEmpty()
+            }
+        }
         waitForIdle()
     }
-//    while (true) {
-//        try {
-            waitUntilExactlyOneExists(hasTestTag(TestTag.CreateRequestOrFolderButton.name), 5000L)
-//        } catch (_: IllegalArgumentException) {
-//            println("waiting")
-//            waitForIdle()
-//        }
-//    }
+    runOnUiThread {
+        waitUntilExactlyOneExists(hasTestTag(TestTag.CreateRequestOrFolderButton.name), 5000L)
+    }
 }
 
 fun ComposeUiTest.mockChosenFile(file: File): File {
@@ -289,11 +354,13 @@ fun ComposeUiTest.mockChosenFile(file: File): File {
 }
 
 suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
-    if (onNodeWithTag(buildTestTag(TestTagPart.EnvironmentDropdown, TestTagPart.DropdownLabel)!!, useUnmergedTree = true)
-        .assertIsDisplayedWithRetry(this)
-        .fetchSemanticsNode()
-        .getTexts()
-        .first() == environment.displayName
+    if (runOnUiThread {
+            onNodeWithTag(buildTestTag(TestTagPart.EnvironmentDropdown, TestTagPart.DropdownLabel)!!, useUnmergedTree = true)
+                .assertIsDisplayedWithRetry(this)
+                .fetchSemanticsNode()
+                .getTexts()
+                .first() == environment.displayName
+        }
     ) {
         return
     }
@@ -307,33 +374,42 @@ suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
  * @param name A unique name.
  */
 suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
-    onNodeWithTag(TestTag.EnvironmentDialogCreateButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
-
-    waitUntil {
-        onAllNodes(
-            hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-                .and(isFocusable())
-                .and(hasTextExactly("New Environment"))
-        )
-            .fetchSemanticsNodes()
-            .isNotEmpty()
+    runOnUiThread {
+        onNodeWithTag(TestTag.EnvironmentDialogCreateButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
     }
 
-    onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-        .assertIsDisplayedWithRetry(this)
-        .performTextClearance()
+    waitUntil {
+        runOnUiThread {
+            onAllNodes(
+                hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                    .and(isFocusable())
+                    .and(hasTextExactly("New Environment"))
+            )
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+    }
+
+    runOnUiThread {
+        onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+            .assertIsDisplayedWithRetry(this)
+            .performTextClearance()
+    }
 
     delayShort()
     waitForIdle()
-
-    onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-        .performTextInput(name)
+    runOnUiThread {
+        onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+            .performTextInput(name)
+    }
 
     waitUntil(3.seconds().millis) {
-        // one in list view and one in text field
-        onAllNodesWithText(name).fetchSemanticsNodes().size == 2
+        runOnUiThread {
+            // one in list view and one in text field
+            onAllNodesWithText(name).fetchSemanticsNodes().size == 2
+        }
     }
 }
 
@@ -345,16 +421,20 @@ fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
 fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String) {
     val itemTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
     // if drop down menu is expanded, click the item directly; otherwise, open the menu first.
-    if (onAllNodesWithTag(itemTag).fetchSemanticsNodes().isEmpty()) {
-        onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+    if (runOnUiThread { onAllNodesWithTag(itemTag).fetchSemanticsNodes().isEmpty() }) {
+        runOnUiThread {
+            onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
 
         waitUntilExactlyOneExists(hasTestTag(itemTag), 3.seconds().millis)
+        runOnUiThread {
+            onNodeWithTag(itemTag)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
     }
-    onNodeWithTag(itemTag)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
 }
 
 suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment) {
@@ -362,14 +442,18 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
     selectEnvironment(environment)
     val baseExample = request.examples.first()
 
-    onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    runOnUiThread {
+        onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
     delayShort()
     waitUntilExactlyOneExists(hasTextExactly("Request", includeEditableText = false))
-    onNodeWithText("Request")
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    runOnUiThread {
+        onNodeWithText("Request")
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
     waitUntilExactlyOneExists(hasTestTag(TestTag.RequestUrlTextField.name), 1000L)
 
     delayShort()
@@ -379,16 +463,20 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
         delayShort()
     }
 
-    onNodeWithTag(TestTag.RequestUrlTextField.name)
-        .assertIsDisplayedWithRetry(this)
-        .performTextInput(request.url)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestUrlTextField.name)
+            .assertIsDisplayedWithRetry(this)
+            .performTextInput(request.url)
+    }
 
     delayShort()
 
     if (request.application == ProtocolApplication.Http && baseExample.contentType != ContentType.None) {
-        onNodeWithTag(buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownButton)!!)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(buildTestTag(TestTagPart.RequestBodyTypeDropdown, TestTagPart.DropdownButton)!!)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
 
         delayShort()
 
@@ -398,9 +486,11 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
             baseExample.contentType.displayText
         )!!
         waitUntilExactlyOneExists(hasTestTag(nextTag))
-        onNodeWithTag(nextTag)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(nextTag)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
 
         delayShort()
 
@@ -408,9 +498,11 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
             ContentType.Json, ContentType.Raw -> {
                 val body = (baseExample.body as StringBody).value
                 if (body.isNotEmpty()) {
-                    onNodeWithTag(TestTag.RequestStringBodyTextField.name)
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(body)
+                    runOnUiThread {
+                        onNodeWithTag(TestTag.RequestStringBodyTextField.name)
+                            .assertIsDisplayedWithRetry(this)
+                            .performTextInput(body)
+                    }
                     delayShort()
                 }
             }
@@ -438,97 +530,94 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                             )!!
                         )
                     )
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyMultipartForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
+                    runOnUiThread {
+                        onNode(
+                            hasTestTag(
+                                buildTestTag(
+                                    TestTagPart.RequestBodyMultipartForm,
+                                    TestTagPart.Current,
+                                    TestTagPart.Key,
+                                    index
+                                )!!
+                            )
                         )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(it.key)
+                            .assertIsDisplayedWithRetry(this)
+                            .performTextInput(it.key)
+                    }
                     delayShort()
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyMultipartForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
+                    runOnUiThread {
+                        onNode(
+                            hasTestTag(
+                                buildTestTag(
+                                    TestTagPart.RequestBodyMultipartForm,
+                                    TestTagPart.Current,
+                                    TestTagPart.Key,
+                                    index
+                                )!!
+                            )
                         )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .assertTextEquals(it.key)
+                            .assertIsDisplayedWithRetry(this)
+                            .assertTextEquals(it.key)
+                    }
 
                     when (it.valueType) {
                         FieldValueType.String -> {
-                            onNode(
-                                hasTestTag(
-                                    buildTestTag(
-                                        TestTagPart.RequestBodyMultipartForm,
-                                        TestTagPart.Current,
-                                        TestTagPart.Value,
-                                        index
-                                    )!!
+                            runOnUiThread {
+                                onNode(
+                                    hasTestTag(
+                                        buildTestTag(
+                                            TestTagPart.RequestBodyMultipartForm,
+                                            TestTagPart.Current,
+                                            TestTagPart.Value,
+                                            index
+                                        )!!
+                                    )
                                 )
-                            )
-                                .assertIsDisplayedWithRetry(this)
-                                .performTextInput(it.value)
+                                    .assertIsDisplayedWithRetry(this)
+                                    .performTextInput(it.value)
+                            }
                             delayShort()
                         }
 
                         FieldValueType.File -> {
-                            onNode(
-                                hasTestTag(
-                                    buildTestTag(
-                                        TestTagPart.RequestBodyMultipartForm,
-                                        TestTagPart.Current,
-                                        index,
-                                        TestTagPart.ValueTypeDropdown,
-                                        TestTagPart.DropdownButton
-                                    )!!
+                            runOnUiThread {
+                                onNode(
+                                    hasTestTag(
+                                        buildTestTag(
+                                            TestTagPart.RequestBodyMultipartForm,
+                                            TestTagPart.Current,
+                                            index,
+                                            TestTagPart.ValueTypeDropdown,
+                                            TestTagPart.DropdownButton
+                                        )!!
+                                    )
                                 )
-                            )
-                                .assertIsDisplayedWithRetry(this)
-                                .performClickWithRetry(this)
+                                    .assertIsDisplayedWithRetry(this)
+                                    .performClickWithRetry(this)
+                            }
                             delayShort()
 
-                            onNode(
-                                hasTestTag(
-                                    buildTestTag(
-                                        TestTagPart.RequestBodyMultipartForm,
-                                        TestTagPart.Current,
-                                        index,
-                                        TestTagPart.ValueTypeDropdown,
-                                        TestTagPart.DropdownItem,
-                                        "File"
-                                    )!!
+                            runOnUiThread {
+                                onNode(
+                                    hasTestTag(
+                                        buildTestTag(
+                                            TestTagPart.RequestBodyMultipartForm,
+                                            TestTagPart.Current,
+                                            index,
+                                            TestTagPart.ValueTypeDropdown,
+                                            TestTagPart.DropdownItem,
+                                            "File"
+                                        )!!
+                                    )
                                 )
-                            )
-                                .assertIsDisplayedWithRetry(this)
-                                .performClickWithRetry(this)
+                                    .assertIsDisplayedWithRetry(this)
+                                    .performClickWithRetry(this)
+                            }
                             delayShort()
 
                             val filename = mockChosenFile(File(it.value)).name
-                            onNode(
-                                hasTestTag(
-                                    buildTestTag(
-                                        TestTagPart.RequestBodyMultipartForm,
-                                        TestTagPart.Current,
-                                        index,
-                                        TestTagPart.FileButton
-                                    )!!
-                                )
-                            )
-                                .assertIsDisplayedWithRetry(this)
-                                .performClickWithRetry(this)
-
-                            waitUntil(3.seconds().millis) {
-                                onAllNodes(
+                            runOnUiThread {
+                                onNode(
                                     hasTestTag(
                                         buildTestTag(
                                             TestTagPart.RequestBodyMultipartForm,
@@ -536,12 +625,29 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                                             index,
                                             TestTagPart.FileButton
                                         )!!
-                                    ).and(
-                                        hasTextExactly(filename, includeEditableText = false)
                                     )
                                 )
-                                    .fetchSemanticsNodes()
-                                    .isNotEmpty()
+                                    .assertIsDisplayedWithRetry(this)
+                                    .performClickWithRetry(this)
+                            }
+
+                            waitUntil(3.seconds().millis) {
+                                runOnUiThread {
+                                    onAllNodes(
+                                        hasTestTag(
+                                            buildTestTag(
+                                                TestTagPart.RequestBodyMultipartForm,
+                                                TestTagPart.Current,
+                                                index,
+                                                TestTagPart.FileButton
+                                            )!!
+                                        ).and(
+                                            hasTextExactly(filename, includeEditableText = false)
+                                        )
+                                    )
+                                        .fetchSemanticsNodes()
+                                        .isNotEmpty()
+                                }
                             }
 
 //                            delay(100L)
@@ -587,44 +693,48 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                             )!!
                         )
                     )
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
+                    runOnUiThread {
+                        onNode(
+                            hasTestTag(
+                                buildTestTag(
+                                    TestTagPart.RequestBodyFormUrlEncodedForm,
+                                    TestTagPart.Current,
+                                    TestTagPart.Key,
+                                    index
+                                )!!
+                            )
                         )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(it.key)
+                            .assertIsDisplayedWithRetry(this)
+                            .performTextInput(it.key)
+                    }
                     delayShort()
 
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
+                    runOnUiThread {
+                        onNode(
+                            hasTestTag(
+                                buildTestTag(
+                                    TestTagPart.RequestBodyFormUrlEncodedForm,
+                                    TestTagPart.Current,
+                                    TestTagPart.Key,
+                                    index
+                                )!!
+                            )
                         )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .assertTextEquals(it.key)
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Value,
-                                index
-                            )!!
+                            .assertIsDisplayedWithRetry(this)
+                            .assertTextEquals(it.key)
+                        onNode(
+                            hasTestTag(
+                                buildTestTag(
+                                    TestTagPart.RequestBodyFormUrlEncodedForm,
+                                    TestTagPart.Current,
+                                    TestTagPart.Value,
+                                    index
+                                )!!
+                            )
                         )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(it.value)
+                            .assertIsDisplayedWithRetry(this)
+                            .performTextInput(it.value)
+                    }
                     delayShort()
                 }
             }
@@ -633,15 +743,21 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                 val body = baseExample.body as FileBody
                 testChooseFile = File(body.filePath!!)
                 val filename = testChooseFile!!.name
-                onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!))
-                    .assertIsDisplayedWithRetry(this)
-                    .performClickWithRetry(this)
+                runOnUiThread {
+                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!))
+                        .assertIsDisplayedWithRetry(this)
+                        .performClickWithRetry(this)
+                }
 
                 delay(100L)
-                mainClock.advanceTimeBy(100L)
+                runOnUiThread {
+                    mainClock.advanceTimeBy(100L)
+                }
                 delayShort()
-                onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!))
-                    .assertTextEquals(filename, includeEditableText = false)
+                runOnUiThread {
+                    onNode(hasTestTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!))
+                        .assertTextEquals(filename, includeEditableText = false)
+                }
             }
 
             ContentType.Graphql -> TODO()
@@ -650,9 +766,11 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
     }
 
     if (baseExample.queryParameters.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Query")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Query")))
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
 
         baseExample.queryParameters.forEachIndexed { index, it ->
             waitUntilExactlyOneExists(
@@ -675,51 +793,57 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                     )!!
                 )
             )
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
+            runOnUiThread {
+                onNode(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.RequestQueryParameter,
+                            TestTagPart.Current,
+                            TestTagPart.Key,
+                            index
+                        )!!
+                    )
                 )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.key)
+                    .assertIsDisplayedWithRetry(this)
+                    .performTextInput(it.key)
+            }
             delayShort()
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
+            runOnUiThread {
+                onNode(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.RequestQueryParameter,
+                            TestTagPart.Current,
+                            TestTagPart.Key,
+                            index
+                        )!!
+                    )
                 )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .assertTextEquals(it.key)
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Value,
-                        index
-                    )!!
+                    .assertIsDisplayedWithRetry(this)
+                    .assertTextEquals(it.key)
+                onNode(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.RequestQueryParameter,
+                            TestTagPart.Current,
+                            TestTagPart.Value,
+                            index
+                        )!!
+                    )
                 )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.value)
+                    .assertIsDisplayedWithRetry(this)
+                    .performTextInput(it.value)
+            }
             delayShort()
         }
     }
 
     if (baseExample.headers.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
         baseExample.headers.forEachIndexed { index, it ->
             waitUntilExactlyOneExists(
                 hasTestTag(
@@ -741,13 +865,26 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                     )!!
                 )
             )
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.key)
+            runOnUiThread {
+                onNode(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.RequestHeader,
+                            TestTagPart.Current,
+                            TestTagPart.Key,
+                            index
+                        )!!
+                    )
+                )
+                    .assertIsDisplayedWithRetry(this)
+                    .performTextInput(it.key)
+            }
             delayShort()
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.value)
+            runOnUiThread {
+                onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
+                    .assertIsDisplayedWithRetry(this)
+                    .performTextInput(it.value)
+            }
             delayShort()
         }
     }
@@ -760,21 +897,32 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
 //    mainClock.advanceTimeBy(500L)
     delayShort()
     waitForIdle()
-
-    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
     waitForIdle()
 
     // wait for response
-    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
+    waitUntil(5000L) {
+        runOnUiThread {
+            onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
     if (isOneOffRequest) {
-        waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+        waitUntil(maxOf(1L, timeout.millis)) {
+            runOnUiThread {
+                onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty()
+            }
+        }
     }
 
     if (isExpectResponseBody) {
         waitUntil(1500.milliseconds().millis) {
-            onAllNodesWithTag(TestTag.ResponseBody.name).fetchSemanticsNodes().isNotEmpty()
+            runOnUiThread {
+                onAllNodesWithTag(TestTag.ResponseBody.name).fetchSemanticsNodes().isNotEmpty()
+            }
         }
     }
 }
@@ -784,10 +932,12 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
 
-    onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
-    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
-        .getTexts()
-        .single()
+    val responseBody = runOnUiThread {
+        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
+        onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+            .getTexts()
+            .single()
+    }
     println(responseBody)
     val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
     assertEquals(request.method, resp.method)
@@ -856,80 +1006,110 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
 suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: Boolean = true) {
     fun getStreamPayloadLatestTimeString(): String {
         waitForIdle()
-        return (onAllNodesWithTag(TestTag.ResponseStreamLogItemTime.name, useUnmergedTree = true)
-            .fetchSemanticsNodes()//.also { println("getStreamPayloadLatestTimeString() size ${it.size}") }
-            .firstOrNull()
-            ?.getTexts()
-            ?.firstOrNull()
-            ?: "")
-            .also {
-                println("getStreamPayloadLatestTimeString() = $it")
-            }
+        return runOnUiThread {
+            (onAllNodesWithTag(TestTag.ResponseStreamLogItemTime.name, useUnmergedTree = true)
+                .fetchSemanticsNodes()//.also { println("getStreamPayloadLatestTimeString() size ${it.size}") }
+                .firstOrNull()
+                ?.getTexts()
+                ?.firstOrNull()
+                ?: "")
+                .also {
+                    println("getStreamPayloadLatestTimeString() = $it")
+                }
+        }
     }
 
     if (isCreatePayloadExample) {
         delayShort()
 
-        onNodeWithTag(TestTag.RequestAddPayloadExampleButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestAddPayloadExampleButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+        }
 
         delayShort()
 
-        onNodeWithTag(TestTag.RequestPayloadTextField.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("")
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestPayloadTextField.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("")
+        }
     }
 
-    onNodeWithTag(TestTag.RequestPayloadTextField.name)
-        .assertIsDisplayedWithRetry(this)
-        .performTextInput(payload)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestPayloadTextField.name)
+            .assertIsDisplayedWithRetry(this)
+            .performTextInput(payload)
+    }
 
     delayShort()
 
     val streamCountBeforeSend = getStreamPayloadLatestTimeString()
 
-    onNodeWithTag(TestTag.RequestSendPayloadButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestSendPayloadButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
 
     waitUntil(600.milliseconds().millis) { getStreamPayloadLatestTimeString() != streamCountBeforeSend }
 }
 
 suspend fun ComposeUiTest.fireRequest(timeout: KDuration = 1.seconds(), isClientStreaming: Boolean = false, isServerStreaming: Boolean = false) {
-    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .assertTextEquals(if (isClientStreaming) "Connect" else "Send")
-        .performClickWithRetry(this)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals(if (isClientStreaming) "Connect" else "Send")
+            .performClickWithRetry(this)
+    }
 
     delayShort()
 
     // wait for response
-    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
+    waitUntil(5000L) {
+        runOnUiThread {
+            onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
     if (!isClientStreaming && !isServerStreaming) {
-        waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+        waitUntil(maxOf(1L, timeout.millis)) {
+            runOnUiThread {
+                onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty()
+            }
+        }
     } else {
-        waitUntil(1.seconds().millis) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isNotEmpty() }
+        waitUntil(1.seconds().millis) {
+            runOnUiThread {
+                onAllNodesWithText("Communicating").fetchSemanticsNodes().isNotEmpty()
+            }
+        }
     }
 }
 
 suspend fun ComposeUiTest.completeRequest() {
-    onNodeWithTag(TestTag.RequestCompleteStreamButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestCompleteStreamButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
 }
 
 fun ComposeUiTest.disconnect() {
-    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .assertTextEquals("Disconnect")
-        .performClickWithRetry(this)
-
-    waitUntil(2.seconds().millis) {
+    runOnUiThread {
         onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
             .assertIsDisplayedWithRetry(this)
-            .fetchSemanticsNode()
-            .getTexts() == listOf("Connect")
+            .assertTextEquals("Disconnect")
+            .performClickWithRetry(this)
+    }
+
+    waitUntil(2.seconds().millis) {
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .fetchSemanticsNode()
+                .getTexts() == listOf("Connect")
+        }
     }
 }
 
@@ -948,9 +1128,11 @@ suspend fun ComposeUiTest.wait(ms: Long) {
 }
 
 fun ComposeUiTest.getResponseBody(): String? {
-    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
-        .getTexts()
-        .singleOrNull()
+    val responseBody = runOnUiThread {
+        onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+            .getTexts()
+            .singleOrNull()
+    }
     return responseBody
 }
 

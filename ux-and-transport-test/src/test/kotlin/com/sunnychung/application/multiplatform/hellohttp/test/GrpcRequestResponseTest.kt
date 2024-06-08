@@ -227,9 +227,11 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
         }
         assertSuccessStatus()
 
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("Send")
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("Send")
+        }
     }
 
     @Test
@@ -282,16 +284,20 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
         val hasApiSpec = if (apiSpecNodes.isNotEmpty()) {
             val label = apiSpecNodes.single().getTexts().firstOrNull()
             if (label == "--") {
-                onNodeWithTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!)
-                    .assertIsDisplayedWithRetry(this)
-                    .performClickWithRetry(this)
+                runOnUiThread {
+                    onNodeWithTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!)
+                        .assertIsDisplayedWithRetry(this)
+                        .performClickWithRetry(this)
+                }
                 hasOpenedMenu = true
 
                 delayShort()
                 waitForIdle()
 
                 val nextTag = buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownItem, hostAndPort)!!
-                onAllNodesWithTag(nextTag).fetchSemanticsNodes().isNotEmpty()
+                runOnUiThread {
+                    onAllNodesWithTag(nextTag).fetchSemanticsNodes().isNotEmpty()
+                }
             } else {
                 label == hostAndPort
             }
@@ -302,35 +308,47 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
         if (!hasApiSpec) {
             if (hasOpenedMenu) {
                 // click somewhere else to close the dropdown menu first
-                onNodeWithTag(TestTag.RequestUrlTextField.name)
-                    .performClickWithRetry(this)
+                runOnUiThread {
+                    onNodeWithTag(TestTag.RequestUrlTextField.name)
+                        .performClickWithRetry(this)
+                }
                 hasOpenedMenu = false
 
                 delayShort()
-                waitForIdle()
+                runOnUiThread {
+                    waitForIdle()
+                }
             }
 
-            onNodeWithTag(TestTag.RequestFetchApiSpecButton.name)
-                .assertIsDisplayedWithRetry(this)
-                .performClickWithRetry(this)
+            runOnUiThread {
+                onNodeWithTag(TestTag.RequestFetchApiSpecButton.name)
+                    .assertIsDisplayedWithRetry(this)
+                    .performClickWithRetry(this)
 
-            waitUntil(3.seconds().millis) { // assert change to "loading"
-                onAllNodesWithTag(TestTag.RequestFetchApiSpecButton.name).fetchSemanticsNodes().isEmpty()
-            }
+                waitUntil(3.seconds().millis) { // assert change to "loading"
+                    runOnUiThread {
+                        onAllNodesWithTag(TestTag.RequestFetchApiSpecButton.name).fetchSemanticsNodes().isEmpty()
+                    }
+                }
 
-            waitUntil(5.seconds().millis) { // assert change back to "fetch" button
-                onAllNodesWithTag(TestTag.RequestFetchApiSpecButton.name).fetchSemanticsNodes().isNotEmpty()
+                waitUntil(5.seconds().millis) { // assert change back to "fetch" button
+                    runOnUiThread {
+                        onAllNodesWithTag(TestTag.RequestFetchApiSpecButton.name).fetchSemanticsNodes().isNotEmpty()
+                    }
+                }
             }
 
             delayShort()
 
-            apiSpecNodeInteraction = onAllNodes(
-                hasTestTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!).and(
-                    hasRole(Role.Button)
+            runOnUiThread {
+                apiSpecNodeInteraction = onAllNodes(
+                    hasTestTag(buildTestTag(TestTagPart.RequestApiSpecDropdown, TestTagPart.DropdownButton)!!).and(
+                        hasRole(Role.Button)
+                    )
                 )
-            )
-                .assertCountEquals(1)
-            apiSpecNodes = apiSpecNodeInteraction.fetchSemanticsNodes()
+                    .assertCountEquals(1)
+                apiSpecNodes = apiSpecNodeInteraction.fetchSemanticsNodes()
+            }
         }
 
         if (apiSpecNodes.single().getTexts() == listOf("--")) {
@@ -345,17 +363,21 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
         delayShort()
 
         if (request.examples.first().body is StringBody) {
-            onNodeWithTag(TestTag.RequestStringBodyTextField.name)
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput((request.examples.first().body as StringBody).value)
+            runOnUiThread {
+                onNodeWithTag(TestTag.RequestStringBodyTextField.name)
+                    .assertIsDisplayedWithRetry(this)
+                    .performTextInput((request.examples.first().body as StringBody).value)
+            }
             delayShort()
         }
     }
 }
 
 fun ComposeUiTest.assertStatus(expected: String) {
-    onNodeWithTag(TestTag.ResponseStatus.name)
-        .assertTextEquals(expected)
+    runOnUiThread {
+        onNodeWithTag(TestTag.ResponseStatus.name)
+            .assertTextEquals(expected)
+    }
 }
 
 fun ComposeUiTest.assertSuccessStatus() {

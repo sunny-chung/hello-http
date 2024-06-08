@@ -223,9 +223,11 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: 
             )
         ), environment = environment)
 
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("Disconnect")
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("Disconnect")
+        }
 
         wait(400.milliseconds())
         (0..3).forEach { i ->
@@ -235,9 +237,11 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: 
             wait(1.seconds())
         }
 
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("Connect")
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("Connect")
+        }
     }
 
     @Test
@@ -282,9 +286,11 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: 
             )
         ), environment = environment)
 
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("Disconnect")
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("Disconnect")
+        }
 
         wait(400.milliseconds())
         (0..4).forEach { i ->
@@ -294,9 +300,11 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: 
             wait(1.seconds())
         }
 
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("Connect")
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("Connect")
+        }
     }
 }
 
@@ -305,38 +313,54 @@ suspend fun ComposeUiTest.createGraphqlRequest(request: UserRequestTemplate, env
     selectRequestMethod("GraphQL")
     delayShort()
 
-    onNodeWithTag(buildTestTag(TestTagPart.RequestGraphqlOperationName.name, TestTagPart.DropdownButton)!!)
-        .assertIsDisplayed()
-        .assertTextEquals("--")
+    runOnUiThread {
+        onNodeWithTag(buildTestTag(TestTagPart.RequestGraphqlOperationName.name, TestTagPart.DropdownButton)!!)
+            .assertIsDisplayed()
+            .assertTextEquals("--")
 
-    onNodeWithTag(TestTag.RequestGraphqlDocumentTextField.name)
-        .assertIsDisplayed()
-        .assertTextEquals("")
+        onNodeWithTag(TestTag.RequestGraphqlDocumentTextField.name)
+            .assertIsDisplayed()
+            .assertTextEquals("")
 
-    onNodeWithTag(TestTag.RequestGraphqlVariablesTextField.name)
-        .assertIsDisplayed()
-        .assertTextEquals("")
+        onNodeWithTag(TestTag.RequestGraphqlVariablesTextField.name)
+            .assertIsDisplayed()
+            .assertTextEquals("")
+    }
 
     val body = request.examples.first().body as GraphqlBody
 
-    onNodeWithTag(TestTag.RequestGraphqlDocumentTextField.name)
-        .performTextInput(body.document)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestGraphqlDocumentTextField.name)
+            .performTextInput(body.document)
+    }
 
     delayShort() // needed, otherwise document text field sometimes have no text inputted
 
-    onNodeWithTag(TestTag.RequestGraphqlVariablesTextField.name)
-        .performTextInput(body.variables)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestGraphqlVariablesTextField.name)
+            .performTextInput(body.variables)
+    }
 
     if (body.operationName != null) {
         delayShort()
 
-        onNodeWithTag(buildTestTag(TestTagPart.RequestGraphqlOperationName.name, TestTagPart.DropdownButton)!!)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(buildTestTag(TestTagPart.RequestGraphqlOperationName.name, TestTagPart.DropdownButton)!!)
+                .performClickWithRetry(this)
+        }
 
         delayShort()
 
-        onNodeWithTag(buildTestTag(TestTagPart.RequestGraphqlOperationName.name, TestTagPart.DropdownItem, body.operationName)!!)
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(
+                buildTestTag(
+                    TestTagPart.RequestGraphqlOperationName.name,
+                    TestTagPart.DropdownItem,
+                    body.operationName
+                )!!
+            )
+                .performClickWithRetry(this)
+        }
     }
 }
 
@@ -345,26 +369,39 @@ suspend fun ComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTempla
 
     delayShort()
     waitForIdle()
-
-    onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    runOnUiThread {
+        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
     waitForIdle()
 
     // wait for response
-    waitUntil(5.seconds().toMilliseconds()) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
-    waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+    waitUntil(5.seconds().toMilliseconds()) {
+        runOnUiThread {
+            onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+    waitUntil(maxOf(1L, timeout.millis)) {
+        runOnUiThread {
+            onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty()
+        }
+    }
 }
 
 fun ComposeUiTest.assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequest: Boolean = false): String? {
-    onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals(if (!isSubscriptionRequest) {
-        "200 OK"
-    } else {
-        "101 Switching Protocols"
-    })
-    if (isSubscriptionRequest) {
-        onNodeWithTag(TestTag.ResponseStreamLog.name)
-            .assertIsDisplayedWithRetry(this)
+    runOnUiThread {
+        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals(
+            if (!isSubscriptionRequest) {
+                "200 OK"
+            } else {
+                "101 Switching Protocols"
+            }
+        )
+        if (isSubscriptionRequest) {
+            onNodeWithTag(TestTag.ResponseStreamLog.name)
+                .assertIsDisplayedWithRetry(this)
+        }
     }
     return getResponseBody()
 }

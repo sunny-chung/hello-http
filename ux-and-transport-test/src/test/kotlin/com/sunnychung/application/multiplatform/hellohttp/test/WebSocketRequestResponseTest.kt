@@ -144,28 +144,36 @@ class WebSocketRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boo
         createRequest(request = request, environment = environment)
         selectRequestMethod("WebSocket")
         delayShort()
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("Connect")
-            .performClickWithRetry(this)
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("Connect")
+                .performClickWithRetry(this)
+        }
 
         delayShort()
 
         waitUntil(1.seconds().millis) {
-            onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty()
+            runOnUiThread {
+                onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty()
+            }
         }
 
-        onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
-            .assertIsDisplayedWithRetry(this)
-            .assertTextEquals("Disconnect")
+        runOnUiThread {
+            onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
+                .assertIsDisplayedWithRetry(this)
+                .assertTextEquals("Disconnect")
+        }
 
         return request
     }
 }
 
 fun ComposeUiTest.assertHttpStatus() {
-    onNodeWithTag(TestTag.ResponseStatus.name)
-        .assertTextEquals("101 Switching Protocols")
+    runOnUiThread {
+        onNodeWithTag(TestTag.ResponseStatus.name)
+            .assertTextEquals("101 Switching Protocols")
+    }
 }
 
 fun verifyEchoResponse(request: UserRequestTemplate, echoResponse: String) {
