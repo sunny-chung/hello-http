@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.util
 
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 
 fun <R> executeWithTimeout(timeout: KDuration, action: () -> R) : R {
     var hasKilled = false
@@ -26,7 +27,7 @@ fun <R> executeWithTimeout(timeout: KDuration, action: () -> R) : R {
     }
     executeThread.start()
     killThread.start()
-    executeThread.join()
+    executeThread.join((timeout + 10.seconds()).toMilliseconds())
     killThread.interrupt()
     if (hasKilled) {
         throw RuntimeException("Custom script was running for too long time and has been killed")
