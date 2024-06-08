@@ -53,6 +53,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -81,7 +82,7 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
                         AppView()
                     }
                 }
-                runBlocking {
+                runBlocking(Dispatchers.Main) {
                     testBlock()
                 }
             }
