@@ -961,7 +961,9 @@ fun ComposeUiTest.getResponseBody(): String? {
 fun SemanticsNodeInteraction.performClickWithRetry(host: ComposeUiTest): SemanticsNodeInteraction {
     while (true) {
         try {
-            performClick()
+            host.runOnUiThread {
+                performClick()
+            }
             return this
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
