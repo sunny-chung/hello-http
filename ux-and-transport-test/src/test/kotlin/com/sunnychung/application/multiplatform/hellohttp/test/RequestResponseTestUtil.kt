@@ -82,7 +82,7 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
                         AppView()
                     }
                 }
-                runBlocking(Dispatchers.Main) {
+                runBlocking { // don't use Dispatchers.Main, or most tests would fail with ComposeTimeoutException
                     testBlock()
                 }
             }
