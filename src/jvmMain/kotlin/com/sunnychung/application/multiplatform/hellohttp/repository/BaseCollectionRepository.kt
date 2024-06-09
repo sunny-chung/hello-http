@@ -169,16 +169,22 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
     private suspend fun update(identifier: ID) {
         log.d { "update: $identifier" }
         updating.addAndGet(1)
-        withLock(identifier) {
-            with(persistenceManager) {
-                val document = documentCaches[identifier]
-                    ?: throw IllegalStateException("Cache miss. This should not happen.")
-                writeToFile(relativeFilePath(id = identifier), serializer, document as T)
+        try {
+            withLock(identifier) {
+                with(persistenceManager) {
+                    val document = documentCaches[identifier]
+                        ?: throw IllegalStateException("Cache miss. This should not happen.")
+                    writeToFile(relativeFilePath(id = identifier), serializer, document as T)
+                }
             }
-        }
-        if (updating.decrementAndGet() <= 0) {
-            log.d { "finish update: $identifier" }
-            isExecutingUpdates.update { -3 }
+        } catch (e: Throwable) {
+            log.w(e) { "Cannot update document ${relativeFilePath(identifier)}" }
+            throw e
+        } finally {
+            if (updating.decrementAndGet() <= 0) {
+                log.d { "finish update: $identifier" }
+                isExecutingUpdates.update { -3 }
+            }
         }
         publishUpdates.emit(Pair(identifier, uuidString()))
     }
