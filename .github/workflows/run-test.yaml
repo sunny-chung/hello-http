@@ -26,9 +26,11 @@ jobs:
         shell: bash # let Windows use bash
       - uses: actions/upload-artifact@v3
         with:
-          name: ux-test-result
+          name: ux-test-result_${{ matrix.os }}
           path: ux-and-transport-test/build/reports/tests/test
+        if: ${{ !cancelled() }}
       - uses: actions/upload-artifact@v3
         with:
-          name: unit-test-result
+          name: unit-test-result_${{ matrix.os }}
           path: build/reports/tests
+        if: ${{ !cancelled() }}
