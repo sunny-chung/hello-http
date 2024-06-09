@@ -51,6 +51,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.Dispatchers
@@ -87,6 +88,7 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
                 }
             }
         } catch (e: Throwable) {
+            System.err.println("[${KZonedInstant.nowAtLocalZoneOffset()}] Exception thrown during test")
             RuntimeException("Exception thrown during test", e)
                 .printStackTrace()
             throw e

@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.test
 
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
@@ -22,7 +23,10 @@ class RetryRule(val maxRetryCount: Int = 5) : TestRule {
                         return
                     } catch (e: Throwable) {
                         if (attempt < maxRetryCount) {
-                            println("Retrying test ${description.displayName} for #${attempt + 1}")
+                            with("[${KZonedInstant.nowAtLocalZoneOffset()}] Retrying test ${description.displayName} for #${attempt + 1}") {
+                                println(this)
+                                System.err.println(this)
+                            }
                             continue
                         } else {
                             throw e
