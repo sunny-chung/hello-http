@@ -60,10 +60,12 @@ for attempt in {1..60}; do sleep 1; if curl -sSI --insecure --fail-early -f http
 [ "$READY" = true ] || (echo "Test Server (SSL) is not UP" && exit 1)
 echo "Test Server (SSL) is UP"
 
-READY=false
-for attempt in {1..60}; do sleep 1; if curl -sSI --insecure --cert ./test-common/src/main/resources/tls/clientKeyAndCert.pem --fail-early -f https://localhost:18086/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (mTLS) to be UP"; done
-[ "$READY" = true ] || (echo "Test Server (mTLS) is not UP" && exit 1)
-echo "Test Server (mTLS) is UP"
+# Windows runner's default curl does not work with OpenSSL. Workaround by sleeping.
+#READY=false
+#for attempt in {1..60}; do sleep 1; if curl -sSI --insecure --cert ./test-common/src/main/resources/tls/clientKeyAndCert.pem --fail-early -f https://localhost:18086/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (mTLS) to be UP"; done
+#[ "$READY" = true ] || (echo "Test Server (mTLS) is not UP" && exit 1)
+#echo "Test Server (mTLS) is UP"
+sleep 10
 
 export GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3072m -XX:+HeapDumpOnOutOfMemoryError"'
 ./gradlew check -PisCI=true
