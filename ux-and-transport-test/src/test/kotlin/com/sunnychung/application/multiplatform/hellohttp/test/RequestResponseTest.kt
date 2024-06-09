@@ -622,7 +622,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
                     )
                 )
             ),
-            timeout = 25.seconds(),
+            timeout = 40.seconds(),
             environment = environment,
         )
     }

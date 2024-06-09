@@ -771,7 +771,9 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     // wait for response
     waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
     if (isOneOffRequest) {
+        val startTime = KInstant.now()
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+        println("Call Duration: ${KInstant.now() - startTime}")
     }
 
     if (isExpectResponseBody) {
