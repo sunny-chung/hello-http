@@ -4,25 +4,29 @@ set -e
 
 ./gradlew :test-server:bootJar
 
-TEST_SERVER_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx400m"'
-GRADLE_OPTS="$TEST_SERVER_OPTS" \
-  ./gradlew :test-server:bootRun &
+JAR_PATH="./test-server/build/libs/test-server.jar"
+
+JAVA_CMD="java"
+if [ -n "$JAVA_HOME" ]; then
+  JAVA_CMD="$JAVA_HOME/bin/java"
+fi
+
+"$JAVA_CMD" -version  # make sure java is executable
+
+TEST_SERVER_OPTS='-Xmx400m'
+"$JAVA_CMD" $TEST_SERVER_OPTS -jar "$JAR_PATH" &
 TEST_SERVER_PID=$!
 
-GRADLE_OPTS="$TEST_SERVER_OPTS" \
-  ./gradlew :test-server:bootRun --args="--spring.profiles.active=h1" &
+"$JAVA_CMD" $TEST_SERVER_OPTS -jar "$JAR_PATH" "--spring.profiles.active=h1" &
 TEST_SERVER_H1_PID=$!
 
-GRADLE_OPTS="$TEST_SERVER_OPTS" \
-  ./gradlew :test-server:bootRun --args="--spring.profiles.active=h1-ssl" &
+"$JAVA_CMD" $TEST_SERVER_OPTS -jar "$JAR_PATH" "--spring.profiles.active=h1-ssl" &
 TEST_SERVER_H1_SSL_PID=$!
 
-GRADLE_OPTS="$TEST_SERVER_OPTS" \
-  ./gradlew :test-server:bootRun --args="--spring.profiles.active=ssl" &
+"$JAVA_CMD" $TEST_SERVER_OPTS -jar "$JAR_PATH" "--spring.profiles.active=ssl" &
 TEST_SERVER_SSL_PID=$!
 
-GRADLE_OPTS="$TEST_SERVER_OPTS" \
-  ./gradlew :test-server:bootRun --args="--spring.profiles.active=mtls" &
+"$JAVA_CMD" $TEST_SERVER_OPTS -jar "$JAR_PATH" "--spring.profiles.active=mtls" &
 TEST_SERVER_MTLS_PID=$!
 
 function cleanup {
