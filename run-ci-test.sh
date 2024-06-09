@@ -41,27 +41,27 @@ function cleanup {
 trap cleanup EXIT
 
 READY=false
-for attempt in {1..90}; do sleep 1; if curl -sI --fail-early -f http://localhost:18081/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server to be UP"; done
+for attempt in {1..90}; do sleep 1; if curl -sSI --fail-early -f http://localhost:18081/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server to be UP"; done
 [ "$READY" = true ] || (echo "Test Server is not UP" && exit 1)
 echo "Test Server is UP"
 
 READY=false
-for attempt in {1..60}; do sleep 1; if curl -sI --fail-early -f http://localhost:18083/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (HTTP/1) to be UP"; done
+for attempt in {1..60}; do sleep 1; if curl -sSI --fail-early -f http://localhost:18083/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (HTTP/1) to be UP"; done
 [ "$READY" = true ] || (echo "Test Server (HTTP/1) is not UP" && exit 1)
 echo "Test Server (HTTP/1) is UP"
 
 READY=false
-for attempt in {1..60}; do sleep 1; if curl -sI --insecure --fail-early -f https://localhost:18088/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (HTTP/1) to be UP"; done
+for attempt in {1..60}; do sleep 1; if curl -sSI --insecure --fail-early -f https://localhost:18088/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (HTTP/1 SSL) to be UP"; done
 [ "$READY" = true ] || (echo "Test Server (HTTP/1 SSL) is not UP" && exit 1)
 echo "Test Server (HTTP/1 SSL) is UP"
 
 READY=false
-for attempt in {1..60}; do sleep 1; if curl -sI --insecure  --fail-early -f https://localhost:18084/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (HTTP/1) to be UP"; done
+for attempt in {1..60}; do sleep 1; if curl -sSI --insecure --fail-early -f https://localhost:18084/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (SSL) to be UP"; done
 [ "$READY" = true ] || (echo "Test Server (SSL) is not UP" && exit 1)
 echo "Test Server (SSL) is UP"
 
 READY=false
-for attempt in {1..60}; do sleep 1; if curl -sI --insecure --cert ./test-common/src/main/resources/tls/clientKeyAndCert.pem --fail-early -f https://localhost:18086/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (HTTP/1) to be UP"; done
+for attempt in {1..60}; do sleep 1; if curl -sSI --insecure --cert ./test-common/src/main/resources/tls/clientKeyAndCert.pem --fail-early -f https://localhost:18086/actuator/health/; then READY=true; break; fi; echo "Waiting for Test Server (mTLS) to be UP"; done
 [ "$READY" = true ] || (echo "Test Server (mTLS) is not UP" && exit 1)
 echo "Test Server (mTLS) is UP"
 
