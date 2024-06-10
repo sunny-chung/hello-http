@@ -60,6 +60,37 @@ data class RawExchange(
             }
             log.d { "unsafe write ${bytes.size} => $payloadSize" }
         }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Exchange) return false
+
+            if (instant != other.instant) return false
+            if (lastUpdateInstant != other.lastUpdateInstant) return false
+            if (direction != other.direction) return false
+            if (detail != other.detail) return false
+            if (payloadBuilder != other.payloadBuilder) return false
+            if (streamId != other.streamId) return false
+            if (payload != null) {
+                if (other.payload == null) return false
+                if (payload !== other.payload) return false // modified
+            } else if (other.payload != null) return false
+            if (payloadSize != other.payloadSize) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = instant.hashCode()
+            result = 31 * result + (lastUpdateInstant?.hashCode() ?: 0)
+            result = 31 * result + direction.hashCode()
+            result = 31 * result + (detail?.hashCode() ?: 0)
+            result = 31 * result + (payloadBuilder?.hashCode() ?: 0)
+            result = 31 * result + (streamId ?: 0)
+            result = 31 * result + (payload?.contentHashCode() ?: 0)
+            result = 31 * result + (payloadSize?.hashCode() ?: 0)
+            return result
+        }
     }
 
     enum class Direction {

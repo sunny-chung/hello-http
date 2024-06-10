@@ -3,6 +3,8 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.extension.endWithNewLine
+import com.sunnychung.application.multiplatform.hellohttp.serializer.SynchronizedListSerializer
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
@@ -36,7 +38,8 @@ data class UserResponse(
     var headers: List<Pair<String, String>>? = null,
     var connectionSecurity: ConnectionSecurity? = null,
     var rawExchange: RawExchange = RawExchange(exchanges = Collections.synchronizedList(mutableListOf())),
-    var payloadExchanges: MutableList<PayloadMessage>? = // null = not support streaming; empty list = streaming without data
+    @Serializable(with = SynchronizedListSerializer::class) var payloadExchanges: MutableList<PayloadMessage>? =
+        // null = not support streaming; empty list = streaming without data
         if (application in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql))
             Collections.synchronizedList(mutableListOf())
         else
@@ -46,26 +49,47 @@ data class UserResponse(
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
     override fun equals(other: Any?): Boolean {
+        var i = 0
+        log.v { "e${i++}" }
         if (this === other) return true
+        log.v { "e${i++}" }
         if (javaClass != other?.javaClass) return false
 
+        log.v { "e${i++}" }
         other as UserResponse
 
+        log.v { "e${i++}" }
         if (startAt != other.startAt) return false
+        log.v { "e${i++}" }
         if (endAt != other.endAt) return false
+        log.v { "e${i++}" }
         if (isCommunicating != other.isCommunicating) return false
+        log.v { "e${i++}" }
         if (isError != other.isError) return false
+        log.v { "e${i++}" }
         if (statusCode != other.statusCode) return false
+        log.v { "e${i++}" }
         if (statusText != other.statusText) return false
+        log.v { "e${i++}" }
         if (responseSizeInBytes != other.responseSizeInBytes) return false
+        log.v { "e${i++}" } // e10
         if (body != null) {
             if (other.body == null) return false
-            if (body != other.body) return false // modified
+            if (body !== other.body) return false // modified
         } else if (other.body != null) return false
+        log.v { "e${i++}" }
         if (errorMessage != other.errorMessage) return false
+        log.v { "e${i++}" }
         if (headers != other.headers) return false
+        log.v { "e${i++}" }
         if (rawExchange != other.rawExchange) return false
 
+        log.v { "e${i++}" }
+        if (connectionSecurity != other.connectionSecurity) return false
+        log.v { "e${i++}" }
+        if (payloadExchanges != other.payloadExchanges) return false
+
+        log.v { "e${i++}" }
         return true
     }
 
@@ -85,6 +109,36 @@ data class UserResponse(
     }
 
     fun isStreaming() = payloadExchanges != null
+
+    fun contentEquals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is UserResponse) return false
+
+        if (id != other.id) return false
+        if (requestId != other.requestId) return false
+        if (requestExampleId != other.requestExampleId) return false
+        if (protocol != other.protocol) return false
+        if (application != other.application) return false
+        if (startAt != other.startAt) return false
+        if (endAt != other.endAt) return false
+        if (isError != other.isError) return false
+        if (statusCode != other.statusCode) return false
+        if (statusText != other.statusText) return false
+        if (responseSizeInBytes != other.responseSizeInBytes) return false
+        if (body != null) {
+            if (other.body == null) return false
+            if (!body.contentEquals(other.body)) return false
+        } else if (other.body != null) return false
+        if (errorMessage != other.errorMessage) return false
+        if (headers != other.headers) return false
+        if (connectionSecurity != other.connectionSecurity) return false
+        if (rawExchange != other.rawExchange) return false
+        if (payloadExchanges != other.payloadExchanges) return false
+        if (requestData != other.requestData) return false
+        if (closeReason != other.closeReason) return false
+
+        return true
+    }
 }
 
 @Persisted

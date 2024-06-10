@@ -362,6 +362,19 @@ sealed interface UserRequestBody {
 @SerialName("StringBody")
 class StringBody(val value: String) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody = value.toRequestBody(mediaType)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is StringBody) return false
+
+        if (value != other.value) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 }
 
 interface RequestBodyWithKeyValuePairs {
@@ -376,6 +389,19 @@ class FormUrlEncodedBody(override val value: List<UserKeyValuePair>) : UserReque
         val builder = FormBody.Builder()
         value.forEach { builder.add(it.key, it.value) }
         return builder.build()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is FormUrlEncodedBody) return false
+
+        if (value != other.value) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
     }
 }
 
@@ -396,6 +422,19 @@ class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBod
         }
         return b.build()
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody) return false
+
+        if (value != other.value) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 }
 
 @Persisted
@@ -404,6 +443,19 @@ class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBod
 class FileBody(val filePath: String?) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
         return filePath?.let { File(it).asRequestBody(mediaType) } ?: byteArrayOf().toRequestBody(mediaType)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is FileBody) return false
+
+        if (filePath != other.filePath) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return filePath?.hashCode() ?: 0
     }
 }
 
