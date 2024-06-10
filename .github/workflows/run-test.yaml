@@ -7,7 +7,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2019, macos-11]
+        # macos-12 for Intel Mac, macos-14 for Apple Chips Mac
+        os: [ubuntu-20.04, windows-2019, windows-2022, macos-12, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -15,4 +16,21 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '17'
-      - run: ./gradlew check
+      - run: |
+          # start a virtual X server for Linux
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            export DISPLAY=:99
+            sudo Xvfb -ac :99 -screen 0 1280x800x24 > /dev/null 2>&1 &
+          fi
+          ./run-ci-test.sh
+        shell: bash # let Windows use bash
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ux-test-result_${{ matrix.os }}
+          path: ux-and-transport-test/build/reports/tests/test
+        if: ${{ !cancelled() }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: unit-test-result_${{ matrix.os }}
+          path: build/reports/tests
+        if: ${{ !cancelled() }}

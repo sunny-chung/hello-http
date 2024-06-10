@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: test-server-ssl
+
+server:
+  port: 18084
+  http2:
+    enabled: true
+  ssl:
+    enabled: true
+    certificate: classpath:tls/serverCertChain.crt
+    certificate-private-key: classpath:tls/serverKey.pem
+    client-auth: none
+
+grpc:
+  server:
+    port: 18085
+    security:
+      enabled: true
+      certificate-chain: classpath:tls/serverCertChain.pem
+      private-key: classpath:tls/serverKey.pkcs8.pem
+      client-auth: none

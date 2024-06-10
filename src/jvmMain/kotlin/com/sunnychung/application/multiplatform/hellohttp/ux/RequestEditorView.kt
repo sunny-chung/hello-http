@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
@@ -272,6 +273,7 @@ fun RequestEditorView(
                     onRequestModified(request.copyForApplication(application = it.key.application, method = it.key.method))
                     true
                 },
+                testTagParts = arrayOf(TestTagPart.RequestMethodDropdown),
                 modifier = Modifier.fillMaxHeight()
             )
 
@@ -286,6 +288,7 @@ fun RequestEditorView(
                 ),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
+                    .testTag(TestTag.RequestUrlTextField.name)
             )
 
             val isOneOffRequest = when (request.application) {
@@ -327,6 +330,7 @@ fun RequestEditorView(
                         }
                     }
                     .padding(start = 10.dp, end = if (dropdownItems.isNotEmpty()) 4.dp else 10.dp)
+                    .testTag(TestTag.RequestFireOrDisconnectButton.name)
                 ) {
                     AppText(
                         text = label,
@@ -502,7 +506,8 @@ fun RequestEditorView(
             onSelectTab = { selectedRequestTabIndex = it },
             contents = tabs.map {
                 { AppTabLabel(text = it.displayText) }
-            }
+            },
+            testTag = TestTag.RequestParameterTypeTab.name,
         )
         Box(
             modifier = if (!hasPayloadEditor) {
@@ -549,6 +554,7 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
+                        testTagPart = TestTagPart.RequestHeader,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
@@ -581,6 +587,7 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
+                        testTagPart = TestTagPart.RequestQueryParameter,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
@@ -793,6 +800,7 @@ private fun RequestServiceMethodSelector(
             selectedItem = DropDownKeyValue(apiSpec?.id ?: "", apiSpec?.name ?: ""),
             onClickItem = { onSelectApiSpec(it.key); true },
             isLabelFillMaxWidth = true,
+            testTagParts = arrayOf(TestTagPart.RequestApiSpecDropdown),
             modifier = Modifier.weight(0.2f).padding(vertical = 4.dp).fillMaxHeight(),
         )
         DropDownView(
@@ -809,6 +817,7 @@ private fun RequestServiceMethodSelector(
                     modifier = Modifier.weight(1f)
                 )
             },
+            testTagParts = arrayOf(TestTagPart.RequestGrpcServiceDropdown),
             modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
         )
         DropDownView(
@@ -816,6 +825,7 @@ private fun RequestServiceMethodSelector(
             selectedItem = DropDownValue(method),
             onClickItem = { onSelectMethod(it.displayText); true },
             isLabelFillMaxWidth = true,
+            testTagParts = arrayOf(TestTagPart.RequestGrpcMethodDropdown),
             modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
         )
 
@@ -825,7 +835,8 @@ private fun RequestServiceMethodSelector(
                     resource = "download-list.svg",
                     size = 24.dp,
                     onClick = onClickFetchApiSpec,
-                    modifier = Modifier.padding(4.dp),
+                    modifier = Modifier.padding(4.dp)
+                        .testTag(TestTag.RequestFetchApiSpecButton.name),
                 )
             }
         } else {
@@ -834,7 +845,8 @@ private fun RequestServiceMethodSelector(
                     resource = "close.svg",
                     size = 24.dp,
                     onClick = onClickCancelFetchApiSpec,
-                    modifier = Modifier.padding(4.dp),
+                    modifier = Modifier.padding(4.dp)
+                        .testTag(TestTag.RequestCancelFetchApiSpecButton.name),
                 )
             }
         }
@@ -853,6 +865,7 @@ private fun RequestKeyValueEditorView(
     isSupportFileValue: Boolean,
     keyPlaceholder: String = "Key",
     valuePlaceholder: String = "Value",
+    testTagPart: TestTagPart? = null,
 ) {
     val data = value ?: listOf()
     val activeBaseValues = baseValue?.filter { it.isEnabled }
@@ -873,6 +886,8 @@ private fun RequestKeyValueEditorView(
                 onItemAddLast = {_ ->},
                 onItemDelete = {_ ->},
                 onDisableChange = onDisableUpdate,
+                testTagPart1 = testTagPart,
+                testTagPart2 = TestTagPart.Inherited,
             )
 
             InputFormHeader(text = "This Example", modifier = Modifier.padding(top = 12.dp))
@@ -901,6 +916,8 @@ private fun RequestKeyValueEditorView(
             },
             onDisableChange = {_ ->},
 //                modifier = modifier,
+            testTagPart1 = testTagPart,
+            testTagPart2 = TestTagPart.Current,
         )
     }
 }
@@ -959,7 +976,8 @@ private fun RequestBodyEditor(
                                     )
                                 )
                                 true
-                            }
+                            },
+                            testTagParts = arrayOf(TestTagPart.RequestBodyTypeDropdown),
                         )
                     } else {
                         AppText(selectedContentType.displayText)
@@ -1004,7 +1022,8 @@ private fun RequestBodyEditor(
                                     )
                                 )
                                 true
-                            }
+                            },
+                            testTagParts = arrayOf(TestTagPart.RequestGraphqlOperationName.name),
                         )
                     }
                 }
@@ -1093,6 +1112,7 @@ private fun RequestBodyEditor(
                     },
                     knownVariables = environmentVariableKeys,
                     isSupportFileValue = false,
+                    testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm,
                     modifier = remainModifier,
                 )
 
@@ -1126,6 +1146,7 @@ private fun RequestBodyEditor(
                     },
                     knownVariables = environmentVariableKeys,
                     isSupportFileValue = true,
+                    testTagPart = TestTagPart.RequestBodyMultipartForm,
                     modifier = remainModifier,
                 )
 
@@ -1166,6 +1187,7 @@ private fun RequestBodyEditor(
                         )
                     },
                     transformations = listOf(GraphqlQuerySyntaxHighlightTransformation(colours = colors)),
+                    testTag = TestTag.RequestGraphqlDocumentTextField.name,
                     modifier = Modifier.fillMaxWidth().weight(0.62f),
                 )
 
@@ -1199,6 +1221,7 @@ private fun RequestBodyEditor(
                         )
                     },
                     transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    testTag = TestTag.RequestGraphqlVariablesTextField.name,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 200.dp).weight(0.38f),
                 )
             }
@@ -1248,6 +1271,7 @@ private fun RequestBodyTextEditor(
     translateToText: (UserRequestExample) -> String?,
     translateTextChangeToNewUserRequestExample: (String) -> UserRequestExample,
     transformations: List<VisualTransformation>,
+    testTag: String? = null,
 ) {
     val colors = LocalColor.current
     val baseExample = request.examples.first()
@@ -1269,6 +1293,7 @@ private fun RequestBodyTextEditor(
                 )
             },
             transformations = transformations,
+            testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
         )
     } else {
         CodeEditorView(
@@ -1318,7 +1343,10 @@ fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFile
             AppTextButton(
                 text = filePath?.let { File(it).name } ?: "Choose a File",
                 onClick = { isShowFileDialog = true },
-                modifier = Modifier.align(Alignment.Center).border(width = 1.dp, color = colours.placeholder),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .border(width = 1.dp, color = colours.placeholder)
+                    .testTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!),
             )
         }
     }
@@ -1373,14 +1401,19 @@ fun StreamingPayloadEditorView(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Payload")
             Spacer(modifier = Modifier.weight(1f))
-            AppTextButton(text = "Send", isEnabled = isEnableSend) {
+            AppTextButton(
+                text = "Send",
+                isEnabled = isEnableSend,
+                modifier = Modifier.testTag(TestTag.RequestSendPayloadButton.name),
+            ) {
                 triggerSendPayload()
             }
             if (hasCompleteButton) {
                 AppTextButton(
                     text = "Complete",
                     isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING,
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier.padding(start = 4.dp)
+                        .testTag(TestTag.RequestCompleteStreamButton.name),
                 ) {
                     onClickCompleteStream()
                 }
@@ -1446,6 +1479,7 @@ fun StreamingPayloadEditorView(
                     editExampleNameViewModel.onStartEdit(newExample.id)
                 },
                 modifier = Modifier.padding(4.dp)
+                    .testTag(TestTag.RequestAddPayloadExampleButton.name)
             )
         }
 
@@ -1467,6 +1501,7 @@ fun StreamingPayloadEditorView(
                 )
             },
             transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)),
+            testTag = TestTag.RequestPayloadTextField.name,
         )
     }
 }

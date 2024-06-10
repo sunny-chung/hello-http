@@ -5,6 +5,7 @@ import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
@@ -29,7 +30,7 @@ fun AppTooltipArea(
         tooltip = {
             if (isVisible) {
                 Surface(
-                    modifier = Modifier.shadow(4.dp),
+                    modifier = Modifier.shadow(4.dp).widthIn(max = 500.dp),
                     color = colours.backgroundTooltip,
                     shape = RoundedCornerShape(8.dp)
                 ) {

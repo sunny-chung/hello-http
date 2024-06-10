@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -93,7 +94,7 @@ fun SubprojectEnvironmentsEditorDialogView(
                     )
                     selectedEnvironmentId = newEnvironment.id
                     isFocusOnEnvNameField = true
-                })
+                }, modifier = Modifier.testTag(TestTag.EnvironmentDialogCreateButton.name))
             }
             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth().background(color = colors.backgroundInputField)) {
                 items(items = subproject.environments) {
@@ -168,7 +169,8 @@ fun EnvironmentEditorView(
                 modifier = Modifier
                     .weight(1f)
                     .background(color = LocalColor.current.backgroundInputField)
-                    .focusRequester(focusRequester),
+                    .focusRequester(focusRequester)
+                    .testTag(TestTag.EnvironmentDialogEnvNameTextField.name)
             )
             AppDeleteButton(size = 24.dp) {
                 onDeleteEnvironment(environment)
@@ -179,6 +181,7 @@ fun EnvironmentEditorView(
             selectedIndex = selectedTabIndex,
             onSelectTab = { selectedTabIndex = it },
             contents = EnvironmentEditorTab.values().map { { AppTabLabel(text = it.name) } },
+            testTag = TestTag.EnvironmentEditorTab.name,
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
         )
 
@@ -199,7 +202,7 @@ fun EnvironmentEditorView(
             EnvironmentEditorTab.SSL -> EnvironmentSslTabContent(
                 environment = environment,
                 onUpdateEnvironment = onUpdateEnvironment,
-                modifier = modifier.verticalScroll(rememberScrollState()),
+                modifier = modifier.verticalScroll(rememberScrollState()).testTag(TestTag.EnvironmentEditorSslTabContent.name),
             )
 
             EnvironmentEditorTab.`User Files` -> EnvironmentUserFilesTabContent(
@@ -347,6 +350,7 @@ fun EnvironmentSslTabContent(
                     )
                 )
             },
+            testTag = TestTagPart.EnvironmentSslTrustedServerCertificates.name,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -363,6 +367,7 @@ fun EnvironmentSslTabContent(
                     )
                     true
                 },
+                testTagParts = arrayOf(TestTagPart.EnvironmentDisableSystemCaCertificates),
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
@@ -404,6 +409,7 @@ fun EnvironmentSslTabContent(
                         )
                     )
                 },
+                testTag = TestTagPart.EnvironmentSslClientCertificates.name,
                 modifier = Modifier.fillMaxWidth(),
             )
             Column(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp)) {
@@ -428,6 +434,7 @@ fun EnvironmentSslTabContent(
 @Composable
 fun CertificateEditorView(
     modifier: Modifier = Modifier,
+    testTag: String,
     title: String,
     certificates: List<ImportedFile>,
     isShowAddButton: Boolean,
@@ -464,6 +471,7 @@ fun CertificateEditorView(
                         resource = "add.svg",
                         size = 24.dp,
                         onClick = { isShowFileDialog = true },
+                        modifier = Modifier.testTag(buildTestTag(testTag, TestTagPart.CreateButton)!!)
                     )
                 }
             }
@@ -496,6 +504,7 @@ fun CertificateEditorView(
                             .fillMaxHeight()
                             .border(width = 1.dp, color = colours.placeholder, RectangleShape)
                             .padding(all = 8.dp)
+                            .testTag(buildTestTag(testTag, TestTagPart.ListItemLabel)!!.also { println(">>> TTag: $it") })
                     )
                     AppText(
                         text = it.createdWhen.atLocalZoneOffset().format("yyyy-MM-dd HH:mm"),
@@ -555,6 +564,11 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
             AppTextButton(
                 text = certFile?.name ?: "Choose a File in DER format",
                 onClick = { fileChooser = CertificateKeyPairFileChooserType.Certificate },
+                modifier = Modifier.testTag(buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.ClientCertificate,
+                    TestTagPart.FileButton,
+                )!!)
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -562,6 +576,11 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
             AppTextButton(
                 text = keyFile?.name ?: "Choose a File in PKCS #8 DER format",
                 onClick = { fileChooser = CertificateKeyPairFileChooserType.PrivateKey },
+                modifier = Modifier.testTag(buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.PrivateKey,
+                    TestTagPart.FileButton,
+                )!!)
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -592,6 +611,10 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                     }
                     onAddItem(parsed)
                 },
+                modifier = Modifier.testTag(buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.CreateButton,
+                )!!)
             )
         }
     }

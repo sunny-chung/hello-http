@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -340,7 +341,12 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectio
         Pair("", colors.errorResponseBackground)
     }
     if (text.isNotEmpty()) {
-        DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
+        DataLabel(
+            modifier = modifier.testTag(TestTag.ResponseStatus.name),
+            text = text,
+            backgroundColor = backgroundColor,
+            textColor = colors.bright,
+        )
     }
 }
 
@@ -354,7 +360,7 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateT
     } else {
         "${duration.toMilliseconds()} ms"
     }
-    DataLabel(modifier = modifier, text = text)
+    DataLabel(modifier = modifier.testTag(TestTag.ResponseDuration.name), text = text)
 }
 
 @Composable
@@ -539,6 +545,7 @@ fun BodyViewerView(
                     } else {
                         emptyList()
                     },
+                    testTag = TestTag.ResponseBody.name,
                 )
             }
         } else {
@@ -713,7 +720,7 @@ fun ResponseStreamView(response: UserResponse) {
             }
         )
 
-        Box(modifier = Modifier.weight(0.4f)) {
+        Box(modifier = Modifier.weight(0.4f).testTag(TestTag.ResponseStreamLog.name)) {
             Box(
                 Modifier
                     .width(TIMESTAMP_COLUMN_WIDTH_DP + TYPE_COLUMN_WIDTH_DP)
@@ -748,6 +755,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 fontSize = fonts.streamFontSize,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
+                                    .testTag(TestTag.ResponseStreamLogItemTime.name)
                             )
                             AppText(
                                 text = when (it.type) {

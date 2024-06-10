@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -51,7 +52,14 @@ import kotlin.reflect.KProperty
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit, onDoubleClickTab: ((Int) -> Unit)? = null, contents: List<@Composable (() -> Unit)>) {
+fun TabsView(
+    modifier: Modifier,
+    selectedIndex: Int,
+    onSelectTab: (Int) -> Unit,
+    onDoubleClickTab: ((Int) -> Unit)? = null,
+    contents: List<@Composable (() -> Unit)>,
+    testTag: String? = null,
+) {
     val colors = LocalColor.current
     var lastSelectedIndex by remember { mutableStateOf(-1) }
     val scrollState = rememberLazyListState()
@@ -158,6 +166,14 @@ fun TabsView(modifier: Modifier, selectedIndex: Int, onSelectTab: (Int) -> Unit,
                     onSelectTab(i)
                 },
                 onDoubleClickTab = onDoubleClickTab?.let { { log.d { "Tab onDoubleClickTab $i" }; it(i) } },
+                modifier = Modifier
+                    .run {
+                        if (testTag != null) {
+                            testTag(testTag)
+                        } else {
+                            this
+                        }
+                    }
             ) {
                 contents[i]()
             }

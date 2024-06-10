@@ -16,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,12 +50,20 @@ fun <T: DropDownable> DropDownView(
             },
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
-            modifier = if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false)
+            modifier = (if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false))
+                .run {
+                    if (isLabel && testTagParts != null) {
+                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownLabel)!!.also { println(">>> Dropdown Use TTag: $it") })
+                    } else {
+                        this
+                    }
+                }
         )
     },
     arrowPadding: PaddingValues = PaddingValues(0.dp),
+    testTagParts: Array<Any?>? = null,
     selectedItem: T? = null,
-    onClickItem: (T) -> Boolean
+    onClickItem: (T) -> Boolean,
 ) {
     val colors = LocalColor.current
     val populatedItems = populateItems(items)
@@ -67,11 +77,22 @@ fun <T: DropDownable> DropDownView(
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
         populatedItems.forEach { item ->
-            Column(modifier = Modifier.clickable {
-                if (onClickItem(item)) {
-                    isShowContextMenu = false
+            Column(modifier = Modifier
+                .clickable {
+                    if (onClickItem(item)) {
+                        isShowContextMenu = false
+                    }
                 }
-            }.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth()) {
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .fillMaxWidth()
+                .run {
+                    if (testTagParts != null) {
+                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownItem, item.displayText)!!)
+                    } else {
+                        this
+                    }
+                }
+            ) {
                 Row {
                     contentView(item, false, item.key == selectedItem?.key, isClickable)
                 }
@@ -83,9 +104,15 @@ fun <T: DropDownable> DropDownView(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.run {
             if (isClickable) {
-                clickable {
+                clickable(role = Role.Button) {
                     isShowContextMenu = !isShowContextMenu
                 }
+            } else {
+                this
+            }
+        }.run {
+            if (testTagParts != null) {
+                testTag(buildTestTag(*testTagParts, TestTagPart.DropdownButton)!!)
             } else {
                 this
             }

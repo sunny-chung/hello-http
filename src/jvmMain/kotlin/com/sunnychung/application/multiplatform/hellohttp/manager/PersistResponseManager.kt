@@ -25,7 +25,7 @@ class PersistResponseManager {
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     fun registerCall(callData: CallData) {
-        callData.events.onEach {
+        callData.jobs += callData.events.onEach {
             log.d { "PersistResponseManager receives call ${callData.id} event ${it.event}" }
             persistCallResponse(callData)
         }.launchIn(coroutineScope)

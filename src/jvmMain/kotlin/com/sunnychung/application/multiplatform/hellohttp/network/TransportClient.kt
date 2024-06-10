@@ -3,11 +3,18 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.KeyManager
 import javax.net.ssl.SSLContext
@@ -23,7 +30,8 @@ interface TransportClient {
         subprojectId: String,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
-        sslConfig: SslConfig
+        sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
     ): CallData
 }
 
@@ -43,10 +51,29 @@ class CallData(
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
 
+    val jobs: MutableList<Job> = mutableListOf(),
+
     var cancel: (Throwable?) -> Unit,
     var sendPayload: (String) -> Unit = {},
     var sendEndOfStream: () -> Unit = {},
-)
+    var end: (() -> Unit)? = null,
+) {
+    /**
+     * Signals a call is completed and releases resources.
+     * Calling this function manually is necessary, as CallData is supposed to live in memory after completion.
+     */
+    fun end() {
+        this.end?.invoke()
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(1.seconds().millis)
+            jobs.forEach { it.cancel() }
+            consumePayloads(isComplete = true)
+        }
+        sendPayload = {}
+        sendEndOfStream = {}
+        cancel = {}
+    }
+}
 
 class LiteCallData(
     val id: String,

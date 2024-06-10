@@ -18,6 +18,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -25,9 +26,11 @@ import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import kotlinx.coroutines.CancellationException
@@ -76,7 +79,7 @@ class NetworkClientManager : CallDataStore {
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
     override fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData> = liteCallDataMap
 
-    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String) {
+    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String, subprojectConfig: SubprojectConfiguration) {
         val callData = try {
             val networkRequest = request.toHttpRequest(
                 exampleId = requestExampleId,
@@ -98,35 +101,9 @@ class NetworkClientManager : CallDataStore {
                 }
             }?.let { // TODO change it to non-blocking
                 if (it.preFlight.executeCode.isNotBlank()) {
-                    var hasKilled = false
-                    var executeException: Throwable? = null
-                    val scriptExecuteThread = Thread {
-                        try {
-                            CustomCodeExecutor(code = it.preFlight.executeCode)
-                                .executePreFlight(networkRequest, environment)
-                        } catch (e: Throwable) {
-                            executeException = e
-                        }
-                    }
-                    val killThread = Thread {
-                        Thread.sleep(1000L) // maximum execute for 1s
-                        if (scriptExecuteThread.isAlive) {
-                            hasKilled = true
-                            log.d { "Killing script thread" }
-                            try {
-                                scriptExecuteThread.interrupt()
-                                scriptExecuteThread.stop()
-                            } catch (_: Throwable) {}
-                        }
-                    }
-                    scriptExecuteThread.start()
-                    killThread.start()
-                    scriptExecuteThread.join()
-                    killThread.interrupt()
-                    if (hasKilled) {
-                        throw RuntimeException("Custom script was running for too long time and has been killed")
-                    } else if (executeException != null) {
-                        throw executeException!!
+                    executeWithTimeout(1.seconds()) {
+                        CustomCodeExecutor(code = it.preFlight.executeCode)
+                            .executePreFlight(networkRequest, environment)
                     }
                 }
             }
@@ -222,6 +199,7 @@ class NetworkClientManager : CallDataStore {
                 postFlightAction = postFlightAction,
                 httpConfig = environment?.httpConfig ?: HttpConfig(),
                 sslConfig = environment?.sslConfig ?: SslConfig(),
+                subprojectConfig = subprojectConfig,
             )
         } catch (error: Throwable) {
             val d = CallData(
@@ -300,6 +278,27 @@ class NetworkClientManager : CallDataStore {
 
     @Composable
     fun subscribeToNewRequests() = callIdFlow.collectAsState(null)
+
+    /**
+     * For UX tests only, NOT for production.
+     */
+    fun cancelAllCalls(): Int {
+        val threads = callDataMap.mapNotNull { (_, call) ->
+            if (call.status != ConnectionStatus.DISCONNECTED) {
+                Thread {
+                    call.cancel(null)
+                }.also { it.start() }
+            } else {
+                null
+            }
+        }
+        if (threads.isNotEmpty()) {
+            Thread.sleep(3000L + 30 * threads.size)
+        }
+        callDataMap.clear()
+        requestExampleToCallMapping.clear()
+        return threads.size
+    }
 
     private fun createLiteCallData(): LiteCallData {
         return LiteCallData(

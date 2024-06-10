@@ -8,6 +8,8 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDocument
+import com.sunnychung.application.multiplatform.hellohttp.extension.CborStream
+import com.sunnychung.application.multiplatform.hellohttp.extension.encodeToStream
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.OperationalInfo
 import com.sunnychung.application.multiplatform.hellohttp.model.UserPreference
@@ -31,6 +33,10 @@ class PersistenceManager {
         encodeDefaults = true
         ignoreUnknownKeys = true
     }
+    private val codecCustomizedWriter = CborStream {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
 
     private fun dataDir() = AppContext.dataDir
 
@@ -42,11 +48,16 @@ class PersistenceManager {
     internal suspend inline fun <T> writeToFile(relativePath: String, serializer: KSerializer<T>, document: T) {
         val file = dataFile(relativePath)
         file.parentFile.mkdirs()
-        val bytes = codec.encodeToByteArray(serializer, document)
+//        val bytes = codec.encodeToByteArray(serializer, document)
+//        fileManager.writeToFile(
+//            file = file,
+//            content = bytes
+//        )
         fileManager.writeToFile(
             file = file,
-            content = bytes
-        )
+        ) { outStream ->
+            codecCustomizedWriter.encodeToStream(serializer, document, outStream)
+        }
     }
 
     internal suspend inline fun <T> readFile(relativePath: String, serializer: KSerializer<T>): T? {
@@ -64,6 +75,11 @@ class PersistenceManager {
     }
 
     suspend fun initialize() {
+        // clear cache
+        documentCaches.clear()
+        documentLocks.clear()
+
+        // initialize cache
         AppContext.ProjectCollectionRepository.readOrCreate(ProjectAndEnvironmentsDI()) { id ->
             ProjectCollection(id = id, projects = mutableListOf())
         }

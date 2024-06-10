@@ -10,6 +10,7 @@ import okio.buffer
 import okio.sink
 import okio.source
 import java.io.File
+import java.io.OutputStream
 import java.util.concurrent.ConcurrentHashMap
 
 class FileManager {
@@ -34,6 +35,21 @@ class FileManager {
                 it.write(fileSchemaVersion.toString().toByteArray())
                 it.write(byteArrayOf(separatorByte))
                 it.write(content)
+            }
+        }
+    }
+
+    suspend fun writeToFile(file: File, writeOperation: (OutputStream) -> Unit) {
+        withLock(file) {
+            file.sink().buffer().use {
+                it.write(magicBytes)
+                it.write(byteArrayOf(separatorByte))
+                it.write(fileSchemaVersion.toString().toByteArray())
+                it.write(byteArrayOf(separatorByte))
+
+                val outputStream = it.outputStream().buffered()
+                writeOperation(outputStream)
+                outputStream.flush() // must
             }
         }
     }
