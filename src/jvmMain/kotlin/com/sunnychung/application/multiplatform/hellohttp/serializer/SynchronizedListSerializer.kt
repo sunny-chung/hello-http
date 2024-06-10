@@ -6,6 +6,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import java.util.Collections
 
 class SynchronizedListSerializer<E>(elementSerializer: KSerializer<E>) : KSerializer<MutableList<E>> {
     private val listSerializer = ListSerializer(elementSerializer)
@@ -20,6 +21,8 @@ class SynchronizedListSerializer<E>(elementSerializer: KSerializer<E>) : KSerial
 
     override fun deserialize(decoder: Decoder): MutableList<E> {
         log.d { "SynchronizedListSerializer deserialize" }
-        return listSerializer.deserialize(decoder).toMutableList()
+        return listSerializer.deserialize(decoder).toMutableList().let {
+            Collections.synchronizedList(it)
+        }
     }
 }
