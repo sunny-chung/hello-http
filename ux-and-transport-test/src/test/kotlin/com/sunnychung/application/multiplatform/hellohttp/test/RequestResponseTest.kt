@@ -573,7 +573,6 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
     }
 
     @Test
-    @Ignore // FIXME fail in Windows Server 2019 & 2022 runners
     fun echoPostWithBigMultipartFiles() = runTest {
         createAndSendRestEchoRequestAndAssertResponse(
             request = UserRequestTemplate(
@@ -631,7 +630,6 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
     /************** Special Cases **************/
 
     @Test
-    @Ignore // FIXME Apache HTTP Client cannot pass this test with h2 connections
     fun earlyErrorWithBigFile() = runTest {
         val request = UserRequestTemplate(
             id = uuidString(),
