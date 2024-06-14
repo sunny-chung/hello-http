@@ -52,7 +52,7 @@ class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager
         val sslContext = createSslContext(sslConfig)
 
         return HttpClient.newConnection()
-            .wiretap("NettyIO", LogLevel.ERROR, AdvancedByteBufFormat.TEXTUAL, Charsets.UTF_8) // FIXME remove
+//            .wiretap("NettyIO", LogLevel.ERROR, AdvancedByteBufFormat.TEXTUAL, Charsets.UTF_8) // FIXME remove
             .protocol(
                 // Do not use H2C. Some servers do not support it and yield errors.
                 *when (httpConfig.protocolVersion) {
