@@ -28,6 +28,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import reactor.core.publisher.Mono
 import reactor.netty.ByteBufFlux
 import reactor.netty.http.HttpProtocol
@@ -222,9 +223,9 @@ class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager
                         }
                         bbuf.asByteArray()
                     }
-                    .awaitSingle()
+                    .awaitSingleOrNull()
                     .let {
-                        out.responseSizeInBytes = it.size.toLong()
+                        out.responseSizeInBytes = it?.size?.toLong() ?: 0L
                         out.body = it
                     }
             } catch (e: Throwable) {
