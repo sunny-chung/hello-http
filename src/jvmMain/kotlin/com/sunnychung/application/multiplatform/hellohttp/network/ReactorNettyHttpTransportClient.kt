@@ -172,11 +172,8 @@ class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager
             // TODO push promise
             // TODO gzip, x-gzip, deflate
 
-            out.startAt = KInstant.now()
-            data.status = ConnectionStatus.CONNECTING
-
             try {
-                httpClient
+                val requestBuilder = httpClient
                     .headers { builder ->
                         request.headers.forEach { (h, v) ->
                             builder.add(h, v)
@@ -226,6 +223,13 @@ class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager
                         }
                         bbuf.asByteArray()
                     }
+
+                out.startAt = KInstant.now()
+                data.status = ConnectionStatus.CONNECTING
+
+                log.i { "Request started at ${out.startAt!!.atLocalZoneOffset()}" }
+
+                requestBuilder
                     .awaitSingleOrNull()
                     .let {
                         out.responseSizeInBytes = it?.size?.toLong() ?: 0L

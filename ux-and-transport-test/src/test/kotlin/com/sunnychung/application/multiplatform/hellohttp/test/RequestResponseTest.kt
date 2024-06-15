@@ -661,6 +661,45 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
     }
 
     @Test
+    fun earlyErrorWithBigMultipartFile() = runTest {
+        val request = UserRequestTemplate(
+            id = uuidString(),
+            method = "POST",
+            url = earlyErrorUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    contentType = ContentType.Multipart,
+                    body = MultipartBody(listOf(
+                        UserKeyValuePair(
+                            id = uuidString(),
+                            key = "file",
+                            value = bigDataFile.absolutePath,
+                            valueType = FieldValueType.File,
+                            isEnabled = true,
+                        ),
+                    )),
+                )
+            )
+        )
+        createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = false, environment = environment)
+
+        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
+
+        val durationText = onNodeWithTag(TestTag.ResponseDuration.name)
+            .fetchSemanticsNode()
+            .getTexts()
+            .first()
+        println("> durationText = $durationText")
+        assertTrue(durationText.endsWith(" ms"))
+        assertTrue(durationText.removeSuffix(" ms").toLong() in 0L..500L) // expected to fail fast
+
+        onNodeWithTag(TestTag.ResponseBody.name).assertDoesNotExist()
+        onNodeWithTag(TestTag.ResponseBodyEmpty.name).assertIsDisplayedWithRetry(this)
+    }
+
+    @Test
     fun error() = runTest {
         val request = UserRequestTemplate(
             id = uuidString(),
