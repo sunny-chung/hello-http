@@ -61,8 +61,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
             bigDataFile = File("build/testrun/resources/bigfile.dat").apply {
                 if (exists()) return@apply
                 parentFile.mkdirs()
-                val bytesBlock = Random.nextBytes(1 * 1024 * 1024) // 1 MB
-                repeat(70) { // 70 MB
+                val bytesBlock = Random.nextBytes(75 * 1024 * 1024) // 75 MB
+                repeat(2) { // 150 MB
                     appendBytes(bytesBlock)
                 }
                 appendBytes(byteArrayOf(0, -5, 3, 124, 59))
@@ -644,7 +644,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
                 )
             )
         )
-        createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = true, environment = environment)
+        createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = false, environment = environment)
 
         onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
 
@@ -656,9 +656,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
         assertTrue(durationText.endsWith(" ms"))
         assertTrue(durationText.removeSuffix(" ms").toLong() in 0L..500L) // expected to fail fast
 
-        onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
-            .getTexts()
-            .isEmpty()
+        onNodeWithTag(TestTag.ResponseBody.name).assertDoesNotExist()
+        onNodeWithTag(TestTag.ResponseBodyEmpty.name).assertIsDisplayedWithRetry(this)
     }
 
     @Test

@@ -27,7 +27,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import reactor.core.publisher.Mono
 import reactor.netty.ByteBufFlux
@@ -37,6 +36,8 @@ import reactor.netty.transport.logging.AdvancedByteBufFormat
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Path
+
+private const val REQUEST_CHUNK_SIZE = 8192
 
 class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
@@ -53,7 +54,7 @@ class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager
         val sslContext = createSslContext(sslConfig)
 
         return HttpClient.newConnection()
-//            .wiretap("NettyIO", LogLevel.ERROR, AdvancedByteBufFormat.TEXTUAL, Charsets.UTF_8) // FIXME remove
+//            .wiretap("NettyIO", LogLevel.ERROR, AdvancedByteBufFormat.SIMPLE, Charsets.UTF_8) // FIXME remove
             .protocol(
                 // Do not use H2C. Some servers do not support it and yield errors.
                 *when (httpConfig.protocolVersion) {
@@ -153,6 +154,8 @@ class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager
         )
 
         CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
+            httpClient.warmup().awaitSingleOrNull()
+
             data.waitForPreparation()
             log.d { "Call $callId is prepared" }
 
@@ -192,7 +195,7 @@ class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager
                             )
 
                             is FileBody -> send(
-                                ByteBufFlux.fromPath(Path.of(body.filePath!!))
+                                ByteBufFlux.fromPath(Path.of(body.filePath!!), REQUEST_CHUNK_SIZE)
                             )
 
                             is FormUrlEncodedBody, is MultipartBody -> {

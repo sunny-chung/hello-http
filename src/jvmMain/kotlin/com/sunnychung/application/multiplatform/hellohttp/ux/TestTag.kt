@@ -29,6 +29,7 @@ enum class TestTag {
     ResponseStatus,
     ResponseDuration,
     ResponseBody,
+    ResponseBodyEmpty,
     ResponseStreamLog,
     ResponseStreamLogItemTime,
 }

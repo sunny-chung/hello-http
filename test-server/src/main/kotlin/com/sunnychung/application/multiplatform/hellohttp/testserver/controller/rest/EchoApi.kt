@@ -16,6 +16,7 @@ import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.awaitFormData
 import org.springframework.web.server.awaitMultipartData
 import reactor.core.publisher.Flux
+import reactor.kotlin.extra.math.sumAsInt
 
 @RequestMapping("rest")
 @RestController
@@ -55,11 +56,12 @@ class EchoApi {
             queryParameters = request.queryParams.toParameterList(),
             formData = exchange.awaitFormData().toParameterList(),
             multiparts = exchange.awaitMultipartData().flatMap { it.value.map {
-                val data = it.content().toByteArray()
+//                val dataSize = DataBufferUtils.join(it.content()).awaitSingleOrNull()?.readableByteCount() ?: 0
+                val dataSize = it.content().map { it.readableByteCount() }.sumAsInt().awaitSingleOrNull() ?: 0
                 PartData(
                     name = it.name(),
                     headers = it.headers().toParameterList(),
-                    size = data?.size ?: 0,
+                    size = dataSize,
                     data = null,
                 )
             } },
