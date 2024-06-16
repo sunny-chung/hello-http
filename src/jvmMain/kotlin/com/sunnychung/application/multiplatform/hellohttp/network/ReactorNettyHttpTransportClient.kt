@@ -21,6 +21,8 @@ import io.netty.buffer.ByteBufAllocator
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.logging.LogLevel
+import io.netty.handler.ssl.ApplicationProtocolConfig
+import io.netty.handler.ssl.ApplicationProtocolNames
 import io.netty.handler.ssl.SslContextBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,16 +58,25 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         return HttpClient.newConnection()
 //            .wiretap("NettyIO", LogLevel.ERROR, AdvancedByteBufFormat.SIMPLE, Charsets.UTF_8) // FIXME remove
             .protocol(
-                // Do not use H2C. Some servers do not support it and yield errors.
                 *when (httpConfig.protocolVersion) {
                     HttpConfig.HttpProtocolVersion.Http1Only -> arrayOf(HttpProtocol.HTTP11)
-                    HttpConfig.HttpProtocolVersion.Http2Only -> arrayOf(HttpProtocol.H2/*, HttpProtocol.H2C*/)
-                    null, HttpConfig.HttpProtocolVersion.Negotiate -> arrayOf(HttpProtocol.H2/*, HttpProtocol.H2C*/, HttpProtocol.HTTP11)
+                    HttpConfig.HttpProtocolVersion.Http2Only -> arrayOf(HttpProtocol.H2, HttpProtocol.H2C)
+                    null, HttpConfig.HttpProtocolVersion.Negotiate -> arrayOf(HttpProtocol.H2, HttpProtocol.H2C, HttpProtocol.HTTP11)
                 }
             )
             .secure { spec ->
                 spec.sslContext(
                     SslContextBuilder.forClient()
+                        .applicationProtocolConfig(ApplicationProtocolConfig(
+                            ApplicationProtocolConfig.Protocol.ALPN,
+                            ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
+                            ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
+                            *when (httpConfig.protocolVersion) {
+                                HttpConfig.HttpProtocolVersion.Http1Only -> arrayOf(ApplicationProtocolNames.HTTP_1_1)
+                                HttpConfig.HttpProtocolVersion.Http2Only -> arrayOf(ApplicationProtocolNames.HTTP_2)
+                                null, HttpConfig.HttpProtocolVersion.Negotiate -> arrayOf(ApplicationProtocolNames.HTTP_2, ApplicationProtocolNames.HTTP_1_1)
+                            }
+                        ))
                         .run {
                             sslContext.keyManager?.let {
                                 keyManager(it)
