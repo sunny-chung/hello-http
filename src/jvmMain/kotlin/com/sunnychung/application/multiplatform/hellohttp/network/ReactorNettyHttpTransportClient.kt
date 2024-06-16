@@ -39,9 +39,9 @@ import java.nio.file.Path
 
 private const val REQUEST_CHUNK_SIZE = 8192
 
-class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
+open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
-    private fun buildHttpClient(
+    protected fun buildHttpClient(
         callId: String,
         callData: CallData,
         httpConfig: HttpConfig,

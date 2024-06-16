@@ -48,6 +48,7 @@ kotlin {
                 }
                 implementation("io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion")
                 implementation("io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion")
+                implementation("org.springframework.boot:spring-boot-starter-webflux:3.2.6")
                 implementation("io.github.sunny-chung:Java-WebSocket:1.5.4-inspect-patch2")
                 implementation("com.graphql-java:graphql-java:21.3")
 

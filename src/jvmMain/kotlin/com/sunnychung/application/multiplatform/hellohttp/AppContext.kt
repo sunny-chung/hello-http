@@ -13,6 +13,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierMana
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
 import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.ReactorNettyHttpTransportClient
+import com.sunnychung.application.multiplatform.hellohttp.network.SpringWebClientTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.repository.ApiSpecificationCollectionRepository
 import com.sunnychung.application.multiplatform.hellohttp.repository.OperationalRepository
@@ -30,7 +31,7 @@ object AppContext {
     val MetadataManager = MetadataManager()
     val SingleInstanceProcessService = SingleInstanceProcessService()
     val NetworkClientManager = NetworkClientManager()
-    val HttpTransportClient: TransportClient = ReactorNettyHttpTransportClient(NetworkClientManager) //OkHttpNetworkManager(NetworkClientManager)
+    val HttpTransportClient: TransportClient = SpringWebClientTransportClient(NetworkClientManager) //OkHttpNetworkManager(NetworkClientManager)
     val WebSocketTransportClient: TransportClient = WebSocketTransportClient(NetworkClientManager)
     val GraphqlSubscriptionTransportClient = GraphqlSubscriptionTransportClient(NetworkClientManager)
     val GrpcTransportClient = GrpcTransportClient(NetworkClientManager)
