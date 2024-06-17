@@ -478,7 +478,7 @@ private fun TransportTimelineContentView(
                             // otherwise contentWidthInPx keeps changing and causes infinite recompose loops and view overlapping
                             if (protocol?.isHttp2() == true) {
                                 AppText(
-                                    text = "{${(it.streamId?.toString() ?: "*")}}".padStart(
+                                    text = "{${(it.streamId?.takeIf { it > 0 }?.toString() ?: "*")}}".padStart(
                                         2 + streamDigits,
                                         ' '
                                     ) + " ",

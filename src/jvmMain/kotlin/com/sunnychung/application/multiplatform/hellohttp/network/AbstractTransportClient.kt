@@ -205,11 +205,11 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             synchronized(data.response.rawExchange.exchanges) {
                 val lastIndex = data.response.rawExchange.exchanges.lastIndex
                 val lastExchange = lastIndex.takeIf { it >= 0 }?.let { i -> data.response.rawExchange.exchanges[i] }
-                if (it is Http2Frame || lastExchange == null || lastExchange.direction != direction) {
+                if (it is Http2Frame || lastExchange == null || lastExchange.direction != direction || (lastExchange.streamId ?: -1) >= 0) {
                     data.response.rawExchange.exchanges += RawExchange.Exchange(
                         instant = it.instant,
                         direction = direction,
-                        streamId = if (it is Http2Frame) it.streamId else null,
+                        streamId = if (it is Http2Frame) (it.streamId ?: 0) else null,
                         detail = null,
                         payloadBuilder = ByteArrayOutputStream(minOf(approximateSize ?: Int.MAX_VALUE, it.payload.size + 64 * 1024))
                     ).apply {
