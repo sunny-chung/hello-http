@@ -61,8 +61,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    protected fun emitEvent(callId: String, event: String) {
-        val instant = KInstant.now()
+    protected fun emitEvent(callId: String, event: String) =
+        emitEvent(instant = KInstant.now(), callId = callId, event = event)
+
+    protected fun emitEvent(instant: KInstant, callId: String, event: String) {
         runBlocking {
             eventSharedFlow.emit(
                 NetworkEvent(

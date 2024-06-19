@@ -9,6 +9,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
+import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestBodyWithKeyValuePairs
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -16,16 +18,25 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.network.netty.DelegatedTerminalChannelInboundHandler
+import com.sunnychung.application.multiplatform.hellohttp.network.netty.Http2FramePeeker
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CallDataUserResponseUtil
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
 import io.netty.buffer.ByteBufHolder
+import io.netty.buffer.Unpooled
 import io.netty.channel.Channel
 import io.netty.channel.ChannelDuplexHandler
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.ChannelInboundHandler
+import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelPromise
 import io.netty.handler.codec.http.HttpMethod
+import io.netty.handler.codec.http2.Http2ConnectionPrefaceAndSettingsFrameWrittenEvent
 import io.netty.handler.codec.http2.Http2FrameCodec
 import io.netty.handler.codec.http2.Http2StreamChannel
 import io.netty.handler.logging.LogLevel
@@ -41,6 +52,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.runBlocking
+import okhttp3.internal.http2.Http2.CONNECTION_PREFACE
 import reactor.core.publisher.Mono
 import reactor.netty.ByteBufFlux
 import reactor.netty.NettyPipeline
@@ -57,6 +69,7 @@ import java.util.Deque
 import java.util.LinkedList
 
 private const val REQUEST_CHUNK_SIZE = 8192
+private val HTTP2_CONNECTION_PREFACE_BYTES = CONNECTION_PREFACE.toByteArray()
 
 open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
@@ -70,24 +83,22 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         http2AccumulatedOutboundDataSerializeLimit: Int,
         http2AccumulatedInboundDataSerializeLimit: Int,
     ) : HttpClient {
-        fun emitRawPayload(direction: RawExchange.Direction, channel: Channel?, payload: Any) {
-            val receiveTime = KInstant.now()
-            val streamId = (channel as? Http2StreamChannel)?.stream()?.id()
-            val payloadHolder = if (streamId == null) {
-                Http1Payload(receiveTime, readPayload(payload))
-            } else {
-                return // skip HTTP/2 frames. They are logged in Http2FramePeeker instead.
-            }
-            return runBlocking {
-                when (direction) {
-                    RawExchange.Direction.Outgoing -> outgoingBytesFlow.emit(payloadHolder)
-                    RawExchange.Direction.Incoming -> incomingBytesFlow.emit(payloadHolder)
-                    RawExchange.Direction.Unspecified -> throw IllegalArgumentException("direction `$direction` is invalid")
-                }
-            }
-        }
+//        System.setProperty(ReactorNetty.SSL_CLIENT_DEBUG, "true")
 
         val sslContext = createSslContext(sslConfig)
+        val frameLogger = Http2FramePeeker(
+            outgoingBytesFlow = outgoingBytesFlow,
+            incomingBytesFlow = incomingBytesFlow,
+            http2AccumulatedOutboundDataSerializeLimit = http2AccumulatedOutboundDataSerializeLimit,
+            http2AccumulatedInboundDataSerializeLimit = http2AccumulatedInboundDataSerializeLimit,
+        )
+        val httpClientId = uuidString()
+
+        var isHttp2Established = false
+        var isHttp2ClientConnectionPrefaceSent = false
+        val writeQueue: Deque<ByteArray> = LinkedList<ByteArray>()
+        var currentTotalWrittenBytes = 0
+        val writeLock = Any()
 
         return HttpClient.newConnection()
 //            .wiretap("NettyIO", LogLevel.ERROR, AdvancedByteBufFormat.SIMPLE, Charsets.UTF_8) // FIXME remove
@@ -124,6 +135,71 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         .build()
                 )
             }
+            .doOnChannelInit { connectionObserver, channel, socketAddress ->
+                val http2ClientConnectionPrefaceListener = @ChannelHandler.Sharable object : ChannelInboundHandlerAdapter() {
+                    override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
+                        log.i { "received ev $evt" }
+                        if (evt is Http2ConnectionPrefaceAndSettingsFrameWrittenEvent && !isHttp2ClientConnectionPrefaceSent) {
+                            isHttp2ClientConnectionPrefaceSent = true
+                            // remove HTTP/2 frames, which suppose to be sent after client connection preface
+                            // HTTP/2 frames are emitted via Http2FramePeeker
+                            synchronized(writeLock) {
+                                while (writeQueue.isNotEmpty()) {
+                                    val e = writeQueue.last
+                                    if (e.contentEquals(HTTP2_CONNECTION_PREFACE_BYTES)) {
+                                        break
+                                    } else {
+                                        writeQueue.removeLast()
+                                    }
+                                }
+                            }
+                            log.i { "received Http2ConnectionPrefaceAndSettingsFrameWrittenEvent" }
+                        }
+                        super.userEventTriggered(ctx, evt)
+                    }
+
+                    override fun handlerAdded(ctx: ChannelHandlerContext) {
+                        if (ctx.handler() == this) {
+                            return // avoid infinite recursion
+                        }
+                        val handlerId = "com.sunnychung.application.multiplatform.hellohttp.network.http2ClientConnectionPrefaceListener.first2"
+                        if (channel.pipeline().get(handlerId) != null) {
+                            channel.pipeline().remove(handlerId)
+                        }
+                        channel.pipeline()
+                            .addBefore(
+                                /* baseName = */ NettyPipeline.ReactiveBridge,
+                                /* name = */ handlerId,
+                                /* handler = */ this
+                            )
+
+                        super.handlerAdded(ctx)
+                    }
+                }
+
+//                channel.pipeline().addBefore( // happy cases
+//                    /* baseName = */ NettyPipeline.ReactiveBridge,
+//                    /* name = */ "com.sunnychung.application.multiplatform.hellohttp.network.http2ClientConnectionPrefaceListener.first",
+//                    /* handler = */ http2ClientConnectionPrefaceListener
+//                )
+
+                val realReactiveBridge = channel.pipeline().get(NettyPipeline.ReactiveBridge) as ChannelInboundHandler
+                channel.pipeline()
+                    .remove(realReactiveBridge)
+                    .addLast( // for HTTP/1.1 upgrade to H2, also cover other happy cases
+                        /* name = */ NettyPipeline.ReactiveBridge,
+                        /* handler = */ DelegatedTerminalChannelInboundHandler(
+                            listOf(
+                                http2ClientConnectionPrefaceListener,
+                                realReactiveBridge
+                            )
+                        )
+                    )
+                    .addLast( // for HTTP/1.1 upgrade to H2C
+                        /* name = */ "com.sunnychung.application.multiplatform.hellohttp.network.http2ClientConnectionPrefaceListener.last",
+                        /* handler = */ http2ClientConnectionPrefaceListener
+                    )
+            }
             .doOnResolve { conn, addr ->
                 emitEvent(callId, "DNS resolution of domain [${(addr as InetSocketAddress).hostName}] started") // TODO add domain name
             }
@@ -134,6 +210,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 emitEvent(callId, "DNS resolve error: ${e.message}")
             }
             .doOnConnected { conn ->
+                val eventInstant = KInstant.now()
                 val eventDescription = buildString {
                     // this logic is based on the implementation of static methods of the class `reactor.netty.http.client.HttpClientConfig`
                     val httpCodec = conn.channel().pipeline().get(NettyPipeline.HttpCodec)
@@ -147,6 +224,12 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         }
                     }
                     log.i { "onConnected protocol $httpProtocolVersion" }
+                    try {
+                        callData.response.protocol = ProtocolVersion(
+                            protocol = Protocol.Http,
+                            versionName = httpProtocolVersion.drop("HTTP/".length)
+                        )
+                    } catch (_: Throwable) { /* ignore */ }
 
                     append("Established [$httpProtocolVersion] connection")
 
@@ -161,20 +244,57 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                             append(" and application protocol [$it]")
                         }
 
+                        CallDataUserResponseUtil.onTlsUpgraded(
+                            callData = callData,
+                            localCertificates = sslSession.localCertificates,
+                            peerCertificates = sslSession.peerCertificates
+                        )
+
                         append(".\n\n")
                         append("Client principal = [${sslSession.localPrincipal}]\n")
                         append("\n")
                         append("Server principal = [${sslSession.peerPrincipal}]\n")
                     } else {
                         append(" without encryption.")
+
+                        CallDataUserResponseUtil.onConnected(callData.response)
                     }
                 }
-                emitEvent(callId, eventDescription)
+                emitEvent(instant = eventInstant, callId = callId, event = eventDescription)
+
+                log.d { "pipeline =>\n${conn.channel().pipeline().joinToString("\n") { it.key }}" }
+            }
+            .doOnDisconnected {
+                emitEvent(callId, "Disconnected")
+            }
+            .observe { connection, state ->
+//                emitEvent(callId, "Connection state => $state")
             }
             .loggingHandler(object : ChannelDuplexHandler() {
-                val writeQueue: Deque<ByteArray> = LinkedList<ByteArray>()
-                var currentTotalWrittenBytes = 0
-                val writeLock = Any()
+                fun emitRawPayload(direction: RawExchange.Direction, channel: Channel?, payload: Any) {
+                    if (isHttp2Established) {
+                        return
+                    }
+                    val receiveTime = KInstant.now()
+                    if (isHttp2ClientConnectionPrefaceSent && direction == RawExchange.Direction.Incoming && isStartWithHttp2ServerConnectionPrefaceFrame(payload)) {
+                        isHttp2Established = true
+                        return
+                    }
+                    log.v { "emitRawPayload $httpClientId h2=$isHttp2Established p=$isHttp2ClientConnectionPrefaceSent" }
+                    val streamId = (channel as? Http2StreamChannel)?.stream()?.id()
+                    val payloadHolder = if (streamId == null) {
+                        Http1Payload(receiveTime, readPayload(payload))
+                    } else {
+                        return // skip HTTP/2 frames. They are logged in Http2FramePeeker instead.
+                    }
+                    return runBlocking {
+                        when (direction) {
+                            RawExchange.Direction.Outgoing -> outgoingBytesFlow.emit(payloadHolder)
+                            RawExchange.Direction.Incoming -> incomingBytesFlow.emit(payloadHolder)
+                            RawExchange.Direction.Unspecified -> throw IllegalArgumentException("direction `$direction` is invalid")
+                        }
+                    }
+                }
 
                 override fun channelActive(ctx: ChannelHandlerContext) {
                     val httpCodec = ctx.pipeline().get(NettyPipeline.HttpCodec)
@@ -191,10 +311,13 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
 
                     emitEvent(callId, "Connected to [${remoteAddress.address.hostAddress}:${remoteAddress.port}] with [$httpProtocolVersion]")
 
+                    log.d { "channelActive pipeline =>\n${ctx.pipeline().joinToString("\n") { it.key }}" }
+
                     super.channelActive(ctx)
                 }
 
                 override fun channelInactive(ctx: ChannelHandlerContext) {
+//                    emitEvent(callId, "Connection is inactive") // no use
                     super.channelInactive(ctx)
                 }
 
@@ -204,6 +327,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 }
 
                 override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
+                    log.i { "userEventTriggered $evt" }
                     super.userEventTriggered(ctx, evt)
                 }
 
@@ -217,21 +341,23 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 }
 
                 override fun disconnect(ctx: ChannelHandlerContext?, promise: ChannelPromise?) {
-                    emitEvent(callId, "Disconnected")
+//                    emitEvent(callId, "Disconnected") // no use
                     super.disconnect(ctx, promise)
                 }
 
                 override fun close(ctx: ChannelHandlerContext?, promise: ChannelPromise?) {
-                    emitEvent(callId, "Terminating")
+//                    emitEvent(callId, "Terminating") // no use
                     super.close(ctx, promise)
                 }
 
                 override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
-                    synchronized(writeLock) {
-                        readPayload(msg).let {
-                            if (it.isNotEmpty()) {
-                                writeQueue.addLast(it)
-                                currentTotalWrittenBytes += it.size
+                    if (!isHttp2Established && !isHttp2ClientConnectionPrefaceSent) {
+                        synchronized(writeLock) {
+                            readPayload(msg).let {
+                                if (it.isNotEmpty()) {
+                                    writeQueue.addLast(it)
+                                    currentTotalWrittenBytes += it.size
+                                }
                             }
                         }
                     }
@@ -255,42 +381,11 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         }
                         emitRawPayload(RawExchange.Direction.Outgoing, ctx?.channel(), baos.toByteArray())
                     }
+                    frameLogger.flush()
                     super.flush(ctx)
                 }
             })
-//            .resolver(DnsNameResolverBuilder().dnsQueryLifecycleObserverFactory {
-//                emitEvent(callId, "DNS resolution of domain [${it.name()}] started")
-//                object : DnsQueryLifecycleObserver {
-//                    override fun queryWritten(p0: InetSocketAddress?, p1: ChannelFuture?) {
-//
-//                    }
-//
-//                    override fun queryCancelled(p0: Int) {
-//
-//                    }
-//
-//                    override fun queryRedirected(p0: MutableList<InetSocketAddress>?): DnsQueryLifecycleObserver {
-//
-//                    }
-//
-//                    override fun queryCNAMEd(p0: DnsQuestion?): DnsQueryLifecycleObserver {
-//
-//                    }
-//
-//                    override fun queryNoAnswer(p0: DnsResponseCode?): DnsQueryLifecycleObserver {
-//
-//                    }
-//
-//                    override fun queryFailed(p0: Throwable?) {
-//
-//                    }
-//
-//                    override fun querySucceed() {
-//                        emitEvent(callId, "DNS resolved to ${it.}")
-//                    }
-//
-//                }
-//            })
+            .http2FrameLogger(frameLogger)
             .doOnResponse { resp, conn ->
                 log.i { "NettyIO onResponse" }
             }
@@ -311,6 +406,49 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
             null -> byteArrayOf()
 
             else -> "$payload".toByteArray()
+        }
+    }
+
+    /**
+     * Check according to RFC 9113.
+     */
+    protected fun isStartWithHttp2ServerConnectionPrefaceFrame(payload: Any?): Boolean {
+        return when (payload) {
+            is ByteBuf -> {
+                val size = payload.readableBytes()
+                if (size < 9) {
+                    return false
+                }
+
+                // read without changing readerIndex
+                val readerIndex = payload.readerIndex()
+
+                val frameType = payload.getByte(readerIndex + 3)
+                if (frameType.toInt() != 0x04) { // not Setting frame
+                    return false
+                }
+
+                val streamId = payload.getInt(readerIndex + 5)
+                // The stream identifier for a SETTINGS frame MUST be zero (0x00).
+                if (streamId and 0x7FFFFFFF != 0) {
+                    return false
+                }
+
+                val payloadLength = payload.getUnsignedMedium(readerIndex)
+                // A SETTINGS frame with a length other than a multiple of 6 octets MUST be treated as
+                // a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.
+                if (payloadLength % 6 != 0) {
+                    return false
+                }
+
+                return true
+            }
+
+            is ByteBufHolder -> isStartWithHttp2ServerConnectionPrefaceFrame(payload.content())
+
+            is ByteArray -> isStartWithHttp2ServerConnectionPrefaceFrame(Unpooled.wrappedBuffer(payload))
+
+            else -> false
         }
     }
 
@@ -389,6 +527,11 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                                 ByteBufFlux.fromPath(Path.of(body.filePath!!), REQUEST_CHUNK_SIZE)
                             )
 
+//                            is FileBody -> send { req, outbound ->
+//                                outbound.send(ByteBufFlux.fromPath(Path.of(body.filePath!!), REQUEST_CHUNK_SIZE))
+//                                    .then()
+//                            }
+
                             is FormUrlEncodedBody, is MultipartBody -> {
                                 sendForm { req, form ->
                                     form.multipart(body is MultipartBody)
@@ -427,6 +570,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                     .awaitFirstOrNull()
 //                    .awaitSingleOrNull()
                     .let {
+//                        val it: ByteArray? = null
                         out.responseSizeInBytes = it?.size?.toLong() ?: 0L
                         out.body = it
                     }
