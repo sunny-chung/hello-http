@@ -14,7 +14,7 @@ class DelegatedTerminalChannelInboundHandler(val delegations: List<ChannelInboun
 
     @Deprecated("Deprecated in Java")
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-//        delegations.forEach { it.exceptionCaught(ctx, cause) }
+        delegations.forEach { it.exceptionCaught(ctx, cause) }
     }
 
     override fun channelRegistered(ctx: ChannelHandlerContext?) {

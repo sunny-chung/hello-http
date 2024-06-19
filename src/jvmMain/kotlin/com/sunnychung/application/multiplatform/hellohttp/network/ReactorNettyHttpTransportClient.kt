@@ -136,7 +136,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 )
             }
             .doOnChannelInit { connectionObserver, channel, socketAddress ->
-                val http2ClientConnectionPrefaceListener = @ChannelHandler.Sharable object : ChannelInboundHandlerAdapter() {
+                fun http2ClientConnectionPrefaceListener(isPropagateEvent: Boolean): ChannelInboundHandlerAdapter = @ChannelHandler.Sharable object : ChannelInboundHandlerAdapter() {
                     override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
                         log.i { "received ev $evt" }
                         if (evt is Http2ConnectionPrefaceAndSettingsFrameWrittenEvent && !isHttp2ClientConnectionPrefaceSent) {
@@ -155,11 +155,14 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                             }
                             log.i { "received Http2ConnectionPrefaceAndSettingsFrameWrittenEvent" }
                         }
-                        super.userEventTriggered(ctx, evt)
+                        if (isPropagateEvent) {
+                            super.userEventTriggered(ctx, evt)
+                        }
                     }
 
                     override fun handlerAdded(ctx: ChannelHandlerContext) {
                         if (ctx.handler() == this) {
+                            if (isPropagateEvent) super.handlerAdded(ctx)
                             return // avoid infinite recursion
                         }
                         val handlerId = "com.sunnychung.application.multiplatform.hellohttp.network.http2ClientConnectionPrefaceListener.first2"
@@ -170,10 +173,42 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                             .addBefore(
                                 /* baseName = */ NettyPipeline.ReactiveBridge,
                                 /* name = */ handlerId,
-                                /* handler = */ this
+                                /* handler = */ http2ClientConnectionPrefaceListener(true)
                             )
 
-                        super.handlerAdded(ctx)
+                        if (isPropagateEvent) super.handlerAdded(ctx)
+                    }
+
+                    override fun channelRegistered(ctx: ChannelHandlerContext?) {
+                        if (isPropagateEvent) super.channelRegistered(ctx)
+                    }
+
+                    override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+                        if (isPropagateEvent) super.channelUnregistered(ctx)
+                    }
+
+                    override fun channelActive(ctx: ChannelHandlerContext) {
+                        if (isPropagateEvent) super.channelActive(ctx)
+                    }
+
+                    override fun channelInactive(ctx: ChannelHandlerContext) {
+                        if (isPropagateEvent) super.channelInactive(ctx)
+                    }
+
+                    override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+                        if (isPropagateEvent) super.channelRead(ctx, msg)
+                    }
+
+                    override fun channelReadComplete(ctx: ChannelHandlerContext?) {
+                        if (isPropagateEvent) super.channelReadComplete(ctx)
+                    }
+
+                    override fun channelWritabilityChanged(ctx: ChannelHandlerContext?) {
+                        if (isPropagateEvent) super.channelWritabilityChanged(ctx)
+                    }
+
+                    override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
+                        if (isPropagateEvent) super.exceptionCaught(ctx, cause)
                     }
                 }
 
@@ -190,14 +225,14 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         /* name = */ NettyPipeline.ReactiveBridge,
                         /* handler = */ DelegatedTerminalChannelInboundHandler(
                             listOf(
-                                http2ClientConnectionPrefaceListener,
+                                http2ClientConnectionPrefaceListener(isPropagateEvent = false),
                                 realReactiveBridge
                             )
                         )
                     )
                     .addLast( // for HTTP/1.1 upgrade to H2C
                         /* name = */ "com.sunnychung.application.multiplatform.hellohttp.network.http2ClientConnectionPrefaceListener.last",
-                        /* handler = */ http2ClientConnectionPrefaceListener
+                        /* handler = */ http2ClientConnectionPrefaceListener(isPropagateEvent = true),
                     )
             }
             .doOnResolve { conn, addr ->
