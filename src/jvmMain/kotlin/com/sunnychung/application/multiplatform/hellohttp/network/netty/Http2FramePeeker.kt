@@ -11,6 +11,8 @@ import io.netty.handler.codec.http2.Http2Flags
 import io.netty.handler.codec.http2.Http2FrameLogger
 import io.netty.handler.codec.http2.Http2Headers
 import io.netty.handler.codec.http2.Http2Settings
+import io.netty.handler.codec.http2.InspectedHttp2Headers
+import io.netty.handler.codec.http2.InspectedHttp2Headers.InspectedHttp2HeaderEntry
 import io.netty.handler.logging.LogLevel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
@@ -18,6 +20,8 @@ import org.apache.hc.core5.http2.H2Error
 import java.text.DecimalFormat
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.atomic.AtomicInteger
+
+private const val LONGEST_HEADER_LOG_PREFIX = "NAME INDEXED (123)"
 
 /**
  * Peek all the HTTP/2 frames to given MutableSharedFlows.
@@ -39,9 +43,12 @@ class Http2FramePeeker(
 
 //    var isFirstSettingFrame = true
 
-    fun emitFrame(direction: Direction, streamId: Int?, content: String) {
+    fun emitFrame(direction: Direction, streamId: Int?, content: String) =
+        emitFrame(emitInstant = KInstant.now(), direction = direction, streamId = streamId, content = content)
+
+    fun emitFrame(emitInstant: KInstant, direction: Direction, streamId: Int?, content: String) {
         val frame = Http2Frame(
-            instant = KInstant.now(),
+            instant = emitInstant,
             streamId = streamId?.takeIf { it >= 1 } ?: 0,
             content = content
         )
@@ -59,6 +66,37 @@ class Http2FramePeeker(
             .joinToString(separator = " ")
             .emptyToNull()
             ?: "-"
+    }
+
+    fun serializeHeader(it: Map.Entry<CharSequence, CharSequence>): String {
+        return if (it is InspectedHttp2HeaderEntry) {
+            val prefix = when (it.format) {
+                InspectedHttp2Headers.BinaryFormat.INDEXED -> "[${formatHeaderPrefix(LONGEST_HEADER_LOG_PREFIX.length, "INDEXED", "(${it.index})")}] "
+                InspectedHttp2Headers.BinaryFormat.LITERAL_WITH_INDEXING -> {
+                    if (it.index != null) {
+                        "[${formatHeaderPrefix(LONGEST_HEADER_LOG_PREFIX.length, "NAME INDEXED", "(${it.index})")}] "
+                    } else {
+                        "[${formatHeaderPrefix(LONGEST_HEADER_LOG_PREFIX.length, "+ NEW INDEX", "")}] "
+                    }
+                }
+                InspectedHttp2Headers.BinaryFormat.LITERAL_WITHOUT_INDEXING -> "[${formatHeaderPrefix(LONGEST_HEADER_LOG_PREFIX.length, "- NOT INDEXED", "")}] " //HEADER_LOG_PREFIX_SPACES
+                InspectedHttp2Headers.BinaryFormat.LITERAL_NEVER_INDEXED -> "[${formatHeaderPrefix(LONGEST_HEADER_LOG_PREFIX.length, "SENSITIVE", "")}] "
+                InspectedHttp2Headers.BinaryFormat.OTHER -> ""
+            }
+            val content = when (it.key) {
+                InspectedHttp2Headers.PSEUDO_HEADER_KEY_DYNAMIC_TABLE_SIZE_UPDATE -> {
+                    "Update dynamic table size to ${it.value}"
+                }
+                else -> "${it.key}: ${it.value}"
+            }
+            "$prefix$content"
+        } else {
+            "${it.key}: ${it.value}"
+        }
+    }
+
+    private fun formatHeaderPrefix(length: Int, begin: String, end: String): String {
+        return begin + " ".repeat(maxOf(length - begin.length - end.length, 0)) + end
     }
 
     fun flush() {
@@ -142,13 +180,15 @@ class Http2FramePeeker(
         padding: Int,
         endStream: Boolean
     ) {
+        val receiveInstant = KInstant.now()
         emitFrame(
+            receiveInstant,
             direction,
             streamId,
             "Frame: HEADERS; flags: ${
                 serializeFlags(mapOf("END_STREAM" to endStream))
             }\n${
-                headers.joinToString("\n") { "${it.key}: ${it.value}" }
+                headers.joinToString("\n") { serializeHeader(it) }
             }"
         )
 

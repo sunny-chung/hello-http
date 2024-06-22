@@ -109,6 +109,9 @@ allprojects {
                 } else if (requested.group == "io.projectreactor.netty" && requested.version?.startsWith("1.1.20") == true) {
                     useTarget("io.github.sunny-chung:${requested.name}:${requested.version}-patch1-SNAPSHOT")
                     because("transport inspection")
+                } else if (requested.group == "io.netty" && requested.name in setOf("netty-codec", "netty-codec-http2") && requested.version == "4.1.110.Final") {
+                    useTarget("io.github.sunny-chung:${requested.name}:${requested.version}-patch1-SNAPSHOT")
+                    because("transport inspection")
                 }
             }
         }
