@@ -76,6 +76,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
     protected fun buildHttpClient(
         callId: String,
         callData: CallData,
+        isSsl: Boolean,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
@@ -106,7 +107,12 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 *when (httpConfig.protocolVersion) {
                     HttpConfig.HttpProtocolVersion.Http1Only -> arrayOf(HttpProtocol.HTTP11)
                     HttpConfig.HttpProtocolVersion.Http2Only -> arrayOf(HttpProtocol.H2, HttpProtocol.H2C)
-                    null, HttpConfig.HttpProtocolVersion.Negotiate -> arrayOf(HttpProtocol.H2, HttpProtocol.H2C, HttpProtocol.HTTP11)
+                    HttpConfig.HttpProtocolVersion.Negotiate -> arrayOf(HttpProtocol.H2, HttpProtocol.H2C, HttpProtocol.HTTP11)
+                    null -> if (isSsl) {
+                        arrayOf(HttpProtocol.H2, HttpProtocol.H2C, HttpProtocol.HTTP11)
+                    } else {
+                        arrayOf(HttpProtocol.HTTP11)
+                    }
                 }
             )
             .secure { spec ->
@@ -497,6 +503,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration
     ): CallData {
+        val uri = request.getResolvedUri()
         val data = createCallData(
             requestBodySize = null,
             requestExampleId = requestExampleId,
@@ -510,6 +517,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         val httpClient = buildHttpClient(
             callId = callId,
             callData = data,
+            isSsl = uri.scheme !in setOf("http", "ws"),
             httpConfig = httpConfig,
             sslConfig = sslConfig,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
@@ -547,7 +555,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         }
                     }
                     .request(HttpMethod(request.method))
-                    .uri(request.getResolvedUri())
+                    .uri(uri)
                     .run {
                         when (val body = request.body) {
                             is StringBody -> send(

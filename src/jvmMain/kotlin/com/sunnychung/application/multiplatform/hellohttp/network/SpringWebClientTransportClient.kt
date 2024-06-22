@@ -46,6 +46,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
     fun buildWebClient(
         callId: String,
         callData: CallData,
+        isSsl: Boolean,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
@@ -58,6 +59,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                 buildHttpClient(
                     callId = callId,
                     callData = callData,
+                    isSsl = isSsl,
                     httpConfig = httpConfig,
                     sslConfig = sslConfig,
                     outgoingBytesFlow = outgoingBytesFlow,
@@ -80,6 +82,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration
     ): CallData {
+        val uri = request.getResolvedUri()
         val data = createCallData(
             requestBodySize = null,
             requestExampleId = requestExampleId,
@@ -93,6 +96,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         val client = buildWebClient(
             callId = callId,
             callData = data,
+            isSsl = uri.scheme !in setOf("http", "ws"),
             httpConfig = httpConfig,
             sslConfig = sslConfig,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
@@ -123,7 +127,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             try {
                 val requestBuilder = client
                     .method(org.springframework.http.HttpMethod.valueOf(request.method.uppercase()))
-                    .uri(request.getResolvedUri())
+                    .uri(uri)
                     .headers { builder ->
                         request.headers.forEach { (h, v) ->
                             builder.add(h, v)
