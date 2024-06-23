@@ -483,6 +483,7 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
 suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment) {
     createProjectIfNeeded()
     selectEnvironment(environment)
+    println("start run createRequest content ---")
     val baseExample = request.examples.first()
 
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
