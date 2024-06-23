@@ -55,6 +55,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithout
 import com.sunnychung.application.multiplatform.hellohttp.util.formatByteSize
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
@@ -82,6 +83,7 @@ fun SubprojectEnvironmentsEditorDialogView(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
                 AppText(text = "Environments", modifier = Modifier.weight(1f))
                 AppImageButton(resource = "add.svg", size = 24.dp, onClick = {
+                    log.d { "New Environment button clicked" }
                     val newEnvironment = Environment(
                         id = uuidString(),
                         name = "New Environment",

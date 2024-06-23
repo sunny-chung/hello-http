@@ -407,7 +407,7 @@ fun AppContentView() {
                                 with(selectedSubproject!!) {
                                     environments = it.environments
                                     name = it.name
-//                        log.d { "Updated subproject ${environments}" }
+                                    log.d { "Updated subproject ${environments}" }
                                 }
                                 projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 

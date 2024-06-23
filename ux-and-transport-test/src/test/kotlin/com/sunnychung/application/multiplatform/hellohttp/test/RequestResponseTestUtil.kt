@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -189,15 +190,35 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
         }
 
         fun switchToSslTabAndAddServerCaCert() {
-            onNode(hasTestTag(TestTag.EnvironmentEditorTab.name).and(hasTextExactly("SSL")))
-                .assertIsDisplayedWithRetry(this)
-                .performClickWithRetry(this)
+            var retryAttempt = 0
+            while (true) { // add this loop because failing with ComposeTimeoutException
+                waitForIdle()
 
-            waitUntil {
-                onAllNodesWithTag(buildTestTag(TestTagPart.EnvironmentSslTrustedServerCertificates, TestTagPart.CreateButton)!!)
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+                onNode(hasTestTag(TestTag.EnvironmentEditorTab.name).and(hasTextExactly("SSL")))
+                    .assertIsDisplayedWithRetry(this)
+                    .performClickWithRetry(this)
+
+                waitForIdle()
+
+                try {
+                    waitUntil {
+                        onAllNodesWithTag(
+                            buildTestTag(
+                                TestTagPart.EnvironmentSslTrustedServerCertificates,
+                                TestTagPart.CreateButton
+                            )!!
+                        )
+                            .fetchSemanticsNodes()
+                            .isNotEmpty()
+                    }
+                } catch (e: ComposeTimeoutException) {
+                    e.printStackTrace()
+                    println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+                    continue
+                }
+                break
             }
+            waitForIdle()
 
             mockChosenFile(File("../test-common/src/main/resources/tls/serverCACert.pem"))
             onNodeWithTag(buildTestTag(TestTagPart.EnvironmentSslTrustedServerCertificates, TestTagPart.CreateButton)!!)
@@ -217,6 +238,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                     .fetchSemanticsNodes()
                     .isNotEmpty()
             }
+            waitForIdle()
         }
 
         createEnvironmentInEnvDialog(TestEnvironment.LocalSsl.displayName)
@@ -359,26 +381,38 @@ suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
 suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
     println("createEnvironmentInEnvDialog start '$name'")
 
-    onNodeWithTag(TestTag.EnvironmentDialogCreateButton.name)
-        .assertIsDisplayedWithRetry(this)
-        .performClickWithRetry(this)
+    var retryAttempt = 0
+    while (true) { // add this loop because the click on EnvironmentDialogCreateButton often is not performed
+        waitForIdle()
 
-    waitForIdle()
+        onNodeWithTag(TestTag.EnvironmentDialogCreateButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this) // this click often is not performed
 
-    waitUntil {
-        println("EnvironmentDialogEnvNameTextField: [${
-            onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-                .fetchSemanticsNodes()
-                .joinToString { it.config.toString() }
-        }]")
+        waitForIdle()
 
-        onAllNodes(
-            hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-                .and(isFocusable())
-                .and(hasTextExactly("New Environment"))
-        )
-            .fetchSemanticsNodes()
-            .isNotEmpty()
+        try {
+            waitUntil {
+                println("EnvironmentDialogEnvNameTextField: [${
+                    onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                        .fetchSemanticsNodes()
+                        .joinToString { it.config.toString() }
+                }]")
+
+                onAllNodes(
+                    hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                        .and(isFocusable())
+                        .and(hasTextExactly("New Environment"))
+                )
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+            }
+        } catch (e: ComposeTimeoutException) {
+            e.printStackTrace()
+            println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+            continue
+        }
+        break
     }
 
     onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
