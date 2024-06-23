@@ -14,6 +14,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
@@ -38,7 +39,7 @@ import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
 @RunWith(Parameterized::class)
-class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) {
+class GraphqlRequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocolVersion?, isSsl: Boolean, isMTls: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -51,17 +52,19 @@ class GraphqlRequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: 
 
         @JvmStatic
         @Parameters(name = "{0}")
-        fun parameters(): Collection<Array<Any>> = listOf(
-            arrayOf("HTTP/2", false, false, false),
-            arrayOf("HTTP/1 only", true, false, false),
-            arrayOf("HTTP/1 SSL", true, true, false),
-            arrayOf("SSL", false, true, false),
-            arrayOf("mTLS", false, true, true),
+        fun parameters(): Collection<Array<Any?>> = listOf(
+            arrayOf("Default", null, false, false),
+            arrayOf("H2C", HttpConfig.HttpProtocolVersion.Http2Only, false, false),
+            arrayOf("HTTP/1 only", HttpConfig.HttpProtocolVersion.Http1Only, false, false),
+            arrayOf("HTTP/1 SSL", HttpConfig.HttpProtocolVersion.Http1Only, true, false),
+            arrayOf("Default SSL", null, true, false),
+            arrayOf("HTTP/2 SSL", HttpConfig.HttpProtocolVersion.Http2Only, true, false),
+            arrayOf("Default mTLS", null, true, true),
         )
     }
 
-    val graphqlUrl = "http${if (isSsl) "s" else ""}://${RequestResponseTest.hostAndPort(isHttp1Only = isHttp1Only, isSsl = isSsl, isMTls = isMTls)}/graphql"
-    val environment = RequestResponseTest.environment(isSsl = isSsl, isMTls = isMTls)
+    val graphqlUrl = "http${if (isSsl) "s" else ""}://${RequestResponseTest.hostAndPort(httpVersion = httpVersion, isSsl = isSsl, isMTls = isMTls)}/graphql"
+    val environment = RequestResponseTest.environment(httpVersion = httpVersion, isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
     @Rule

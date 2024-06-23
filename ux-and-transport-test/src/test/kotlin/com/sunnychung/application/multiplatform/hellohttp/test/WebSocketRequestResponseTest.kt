@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -53,7 +54,7 @@ class WebSocketRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boo
 
     val webSocketUrl = "ws${if (isSsl) "s" else ""}://${
         RequestResponseTest.hostAndPort(
-            isHttp1Only = true,
+            httpVersion = HttpConfig.HttpProtocolVersion.Http1Only,
             isSsl = isSsl,
             isMTls = isMTls
         )

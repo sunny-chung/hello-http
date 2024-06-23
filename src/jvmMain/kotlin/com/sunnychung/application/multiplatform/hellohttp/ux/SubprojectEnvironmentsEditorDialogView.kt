@@ -282,6 +282,7 @@ fun EnvironmentHttpTabContent(
                     )
                     true
                 },
+                testTagParts = arrayOf(TestTagPart.EnvironmentHttpProtocolVersionDropdown),
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
         }

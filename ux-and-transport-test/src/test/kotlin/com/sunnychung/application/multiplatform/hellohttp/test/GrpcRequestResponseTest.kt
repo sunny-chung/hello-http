@@ -338,7 +338,11 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
             delayShort()
         }
 
-        selectDropdownItem(TestTagPart.RequestGrpcServiceDropdown.name, request.grpc!!.service)
+        selectDropdownItem(
+            testTagPart = TestTagPart.RequestGrpcServiceDropdown.name,
+            itemDisplayText = request.grpc!!.service,
+            assertDisplayText = request.grpc!!.service.split('.').last()
+        )
         delayShort()
 
         selectDropdownItem(TestTagPart.RequestGrpcMethodDropdown.name, request.grpc!!.method)

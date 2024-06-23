@@ -11,6 +11,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -35,7 +36,7 @@ import java.io.File
 import kotlin.random.Random
 
 @RunWith(Parameterized::class)
-class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) {
+class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocolVersion?, isSsl: Boolean, isMTls: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -74,40 +75,53 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
 
         @JvmStatic
         @Parameters(name = "{0}")
-        fun parameters(): Collection<Array<Any>> = listOf(
-            arrayOf("HTTP/2", false, false, false),
-            arrayOf("HTTP/1 only", true, false, false),
-            arrayOf("HTTP/1 SSL", true, true, false),
-            arrayOf("SSL", false, true, false),
-            arrayOf("mTLS", false, true, true),
+        fun parameters(): Collection<Array<Any?>> = listOf(
+            arrayOf("Default", null, false, false),
+            arrayOf("H2C", HttpConfig.HttpProtocolVersion.Http2Only, false, false),
+            arrayOf("HTTP/1 only", HttpConfig.HttpProtocolVersion.Http1Only, false, false),
+            arrayOf("HTTP/1 SSL", HttpConfig.HttpProtocolVersion.Http1Only, true, false),
+            arrayOf("Default SSL", null, true, false),
+            arrayOf("HTTP/2 SSL", HttpConfig.HttpProtocolVersion.Http2Only, true, false),
+            arrayOf("Default mTLS", null, true, true),
         )
 
-        fun hostAndPort(isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) = when {
+        fun hostAndPort(httpVersion: HttpConfig.HttpProtocolVersion?, isSsl: Boolean, isMTls: Boolean) = when {
             isSsl && isMTls -> "localhost:18086"
-            !isHttp1Only && isSsl && !isMTls -> "localhost:18084"
-            isHttp1Only && isSsl && !isMTls -> "localhost:18088"
-            !isHttp1Only && !isSsl && !isMTls -> "localhost:18081"
-            isHttp1Only && !isSsl && !isMTls -> "localhost:18083"
+            httpVersion != HttpConfig.HttpProtocolVersion.Http1Only && isSsl && !isMTls -> "localhost:18084"
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && isSsl && !isMTls -> "localhost:18088"
+            httpVersion != HttpConfig.HttpProtocolVersion.Http1Only && !isSsl && !isMTls -> "localhost:18081"
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && !isSsl && !isMTls -> "localhost:18083"
             else -> throw UnsupportedOperationException()
         }
 
         fun environment(isSsl: Boolean, isMTls: Boolean): TestEnvironment = when {
-            !isSsl -> TestEnvironment.Local
+            !isSsl -> TestEnvironment.LocalDefault
             isSsl && isMTls -> TestEnvironment.LocalMTls
             isSsl && !isMTls -> TestEnvironment.LocalSsl
+            else -> throw UnsupportedOperationException()
+        }
+
+        fun environment(httpVersion: HttpConfig.HttpProtocolVersion?, isSsl: Boolean, isMTls: Boolean): TestEnvironment = when {
+            httpVersion == null && !isSsl -> TestEnvironment.LocalDefault
+            httpVersion == null && isSsl && !isMTls -> TestEnvironment.LocalSsl
+            httpVersion == null && isSsl && isMTls -> TestEnvironment.LocalMTls
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && !isSsl -> TestEnvironment.LocalHttp1Only
+            httpVersion == HttpConfig.HttpProtocolVersion.Http2Only && !isSsl -> TestEnvironment.LocalHttp2Only
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && isSsl -> TestEnvironment.LocalHttp1Ssl
+            httpVersion == HttpConfig.HttpProtocolVersion.Http2Only && isSsl -> TestEnvironment.LocalHttp2Ssl
             else -> throw UnsupportedOperationException()
         }
 
         private var lastExecutedEnvironment: TestEnvironment? = null
     }
 
-    val hostAndPort = hostAndPort(isHttp1Only = isHttp1Only, isSsl = isSsl, isMTls = isMTls)
+    val hostAndPort = hostAndPort(httpVersion = httpVersion, isSsl = isSsl, isMTls = isMTls)
     val httpUrlPrefix = "http${if (isSsl) "s" else ""}://$hostAndPort"
     val echoUrl = "$httpUrlPrefix/rest/echo"
     val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
     val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
     val errorUrl = "$httpUrlPrefix/rest/error"
-    val environment = environment(isSsl = isSsl, isMTls = isMTls)
+    val environment = environment(httpVersion = httpVersion, isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
     @Rule

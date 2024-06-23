@@ -36,6 +36,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
@@ -109,9 +110,13 @@ fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
     }
 
 enum class TestEnvironment(val displayName: String) {
-    Local("Local"),
-    LocalSsl("Local-SSL"),
-    LocalMTls("Local-mTLS"),
+    LocalDefault("Local Default"),
+    LocalHttp2Only("Local HTTP/2 Only"),
+    LocalHttp1Only("Local HTTP/1 Only"),
+    LocalHttp1Ssl("Local HTTP/1 SSL"),
+    LocalHttp2Ssl("Local HTTP/2 SSL"),
+    LocalSsl("Local SSL"),
+    LocalMTls("Local mTLS"),
 }
 
 suspend fun ComposeUiTest.createProjectIfNeeded() {
@@ -147,13 +152,41 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
 
         println("created first project and subproject")
 
+        // below create multiple environments
+
         waitForIdle()
         onNodeWithTag(TestTag.EditEnvironmentsButton.name)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
         waitUntilExactlyOneExists(hasTestTag(TestTag.EnvironmentDialogCreateButton.name))
 
-        createEnvironmentInEnvDialog(TestEnvironment.Local.displayName)
+        createEnvironmentInEnvDialog(TestEnvironment.LocalDefault.displayName)
+
+        fun switchToHttpTabAndUpdateHttpVersion(httpProtocolVersion: HttpConfig.HttpProtocolVersion?) {
+            if (httpProtocolVersion == null) {
+                return
+            }
+
+            val httpProtocolVersionCaption = when (httpProtocolVersion) {
+                HttpConfig.HttpProtocolVersion.Http1Only -> "HTTP/1 only"
+                HttpConfig.HttpProtocolVersion.Http2Only -> "HTTP/2 only"
+                HttpConfig.HttpProtocolVersion.Negotiate -> "Prefer HTTP/2"
+            }
+
+            onNode(hasTestTag(TestTag.EnvironmentEditorTab.name).and(hasTextExactly("HTTP")))
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+
+            waitUntil {
+                onAllNodesWithTag(buildTestTag(
+                    TestTagPart.EnvironmentHttpProtocolVersionDropdown,
+                    TestTagPart.DropdownButton
+                )!!)
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+            }
+            selectDropdownItem(TestTagPart.EnvironmentHttpProtocolVersionDropdown.name, httpProtocolVersionCaption)
+        }
 
         fun switchToSslTabAndAddServerCaCert() {
             onNode(hasTestTag(TestTag.EnvironmentEditorTab.name).and(hasTextExactly("SSL")))
@@ -269,6 +302,20 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
 //                ?.contains("CN=Test Client") == true
         }
 
+        createEnvironmentInEnvDialog(TestEnvironment.LocalHttp1Only.displayName)
+        switchToHttpTabAndUpdateHttpVersion(HttpConfig.HttpProtocolVersion.Http1Only)
+
+        createEnvironmentInEnvDialog(TestEnvironment.LocalHttp1Ssl.displayName)
+        switchToHttpTabAndUpdateHttpVersion(HttpConfig.HttpProtocolVersion.Http1Only)
+        switchToSslTabAndAddServerCaCert()
+
+        createEnvironmentInEnvDialog(TestEnvironment.LocalHttp2Only.displayName)
+        switchToHttpTabAndUpdateHttpVersion(HttpConfig.HttpProtocolVersion.Http2Only)
+
+        createEnvironmentInEnvDialog(TestEnvironment.LocalHttp2Ssl.displayName)
+        switchToHttpTabAndUpdateHttpVersion(HttpConfig.HttpProtocolVersion.Http2Only)
+        switchToSslTabAndAddServerCaCert()
+
         onNodeWithTag(TestTag.DialogCloseButton.name)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
@@ -344,7 +391,7 @@ fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
     selectDropdownItem(TestTagPart.RequestMethodDropdown.name, itemDisplayText)
 }
 
-fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String) {
+fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String, assertDisplayText: String = itemDisplayText) {
     val itemTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
     // if drop down menu is expanded, click the item directly; otherwise, open the menu first.
     if (onAllNodesWithTag(itemTag).fetchSemanticsNodes().isEmpty()) {
@@ -357,6 +404,14 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
     onNodeWithTag(itemTag)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
+    waitUntil {
+        onNodeWithTag(buildTestTag(
+            testTagPart,
+            TestTagPart.DropdownLabel
+        )!!, useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .getTexts() == listOf(assertDisplayText)
+    }
 }
 
 suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment) {

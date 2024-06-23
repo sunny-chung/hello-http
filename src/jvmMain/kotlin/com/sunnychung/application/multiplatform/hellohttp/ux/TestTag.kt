@@ -47,6 +47,7 @@ enum class TestTagPart {
     RequestGrpcServiceDropdown,
     RequestGrpcMethodDropdown,
     EnvironmentDropdown,
+    EnvironmentHttpProtocolVersionDropdown,
     EnvironmentSslTrustedServerCertificates,
     EnvironmentSslClientCertificates,
     EnvironmentDisableSystemCaCertificates,

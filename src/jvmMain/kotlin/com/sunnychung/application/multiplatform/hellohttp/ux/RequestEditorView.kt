@@ -258,6 +258,18 @@ fun RequestEditorView(
                         textAlign = TextAlign.Left,
                         maxLines = 1,
                         modifier = modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
+                            .run {
+                                if (isLabel) {
+                                    testTag(
+                                        buildTestTag(
+                                            TestTagPart.RequestMethodDropdown,
+                                            TestTagPart.DropdownLabel
+                                        )!!
+                                    )
+                                } else {
+                                    this
+                                }
+                            }
                     )
                 },
                 onClickItem = onClickItem@ {
@@ -815,6 +827,18 @@ private fun RequestServiceMethodSelector(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
+                        .run {
+                            if (isLabel) {
+                                testTag(
+                                    buildTestTag(
+                                        TestTagPart.RequestGrpcServiceDropdown,
+                                        TestTagPart.DropdownLabel
+                                    )!!
+                                )
+                            } else {
+                                this
+                            }
+                        }
                 )
             },
             testTagParts = arrayOf(TestTagPart.RequestGrpcServiceDropdown),
