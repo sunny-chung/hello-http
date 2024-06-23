@@ -400,7 +400,16 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
             .performClickWithRetry(this)
 
         waitUntil(3.seconds().millis) {
-            onAllNodes(hasTestTag(itemTag), useUnmergedTree = true)
+            onAllNodes(hasTestTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!))
+                .fetchSemanticsNodes()
+                .size == 1
+        }
+
+        onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
+            .performScrollToNode(hasTestTag(itemTag))
+
+        waitUntil(3.seconds().millis) {
+            onAllNodes(hasTestTag(itemTag))
                 .fetchSemanticsNodes()
                 .size == 1
         }
