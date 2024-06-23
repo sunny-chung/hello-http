@@ -301,6 +301,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
 //                ?.firstOrNull().also { println(">>> CC = $it") }
 //                ?.contains("CN=Test Client") == true
         }
+        waitForIdle()
 
         createEnvironmentInEnvDialog(TestEnvironment.LocalHttp1Only.displayName)
         switchToHttpTabAndUpdateHttpVersion(HttpConfig.HttpProtocolVersion.Http1Only)
@@ -356,11 +357,21 @@ suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
  * @param name A unique name.
  */
 suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
+    println("createEnvironmentInEnvDialog start '$name'")
+
     onNodeWithTag(TestTag.EnvironmentDialogCreateButton.name)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
 
+    waitForIdle()
+
     waitUntil {
+        println("EnvironmentDialogEnvNameTextField: [${
+            onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                .fetchSemanticsNodes()
+                .joinToString { it.config.toString() }
+        }]")
+
         onAllNodes(
             hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
                 .and(isFocusable())
@@ -384,6 +395,11 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
         // one in list view and one in text field
         onAllNodesWithText(name).fetchSemanticsNodes().size == 2
     }
+
+    waitForIdle()
+
+    println("createEnvironmentInEnvDialog done '$name'")
+    println("createEnvironmentInEnvDialog '$name' list ${onAllNodesWithText(name).fetchSemanticsNodes().joinToString("|") { it.config.toString() }}")
 }
 
 fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
