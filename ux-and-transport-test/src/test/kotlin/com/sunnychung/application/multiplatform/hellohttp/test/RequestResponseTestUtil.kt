@@ -10,6 +10,7 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
@@ -121,7 +122,7 @@ enum class TestEnvironment(val displayName: String) {
 }
 
 suspend fun ComposeUiTest.createProjectIfNeeded() {
-    if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodes().isNotEmpty()) {
+    if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodesWithRetry(this).isNotEmpty()) {
         // create first project
         onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
             .performClickWithRetry(this)
@@ -147,7 +148,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
             .performClickWithRetry(this)
         waitUntil {
             onAllNodesWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
-                .fetchSemanticsNodes()
+                .fetchSemanticsNodesWithRetry(this)
                 .isEmpty()
         }
 
@@ -183,7 +184,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                     TestTagPart.EnvironmentHttpProtocolVersionDropdown,
                     TestTagPart.DropdownButton
                 )!!)
-                    .fetchSemanticsNodes()
+                    .fetchSemanticsNodesWithRetry(this)
                     .isNotEmpty()
             }
             selectDropdownItem(TestTagPart.EnvironmentHttpProtocolVersionDropdown.name, httpProtocolVersionCaption)
@@ -208,7 +209,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                                 TestTagPart.CreateButton
                             )!!
                         )
-                            .fetchSemanticsNodes()
+                            .fetchSemanticsNodesWithRetry(this)
                             .isNotEmpty()
                     }
                 } catch (e: ComposeTimeoutException) {
@@ -235,7 +236,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                         .and(hasText("CN=Test Server CA", substring = true)),
                     useUnmergedTree = true
                 )
-                    .fetchSemanticsNodes()
+                    .fetchSemanticsNodesWithRetry(this)
                     .isNotEmpty()
             }
             waitForIdle()
@@ -276,7 +277,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                 TestTagPart.ClientCertificate,
                 TestTagPart.FileButton,
             )!!)
-                .fetchSemanticsNode()
+                .fetchSemanticsNodeWithRetry(this)
                 .getTexts()
                 .firstOrNull() == certFile.name
         }
@@ -295,7 +296,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                 TestTagPart.PrivateKey,
                 TestTagPart.FileButton,
             )!!)
-                .fetchSemanticsNode()
+                .fetchSemanticsNodeWithRetry(this)
                 .getTexts()
                 .firstOrNull() == keyFile.name
         }
@@ -316,7 +317,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                     .and(hasText("CN=Test Client", substring = true)),
                 useUnmergedTree = true
             )
-                .fetchSemanticsNodes()
+                .fetchSemanticsNodesWithRetry(this)
                 .isNotEmpty()
 //                .firstOrNull()
 //                ?.getTexts()
@@ -342,7 +343,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
         onNodeWithTag(TestTag.DialogCloseButton.name)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
-        waitUntil { onAllNodesWithTag(TestTag.DialogCloseButton.name).fetchSemanticsNodes().isEmpty() }
+        waitUntil { onAllNodesWithTag(TestTag.DialogCloseButton.name).fetchSemanticsNodesWithRetry(this).isEmpty() }
         waitForIdle()
     }
 //    while (true) {
@@ -363,7 +364,7 @@ fun ComposeUiTest.mockChosenFile(file: File): File {
 suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
     if (onNodeWithTag(buildTestTag(TestTagPart.EnvironmentDropdown, TestTagPart.DropdownLabel)!!, useUnmergedTree = true)
         .assertIsDisplayedWithRetry(this)
-        .fetchSemanticsNode()
+        .fetchSemanticsNodeWithRetry(this)
         .getTexts()
         .first() == environment.displayName
     ) {
@@ -395,7 +396,7 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
             waitUntil {
                 println("EnvironmentDialogEnvNameTextField: [${
                     onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-                        .fetchSemanticsNodes()
+                        .fetchSemanticsNodesWithRetry(this)
                         .joinToString { it.config.toString() }
                 }]")
 
@@ -404,7 +405,7 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
                         .and(isFocusable())
                         .and(hasTextExactly("New Environment"))
                 )
-                    .fetchSemanticsNodes()
+                    .fetchSemanticsNodesWithRetry(this)
                     .isNotEmpty()
             }
         } catch (e: ComposeTimeoutException) {
@@ -427,13 +428,13 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
 
     waitUntil(3.seconds().millis) {
         // one in list view and one in text field
-        onAllNodesWithText(name).fetchSemanticsNodes().size == 2
+        onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).size == 2
     }
 
     waitForIdle()
 
     println("createEnvironmentInEnvDialog done '$name'")
-    println("createEnvironmentInEnvDialog '$name' list ${onAllNodesWithText(name).fetchSemanticsNodes().joinToString("|") { it.config.toString() }}")
+    println("createEnvironmentInEnvDialog '$name' list ${onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).joinToString("|") { it.config.toString() }}")
 }
 
 fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
@@ -444,14 +445,14 @@ fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
 fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String, assertDisplayText: String = itemDisplayText) {
     val itemTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
     // if drop down menu is expanded, click the item directly; otherwise, open the menu first.
-    if (onAllNodesWithTag(itemTag, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+    if (onAllNodesWithTag(itemTag, useUnmergedTree = true).fetchSemanticsNodesWithRetry(this).isEmpty()) {
         onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
         waitUntil(3.seconds().millis) {
             onAllNodes(hasTestTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!))
-                .fetchSemanticsNodes()
+                .fetchSemanticsNodesWithRetry(this)
                 .size == 1
         }
 
@@ -460,7 +461,7 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
 
         waitUntil(3.seconds().millis) {
             onAllNodes(hasTestTag(itemTag))
-                .fetchSemanticsNodes()
+                .fetchSemanticsNodesWithRetry(this)
                 .size == 1
         }
     }
@@ -475,7 +476,7 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
             testTagPart,
             TestTagPart.DropdownLabel
         )!!, useUnmergedTree = true)
-            .fetchSemanticsNode()
+            .fetchSemanticsNodeWithRetry(this)
             .getTexts() == listOf(assertDisplayText)
     }
 }
@@ -664,7 +665,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                                         hasTextExactly(filename, includeEditableText = false)
                                     )
                                 )
-                                    .fetchSemanticsNodes()
+                                    .fetchSemanticsNodesWithRetry(this)
                                     .isNotEmpty()
                             }
 
@@ -891,16 +892,16 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     waitForIdle()
 
     // wait for response
-    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
+    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodesWithRetry(this).isNotEmpty() }
     if (isOneOffRequest) {
         val startTime = KInstant.now()
-        waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+        waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodesWithRetry(this).isEmpty() }
         println("Call Duration: ${KInstant.now() - startTime}")
     }
 
     if (isExpectResponseBody) {
         waitUntil(1500.milliseconds().millis) {
-            onAllNodesWithTag(TestTag.ResponseBody.name).fetchSemanticsNodes().isNotEmpty()
+            onAllNodesWithTag(TestTag.ResponseBody.name).fetchSemanticsNodesWithRetry(this).isNotEmpty()
         }
     }
 }
@@ -911,7 +912,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
 
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
-    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
         .getTexts()
         .single()
     println(responseBody)
@@ -983,7 +984,7 @@ suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: B
     fun getStreamPayloadLatestTimeString(): String {
         waitForIdle()
         return (onAllNodesWithTag(TestTag.ResponseStreamLogItemTime.name, useUnmergedTree = true)
-            .fetchSemanticsNodes()//.also { println("getStreamPayloadLatestTimeString() size ${it.size}") }
+            .fetchSemanticsNodesWithRetry(this)//.also { println("getStreamPayloadLatestTimeString() size ${it.size}") }
             .firstOrNull()
             ?.getTexts()
             ?.firstOrNull()
@@ -1031,11 +1032,11 @@ suspend fun ComposeUiTest.fireRequest(timeout: KDuration = 1.seconds(), isClient
     delayShort()
 
     // wait for response
-    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
+    waitUntil(5000L) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodesWithRetry(this).isNotEmpty() }
     if (!isClientStreaming && !isServerStreaming) {
-        waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+        waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodesWithRetry(this).isEmpty() }
     } else {
-        waitUntil(1.seconds().millis) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isNotEmpty() }
+        waitUntil(1.seconds().millis) { onAllNodesWithText("Communicating").fetchSemanticsNodesWithRetry(this).isNotEmpty() }
     }
 }
 
@@ -1054,7 +1055,7 @@ fun ComposeUiTest.disconnect() {
     waitUntil(2.seconds().millis) {
         onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
             .assertIsDisplayedWithRetry(this)
-            .fetchSemanticsNode()
+            .fetchSemanticsNodeWithRetry(this)
             .getTexts() == listOf("Connect")
     }
 }
@@ -1074,7 +1075,7 @@ suspend fun ComposeUiTest.wait(ms: Long) {
 }
 
 fun ComposeUiTest.getResponseBody(): String? {
-    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+    val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
         .getTexts()
         .singleOrNull()
     return responseBody
@@ -1115,4 +1116,24 @@ fun SemanticsNode.getTexts(): List<String> {
     config.getOrNull(SemanticsProperties.Text)
         ?.let { actual.addAll(it.map { anStr -> anStr.text }) }
     return actual.filter { it.isNotBlank() }
+}
+
+fun SemanticsNodeInteraction.fetchSemanticsNodeWithRetry(host: ComposeUiTest): SemanticsNode {
+    while (true) {
+        try {
+            return fetchSemanticsNode()
+        } catch (e: IllegalArgumentException) {
+            host.waitForIdle()
+        }
+    }
+}
+
+fun SemanticsNodeInteractionCollection.fetchSemanticsNodesWithRetry(host: ComposeUiTest): List<SemanticsNode> {
+    while (true) {
+        try {
+            return fetchSemanticsNodes()
+        } catch (e: IllegalArgumentException) {
+            host.waitForIdle()
+        }
+    }
 }
