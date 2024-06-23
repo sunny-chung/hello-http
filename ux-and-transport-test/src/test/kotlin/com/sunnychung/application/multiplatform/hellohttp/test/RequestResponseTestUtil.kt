@@ -394,14 +394,18 @@ fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
 fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String, assertDisplayText: String = itemDisplayText) {
     val itemTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
     // if drop down menu is expanded, click the item directly; otherwise, open the menu first.
-    if (onAllNodesWithTag(itemTag).fetchSemanticsNodes().isEmpty()) {
+    if (onAllNodesWithTag(itemTag, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
         onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownButton)!!)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
-        waitUntilExactlyOneExists(hasTestTag(itemTag), 3.seconds().millis)
+        waitUntil(3.seconds().millis) {
+            onAllNodes(hasTestTag(itemTag), useUnmergedTree = true)
+                .fetchSemanticsNodes()
+                .size == 1
+        }
     }
-    onNodeWithTag(itemTag)
+    onNodeWithTag(itemTag, useUnmergedTree = true)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
     waitUntil {
