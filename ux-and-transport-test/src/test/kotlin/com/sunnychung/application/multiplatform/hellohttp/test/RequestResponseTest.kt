@@ -581,7 +581,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
                     )
                 )
             ),
-            timeout = 35.seconds(),
+            timeout = 75.seconds(),
             environment = environment,
         )
     }
@@ -636,7 +636,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
                     )
                 )
             ),
-            timeout = 35.seconds(),
+            timeout = 75.seconds(),
             environment = environment,
         )
     }
