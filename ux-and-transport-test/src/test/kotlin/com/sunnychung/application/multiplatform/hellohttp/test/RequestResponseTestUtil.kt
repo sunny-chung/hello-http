@@ -838,7 +838,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
         assertEquals(0, resp.multiparts.size)
     }
     when (val body = baseExample.body) {
-        null, is FormUrlEncodedBody, is MultipartBody -> assertEquals(null, resp.body)
+        null, is FormUrlEncodedBody, is MultipartBody -> assertTrue(resp.body.isNullOrEmpty())
         is FileBody -> {
             if (isAssertBodyContent) {
                 assertEquals(File(body.filePath).readText(), resp.body)
