@@ -62,6 +62,7 @@ enum class TestTagPart {
     FileButton,
     ValueTypeDropdown,
     DropdownButton,
+    DropdownMenu,
     DropdownItem,
     DropdownLabel,
 }

@@ -405,6 +405,9 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
                 .size == 1
         }
     }
+    onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
+        .performScrollToNode(hasTestTag(itemTag))
+    
     onNodeWithTag(itemTag, useUnmergedTree = true)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)

@@ -75,6 +75,13 @@ fun <T: DropDownable> DropDownView(
         expanded = isShowContextMenu,
         onDismissRequest = { isShowContextMenu = false },
         modifier = Modifier.background(colors.backgroundContextMenu)
+            .run {
+                if (testTagParts != null) {
+                    testTag(buildTestTag(*testTagParts, TestTagPart.DropdownMenu)!!)
+                } else {
+                    this
+                }
+            }
     ) {
         populatedItems.forEach { item ->
             Column(modifier = Modifier
