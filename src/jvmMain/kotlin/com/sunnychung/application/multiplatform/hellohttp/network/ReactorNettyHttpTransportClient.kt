@@ -73,6 +73,10 @@ private val HTTP2_CONNECTION_PREFACE_BYTES = CONNECTION_PREFACE.toByteArray()
 
 open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 
+    companion object {
+        var IS_ENABLE_WIRETAP_LOG = false
+    }
+
     protected fun buildHttpClient(
         callId: String,
         callData: CallData,
@@ -240,6 +244,15 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         /* name = */ "com.sunnychung.application.multiplatform.hellohttp.network.http2ClientConnectionPrefaceListener.last",
                         /* handler = */ http2ClientConnectionPrefaceListener(isPropagateEvent = true),
                     )
+
+                if (IS_ENABLE_WIRETAP_LOG) {
+                    channel.pipeline().addBefore(
+                        /* baseName = */ NettyPipeline.LoggingHandler,
+                        /* name = */ "${NettyPipeline.LoggingHandler}0",
+                        /* handler = */
+                        AdvancedByteBufFormat.SIMPLE.toLoggingHandler(".LoggingHandler0", LogLevel.INFO, Charsets.UTF_8)
+                    )
+                }
             }
             .doOnResolve { conn, addr ->
                 emitEvent(callId, "DNS resolution of domain [${(addr as InetSocketAddress).hostName}] started") // TODO add domain name

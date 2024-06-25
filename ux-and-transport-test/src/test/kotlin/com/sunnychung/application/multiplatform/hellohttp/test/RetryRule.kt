@@ -16,6 +16,7 @@ class RetryRule(val maxRetryCount: Int = 5) : TestRule {
         return object : Statement() {
             override fun evaluate() {
                 var attempt = -1
+                println("[${KZonedInstant.nowAtLocalZoneOffset()}] Start test ${description.displayName}")
                 do {
                     ++attempt
                     try {

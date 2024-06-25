@@ -17,11 +17,13 @@ import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.network.ReactorNettyHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -135,6 +137,11 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
         } else {
             println("No init is needed")
         }
+    }
+
+    @After
+    fun afterEach() {
+        ReactorNettyHttpTransportClient.IS_ENABLE_WIRETAP_LOG = false
     }
 
     @Test
@@ -588,6 +595,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
 
     @Test
     fun echoPostWithBigMultipartFiles() = runTest {
+        ReactorNettyHttpTransportClient.IS_ENABLE_WIRETAP_LOG = true
         createAndSendRestEchoRequestAndAssertResponse(
             request = UserRequestTemplate(
                 id = uuidString(),
