@@ -53,7 +53,11 @@ class Http2FramePeeker(
             content = content
         )
         when (direction) {
-            Direction.OUTBOUND -> writeQueue.addLast(frame)
+            Direction.OUTBOUND -> {
+                log.d { "Http2FramePeeker writeQueue.addLast start" }
+                writeQueue.addLast(frame)
+                log.d { "Http2FramePeeker writeQueue.addLast end" }
+            }
             Direction.INBOUND -> runBlocking {
                 incomingBytesFlow.emit(frame)
             }
@@ -100,16 +104,25 @@ class Http2FramePeeker(
     }
 
     fun flush() {
+        log.d { "Http2FramePeeker flush start" }
         if (writeQueue.isEmpty()) {
+            log.d { "Http2FramePeeker flush empty" }
             return
         }
         val flushTime = KInstant.now()
+        log.d { "Http2FramePeeker flush b4 runBlocking" }
         runBlocking {
+            log.d { "Http2FramePeeker flush runBlocking" }
             while (writeQueue.isNotEmpty()) {
+                log.d { "Http2FramePeeker flush poll" }
                 val frame = writeQueue.pollFirst()
+                log.d { "Http2FramePeeker flush emit" }
                 outgoingBytesFlow.emit(frame.copy(instant = flushTime))
+                log.d { "Http2FramePeeker flush emited" }
             }
+            log.d { "Http2FramePeeker flush after while" }
         }
+        log.d { "Http2FramePeeker flush end" }
     }
 
     override fun isEnabled(): Boolean {
