@@ -17,3 +17,7 @@ server:
 grpc:
   server:
     port: 18082
+
+logging:
+  level:
+    com.sunnychung: DEBUG

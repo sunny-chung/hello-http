@@ -6,6 +6,7 @@ import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestDa
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
+import org.slf4j.LoggerFactory
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.server.reactive.ServerHttpRequest
@@ -17,10 +18,12 @@ import org.springframework.web.server.awaitFormData
 import org.springframework.web.server.awaitMultipartData
 import reactor.core.publisher.Flux
 import reactor.kotlin.extra.math.sumAsInt
+import java.util.concurrent.atomic.AtomicInteger
 
 @RequestMapping("rest")
 @RestController
 class EchoApi {
+    val log = LoggerFactory.getLogger(this::class.java)
 
     @RequestMapping("echo")
     suspend fun echo(request: ServerHttpRequest, exchange: ServerWebExchange): RequestData {
@@ -49,28 +52,47 @@ class EchoApi {
 
     @RequestMapping("echoWithoutBody")
     suspend fun echoWithoutBody(request: ServerHttpRequest, exchange: ServerWebExchange): RequestData {
+        log.debug("echoWithoutBody start")
+        val i = AtomicInteger(0)
         return RequestData(
             path = request.path.value(),
             method = request.method.name(),
             headers = request.headers.toParameterList(),
             queryParameters = request.queryParams.toParameterList(),
             formData = exchange.awaitFormData().toParameterList(),
-            multiparts = exchange.awaitMultipartData().flatMap { it.value.map {
+            multiparts = exchange.awaitMultipartData().flatMap {
+                log.debug("echoWithoutBody flatMap ${i.incrementAndGet()}")
+                val j = AtomicInteger(0)
+                it.value.map {
+                    log.debug("echoWithoutBody value.map ${j.incrementAndGet()}")
+                    val k = AtomicInteger(0)
 //                val dataSize = DataBufferUtils.join(it.content()).awaitSingleOrNull()?.readableByteCount() ?: 0
-                val dataSize = it.content().map { it.readableByteCount() }.sumAsInt().awaitSingleOrNull() ?: 0
-                PartData(
-                    name = it.name(),
-                    headers = it.headers().toParameterList(),
-                    size = dataSize,
-                    data = null,
-                )
-            } },
+                    val dataSize = it.content().map {
+                        it.readableByteCount().also {
+                            log.debug("echoWithoutBody content.map ${k.incrementAndGet()} -> $it")
+                        }
+                    }.sumAsInt().awaitSingleOrNull() ?: 0
+                    log.debug("echoWithoutBody PartData ${j.get() - 1}")
+                    PartData(
+                        name = it.name(),
+                        headers = it.headers().toParameterList(),
+                        size = dataSize,
+                        data = null,
+                    )
+                }
+            },
             body = try {
-                request.body.toByteArray()?.size?.toString()
+                log.debug("echoWithoutBody body start")
+                request.body.toByteArray()?.size?.toString().also {
+                    log.debug("echoWithoutBody body returning $it")
+                }
             } catch (_: IllegalStateException) {
+                log.debug("echoWithoutBody body caught ISE")
                 null
             },
-        )
+        ).also {
+            log.debug("echoWithoutBody return")
+        }
     }
 }
 

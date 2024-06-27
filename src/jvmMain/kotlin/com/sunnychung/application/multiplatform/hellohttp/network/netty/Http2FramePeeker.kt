@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
 import org.apache.hc.core5.http2.H2Error
 import java.text.DecimalFormat
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -41,7 +42,13 @@ class Http2FramePeeker(
 
     val writeQueue = ConcurrentLinkedDeque<Http2Frame>()
 
+    val outboundTransmitCreditsForDebug = ConcurrentHashMap<Int, AtomicInteger>()
+
 //    var isFirstSettingFrame = true
+
+    fun outboundTransmitCreditForDebug(streamId: Int) = outboundTransmitCreditsForDebug.getOrPut(streamId) {
+        AtomicInteger(65535) // TODO respect the value of SETTINGS_INITIAL_WINDOW_SIZE
+    }
 
     fun emitFrame(direction: Direction, streamId: Int?, content: String) =
         emitFrame(emitInstant = KInstant.now(), direction = direction, streamId = streamId, content = content)
@@ -146,6 +153,9 @@ class Http2FramePeeker(
             "Frame: SETTINGS; flags: -\n" +
                     settings.map { "${http2SettingKey(it.key)}: ${it.value}" }.joinToString("\n")
         )
+
+        log.d { "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: SETTINGS; flags: -\n" +
+                settings.map { "${http2SettingKey(it.key)}: ${it.value}" }.joinToString("\n") }
     }
 
     override fun logSettingsAck(direction: Direction, ctx: ChannelHandlerContext) {
@@ -167,6 +177,11 @@ class Http2FramePeeker(
             streamId,
             "Frame: WINDOW_UPDATE\nIncrement $windowSizeIncrement"
         )
+
+        log.d {
+            if (direction == Direction.INBOUND) outboundTransmitCreditForDebug(streamId).addAndGet(windowSizeIncrement)
+            "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: WINDOW_UPDATE {$streamId}\nIncrement $windowSizeIncrement (= ${outboundTransmitCreditForDebug(streamId)})"
+        }
     }
 
     override fun logPing(direction: Direction, ctx: ChannelHandlerContext, data: Long) {
@@ -204,6 +219,12 @@ class Http2FramePeeker(
                 headers.joinToString("\n") { serializeHeader(it) }
             }"
         )
+
+        log.d { "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: HEADERS; flags: ${
+            serializeFlags(mapOf("END_STREAM" to endStream))
+        }\n${
+            headers.joinToString("\n") { "${it.key}: ${it.value}" }
+        }" }
 
 //        if (out != null && headers.contains(AsciiString("grpc-status"))) {
 //            try {
@@ -282,6 +303,14 @@ class Http2FramePeeker(
                 )
             }"
         )
+
+        if (direction == Direction.OUTBOUND) {
+            log.d {
+                outboundTransmitCreditForDebug(streamId).addAndGet(- data.readableBytes())
+                outboundTransmitCreditForDebug(0).addAndGet(- data.readableBytes())
+                "> HTTP2 Frame DATA ({$streamId} window size = ${outboundTransmitCreditForDebug(streamId)}, conn win s = ${outboundTransmitCreditForDebug(0)})"
+            }
+        }
     }
 
     override fun logPushPromise(
