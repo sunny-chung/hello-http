@@ -3,6 +3,9 @@ package com.sunnychung.application.multiplatform.hellohttp.testserver.controller
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.PartData
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
+import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
@@ -60,27 +63,27 @@ class EchoApi {
             headers = request.headers.toParameterList(),
             queryParameters = request.queryParams.toParameterList(),
             formData = exchange.awaitFormData().toParameterList(),
-            multiparts = exchange.awaitMultipartData().flatMap {
+            multiparts = exchange.multipartData.asFlow().map {
                 log.debug("echoWithoutBody flatMap ${i.incrementAndGet()}")
                 val j = AtomicInteger(0)
-                it.value.map {
+                it.values.map {
                     log.debug("echoWithoutBody value.map ${j.incrementAndGet()}")
                     val k = AtomicInteger(0)
 //                val dataSize = DataBufferUtils.join(it.content()).awaitSingleOrNull()?.readableByteCount() ?: 0
-                    val dataSize = it.content().map {
+                    val dataSize = it.flatMap { it.content().asFlow().toList() }.map {
                         it.readableByteCount().also {
                             log.debug("echoWithoutBody content.map ${k.incrementAndGet()} -> $it")
                         }
-                    }.sumAsInt().awaitSingleOrNull() ?: 0
+                    }.sum()
                     log.debug("echoWithoutBody PartData ${j.get() - 1}")
                     PartData(
-                        name = it.name(),
-                        headers = it.headers().toParameterList(),
+                        name = it.first().name(),
+                        headers = it.first().headers().toParameterList(),
                         size = dataSize,
                         data = null,
                     )
                 }
-            },
+            }.toList().flatten(),
             body = try {
                 log.debug("echoWithoutBody body start")
                 request.body.toByteArray()?.size?.toString().also {
