@@ -24,6 +24,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import org.springframework.core.io.ByteArrayResource
+import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
@@ -151,7 +152,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                                             (body as RequestBodyWithKeyValuePairs).value.forEach {
                                                 when (it.valueType) {
                                                     FieldValueType.String -> part(it.key, it.value)
-                                                    FieldValueType.File -> part(it.key, InputStreamResource(FileInputStream(File(it.value))))
+                                                    FieldValueType.File -> part(it.key, FileSystemResource(File(it.value)))
                                                 }
                                             }
                                         }
