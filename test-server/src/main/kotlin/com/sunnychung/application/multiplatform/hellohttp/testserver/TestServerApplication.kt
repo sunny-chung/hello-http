@@ -7,6 +7,9 @@ import org.springframework.boot.runApplication
 class TestServerApplication
 
 fun main(args: Array<String>) {
+	println(">>>> io.netty.maxDirectMemory = ${System.getProperty("io.netty.maxDirectMemory")}")
+	println(">>>> maxDirectMemory = ${io.netty.util.internal.PlatformDependent.maxDirectMemory()}")
+
 	System.setProperty("reactor.netty.http.server.accessLogEnabled", "true")
 	runApplication<TestServerApplication>(*args)
 }
