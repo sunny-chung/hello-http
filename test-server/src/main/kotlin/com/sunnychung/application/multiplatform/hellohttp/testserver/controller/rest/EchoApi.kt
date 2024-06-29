@@ -74,7 +74,7 @@ class EchoApi {
                     it.switchOnFirst { signal, partEvents ->
                         if (signal.hasValue()) {
                             val event = signal.get()
-                            log.debug("echoWithoutBody ${i.incrementAndGet()} ${event?.name()} ${event?.javaClass?.simpleName}")
+                            log.trace("echoWithoutBody ${i.incrementAndGet()} ${event?.name()} ${event?.javaClass?.simpleName}")
                             when (event) {
                                 is FormPartEvent -> {
 //                                formData += Parameter(name = event.name(), value = event.value())
@@ -95,13 +95,13 @@ class EchoApi {
                                         val j = AtomicInteger(0)
                                         val dataSize = partEvents
                                             .map {
-                                                log.debug("echoWithoutBody $i ${j.incrementAndGet()} start read")
+                                                log.trace("echoWithoutBody $i ${j.incrementAndGet()} start read")
                                                 it.content()
                                             }
                                             .map {
                                                 it.readableByteCount().also { count ->
                                                     DataBufferUtils.release(it)
-                                                    log.debug("echoWithoutBody $i ${j.incrementAndGet()} read $count")
+                                                    log.trace("echoWithoutBody $i ${j.incrementAndGet()} read $count")
                                                 }
                                             }
                                             .asFlow()
@@ -113,7 +113,7 @@ class EchoApi {
                                             size = dataSize,
                                             data = null,
                                         )
-                                        log.debug("echoWithoutBody $i end")
+                                        log.trace("echoWithoutBody $i end")
                                     }
                                 }
                                 else -> throw UnsupportedOperationException()
@@ -157,12 +157,12 @@ class EchoApi {
 //                }
 //            }.toList().flatten(),
             body = try {
-                log.debug("echoWithoutBody body start")
+                log.trace("echoWithoutBody body start")
                 request.body.toSize()?.toString().also {
-                    log.debug("echoWithoutBody body returning $it")
+                    log.trace("echoWithoutBody body returning $it")
                 }
             } catch (_: IllegalStateException) {
-                log.debug("echoWithoutBody body caught ISE")
+                log.trace("echoWithoutBody body caught ISE")
                 null
             },
         ).also {
