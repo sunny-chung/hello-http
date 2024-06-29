@@ -189,4 +189,10 @@ suspend fun Flux<DataBuffer>.toSize(): Int? =
         result
     }.asFlow()
         .toList()
-        .sum()
+        .let {
+            if (it.isEmpty()) {
+                null
+            } else {
+                it.sum()
+            }
+        }
