@@ -81,7 +81,11 @@ class EchoApi {
                                     multipartData += PartData(
                                         name = event.name(),
                                         headers = event.headers().toParameterList(),
-                                        size = event.content().readableByteCount(),
+                                        size = event.content().let {
+                                            it.readableByteCount().also { _ ->
+                                                DataBufferUtils.release(it)
+                                            }
+                                        },
                                         data = null,
                                     )
                                     Flux.just(Unit)
@@ -95,8 +99,9 @@ class EchoApi {
                                                 it.content()
                                             }
                                             .map {
-                                                it.readableByteCount().also {
-                                                    log.debug("echoWithoutBody $i ${j.incrementAndGet()} read $it")
+                                                it.readableByteCount().also { count ->
+                                                    DataBufferUtils.release(it)
+                                                    log.debug("echoWithoutBody $i ${j.incrementAndGet()} read $count")
                                                 }
                                             }
                                             .asFlow()
@@ -153,7 +158,7 @@ class EchoApi {
 //            }.toList().flatten(),
             body = try {
                 log.debug("echoWithoutBody body start")
-                request.body.toByteArray()?.size?.toString().also {
+                request.body.toSize()?.toString().also {
                     log.debug("echoWithoutBody body returning $it")
                 }
             } catch (_: IllegalStateException) {
@@ -176,3 +181,12 @@ suspend fun Flux<DataBuffer>.toByteArray(): ByteArray? =
         DataBufferUtils.release(buffer)
         result
     }.awaitSingleOrNull()
+
+suspend fun Flux<DataBuffer>.toSize(): Int? =
+    this.map { buffer ->
+        val result = buffer.readableByteCount()
+        DataBufferUtils.release(buffer)
+        result
+    }.asFlow()
+        .toList()
+        .sum()
