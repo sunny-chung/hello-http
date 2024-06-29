@@ -3,15 +3,19 @@ package com.sunnychung.application.multiplatform.hellohttp.testserver.controller
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.PartData
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
-import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
-import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
+import kotlinx.coroutines.reactor.flux
 import org.slf4j.LoggerFactory
+import org.springframework.core.ResolvableType
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferUtils
+import org.springframework.http.codec.multipart.FilePartEvent
+import org.springframework.http.codec.multipart.FormPartEvent
+import org.springframework.http.codec.multipart.PartEventHttpMessageReader
 import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.util.MultiValueMap
 import org.springframework.web.bind.annotation.RequestMapping
@@ -20,7 +24,6 @@ import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.awaitFormData
 import org.springframework.web.server.awaitMultipartData
 import reactor.core.publisher.Flux
-import reactor.kotlin.extra.math.sumAsInt
 import java.util.concurrent.atomic.AtomicInteger
 
 @RequestMapping("rest")
@@ -57,33 +60,97 @@ class EchoApi {
     suspend fun echoWithoutBody(request: ServerHttpRequest, exchange: ServerWebExchange): RequestData {
         log.debug("echoWithoutBody start")
         val i = AtomicInteger(0)
+
+        val formData = mutableListOf<Parameter>()
+        val multipartData = mutableListOf<PartData>()
+
+        val contentType = request.headers.contentType
+        if (contentType?.getType()?.equals("multipart", ignoreCase = true) == true) {
+            val partsReader = PartEventHttpMessageReader()
+            val allPartEvents = partsReader.read(ResolvableType.NONE, request, emptyMap())
+
+            allPartEvents.windowUntil { it.isLast }
+                .concatMap {
+                    it.switchOnFirst { signal, partEvents ->
+                        if (signal.hasValue()) {
+                            val event = signal.get()
+                            log.debug("echoWithoutBody ${i.incrementAndGet()} ${event?.name()} ${event?.javaClass?.simpleName}")
+                            when (event) {
+                                is FormPartEvent -> {
+//                                formData += Parameter(name = event.name(), value = event.value())
+                                    multipartData += PartData(
+                                        name = event.name(),
+                                        headers = event.headers().toParameterList(),
+                                        size = event.content().readableByteCount(),
+                                        data = null,
+                                    )
+                                    Flux.just(Unit)
+                                }
+                                is FilePartEvent -> {
+                                    flux<Unit> {
+                                        val j = AtomicInteger(0)
+                                        val dataSize = partEvents
+                                            .map {
+                                                log.debug("echoWithoutBody $i ${j.incrementAndGet()} start read")
+                                                it.content()
+                                            }
+                                            .map {
+                                                it.readableByteCount().also {
+                                                    log.debug("echoWithoutBody $i ${j.incrementAndGet()} read $it")
+                                                }
+                                            }
+                                            .asFlow()
+                                            .toList()
+                                            .sum()
+                                        multipartData += PartData(
+                                            name = event.name(),
+                                            headers = event.headers().toParameterList(),
+                                            size = dataSize,
+                                            data = null,
+                                        )
+                                        log.debug("echoWithoutBody $i end")
+                                    }
+                                }
+                                else -> throw UnsupportedOperationException()
+                            }
+                        } else {
+                            partEvents
+                        }
+                    }
+                }
+                .asFlow()
+                .lastOrNull()
+        }
+
         return RequestData(
             path = request.path.value(),
             method = request.method.name(),
             headers = request.headers.toParameterList(),
             queryParameters = request.queryParams.toParameterList(),
+//            formData = formData,
+            multiparts = multipartData,
             formData = exchange.awaitFormData().toParameterList(),
-            multiparts = exchange.multipartData.asFlow().map {
-                log.debug("echoWithoutBody flatMap ${i.incrementAndGet()}")
-                val j = AtomicInteger(0)
-                it.values.map {
-                    log.debug("echoWithoutBody value.map ${j.incrementAndGet()}")
-                    val k = AtomicInteger(0)
-//                val dataSize = DataBufferUtils.join(it.content()).awaitSingleOrNull()?.readableByteCount() ?: 0
-                    val dataSize = it.flatMap { it.content().asFlow().toList() }.map {
-                        it.readableByteCount().also {
-                            log.debug("echoWithoutBody content.map ${k.incrementAndGet()} -> $it")
-                        }
-                    }.sum()
-                    log.debug("echoWithoutBody PartData ${j.get() - 1}")
-                    PartData(
-                        name = it.first().name(),
-                        headers = it.first().headers().toParameterList(),
-                        size = dataSize,
-                        data = null,
-                    )
-                }
-            }.toList().flatten(),
+//            multiparts = exchange.multipartData.asFlow().map {
+//                log.debug("echoWithoutBody flatMap ${i.incrementAndGet()}")
+//                val j = AtomicInteger(0)
+//                it.values.map {
+//                    log.debug("echoWithoutBody value.map ${j.incrementAndGet()}")
+//                    val k = AtomicInteger(0)
+////                val dataSize = DataBufferUtils.join(it.content()).awaitSingleOrNull()?.readableByteCount() ?: 0
+//                    val dataSize = it.flatMap { it.content().asFlow().toList() }.map {
+//                        it.readableByteCount().also {
+//                            log.debug("echoWithoutBody content.map ${k.incrementAndGet()} -> $it")
+//                        }
+//                    }.sum()
+//                    log.debug("echoWithoutBody PartData ${j.get() - 1}")
+//                    PartData(
+//                        name = it.first().name(),
+//                        headers = it.first().headers().toParameterList(),
+//                        size = dataSize,
+//                        data = null,
+//                    )
+//                }
+//            }.toList().flatten(),
             body = try {
                 log.debug("echoWithoutBody body start")
                 request.body.toByteArray()?.size?.toString().also {
