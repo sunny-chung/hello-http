@@ -61,9 +61,9 @@ class Http2FramePeeker(
         )
         when (direction) {
             Direction.OUTBOUND -> {
-                log.d { "Http2FramePeeker writeQueue.addLast start" }
+                log.v { "Http2FramePeeker writeQueue.addLast start" }
                 writeQueue.addLast(frame)
-                log.d { "Http2FramePeeker writeQueue.addLast end" }
+                log.v { "Http2FramePeeker writeQueue.addLast end" }
             }
             Direction.INBOUND -> runBlocking {
                 incomingBytesFlow.emit(frame)
@@ -111,25 +111,25 @@ class Http2FramePeeker(
     }
 
     fun flush() {
-        log.d { "Http2FramePeeker flush start" }
+        log.v { "Http2FramePeeker flush start" }
         if (writeQueue.isEmpty()) {
-            log.d { "Http2FramePeeker flush empty" }
+            log.v { "Http2FramePeeker flush empty" }
             return
         }
         val flushTime = KInstant.now()
-        log.d { "Http2FramePeeker flush b4 runBlocking" }
+        log.v { "Http2FramePeeker flush b4 runBlocking" }
         runBlocking {
-            log.d { "Http2FramePeeker flush runBlocking" }
+            log.v { "Http2FramePeeker flush runBlocking" }
             while (writeQueue.isNotEmpty()) {
-                log.d { "Http2FramePeeker flush poll" }
+                log.v { "Http2FramePeeker flush poll" }
                 val frame = writeQueue.pollFirst()
-                log.d { "Http2FramePeeker flush emit" }
+                log.v { "Http2FramePeeker flush emit" }
                 outgoingBytesFlow.emit(frame.copy(instant = flushTime))
-                log.d { "Http2FramePeeker flush emited" }
+                log.v { "Http2FramePeeker flush emited" }
             }
-            log.d { "Http2FramePeeker flush after while" }
+            log.v { "Http2FramePeeker flush after while" }
         }
-        log.d { "Http2FramePeeker flush end" }
+        log.v { "Http2FramePeeker flush end" }
     }
 
     override fun isEnabled(): Boolean {
@@ -154,7 +154,7 @@ class Http2FramePeeker(
                     settings.map { "${http2SettingKey(it.key)}: ${it.value}" }.joinToString("\n")
         )
 
-        log.d { "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: SETTINGS; flags: -\n" +
+        log.v { "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: SETTINGS; flags: -\n" +
                 settings.map { "${http2SettingKey(it.key)}: ${it.value}" }.joinToString("\n") }
     }
 
@@ -178,7 +178,7 @@ class Http2FramePeeker(
             "Frame: WINDOW_UPDATE\nIncrement $windowSizeIncrement"
         )
 
-        log.d {
+        log.v {
             if (direction == Direction.INBOUND) outboundTransmitCreditForDebug(streamId).addAndGet(windowSizeIncrement)
             "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: WINDOW_UPDATE {$streamId}\nIncrement $windowSizeIncrement (= ${outboundTransmitCreditForDebug(streamId)})"
         }
@@ -220,7 +220,7 @@ class Http2FramePeeker(
             }"
         )
 
-        log.d { "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: HEADERS; flags: ${
+        log.v { "${if (direction == Direction.OUTBOUND) ">" else "<"} HTTP2 Frame: HEADERS; flags: ${
             serializeFlags(mapOf("END_STREAM" to endStream))
         }\n${
             headers.joinToString("\n") { "${it.key}: ${it.value}" }
@@ -305,7 +305,7 @@ class Http2FramePeeker(
         )
 
         if (direction == Direction.OUTBOUND) {
-            log.d {
+            log.v {
                 outboundTransmitCreditForDebug(streamId).addAndGet(- data.readableBytes())
                 outboundTransmitCreditForDebug(0).addAndGet(- data.readableBytes())
                 "> HTTP2 Frame DATA ({$streamId} window size = ${outboundTransmitCreditForDebug(streamId)}, conn win s = ${outboundTransmitCreditForDebug(0)})"
