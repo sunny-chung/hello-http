@@ -25,3 +25,4 @@ grpc:
 logging:
   level:
     com.sunnychung: DEBUG
+    io.netty: DEBUG
