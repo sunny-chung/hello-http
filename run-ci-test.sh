@@ -13,7 +13,7 @@ fi
 
 "$JAVA_CMD" -version  # make sure java is executable
 
-TEST_SERVER_OPTS='-Xmx400m -Dio.netty.maxDirectMemory=0'
+TEST_SERVER_OPTS='-Xmx400m -Dio.netty.maxDirectMemory=314572800'
 "$JAVA_CMD" $TEST_SERVER_OPTS -jar "$JAR_PATH" &
 TEST_SERVER_PID=$!
 
