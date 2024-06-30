@@ -560,6 +560,7 @@ fun BodyViewerView(
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
+                    testTag = TestTag.ResponseError.name,
                 )
             }
         }

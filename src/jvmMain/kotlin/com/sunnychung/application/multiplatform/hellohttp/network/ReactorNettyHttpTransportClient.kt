@@ -446,6 +446,12 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
             .doOnResponse { resp, conn ->
                 log.i { "NettyIO onResponse" }
             }
+            .doOnRequestError { req, err ->
+                log.d(err) { "NettyIO doOnRequestError" }
+            }
+            .doOnResponseError { resp, err ->
+                log.d(err) { "NettyIO doOnResponseError" }
+            }
     }
 
     protected fun readPayload(payload: Any?): ByteArray {

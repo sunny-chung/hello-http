@@ -897,6 +897,8 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
         val startTime = KInstant.now()
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodesWithRetry(this).isEmpty() }
         println("Call Duration: ${KInstant.now() - startTime}")
+        println("Response status: ${onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodesWithRetry(this).joinToString("\\\\") { it.getTexts().joinToString("|") }}")
+        println("Response error: ${onAllNodesWithTag(TestTag.ResponseError.name).fetchSemanticsNodesWithRetry(this).joinToString("\\\\") { it.getTexts().joinToString("|") }}")
     }
 
     if (isExpectResponseBody) {
