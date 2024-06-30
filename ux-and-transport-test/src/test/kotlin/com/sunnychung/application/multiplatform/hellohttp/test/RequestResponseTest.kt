@@ -755,8 +755,6 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
 
     @Test
     fun bigDocument() = runTest {
-        ReactorNettyHttpTransportClient.IS_ENABLE_WIRETAP_LOG = true
-        
         val size = 3 * 1024 * 1024 + 1 // around 3 MB
         // note that the app display will trim response bodies that are over 4 MB, so choose a smaller size
         
