@@ -35,6 +35,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandler
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelPromise
+import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.codec.http2.Http2ConnectionPrefaceAndSettingsFrameWrittenEvent
 import io.netty.handler.codec.http2.Http2FrameCodec
@@ -440,6 +441,8 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 }
             })
             .http2FrameLogger(frameLogger)
+            .compress(true)
+            .headers { it.remove(HttpHeaderNames.ACCEPT_ENCODING) } // don't add "Accept-Encoding: gzip" header by default
             .doOnResponse { resp, conn ->
                 log.i { "NettyIO onResponse" }
             }

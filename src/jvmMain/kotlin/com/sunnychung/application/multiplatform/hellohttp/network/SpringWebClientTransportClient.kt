@@ -127,7 +127,6 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             }
 
             // TODO push promise
-            // TODO gzip, x-gzip, deflate
 
             try {
                 val requestBuilder = client
