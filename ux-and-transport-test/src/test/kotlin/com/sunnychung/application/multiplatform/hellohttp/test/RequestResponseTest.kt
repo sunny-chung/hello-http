@@ -775,7 +775,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
             )
         )
         // timeout includes frontend rendering time
-        createAndSendHttpRequest(request = request, environment = environment, timeout = 10.seconds(), isExpectResponseBody = true)
+        createAndSendHttpRequest(request = request, environment = environment, timeout = 6.seconds(), isExpectResponseBody = true, renderResponseTimeout = 6.seconds())
 
         onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
         val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)

@@ -878,7 +878,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
     }
 }
 
-suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, isExpectResponseBody: Boolean = false, environment: TestEnvironment) {
+suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, isExpectResponseBody: Boolean = false, renderResponseTimeout: KDuration = 1500.milliseconds(), environment: TestEnvironment) {
     createRequest(request = request, environment = environment)
 
     waitForIdle()
@@ -902,7 +902,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     }
 
     if (isExpectResponseBody) {
-        waitUntil(1500.milliseconds().millis) {
+        waitUntil(renderResponseTimeout.millis) {
             onAllNodesWithTag(TestTag.ResponseBody.name).fetchSemanticsNodesWithRetry(this).isNotEmpty()
         }
     }
