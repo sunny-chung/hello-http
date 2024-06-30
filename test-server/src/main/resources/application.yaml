@@ -8,6 +8,10 @@ spring:
     graphiql:
       enabled: true
       path: /graphiql
+  webflux:
+    multipart:
+      max-parts: -1
+      max-disk-usage-per-part: -1
 
 server:
   port: 18081
@@ -17,3 +21,9 @@ server:
 grpc:
   server:
     port: 18082
+
+logging:
+  level:
+    com.sunnychung: DEBUG
+    io.netty: DEBUG
+    _reactor.netty.channel.LeakDetection: DEBUG

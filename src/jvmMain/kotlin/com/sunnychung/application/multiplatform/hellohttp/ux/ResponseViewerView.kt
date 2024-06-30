@@ -174,7 +174,12 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                 ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
                     ResponseBodyView(response = response)
                 } else {
-                    ResponseEmptyView(type = "body", isCommunicating = connectionStatus.isConnectionActive(), modifier = Modifier.fillMaxSize().padding(8.dp))
+                    ResponseEmptyView(
+                        type = "body",
+                        isCommunicating = connectionStatus.isConnectionActive(),
+                        modifier = Modifier.fillMaxSize().padding(8.dp)
+                            .testTag(TestTag.ResponseBodyEmpty.name)
+                    )
                 }
 
                 ResponseTab.Stream -> ResponseStreamView(response)
@@ -555,6 +560,7 @@ fun BodyViewerView(
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
+                    testTag = TestTag.ResponseError.name,
                 )
             }
         }

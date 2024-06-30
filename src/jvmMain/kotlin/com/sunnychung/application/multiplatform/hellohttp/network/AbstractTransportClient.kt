@@ -61,8 +61,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    protected fun emitEvent(callId: String, event: String) {
-        val instant = KInstant.now()
+    protected fun emitEvent(callId: String, event: String) =
+        emitEvent(instant = KInstant.now(), callId = callId, event = event)
+
+    protected fun emitEvent(instant: KInstant, callId: String, event: String) {
         runBlocking {
             eventSharedFlow.emit(
                 NetworkEvent(
@@ -174,6 +176,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
             cancel = {}
         )
+        log.d { "Registering call #$callId" }
         callData[callId] = data
 
         data.jobs += data.events
@@ -205,11 +208,11 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             synchronized(data.response.rawExchange.exchanges) {
                 val lastIndex = data.response.rawExchange.exchanges.lastIndex
                 val lastExchange = lastIndex.takeIf { it >= 0 }?.let { i -> data.response.rawExchange.exchanges[i] }
-                if (it is Http2Frame || lastExchange == null || lastExchange.direction != direction) {
+                if (it is Http2Frame || lastExchange == null || lastExchange.direction != direction || (lastExchange.streamId ?: -1) >= 0) {
                     data.response.rawExchange.exchanges += RawExchange.Exchange(
                         instant = it.instant,
                         direction = direction,
-                        streamId = if (it is Http2Frame) it.streamId else null,
+                        streamId = if (it is Http2Frame) (it.streamId ?: 0) else null,
                         detail = null,
                         payloadBuilder = ByteArrayOutputStream(minOf(approximateSize ?: Int.MAX_VALUE, it.payload.size + 64 * 1024))
                     ).apply {
@@ -256,6 +259,8 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                 )
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
+
+        log.d { "Created call #$callId" }
 
         return data
     }

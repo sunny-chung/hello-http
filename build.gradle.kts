@@ -21,6 +21,7 @@ repositories {
 }
 
 val grpcVersion = "1.59.1"
+val reactorNettyVersion = "1.1.20"
 
 kotlin {
     jvm {
@@ -36,6 +37,7 @@ kotlin {
 
                 implementation("co.touchlab:kermit:1.0.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.8.1")
 
                 implementation("io.github.sunny-chung:httpclient5:5.2.1-inspect-patch5")
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
@@ -44,6 +46,9 @@ kotlin {
                 implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") {
                     exclude(group = "com.squareup.okhttp3", module = "okhttp")
                 }
+                implementation("io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion")
+                implementation("io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion")
+                implementation("org.springframework.boot:spring-boot-starter-webflux:3.2.6")
                 implementation("io.github.sunny-chung:Java-WebSocket:1.5.4-inspect-patch2")
                 implementation("com.graphql-java:graphql-java:21.3")
 
@@ -73,6 +78,9 @@ kotlin {
 
                 implementation("io.github.sunny-chung:kotlite-interpreter:1.1.0-snapshot.2")
                 implementation("io.github.sunny-chung:kotlite-stdlib:1.1.0-snapshot.1")
+
+//                implementation("org.apache.logging.log4j:log4j-api:2.23.1")
+//                implementation("org.apache.logging.log4j:log4j-core:2.23.1")
             }
 
             resources.srcDir("$buildDir/resources")
@@ -87,16 +95,24 @@ kotlin {
 }
 
 allprojects {
-    configurations.all {
-        resolutionStrategy.eachDependency {
-            if (requested.group in setOf("io.github.sunny-chung", "io.grpc") && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
-                if (requested.version == grpcVersion) {
-                    useTarget("io.github.sunny-chung:${requested.name}:$grpcVersion-patch1")
+    if (project == rootProject || project.name in setOf("ux-and-transport-test")) {
+        configurations.all {
+            resolutionStrategy.eachDependency {
+                if (requested.group in setOf("io.github.sunny-chung", "io.grpc") && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
+                    if (requested.version == grpcVersion) {
+                        useTarget("io.github.sunny-chung:${requested.name}:$grpcVersion-patch1")
+                        because("transport inspection")
+                    }
+                } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
+                    useVersion(grpcVersion)
+                    because("not built")
+                } else if (requested.group == "io.projectreactor.netty" && requested.version?.startsWith("1.1.20") == true) {
+                    useTarget("io.github.sunny-chung:${requested.name}:${requested.version}-patch1")
+                    because("transport inspection")
+                } else if (requested.group == "io.netty" && requested.name in setOf("netty-codec", "netty-codec-http2") && requested.version == "4.1.110.Final") {
+                    useTarget("io.github.sunny-chung:${requested.name}:${requested.version}-patch1")
                     because("transport inspection")
                 }
-            } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
-                useVersion(grpcVersion)
-                because("not built")
             }
         }
     }

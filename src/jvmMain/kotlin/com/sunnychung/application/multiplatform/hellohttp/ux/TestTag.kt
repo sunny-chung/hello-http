@@ -29,6 +29,8 @@ enum class TestTag {
     ResponseStatus,
     ResponseDuration,
     ResponseBody,
+    ResponseError,
+    ResponseBodyEmpty,
     ResponseStreamLog,
     ResponseStreamLogItemTime,
 }
@@ -46,6 +48,7 @@ enum class TestTagPart {
     RequestGrpcServiceDropdown,
     RequestGrpcMethodDropdown,
     EnvironmentDropdown,
+    EnvironmentHttpProtocolVersionDropdown,
     EnvironmentSslTrustedServerCertificates,
     EnvironmentSslClientCertificates,
     EnvironmentDisableSystemCaCertificates,
@@ -60,6 +63,7 @@ enum class TestTagPart {
     FileButton,
     ValueTypeDropdown,
     DropdownButton,
+    DropdownMenu,
     DropdownItem,
     DropdownLabel,
 }

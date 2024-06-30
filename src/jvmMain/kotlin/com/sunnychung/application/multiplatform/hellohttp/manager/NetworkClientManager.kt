@@ -283,9 +283,11 @@ class NetworkClientManager : CallDataStore {
      * For UX tests only, NOT for production.
      */
     fun cancelAllCalls(): Int {
-        val threads = callDataMap.mapNotNull { (_, call) ->
+        log.i(Throwable("cancelAllCalls() triggered")) { "cancelAllCalls() triggered" }
+        val threads = callDataMap.mapNotNull { (key, call) ->
             if (call.status != ConnectionStatus.DISCONNECTED) {
                 Thread {
+                    log.d { "Force cancel call #$key" }
                     call.cancel(null)
                 }.also { it.start() }
             } else {
@@ -293,7 +295,12 @@ class NetworkClientManager : CallDataStore {
             }
         }
         if (threads.isNotEmpty()) {
+            // wait at least this amount of time, even the threads are completed
             Thread.sleep(3000L + 30 * threads.size)
+
+            threads.forEach {
+                it.join()
+            }
         }
         callDataMap.clear()
         requestExampleToCallMapping.clear()

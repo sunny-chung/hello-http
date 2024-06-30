@@ -19,4 +19,15 @@ class SpecialApi {
         delay(ms)
         return "OK"
     }
+
+    @RequestMapping("bigDocument", produces = ["text/plain"])
+    suspend fun bigDocument(@RequestParam size: Int): ByteArray {
+        return ByteArray(size) { i ->
+            if (i % 30 != 29) {
+                ('0' + (i % 10)).code.toByte()
+            } else {
+                '\n'.code.toByte()
+            }
+        }
+    }
 }

@@ -11,16 +11,19 @@ import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.network.ReactorNettyHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -35,7 +38,7 @@ import java.io.File
 import kotlin.random.Random
 
 @RunWith(Parameterized::class)
-class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) {
+class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocolVersion?, isSsl: Boolean, isMTls: Boolean) {
 
     companion object {
         lateinit var bigDataFile: File
@@ -61,8 +64,8 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
             bigDataFile = File("build/testrun/resources/bigfile.dat").apply {
                 if (exists()) return@apply
                 parentFile.mkdirs()
-                val bytesBlock = Random.nextBytes(1 * 1024 * 1024) // 1 MB
-                repeat(70) { // 70 MB
+                val bytesBlock = Random.nextBytes(75 * 1024 * 1024) // 75 MB
+                repeat(2) { // 150 MB
                     appendBytes(bytesBlock)
                 }
                 appendBytes(byteArrayOf(0, -5, 3, 124, 59))
@@ -74,40 +77,54 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
 
         @JvmStatic
         @Parameters(name = "{0}")
-        fun parameters(): Collection<Array<Any>> = listOf(
-            arrayOf("HTTP/2", false, false, false),
-            arrayOf("HTTP/1 only", true, false, false),
-            arrayOf("HTTP/1 SSL", true, true, false),
-            arrayOf("SSL", false, true, false),
-            arrayOf("mTLS", false, true, true),
+        fun parameters(): Collection<Array<Any?>> = listOf(
+            arrayOf("Default", null, false, false),
+            arrayOf("H2C", HttpConfig.HttpProtocolVersion.Http2Only, false, false),
+            arrayOf("HTTP/1 only", HttpConfig.HttpProtocolVersion.Http1Only, false, false),
+            arrayOf("HTTP/1 SSL", HttpConfig.HttpProtocolVersion.Http1Only, true, false),
+            arrayOf("Default SSL", null, true, false),
+            arrayOf("HTTP/2 SSL", HttpConfig.HttpProtocolVersion.Http2Only, true, false),
+            arrayOf("Default mTLS", null, true, true),
         )
 
-        fun hostAndPort(isHttp1Only: Boolean, isSsl: Boolean, isMTls: Boolean) = when {
+        fun hostAndPort(httpVersion: HttpConfig.HttpProtocolVersion?, isSsl: Boolean, isMTls: Boolean) = when {
             isSsl && isMTls -> "localhost:18086"
-            !isHttp1Only && isSsl && !isMTls -> "localhost:18084"
-            isHttp1Only && isSsl && !isMTls -> "localhost:18088"
-            !isHttp1Only && !isSsl && !isMTls -> "localhost:18081"
-            isHttp1Only && !isSsl && !isMTls -> "localhost:18083"
+            httpVersion != HttpConfig.HttpProtocolVersion.Http1Only && isSsl && !isMTls -> "localhost:18084"
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && isSsl && !isMTls -> "localhost:18088"
+            httpVersion != HttpConfig.HttpProtocolVersion.Http1Only && !isSsl && !isMTls -> "localhost:18081"
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && !isSsl && !isMTls -> "localhost:18083"
             else -> throw UnsupportedOperationException()
         }
 
         fun environment(isSsl: Boolean, isMTls: Boolean): TestEnvironment = when {
-            !isSsl -> TestEnvironment.Local
+            !isSsl -> TestEnvironment.LocalDefault
             isSsl && isMTls -> TestEnvironment.LocalMTls
             isSsl && !isMTls -> TestEnvironment.LocalSsl
+            else -> throw UnsupportedOperationException()
+        }
+
+        fun environment(httpVersion: HttpConfig.HttpProtocolVersion?, isSsl: Boolean, isMTls: Boolean): TestEnvironment = when {
+            httpVersion == null && !isSsl -> TestEnvironment.LocalDefault
+            httpVersion == null && isSsl && !isMTls -> TestEnvironment.LocalSsl
+            httpVersion == null && isSsl && isMTls -> TestEnvironment.LocalMTls
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && !isSsl -> TestEnvironment.LocalHttp1Only
+            httpVersion == HttpConfig.HttpProtocolVersion.Http2Only && !isSsl -> TestEnvironment.LocalHttp2Only
+            httpVersion == HttpConfig.HttpProtocolVersion.Http1Only && isSsl -> TestEnvironment.LocalHttp1Ssl
+            httpVersion == HttpConfig.HttpProtocolVersion.Http2Only && isSsl -> TestEnvironment.LocalHttp2Ssl
             else -> throw UnsupportedOperationException()
         }
 
         private var lastExecutedEnvironment: TestEnvironment? = null
     }
 
-    val hostAndPort = hostAndPort(isHttp1Only = isHttp1Only, isSsl = isSsl, isMTls = isMTls)
+    val hostAndPort = hostAndPort(httpVersion = httpVersion, isSsl = isSsl, isMTls = isMTls)
     val httpUrlPrefix = "http${if (isSsl) "s" else ""}://$hostAndPort"
     val echoUrl = "$httpUrlPrefix/rest/echo"
     val echoWithoutBodyUrl = "$httpUrlPrefix/rest/echoWithoutBody"
     val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
     val errorUrl = "$httpUrlPrefix/rest/error"
-    val environment = environment(isSsl = isSsl, isMTls = isMTls)
+    val bigDocumentUrl = "$httpUrlPrefix/rest/bigDocument"
+    val environment = environment(httpVersion = httpVersion, isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
     @Rule
@@ -121,6 +138,11 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
         } else {
             println("No init is needed")
         }
+    }
+
+    @After
+    fun afterEach() {
+        ReactorNettyHttpTransportClient.IS_ENABLE_WIRETAP_LOG = false
     }
 
     @Test
@@ -567,13 +589,12 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
                     )
                 )
             ),
-            timeout = 25.seconds(),
+            timeout = 35.seconds(),
             environment = environment,
         )
     }
 
     @Test
-    @Ignore // FIXME fail in Windows Server 2019 & 2022 runners
     fun echoPostWithBigMultipartFiles() = runTest {
         createAndSendRestEchoRequestAndAssertResponse(
             request = UserRequestTemplate(
@@ -623,7 +644,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
                     )
                 )
             ),
-            timeout = 25.seconds(),
+            timeout = 35.seconds(),
             environment = environment,
         )
     }
@@ -631,7 +652,6 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
     /************** Special Cases **************/
 
     @Test
-    @Ignore // FIXME Apache HTTP Client cannot pass this test with h2 connections
     fun earlyErrorWithBigFile() = runTest {
         val request = UserRequestTemplate(
             id = uuidString(),
@@ -646,7 +666,7 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
                 )
             )
         )
-        createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = true, environment = environment)
+        createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = false, environment = environment)
 
         onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
 
@@ -658,9 +678,47 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
         assertTrue(durationText.endsWith(" ms"))
         assertTrue(durationText.removeSuffix(" ms").toLong() in 0L..500L) // expected to fail fast
 
-        onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNode()
+        onNodeWithTag(TestTag.ResponseBody.name).assertDoesNotExist()
+        onNodeWithTag(TestTag.ResponseBodyEmpty.name).assertIsDisplayedWithRetry(this)
+    }
+
+    @Test
+    fun earlyErrorWithBigMultipartFile() = runTest {
+        val request = UserRequestTemplate(
+            id = uuidString(),
+            method = "POST",
+            url = earlyErrorUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    contentType = ContentType.Multipart,
+                    body = MultipartBody(listOf(
+                        UserKeyValuePair(
+                            id = uuidString(),
+                            key = "file",
+                            value = bigDataFile.absolutePath,
+                            valueType = FieldValueType.File,
+                            isEnabled = true,
+                        ),
+                    )),
+                )
+            )
+        )
+        createAndSendHttpRequest(request = request, timeout = 6.seconds(), isExpectResponseBody = false, environment = environment)
+
+        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("429 Too Many Requests")
+
+        val durationText = onNodeWithTag(TestTag.ResponseDuration.name)
+            .fetchSemanticsNode()
             .getTexts()
-            .isEmpty()
+            .first()
+        println("> durationText = $durationText")
+        assertTrue(durationText.endsWith(" ms"))
+        assertTrue(durationText.removeSuffix(" ms").toLong() in 0L..500L) // expected to fail fast
+
+        onNodeWithTag(TestTag.ResponseBody.name).assertDoesNotExist()
+        onNodeWithTag(TestTag.ResponseBodyEmpty.name).assertIsDisplayedWithRetry(this)
     }
 
     @Test
@@ -693,5 +751,34 @@ class RequestResponseTest(testName: String, isHttp1Only: Boolean, isSsl: Boolean
               "error": "Some message"
             }
         """.trimIndent(), responseBody.trim())
+    }
+
+    @Test
+    fun bigDocument() = runTest {
+        val size = 3 * 1024 * 1024 + 1 // around 3 MB
+        // note that the app display will trim response bodies that are over 4 MB, so choose a smaller size
+        
+        val request = UserRequestTemplate(
+            id = uuidString(),
+            method = "GET",
+            url = bigDocumentUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    queryParameters = listOf(
+                        UserKeyValuePair("size", size.toString()),
+                    ),
+                )
+            )
+        )
+        // timeout includes frontend rendering time
+        createAndSendHttpRequest(request = request, environment = environment, timeout = 6.seconds(), isExpectResponseBody = true, renderResponseTimeout = 6.seconds())
+
+        onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
+        val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
+            .getTexts()
+            .single()
+        assertEquals(size, responseBody.length)
     }
 }

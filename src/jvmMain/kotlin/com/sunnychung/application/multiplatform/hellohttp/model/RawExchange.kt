@@ -26,6 +26,7 @@ data class RawExchange(
         val direction: Direction,
         val detail: String?,
         @Transient var payloadBuilder: ByteArrayOutputStream? = null,
+        // for HTTP/2 streamId must not be null (0 for unspecific); for HTTP/1.1 it must be null.
         val streamId: Int? = null,
         var payload: ByteArray? = null,
         var payloadSize: Long? = null,
