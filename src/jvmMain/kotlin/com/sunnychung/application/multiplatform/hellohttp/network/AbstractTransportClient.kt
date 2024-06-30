@@ -176,6 +176,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
             cancel = {}
         )
+        log.d { "Registering call #$callId" }
         callData[callId] = data
 
         data.jobs += data.events
@@ -258,6 +259,8 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                 )
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
+
+        log.d { "Created call #$callId" }
 
         return data
     }

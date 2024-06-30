@@ -120,6 +120,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             out.requestData = RequestData() // TODO
 
             data.cancel = {
+                log.i { "Cancel call #$callId" }
                 this.cancel("Cancel", it)
                 data.status = ConnectionStatus.DISCONNECTED
                 data.consumePayloads(isComplete = true)
