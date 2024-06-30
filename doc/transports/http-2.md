@@ -23,5 +23,7 @@ stream-specific and applies to the whole connection.
 Note that some non-informational frame headers are not logged, for example, padding.
 
 ## Push Promises
-There is no concrete support to push promises as they are deprecated. Nonetheless, their responses can be found in the
-Transport Timeline.
+~~There is no concrete support to push promises as they are deprecated. Nonetheless, their responses can be found in the
+Transport Timeline.~~
+
+Push promise support has been removed since Hello HTTP v1.6.0.

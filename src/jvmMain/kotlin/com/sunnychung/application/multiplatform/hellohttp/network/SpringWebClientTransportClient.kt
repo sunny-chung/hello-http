@@ -126,8 +126,6 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                 data.end()
             }
 
-            // TODO push promise
-
             try {
                 val requestBuilder = client
                     .method(org.springframework.http.HttpMethod.valueOf(request.method.uppercase()))
