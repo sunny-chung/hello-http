@@ -283,6 +283,7 @@ class NetworkClientManager : CallDataStore {
      * For UX tests only, NOT for production.
      */
     fun cancelAllCalls(): Int {
+        log.i(Throwable("cancelAllCalls() triggered")) { "cancelAllCalls() triggered" }
         val threads = callDataMap.mapNotNull { (key, call) ->
             if (call.status != ConnectionStatus.DISCONNECTED) {
                 Thread {

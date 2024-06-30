@@ -32,6 +32,7 @@ fun <R> executeWithTimeout(timeout: KDuration, action: () -> R) : R {
     if (hasKilled) {
         throw RuntimeException("Custom script was running for too long time and has been killed")
     } else if (executeException != null) {
+        log.d(executeException!!) { "Got exception during executeWithTimeout" }
         throw executeException!!
     }
     return result!!
