@@ -15,10 +15,6 @@ class RetryRule(val maxRetryCount: Int = 5) : TestRule {
     override fun apply(base: Statement, description: Description): Statement {
         return object : Statement() {
             override fun evaluate() {
-                if (!description.displayName.contains("echoPostWithBigMultipartFiles")) {
-                    return // FIXME remove
-                }
-
                 var attempt = -1
                 println("[${KZonedInstant.nowAtLocalZoneOffset()}] Start test ${description.displayName}")
                 do {
