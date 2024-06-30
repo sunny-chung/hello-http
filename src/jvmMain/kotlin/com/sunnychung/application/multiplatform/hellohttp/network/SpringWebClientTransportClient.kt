@@ -70,6 +70,10 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                 )
                 .let { ReactorClientHttpConnector(it) }
             )
+            .codecs { conf ->
+                conf.defaultCodecs()
+                    .maxInMemorySize(22 * 1024 * 1024) // 22 MB
+            }
             .build()
     }
 
