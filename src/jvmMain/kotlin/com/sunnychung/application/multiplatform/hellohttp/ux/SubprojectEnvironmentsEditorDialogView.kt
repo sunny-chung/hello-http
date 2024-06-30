@@ -192,7 +192,7 @@ fun EnvironmentEditorView(
             EnvironmentEditorTab.Variables -> EnvironmentVariableTabContent(
                 environment = environment,
                 updateEnvVariable = updateEnvVariable,
-                modifier = modifier,
+                modifier = modifier.verticalScroll(rememberScrollState()),
             )
 
             EnvironmentEditorTab.HTTP -> EnvironmentHttpTabContent(

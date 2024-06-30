@@ -893,7 +893,7 @@ private fun RequestKeyValueEditorView(
 ) {
     val data = value ?: listOf()
     val activeBaseValues = baseValue?.filter { it.isEnabled }
-    Column(modifier = modifier.padding(8.dp)) {
+    Column(modifier = modifier.padding(8.dp).verticalScroll(rememberScrollState())) {
         if (activeBaseValues?.isNotEmpty() == true) {
             val isShowInheritedValues by remember { mutableStateOf(true) }
             InputFormHeader(text = "Inherited from Base")

@@ -101,8 +101,8 @@ fun KeyValueEditorView(
             }
         }
 
-        LazyColumn {
-            items(count = keyValues.size + if (!isInheritedView) 1 else 0) { index ->
+        Column {
+            (0 until keyValues.size + if (!isInheritedView) 1 else 0).forEach { index ->
                 val it = if (index < keyValues.size) keyValues[index] else null
                 val isEnabled = it?.let { if (!isInheritedView) it.isEnabled else !disabledIds.contains(it.id) } ?: true
                 Row(verticalAlignment = Alignment.CenterVertically) {
