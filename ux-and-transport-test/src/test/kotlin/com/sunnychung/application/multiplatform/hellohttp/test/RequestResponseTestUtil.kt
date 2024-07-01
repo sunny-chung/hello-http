@@ -299,29 +299,34 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
                 .getTexts()
                 .firstOrNull() == keyFile.name
         }
-        onNodeWithTag(buildTestTag(
-            TestTagPart.EnvironmentSslClientCertificates,
-            TestTagPart.CreateButton,
-        )!!)
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
-        waitUntil(3.seconds().millis) {
-            onAllNodes(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.EnvironmentSslClientCertificates,
-                        TestTagPart.ListItemLabel
-                    )!!
-                )
-                    .and(hasText("CN=Test Client", substring = true)),
-                useUnmergedTree = true
+
+        retryForUnresponsiveBuggyComposeTest {
+            onNodeWithTag(
+                buildTestTag(
+                    TestTagPart.EnvironmentSslClientCertificates,
+                    TestTagPart.CreateButton,
+                )!!
             )
-                .fetchSemanticsNodesWithRetry(this)
-                .isNotEmpty()
+                .assertIsDisplayedWithRetry(this)
+                .performClickWithRetry(this)
+            waitUntil(3.seconds().millis) {
+                onAllNodes(
+                    hasTestTag(
+                        buildTestTag(
+                            TestTagPart.EnvironmentSslClientCertificates,
+                            TestTagPart.ListItemLabel
+                        )!!
+                    )
+                        .and(hasText("CN=Test Client", substring = true)),
+                    useUnmergedTree = true
+                )
+                    .fetchSemanticsNodesWithRetry(this)
+                    .isNotEmpty()
 //                .firstOrNull()
 //                ?.getTexts()
 //                ?.firstOrNull().also { println(">>> CC = $it") }
 //                ?.contains("CN=Test Client") == true
+            }
         }
         waitForIdle()
 
@@ -1106,6 +1111,22 @@ fun ComposeUiTest.getResponseBody(): String? {
         .getTexts()
         .singleOrNull()
     return responseBody
+}
+
+fun ComposeUiTest.retryForUnresponsiveBuggyComposeTest(testContent: () -> Unit) {
+    var retryAttempt = 0
+    while (true) { // add this loop because the click is often not performed
+        waitForIdle()
+
+        try {
+            testContent()
+        } catch (e: ComposeTimeoutException) {
+            e.printStackTrace()
+            println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+            continue
+        }
+        break
+    }
 }
 
 
