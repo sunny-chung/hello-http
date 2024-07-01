@@ -57,7 +57,6 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -128,7 +127,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
             .performClickWithRetry(this)
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
-            .performTextInput("Test Project ${KInstant.now().format("HH:mm:ss")}")
+            .performTextInput("Test Project ${KZonedInstant.nowAtLocalZoneOffset().format("HH:mm:ss")}")
         waitForIdle()
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
             .performClickWithRetry(this)
@@ -481,9 +480,11 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
     }
 }
 
-suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment) {
+suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment?) {
     createProjectIfNeeded()
-    selectEnvironment(environment)
+    if (environment != null) {
+        selectEnvironment(environment)
+    }
     println("start run createRequest content ---")
     val baseExample = request.examples.first()
 
@@ -876,9 +877,28 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
             delayShort()
         }
     }
+
+    if (baseExample.preFlight.isNotEmpty()) {
+        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Pre Flight")))
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+
+        waitUntilExactlyOneExists(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
+
+        onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
+            .assertIsDisplayedWithRetry(this)
+            .performTextInput(baseExample.preFlight.executeCode)
+
+        waitUntil {
+            onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
+                .fetchSemanticsNodeWithRetry(this)
+                .getTexts()
+                .joinToString("") == baseExample.preFlight.executeCode
+        }
+    }
 }
 
-suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, isExpectResponseBody: Boolean = false, renderResponseTimeout: KDuration = 1500.milliseconds(), environment: TestEnvironment) {
+suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, isExpectResponseBody: Boolean = false, renderResponseTimeout: KDuration = 1500.milliseconds(), environment: TestEnvironment?) {
     createRequest(request = request, environment = environment)
 
     waitForIdle()
@@ -908,7 +928,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     }
 }
 
-suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment) {
+suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment?, ignoreAssertQueryParameters: Set<String> = emptySet()): RequestData {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
@@ -927,8 +947,12 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
             .containsAll(baseExample.headers.map { Parameter(it.key.lowercase(), it.value) }))
     }
     assertEquals(
-        baseExample.queryParameters.map { Parameter(it.key, it.value) }.sortedBy { it.name },
-        resp.queryParameters.sortedBy { it.name }
+        baseExample.queryParameters.map { Parameter(it.key, it.value) }
+            .filter { it.name !in ignoreAssertQueryParameters }
+            .sortedBy { it.name },
+        resp.queryParameters
+            .filter { it.name !in ignoreAssertQueryParameters }
+            .sortedBy { it.name }
     )
     if (baseExample.body is FormUrlEncodedBody) {
         assertEquals(
@@ -980,6 +1004,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
             }
         }
     }
+    return resp
 }
 
 suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: Boolean = true) {

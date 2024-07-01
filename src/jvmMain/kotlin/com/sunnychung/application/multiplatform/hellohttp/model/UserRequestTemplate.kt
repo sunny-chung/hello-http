@@ -302,7 +302,9 @@ data class PayloadExample(
 @Serializable
 data class PreFlightSpec(
     val executeCode: String = ""
-)
+) {
+    fun isNotEmpty(): Boolean = executeCode.isNotEmpty()
+}
 
 @Persisted
 @Serializable

@@ -76,8 +76,8 @@ kotlin {
 
                 implementation("org.jetbrains.compose.components:components-splitpane:1.5.2")
 
-                implementation("io.github.sunny-chung:kotlite-interpreter:1.1.0-snapshot.2")
-                implementation("io.github.sunny-chung:kotlite-stdlib:1.1.0-snapshot.1")
+                implementation("io.github.sunny-chung:kotlite-interpreter:1.1.0")
+                implementation("io.github.sunny-chung:kotlite-stdlib:1.1.0")
 
 //                implementation("org.apache.logging.log4j:log4j-api:2.23.1")
 //                implementation("org.apache.logging.log4j:log4j-core:2.23.1")

@@ -15,6 +15,7 @@ fun KotliteCodeEditorView(
     text: String,
     onTextChange: ((String) -> Unit)? = null,
     transformations: List<VisualTransformation> = emptyList(),
+    testTag: String? = null,
 ) {
     val textColor: Color = if (isEnabled) {
         LocalColor.current.text
@@ -32,5 +33,6 @@ fun KotliteCodeEditorView(
         } else {
             emptyList()
         },
+        testTag = testTag,
     )
 }

@@ -21,6 +21,7 @@ enum class TestTag {
     RequestStringBodyTextField,
     RequestGraphqlDocumentTextField,
     RequestGraphqlVariablesTextField,
+    RequestPreFlightScriptTextField,
     RequestFireOrDisconnectButton,
     RequestSendPayloadButton,
     RequestCompleteStreamButton,

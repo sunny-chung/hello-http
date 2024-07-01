@@ -757,6 +757,7 @@ private fun PreFlightEditorView(
             },
             isEnabled = isEnabled,
             isReadOnly = !isEnabled,
+            testTag = TestTag.RequestPreFlightScriptTextField.name,
             modifier = Modifier.padding(top = 4.dp).fillMaxSize(),
         )
     }
