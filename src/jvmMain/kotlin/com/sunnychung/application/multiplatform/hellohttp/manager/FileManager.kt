@@ -42,11 +42,12 @@ class FileManager {
 
     suspend fun writeToFile(file: File, writeOperation: (OutputStream) -> Unit) {
         withLock(file) {
-            file.outputStream().use { fileOutputStream ->
-                val fileLock = fileOutputStream.channel.tryLock()
-                    ?: throw IOException("Cannot lock file ${file.absolutePath} for writing")
-
-                try {
+            // commented because in Windows it cannot be locked by the same process twice
+//            file.outputStream().use { fileOutputStream ->
+//                val fileLock = fileOutputStream.channel.tryLock()
+//                    ?: throw IOException("Cannot lock file ${file.absolutePath} for writing")
+//
+//                try {
                     file.sink().buffer().use {
                         it.write(magicBytes)
                         it.write(byteArrayOf(separatorByte))
@@ -57,10 +58,10 @@ class FileManager {
                         writeOperation(outputStream)
                         outputStream.flush() // must
                     }
-                } finally {
-                    fileLock.release()
-                }
-            }
+//                } finally {
+//                    fileLock.release()
+//                }
+//            }
         }
     }
 
