@@ -19,6 +19,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -53,10 +54,20 @@ class PersistenceManager {
 //            file = file,
 //            content = bytes
 //        )
+        val tmpFile = File(file.parentFile, "${file.name}.tmp")
+        if (tmpFile.exists() && !tmpFile.canWrite()) {
+            throw IOException("File ${tmpFile.absolutePath} is not writeable")
+        }
         fileManager.writeToFile(
-            file = file,
+            file = tmpFile,
         ) { outStream ->
             codecCustomizedWriter.encodeToStream(serializer, document, outStream)
+        }
+        if (file.exists() && !file.delete()) {
+            throw IOException("File ${file.absolutePath} cannot be deleted for new content")
+        }
+        if (!tmpFile.renameTo(file)) {
+            throw IOException("File ${tmpFile.absolutePath} cannot be renamed to ${file.name}")
         }
     }
 
