@@ -628,7 +628,9 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
             fileChooser = CertificateKeyPairFileChooserType.None
             if (!it.isNullOrEmpty()) {
                 when (currentFileChooser) {
-                    CertificateKeyPairFileChooserType.None -> throw IllegalStateException()
+                    CertificateKeyPairFileChooserType.None -> {
+                        log.w { "currentFileChooser is '$currentFileChooser' for result file ${it.first().absolutePath}" }
+                    }
                     CertificateKeyPairFileChooserType.Certificate -> certFile = it.first()
                     CertificateKeyPairFileChooserType.PrivateKey -> keyFile = it.first()
                 }
