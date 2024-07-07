@@ -121,6 +121,14 @@ fun SubprojectEnvironmentsEditorDialogView(
                         environments = subproject.environments.copyWithIndexedChange(index, newEnv).toMutableList()
                     ))
                 },
+                onDuplicateEnvironment = { env ->
+                    val copiedEnv = env.deepCopyWithNewId()
+                    onSubprojectUpdate(subproject.copy(
+                        environments = (subproject.environments + copiedEnv).toMutableList()
+                    ))
+                    selectedEnvironmentId = copiedEnv.id
+                    isFocusOnEnvNameField = true
+                },
                 onDeleteEnvironment = { env ->
                     onSubprojectUpdate(subproject.copy(
                         environments = subproject.environments.copyWithRemoval { it.id == env.id }.toMutableList()
@@ -140,6 +148,7 @@ fun EnvironmentEditorView(
     modifier: Modifier = Modifier,
     environment: Environment,
     onUpdateEnvironment: (Environment) -> Unit,
+    onDuplicateEnvironment: (Environment) -> Unit,
     onDeleteEnvironment: (Environment) -> Unit,
     isFocusOnEnvNameField: Boolean,
 ) {
@@ -174,6 +183,11 @@ fun EnvironmentEditorView(
                     .focusRequester(focusRequester)
                     .testTag(TestTag.EnvironmentDialogEnvNameTextField.name)
             )
+            AppTooltipArea(tooltipText = "Duplicate") {
+                AppImageButton(resource = "duplicate.svg", size = 24.dp) {
+                    onDuplicateEnvironment(environment)
+                }
+            }
             AppDeleteButton(size = 24.dp) {
                 onDeleteEnvironment(environment)
             }
