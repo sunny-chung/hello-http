@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.test
 
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.OperationalDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
@@ -621,7 +622,235 @@ class DataBackwardCompatibilityTest {
                 }
 
                 project.subprojects.first { it.name == "gRPC only" }.let { subproject ->
-                    // TODO add asserts
+                    assertEquals(1, subproject.environments.size)
+                    subproject.environments.first { it.name == "Insecure" }.let { env ->
+                        env.variables.first { it.key == "grpc" }.let {
+                            assertEquals("grpc://testserver.net:18082/", it.value)
+                            assertEquals(true, it.isEnabled)
+                        }
+
+                        assertEquals(null, env.httpConfig.protocolVersion)
+
+                        assertEquals(null, env.sslConfig.isInsecure)
+                        assertEquals(0, env.sslConfig.trustedCaCertificates.size)
+                        assertEquals(null, env.sslConfig.isDisableSystemCaCertificates)
+                        assertEquals(0, env.sslConfig.clientCertificateKeyPairs.size)
+                    }
+
+                    val requests = AppContext.RequestCollectionRepository
+                        .read(RequestsDI(subprojectId = subproject.id))!!
+                        .requests
+                    assertEquals(7, requests.size)
+
+                    val responses = AppContext.PersistResponseManager
+                        .loadResponseCollection(ResponsesDI(subprojectId = subproject.id))
+                        .responsesByRequestExampleId
+                    assert(responses.isNotEmpty())
+
+                    val apiSpecs = AppContext.ApiSpecificationCollectionRepository.read(ApiSpecDI(project.id))!!
+                        .grpcApiSpecs
+                        .filter { it.id in subproject.grpcApiSpecIds }
+                    assertEquals(1, apiSpecs.size)
+                    val apiSpec = apiSpecs.first()
+                    assertEquals("testserver.net:18082", apiSpec.name)
+                    assertEquals(true, apiSpec.isActive)
+
+                    requests.first { it.name == "Health" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("grpc.health.v1.Health", it.grpc!!.service)
+                        assertEquals("Check", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{}", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.assertGrpcOKWithContent()
+                        }
+                    }
+
+                    requests.first { it.name == "Unary" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("SayHello", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\n    \"name\": \"123\"\n}\n", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(1, ex.headers.size)
+                            ex.headers.first { it.key == "extraheader" }.assert("Extra!", true)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.assertGrpcOKWithContent()
+                        }
+                    }
+
+                    requests.first { it.name == "Server Stream" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("ServerStream", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\"data\":4}", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(0, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(5, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+                    }
+
+                    requests.first { it.name == "Server Stream (Cancel midway)" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("ServerStream", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\"data\":4}", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(null, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(3, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+                    }
+
+                    requests.first { it.name == "Client Stream" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("ClientStream", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(0, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(5, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+
+                        assertEquals(3, it.payloadExamples!!.size)
+                        it.payloadExamples!!.forEachIndexed { index, it ->
+                            when (index) {
+                                0 -> {
+                                    assertEquals("New Payload", it.name)
+                                    assertEquals("{\"data\":12}", it.body)
+                                }
+                                1 -> {
+                                    assertEquals("7", it.name)
+                                    assertEquals("{\"data\": 7}", it.body)
+                                }
+                                2 -> {
+                                    assertEquals("10", it.name)
+                                    assertEquals("{\n  \"data\": 10\n}", it.body)
+                                }
+                            }
+                        }
+                    }
+
+                    requests.first { it.name == "Bi-stream" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("BiStream", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(0, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(5, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+
+                        assertEquals(3, it.payloadExamples!!.size)
+                        it.payloadExamples!!.forEachIndexed { index, it ->
+                            when (index) {
+                                0 -> {
+                                    assertEquals("New Payload", it.name)
+                                    assertEquals("{\"data\":12}", it.body)
+                                }
+                                1 -> {
+                                    assertEquals("7", it.name)
+                                    assertEquals("{\"data\": 7}", it.body)
+                                }
+                                2 -> {
+                                    assertEquals("10", it.name)
+                                    assertEquals("{\n  \"data\": 10\n}", it.body)
+                                }
+                            }
+                        }
+                    }
+
+                    requests.first { it.name == "error" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("Error", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\"data\": 9}", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(9, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assert(response.rawExchange.exchanges.isNotEmpty())
+                            }
+                        }
+                    }
                 }
 
                 project.subprojects.first { it.name == "Without Env" }.let { subproject ->
@@ -644,6 +873,14 @@ private fun UserResponse.assertHttpStatus200WithContent() {
     assertEquals(200, statusCode)
     assert(headers!!.isNotEmpty())
     assert(body!!.isNotEmpty())
+    assert(rawExchange.exchanges.isNotEmpty())
+}
+
+private fun UserResponse.assertGrpcOKWithContent() {
+    assertEquals(0, statusCode)
+    assert(headers!!.isNotEmpty())
+    assert(body!!.isNotEmpty())
+    assert(rawExchange.exchanges.isNotEmpty())
 }
 
 private fun UserKeyValuePair.assert(value: String, isEnabled: Boolean, valueType: FieldValueType = FieldValueType.String) {
