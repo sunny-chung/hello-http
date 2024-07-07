@@ -103,6 +103,9 @@ class AppContext {
             get() = instance.UserPreferenceRepository
         val OperationalRepository: OperationalRepository
             get() = instance.OperationalRepository
+        val allRepositories
+            get() = instance.allRepositories
+
         val DialogViewModel: DialogViewModel
             get() = instance.DialogViewModel
         val ErrorMessagePromptViewModel: ErrorMessagePromptViewModel
