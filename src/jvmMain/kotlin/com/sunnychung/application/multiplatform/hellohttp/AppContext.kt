@@ -25,7 +25,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ResponseV
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.UserPreferenceViewModel
 import java.io.File
 
-object AppContext {
+class AppContext {
     val MetadataManager = MetadataManager()
     val SingleInstanceProcessService = SingleInstanceProcessService()
     val NetworkClientManager = NetworkClientManager()
@@ -53,4 +53,57 @@ object AppContext {
     val ResponseViewModel = ResponseViewModel()
 
     lateinit var dataDir: File
+
+    companion object {
+        var instance = AppContext()
+
+        val MetadataManager : MetadataManager
+            get() = instance.MetadataManager
+        val SingleInstanceProcessService: SingleInstanceProcessService
+            get() = instance.SingleInstanceProcessService
+        val NetworkClientManager: NetworkClientManager
+            get() = instance.NetworkClientManager
+        val HttpTransportClient: TransportClient
+            get() = instance.HttpTransportClient
+        val WebSocketTransportClient: TransportClient
+            get() = instance.WebSocketTransportClient
+        val GraphqlSubscriptionTransportClient: GraphqlSubscriptionTransportClient
+            get() = instance.GraphqlSubscriptionTransportClient
+        val GrpcTransportClient: GrpcTransportClient
+            get() = instance.GrpcTransportClient
+        val FileManager: FileManager
+            get() = instance.FileManager
+        val PersistenceManager: PersistenceManager
+            get() = instance.PersistenceManager
+        val PrettifierManager: PrettifierManager
+            get() = instance.PrettifierManager
+        val PersistResponseManager: PersistResponseManager
+            get() = instance.PersistResponseManager
+        val AutoBackupManager: AutoBackupManager
+            get() = instance.AutoBackupManager
+        val RequestCollectionRepository: RequestCollectionRepository
+            get() = instance.RequestCollectionRepository
+        val ProjectCollectionRepository: ProjectCollectionRepository
+            get() = instance.ProjectCollectionRepository
+        val ResponseCollectionRepository: ResponseCollectionRepository
+            get() = instance.ResponseCollectionRepository
+        val ApiSpecificationCollectionRepository: ApiSpecificationCollectionRepository
+            get() = instance.ApiSpecificationCollectionRepository
+        val UserPreferenceRepository: UserPreferenceRepository
+            get() = instance.UserPreferenceRepository
+        val OperationalRepository: OperationalRepository
+            get() = instance.OperationalRepository
+        val DialogViewModel: DialogViewModel
+            get() = instance.DialogViewModel
+        val ErrorMessagePromptViewModel: ErrorMessagePromptViewModel
+            get() = instance.ErrorMessagePromptViewModel
+        val UserPreferenceViewModel: UserPreferenceViewModel
+            get() = instance.UserPreferenceViewModel
+        val ResponseViewModel: ResponseViewModel
+            get() = instance.ResponseViewModel
+
+        var dataDir: File
+            get() = instance.dataDir
+            set(value) { instance.dataDir = value }
+    }
 }
