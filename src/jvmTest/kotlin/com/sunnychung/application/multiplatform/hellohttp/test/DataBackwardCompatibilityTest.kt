@@ -2,9 +2,9 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import kotlinx.coroutines.runBlocking
-import org.junit.Test
 import java.io.File
 import java.util.UUID
+import kotlin.test.Test
 
 class DataBackwardCompatibilityTest {
 

@@ -128,6 +128,7 @@ tasks.getByName("jvmMainClasses") {
 }
 
 tasks.withType<Test> {
+    useJUnitPlatform()
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
         showStandardStreams = true
