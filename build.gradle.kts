@@ -89,6 +89,7 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation("org.junit.jupiter:junit-jupiter-params")
                 implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.2")
             }
         }
