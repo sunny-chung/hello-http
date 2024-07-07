@@ -8,6 +8,8 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDocument
+import com.sunnychung.application.multiplatform.hellohttp.extension.CborStream
+import com.sunnychung.application.multiplatform.hellohttp.extension.encodeToStream
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.OperationalInfo
 import com.sunnychung.application.multiplatform.hellohttp.model.UserPreference
@@ -17,6 +19,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -31,6 +34,10 @@ class PersistenceManager {
         encodeDefaults = true
         ignoreUnknownKeys = true
     }
+    private val codecCustomizedWriter = CborStream {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
 
     private fun dataDir() = AppContext.dataDir
 
@@ -42,11 +49,26 @@ class PersistenceManager {
     internal suspend inline fun <T> writeToFile(relativePath: String, serializer: KSerializer<T>, document: T) {
         val file = dataFile(relativePath)
         file.parentFile.mkdirs()
-        val bytes = codec.encodeToByteArray(serializer, document)
+//        val bytes = codec.encodeToByteArray(serializer, document)
+//        fileManager.writeToFile(
+//            file = file,
+//            content = bytes
+//        )
+        val tmpFile = File(file.parentFile, "${file.name}.tmp")
+        if (tmpFile.exists() && !tmpFile.canWrite()) {
+            throw IOException("File ${tmpFile.absolutePath} is not writeable")
+        }
         fileManager.writeToFile(
-            file = file,
-            content = bytes
-        )
+            file = tmpFile,
+        ) { outStream ->
+            codecCustomizedWriter.encodeToStream(serializer, document, outStream)
+        }
+        if (file.exists() && !file.delete()) {
+            throw IOException("File ${file.absolutePath} cannot be deleted for new content")
+        }
+        if (!tmpFile.renameTo(file)) {
+            throw IOException("File ${tmpFile.absolutePath} cannot be renamed to ${file.name}")
+        }
     }
 
     internal suspend inline fun <T> readFile(relativePath: String, serializer: KSerializer<T>): T? {
@@ -64,6 +86,11 @@ class PersistenceManager {
     }
 
     suspend fun initialize() {
+        // clear cache
+        documentCaches.clear()
+        documentLocks.clear()
+
+        // initialize cache
         AppContext.ProjectCollectionRepository.readOrCreate(ProjectAndEnvironmentsDI()) { id ->
             ProjectCollection(id = id, projects = mutableListOf())
         }

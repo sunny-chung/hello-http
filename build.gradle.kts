@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.5.2" // must be in 'x.y.z' for native distributions
+version = "1.6.0-SNAPSHOT" // must be in 'x.y.z' for native distributions
 
 repositories {
     google()
@@ -22,10 +22,11 @@ repositories {
 }
 
 val grpcVersion = "1.59.1"
+val reactorNettyVersion = "1.1.20"
 
 kotlin {
     jvm {
-        jvmToolchain(11)
+        jvmToolchain(17)
         withJava()
     }
     sourceSets {
@@ -37,6 +38,7 @@ kotlin {
 
                 implementation("co.touchlab:kermit:1.0.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.8.1")
 
                 implementation("io.github.sunny-chung:httpclient5:5.2.1-inspect-patch5")
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
@@ -45,6 +47,9 @@ kotlin {
                 implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") {
                     exclude(group = "com.squareup.okhttp3", module = "okhttp")
                 }
+                implementation("io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion")
+                implementation("io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion")
+                implementation("org.springframework.boot:spring-boot-starter-webflux:3.2.6")
                 implementation("io.github.sunny-chung:Java-WebSocket:1.5.4-inspect-patch2")
                 implementation("com.graphql-java:graphql-java:21.3")
 
@@ -65,12 +70,18 @@ kotlin {
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
                 implementation("com.jayway.jsonpath:json-path:2.8.0")
 
-                implementation("io.github.sunny-chung:kdatetime-multiplatform:0.5.0")
+                implementation("io.github.sunny-chung:kdatetime-multiplatform:1.0.0")
 
                 implementation("net.harawata:appdirs:1.2.2")
                 implementation("com.darkrockstudios:mpfilepicker:2.1.0")
 
                 implementation("org.jetbrains.compose.components:components-splitpane:1.5.2")
+
+                implementation("io.github.sunny-chung:kotlite-interpreter:1.1.0")
+                implementation("io.github.sunny-chung:kotlite-stdlib:1.1.0")
+
+//                implementation("org.apache.logging.log4j:log4j-api:2.23.1")
+//                implementation("org.apache.logging.log4j:log4j-core:2.23.1")
             }
 
             resources.srcDir("$buildDir/resources")
@@ -84,16 +95,26 @@ kotlin {
     }
 }
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group in setOf("io.github.sunny-chung", "io.grpc") && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
-            if (requested.version == grpcVersion) {
-                useTarget("io.github.sunny-chung:${requested.name}:$grpcVersion-patch1")
-                because("transport inspection")
+allprojects {
+    if (project == rootProject || project.name in setOf("ux-and-transport-test")) {
+        configurations.all {
+            resolutionStrategy.eachDependency {
+                if (requested.group in setOf("io.github.sunny-chung", "io.grpc") && requested.name in setOf("grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded")) {
+                    if (requested.version == grpcVersion) {
+                        useTarget("io.github.sunny-chung:${requested.name}:$grpcVersion-patch1")
+                        because("transport inspection")
+                    }
+                } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
+                    useVersion(grpcVersion)
+                    because("not built")
+                } else if (requested.group == "io.projectreactor.netty" && requested.version?.startsWith("1.1.20") == true) {
+                    useTarget("io.github.sunny-chung:${requested.name}:${requested.version}-patch1")
+                    because("transport inspection")
+                } else if (requested.group == "io.netty" && requested.name in setOf("netty-codec", "netty-codec-http2") && requested.version == "4.1.110.Final") {
+                    useTarget("io.github.sunny-chung:${requested.name}:${requested.version}-patch1")
+                    because("transport inspection")
+                }
             }
-        } else if (requested.group == "io.grpc" && requested.name.startsWith("grpc-") && requested.version?.startsWith("$grpcVersion-patch") == true) {
-            useVersion(grpcVersion)
-            because("not built")
         }
     }
 }
@@ -142,6 +163,7 @@ compose.desktop {
         val distributionVersion = "^(\\d+\\.\\d+\\.\\d+).*".toRegex().matchEntire(project.version.toString())!!.groupValues[1]
 
         mainClass = "com.sunnychung.application.multiplatform.hellohttp.MainKt"
+//        jvmArgs += "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005" // to enable debugger for debug use only
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Hello HTTP"

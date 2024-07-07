@@ -47,6 +47,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -469,6 +470,7 @@ fun RequestTreeView(
                     true
                 },
                 modifier = Modifier.padding(4.dp)
+                    .testTag(TestTag.CreateRequestOrFolderButton.name)
             )
         }
 

@@ -29,10 +29,12 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -62,6 +64,8 @@ fun ProjectAndEnvironmentViewV2(
     var showDialogType by remember { mutableStateOf(EditDialogType.None) }
     var dialogTextFieldValue by remember { mutableStateOf("") }
     var dialogIsCreate by remember { mutableStateOf<Boolean>(true) }
+
+    log.v { "P&E selectedProject = ${selectedProject?.id}" }
 
     if (selectedProject == null && projects.size == 1) {
         // invoking `onSelectProject()` directly doesn't trigger recomposition
@@ -144,12 +148,14 @@ fun ProjectAndEnvironmentViewV2(
                             false
                         }
                     }
-                    .defaultMinSize(minWidth = 200.dp),
+                    .defaultMinSize(minWidth = 200.dp)
+                    .testTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name),
             )
             AppTextButton(
                 text = "Done",
                 onClick = { onDone() },
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 4.dp)
+                    .testTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name),
             )
         }
 
@@ -205,6 +211,7 @@ fun ProjectAndEnvironmentViewV2(
                                 dialogTextFieldValue = ""
                                 dialogIsCreate = true
                             }
+                            .testTag(TestTag.FirstTimeCreateProjectButton.name)
                     )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -287,6 +294,7 @@ fun ProjectAndEnvironmentViewV2(
                                     dialogTextFieldValue = ""
                                     dialogIsCreate = true
                                 }
+                                .testTag(TestTag.FirstTimeCreateSubprojectButton.name)
                         )
                     } else {
                         LazyColumn(
@@ -334,7 +342,7 @@ fun ProjectAndEnvironmentViewV2(
                                 showDialogType = EditDialogType.EditSubproject
                                 dialogTextFieldValue = selectedSubproject!!.name
                                 dialogIsCreate = false
-                            }
+                            },
                         )
                         AppDeleteButton {
                             selectedSubproject ?: return@AppDeleteButton
@@ -362,7 +370,8 @@ fun ProjectAndEnvironmentViewV2(
                 AppImageButton(
                     resource = "edit.svg",
                     size = 20.dp,
-                    onClick = { showDialogType = EditDialogType.Environment }
+                    onClick = { showDialogType = EditDialogType.Environment },
+                    modifier = Modifier.testTag(TestTag.EditEnvironmentsButton.name)
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -371,7 +380,8 @@ fun ProjectAndEnvironmentViewV2(
                     selectedItem = selectedEnvironment,
                     items = selectedSubproject.environments,
                     isLabelFillMaxWidth = true,
-                    onClickItem = { onSelectEnvironment(it); true }
+                    onClickItem = { onSelectEnvironment(it); true },
+                    testTagParts = arrayOf(TestTagPart.EnvironmentDropdown),
                 )
             }
         }

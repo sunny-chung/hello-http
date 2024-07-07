@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package sunnychung.grpc.services;
+
+import "types/types.proto";
+import "my/types.proto";
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "com.sunnychung.grpc.services";
+
+service MyService {
+  rpc Hi(google.protobuf.Empty) returns (sunnychung.grpc.types.StringResource);
+  rpc SayHello(sunnychung.grpc.types.Name) returns (sunnychung.grpc.types.StringResource);
+  rpc Error(sunnychung.grpc.types.IntResource) returns (sunnychung.grpc.types.IntResource);
+
+  rpc ClientStream(stream sunnychung.grpc.types.IntResource) returns (sunnychung.grpc.types.IntResource);
+  rpc ServerStream(sunnychung.grpc.types.IntResource) returns (stream sunnychung.grpc.types.IntResource);
+  rpc BiStream(stream sunnychung.grpc.types.IntResource) returns (stream sunnychung.grpc.types.IntResource);
+}

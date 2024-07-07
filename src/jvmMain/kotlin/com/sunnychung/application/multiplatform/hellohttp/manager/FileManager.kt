@@ -10,6 +10,8 @@ import okio.buffer
 import okio.sink
 import okio.source
 import java.io.File
+import java.io.IOException
+import java.io.OutputStream
 import java.util.concurrent.ConcurrentHashMap
 
 class FileManager {
@@ -35,6 +37,31 @@ class FileManager {
                 it.write(byteArrayOf(separatorByte))
                 it.write(content)
             }
+        }
+    }
+
+    suspend fun writeToFile(file: File, writeOperation: (OutputStream) -> Unit) {
+        withLock(file) {
+            // commented because in Windows it cannot be locked by the same process twice
+//            file.outputStream().use { fileOutputStream ->
+//                val fileLock = fileOutputStream.channel.tryLock()
+//                    ?: throw IOException("Cannot lock file ${file.absolutePath} for writing")
+//
+//                try {
+                    file.sink().buffer().use {
+                        it.write(magicBytes)
+                        it.write(byteArrayOf(separatorByte))
+                        it.write(fileSchemaVersion.toString().toByteArray())
+                        it.write(byteArrayOf(separatorByte))
+
+                        val outputStream = it.outputStream().buffered()
+                        writeOperation(outputStream)
+                        outputStream.flush() // must
+                    }
+//                } finally {
+//                    fileLock.release()
+//                }
+//            }
         }
     }
 

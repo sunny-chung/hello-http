@@ -2,8 +2,10 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
+import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
@@ -11,6 +13,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.TrustAllS
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +28,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
@@ -57,8 +61,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    protected fun emitEvent(callId: String, event: String) {
-        val instant = KInstant.now()
+    protected fun emitEvent(callId: String, event: String) =
+        emitEvent(instant = KInstant.now(), callId = callId, event = event)
+
+    protected fun emitEvent(instant: KInstant, callId: String, event: String) {
         runBlocking {
             eventSharedFlow.emit(
                 NetworkEvent(
@@ -138,12 +144,22 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun getCallData(callId: String) = callData[callId]
 
-    protected fun createCallData(requestBodySize: Int?, requestExampleId: String, requestId: String, subprojectId: String, sslConfig: SslConfig): CallData {
+    protected fun createCallData(
+        requestBodySize: Int?,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
+    ): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
         val incomingBytesFlow = MutableSharedFlow<RawPayload>()
         val optionalResponseSize = AtomicInteger()
 
         val callId = uuidString()
+
+        val outboundPayloadStorageLimit = subprojectConfig.outboundPayloadStorageLimit.takeIf { it >= 0 } ?: DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
+        val inboundPayloadStorageLimit = subprojectConfig.inboundPayloadStorageLimit.takeIf { it >= 0 } ?: DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
 
         val data = CallData(
             id = callId,
@@ -160,18 +176,24 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
             cancel = {}
         )
+        log.d { "Registering call #$callId" }
         callData[callId] = data
 
-        data.events
+        data.jobs += data.events
             .onEach {
                 synchronized(data.response.rawExchange.exchanges) {
                     if (true || it.event == "Response completed") { // deadline fighter
-                        data.response.rawExchange.exchanges.forEach {
-                            it.consumePayloadBuilder()
+                        data.consumePayloads()
+                        if (it.event == "Response completed") {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                delay(3.seconds().millis)
+                                data.response.rawExchange.exchanges.lastOrNull()
+                                    ?.consumePayloadBuilder(isComplete = true)
+                            }
                         }
                     } else { // lazy
                         val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                        lastExchange?.consumePayloadBuilder()
+                        lastExchange?.consumePayloadBuilder(isComplete = false)
                     }
                     data.response.rawExchange.exchanges += RawExchange.Exchange(
                         instant = it.instant,
@@ -182,51 +204,63 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
-        data.outgoingBytes
-            .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Outgoing) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Outgoing,
-                            streamId = if (it is Http2Frame) it.streamId else null,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(requestBodySize ?: 0, it.payload.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.payload)
-                        }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.payload)
-                        lastExchange.lastUpdateInstant = it.instant
+        fun processRawPayload(it: RawPayload, direction: RawExchange.Direction, approximateSize: Int?, storageLimit: Long) {
+            synchronized(data.response.rawExchange.exchanges) {
+                val lastIndex = data.response.rawExchange.exchanges.lastIndex
+                val lastExchange = lastIndex.takeIf { it >= 0 }?.let { i -> data.response.rawExchange.exchanges[i] }
+                if (it is Http2Frame || lastExchange == null || lastExchange.direction != direction || (lastExchange.streamId ?: -1) >= 0) {
+                    data.response.rawExchange.exchanges += RawExchange.Exchange(
+                        instant = it.instant,
+                        direction = direction,
+                        streamId = if (it is Http2Frame) (it.streamId ?: 0) else null,
+                        detail = null,
+                        payloadBuilder = ByteArrayOutputStream(minOf(approximateSize ?: Int.MAX_VALUE, it.payload.size + 64 * 1024))
+                    ).apply {
+                        unsafeWritePayloadBytes(bytes = it.payload, limit = storageLimit)
                     }
-                    log.v { it.payload.decodeToString() }
+                    if (lastExchange?.direction != direction) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            delay(1.seconds().millis)
+                            with(data.response.rawExchange.exchanges) {
+                                synchronized(this) {
+                                    (0..lastIndex).forEach { i ->
+                                        this[i].consumePayloadBuilder(isComplete = true)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    lastExchange.unsafeWritePayloadBytes(bytes = it.payload, limit = storageLimit)
+                    lastExchange.lastUpdateInstant = it.instant
                 }
+                log.v { it.payload.decodeToString() }
+            }
+        }
+
+        data.jobs += data.outgoingBytes
+            .onEach {
+                processRawPayload(
+                    it = it,
+                    direction = RawExchange.Direction.Outgoing,
+                    approximateSize = requestBodySize,
+                    storageLimit = outboundPayloadStorageLimit,
+                )
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
 
-        data.incomingBytes
+        data.jobs += data.incomingBytes
             .onEach {
-                synchronized(data.response.rawExchange.exchanges) {
-                    val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
-                    if (it is Http2Frame || lastExchange == null || lastExchange.direction != RawExchange.Direction.Incoming) {
-                        data.response.rawExchange.exchanges += RawExchange.Exchange(
-                            instant = it.instant,
-                            direction = RawExchange.Direction.Incoming,
-                            streamId = if (it is Http2Frame) it.streamId else null,
-                            detail = null,
-                            payloadBuilder = ByteArrayOutputStream(maxOf(optionalResponseSize.get(), it.payload.size + 1 * 1024 * 1024))
-                        ).apply {
-                            payloadBuilder!!.write(it.payload)
-                        }
-                    } else {
-                        lastExchange.payloadBuilder!!.write(it.payload)
-                        lastExchange.lastUpdateInstant = it.instant
-                    }
-                    log.v { it.payload.decodeToString() }
-                }
+                processRawPayload(
+                    it = it,
+                    direction = RawExchange.Direction.Incoming,
+                    approximateSize = optionalResponseSize.get(),
+                    storageLimit = inboundPayloadStorageLimit,
+                )
             }
             .launchIn(CoroutineScope(Dispatchers.IO))
+
+        log.d { "Created call #$callId" }
 
         return data
     }
@@ -244,12 +278,6 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         assert(callData.isPrepared)
     }
 
-    protected fun CallData.consumePayloads() {
-        response.rawExchange.exchanges.forEach {
-            it.consumePayloadBuilder()
-        }
-    }
-
     fun executePostFlightAction(callId: String, out: UserResponse, postFlightAction: ((UserResponse) -> Unit)) {
         emitEvent(callId, "Executing Post Flight Actions")
         try {
@@ -258,6 +286,14 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         } catch (e: Throwable) {
             out.postFlightErrorMessage = e.message
             emitEvent(callId, "Post Flight Actions Stopped with Error -- ${e.message}")
+        }
+    }
+}
+
+fun CallData.consumePayloads(isComplete: Boolean = false) {
+    synchronized(response.rawExchange.exchanges) {
+        response.rawExchange.exchanges.forEachIndexed { index, it ->
+            it.consumePayloadBuilder(isComplete = isComplete || index < response.rawExchange.exchanges.lastIndex)
         }
     }
 }

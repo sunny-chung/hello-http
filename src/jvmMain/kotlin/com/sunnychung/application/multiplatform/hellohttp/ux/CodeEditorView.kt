@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
@@ -90,6 +91,7 @@ fun CodeEditorView(
     transformations: List<VisualTransformation> = emptyList(),
     isEnableVariables: Boolean = false,
     knownVariables: Set<String> = setOf(),
+    testTag: String? = null,
 ) {
     val colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = textColor,
@@ -473,6 +475,13 @@ fun CodeEditorView(
                                         false
                                     }
                                 }
+                            } else {
+                                this
+                            }
+                        }
+                        .run {
+                            if (testTag != null) {
+                                testTag(testTag)
                             } else {
                                 this
                             }

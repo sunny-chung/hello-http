@@ -11,6 +11,7 @@ Each environment may contain the followings:
 - Zero or more variables
 - HTTP protocol version preference
 - SSL verification preference
+- Zero or more user files (for scripts)
 
 ## Creating an Environment
 

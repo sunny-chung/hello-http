@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnv
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestExtra
 import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.helper.CustomCodeExecutor
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -17,6 +18,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -24,9 +26,11 @@ import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import kotlinx.coroutines.CancellationException
@@ -75,7 +79,7 @@ class NetworkClientManager : CallDataStore {
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
     override fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData> = liteCallDataMap
 
-    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String) {
+    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String, subprojectConfig: SubprojectConfiguration) {
         val callData = try {
             val networkRequest = request.toHttpRequest(
                 exampleId = requestExampleId,
@@ -89,6 +93,21 @@ class NetworkClientManager : CallDataStore {
                     this
                 }
             }
+            request.examples.firstOrNull { it.id == requestExampleId }?.let {
+                if (!request.isExampleBase(it) && it.overrides?.isOverridePreFlightScript == false) {
+                    request.examples.first()
+                } else {
+                    it
+                }
+            }?.let { // TODO change it to non-blocking
+                if (it.preFlight.executeCode.isNotBlank()) {
+                    executeWithTimeout(1.seconds()) {
+                        CustomCodeExecutor(code = it.preFlight.executeCode)
+                            .executePreFlight(networkRequest, environment)
+                    }
+                }
+            }
+
             val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(
                 exampleId = requestExampleId,
                 environment = environment
@@ -180,6 +199,7 @@ class NetworkClientManager : CallDataStore {
                 postFlightAction = postFlightAction,
                 httpConfig = environment?.httpConfig ?: HttpConfig(),
                 sslConfig = environment?.sslConfig ?: SslConfig(),
+                subprojectConfig = subprojectConfig,
             )
         } catch (error: Throwable) {
             val d = CallData(
@@ -258,6 +278,34 @@ class NetworkClientManager : CallDataStore {
 
     @Composable
     fun subscribeToNewRequests() = callIdFlow.collectAsState(null)
+
+    /**
+     * For UX tests only, NOT for production.
+     */
+    fun cancelAllCalls(): Int {
+        log.i(Throwable("cancelAllCalls() triggered")) { "cancelAllCalls() triggered" }
+        val threads = callDataMap.mapNotNull { (key, call) ->
+            if (call.status != ConnectionStatus.DISCONNECTED) {
+                Thread {
+                    log.d { "Force cancel call #$key" }
+                    call.cancel(null)
+                }.also { it.start() }
+            } else {
+                null
+            }
+        }
+        if (threads.isNotEmpty()) {
+            // wait at least this amount of time, even the threads are completed
+            Thread.sleep(3000L + 30 * threads.size)
+
+            threads.forEach {
+                it.join()
+            }
+        }
+        callDataMap.clear()
+        requestExampleToCallMapping.clear()
+        return threads.size
+    }
 
     private fun createLiteCallData(): LiteCallData {
         return LiteCallData(

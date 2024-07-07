@@ -40,6 +40,10 @@ data class UserRequestTemplate(
         }
     }
 
+    fun isExampleBase(example: UserRequestExample): Boolean {
+        return examples.indexOfFirst { it.id == example.id } == 0
+    }
+
     fun copyForApplication(application: ProtocolApplication, method: String) =
         if (application == ProtocolApplication.WebSocket && payloadExamples.isNullOrEmpty()) {
             copy(
@@ -126,6 +130,7 @@ data class UserRequestTemplate(
                     headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    preFlight = it.preFlight.copy(),
                     postFlight = with (it.postFlight) {
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
@@ -224,6 +229,7 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
+    val preFlight: PreFlightSpec = PreFlightSpec(),
     val postFlight: PostFlightSpec = PostFlightSpec(),
     val overrides: Overrides? = null, // only the Base example can be null
 ) : Identifiable {
@@ -250,6 +256,8 @@ data class UserRequestExample(
         val isOverrideBodyVariables: Boolean = true,
 
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
+
+        val isOverridePreFlightScript: Boolean = true,
 
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     )
@@ -289,6 +297,14 @@ data class PayloadExample(
     val name: String,
     val body: String,
 ) : Identifiable
+
+@Persisted
+@Serializable
+data class PreFlightSpec(
+    val executeCode: String = ""
+) {
+    fun isNotEmpty(): Boolean = executeCode.isNotEmpty()
+}
 
 @Persisted
 @Serializable
@@ -348,6 +364,19 @@ sealed interface UserRequestBody {
 @SerialName("StringBody")
 class StringBody(val value: String) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody = value.toRequestBody(mediaType)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is StringBody) return false
+
+        if (value != other.value) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 }
 
 interface RequestBodyWithKeyValuePairs {
@@ -362,6 +391,19 @@ class FormUrlEncodedBody(override val value: List<UserKeyValuePair>) : UserReque
         val builder = FormBody.Builder()
         value.forEach { builder.add(it.key, it.value) }
         return builder.build()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is FormUrlEncodedBody) return false
+
+        if (value != other.value) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
     }
 }
 
@@ -382,6 +424,19 @@ class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBod
         }
         return b.build()
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody) return false
+
+        if (value != other.value) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 }
 
 @Persisted
@@ -390,6 +445,19 @@ class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBod
 class FileBody(val filePath: String?) : UserRequestBody {
     override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
         return filePath?.let { File(it).asRequestBody(mediaType) } ?: byteArrayOf().toRequestBody(mediaType)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is FileBody) return false
+
+        if (filePath != other.filePath) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return filePath?.hashCode() ?: 0
     }
 }
 

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package sunnychung.grpc.types;
+
+option java_multiple_files = true;
+option java_package = "com.sunnychung.grpc.types";
+
+message StringResource {
+  string data = 1;
+}
+
+message IntResource {
+  int32 data = 1;
+}

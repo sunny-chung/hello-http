@@ -3,16 +3,24 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 import org.apache.hc.core5.net.URIBuilder
 import java.net.URI
 
-data class HttpRequest(
+class HttpRequest(
     val method: String = "",
     val url: String = "",
-    val headers: List<Pair<String, String>> = mutableListOf(),
-    val queryParameters: List<Pair<String, String>> = mutableListOf(),
+    headers: List<Pair<String, String>> = mutableListOf(),
+    queryParameters: List<Pair<String, String>> = mutableListOf(),
     val body: UserRequestBody? = null,
     val contentType: ContentType,
     val application: ProtocolApplication,
     val extra: Any? = null
 ) {
+    private val initialHeaders = headers
+    private val newHeaders: MutableList<Pair<String, String>> = mutableListOf()
+    private val initialQueryParameters = queryParameters
+    private val newQueryParameters: MutableList<Pair<String, String>> = mutableListOf()
+
+    val headers get() = initialHeaders + newHeaders
+    val queryParameters get() = initialQueryParameters + newQueryParameters
+
     fun getResolvedUri(): URI {
         return URIBuilder(url.replace(" ", "+"))
             .run {
@@ -24,6 +32,36 @@ data class HttpRequest(
             }
             .build()
             .let { URI.create(it.toASCIIString()) }
+    }
+
+    fun addHeader(key: String, value: String) {
+        newHeaders += key to value
+    }
+
+    fun addQueryParameter(key: String, value: String) {
+        newQueryParameters += key to value
+    }
+
+    fun copy(
+        method: String = this.method,
+        url: String = this.url,
+        headers: List<Pair<String, String>> = this.headers,
+        queryParameters: List<Pair<String, String>> = this.queryParameters,
+        body: UserRequestBody? = this.body,
+        contentType: ContentType = this.contentType,
+        application: ProtocolApplication = this.application,
+        extra: Any? = this.extra,
+    ): HttpRequest {
+        return HttpRequest(
+            method = method,
+            url = url,
+            headers = headers,
+            queryParameters = queryParameters,
+            body = body,
+            contentType = contentType,
+            application = application,
+            extra = extra,
+        )
     }
 }
 

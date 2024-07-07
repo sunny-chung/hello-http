@@ -6,7 +6,7 @@ title: HTTP/2
 
 ![Setting](../http-protocol-version.png)
 
-By default, Hello HTTP will try to upgrade to HTTP/2 whenever possible. This behaviour can be changed in
+By default, Hello HTTP tries to upgrade to HTTP/2 whenever possible for SSL protocols, and uses HTTP/1.1 otherwise. This behaviour can be changed in
 the [Environment setting](../features/environments). This setting has no effect to WebSocket, GraphQL subscriptions and
 gRPC connections, which require a specific HTTP version to run.
 
@@ -23,5 +23,7 @@ stream-specific and applies to the whole connection.
 Note that some non-informational frame headers are not logged, for example, padding.
 
 ## Push Promises
-There is no concrete support to push promises as they are deprecated. Nonetheless, their responses can be found in the
-Transport Timeline.
+~~There is no concrete support to push promises as they are deprecated. Nonetheless, their responses can be found in the
+Transport Timeline.~~
+
+Push promise support has been removed since Hello HTTP v1.6.0.

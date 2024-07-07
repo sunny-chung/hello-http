@@ -47,6 +47,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -107,7 +108,7 @@ fun AppView() {
             val dialogViewModel = AppContext.DialogViewModel
             val dialogState = dialogViewModel.state.collectAsState().value // needed for updating UI by flow
             log.d { "Dialog State = $dialogState" }
-            Box(modifier = Modifier.background(colors.background).fillMaxSize()) {
+            Box(modifier = Modifier.background(colors.background).fillMaxSize().testTag(TestTag.ContainerView.name)) {
                 AppContentView()
 
                 dialogState?.let { dialog ->
@@ -148,6 +149,7 @@ fun AppView() {
                             .align(
                                 Alignment.Center
                             )
+                            .testTag(TestTag.DialogContainerView.name)
                     ) {
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
@@ -159,6 +161,7 @@ fun AppView() {
                             size = 24.dp,
                             onClick = { dialogViewModel.updateState(null) },
                             modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = -28.dp)
+                                .testTag(TestTag.DialogCloseButton.name)
                         )
                     }
                 }
@@ -217,24 +220,32 @@ fun AppContentView() {
     val projectCollectionRepository = AppContext.ProjectCollectionRepository
     val responseCollectionRepository = AppContext.ResponseCollectionRepository
     val apiSpecificationCollectionRepository = AppContext.ApiSpecificationCollectionRepository
-    val projectCollection = remember {
+    val projectCollection = // remember {
         runBlocking { projectCollectionRepository.read(ProjectAndEnvironmentsDI())!! }
-    }
+//    }
     val clipboardManager = LocalClipboardManager.current
     val errorMessageVM = AppContext.ErrorMessagePromptViewModel
 
     val coroutineScope = rememberCoroutineScope()
     var selectedProject by remember { mutableStateOf<Project?>(null) }
+    log.v { "projectCollection = [${projectCollection.projects.map { it.id }.joinToString()}]" }
+    if (selectedProject != null && selectedProject?.id !in projectCollection.projects.map { it.id }) {
+        selectedProject = null
+    }
+    log.v { "selectedProject = ${selectedProject?.id}" }
     var selectedSubprojectId by remember { mutableStateOf<String?>(null) }
     val selectedSubproject = selectedSubprojectId?.let { projectCollectionRepository.subscribeLatestSubproject(ProjectAndEnvironmentsDI(), it).collectAsState(null, Dispatchers.Main.immediate).value?.first }
+    log.d { "read selectedSubproject" }
     var selectedEnvironment by remember { mutableStateOf<Environment?>(null) }
     var requestCollectionDI by remember { mutableStateOf<RequestsDI?>(null) }
     val requestCollection = requestCollectionDI?.let { di -> requestCollectionRepository.subscribeLatestCollection(di).collectAsState(null).value?.first }
+    log.d { "read requestCollection" }
     var selectedRequestId by rememberLast(selectedSubprojectId) { mutableStateOf<String?>(null) }
     val request = let(requestCollection?.id, selectedRequestId) { di, selectedRequestId ->
         // collect immediately, or fast typing would lead to race conditions
         requestCollectionRepository.subscribeLatestRequest(di, selectedRequestId)
             .collectAsState(null, Dispatchers.Main.immediate).value
+            .also { log.d { "read requestCollection selectedRequestId" } }
     }?.let {
         // Bug: https://issuetracker.google.com/issues/205590513
 //        if (it.id == selectedRequestId) {
@@ -286,7 +297,7 @@ fun AppContentView() {
     }
 
     fun loadRequestsForSubproject(subproject: Subproject) {
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             val r = requestCollectionRepository.readOrCreate(RequestsDI(subprojectId = subproject.id)) { id ->
                 RequestCollection(id = id, requests = mutableListOf())
             }
@@ -383,8 +394,12 @@ fun AppContentView() {
                             onSelectEnvironment = { selectedEnvironment = it },
                             onSelectProject = { selectedProject = it },
                             onSelectSubproject = {
-                                selectedSubprojectId = it?.id
-                                it?.let { loadRequestsForSubproject(it) }
+                                if (it?.id != selectedSubprojectId) {
+                                    selectedSubprojectId = it?.id
+                                    selectedRequestId = null
+                                    selectedRequestExampleId = null
+                                    it?.let { loadRequestsForSubproject(it) }
+                                }
 //                                response = UserResponse("-", "-", "-")
                             },
                             onUpdateSubproject = {
@@ -392,7 +407,7 @@ fun AppContentView() {
                                 with(selectedSubproject!!) {
                                     environments = it.environments
                                     name = it.name
-//                        log.d { "Updated subproject ${environments}" }
+                                    log.d { "Updated subproject ${environments}" }
                                 }
                                 projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 
@@ -510,7 +525,8 @@ fun AppContentView() {
                                         requestExampleId = selectedRequestExampleId!!,
                                         environment = selectedEnvironment,
                                         projectId = selectedProject!!.id,
-                                        subprojectId = selectedSubproject!!.id
+                                        subprojectId = selectedSubproject!!.id,
+                                        subprojectConfig = selectedSubproject.configuration.copy(),
                                     )
                                 }
 

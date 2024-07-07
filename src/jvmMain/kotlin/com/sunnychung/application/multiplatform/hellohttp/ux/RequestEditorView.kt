@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -46,6 +47,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
@@ -256,6 +258,18 @@ fun RequestEditorView(
                         textAlign = TextAlign.Left,
                         maxLines = 1,
                         modifier = modifier.padding(horizontal = 8.dp) //.width(width = 48.dp)
+                            .run {
+                                if (isLabel) {
+                                    testTag(
+                                        buildTestTag(
+                                            TestTagPart.RequestMethodDropdown,
+                                            TestTagPart.DropdownLabel
+                                        )!!
+                                    )
+                                } else {
+                                    this
+                                }
+                            }
                     )
                 },
                 onClickItem = onClickItem@ {
@@ -271,6 +285,7 @@ fun RequestEditorView(
                     onRequestModified(request.copyForApplication(application = it.key.application, method = it.key.method))
                     true
                 },
+                testTagParts = arrayOf(TestTagPart.RequestMethodDropdown),
                 modifier = Modifier.fillMaxHeight()
             )
 
@@ -285,6 +300,7 @@ fun RequestEditorView(
                 ),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
+                    .testTag(TestTag.RequestUrlTextField.name)
             )
 
             val isOneOffRequest = when (request.application) {
@@ -326,6 +342,7 @@ fun RequestEditorView(
                         }
                     }
                     .padding(start = 10.dp, end = if (dropdownItems.isNotEmpty()) 4.dp else 10.dp)
+                    .testTag(TestTag.RequestFireOrDisconnectButton.name)
                 ) {
                     AppText(
                         text = label,
@@ -492,7 +509,7 @@ fun RequestEditorView(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
                 RequestTab.Header, RequestTab.PostFlight
             )
-            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PostFlight)
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PreFlight, RequestTab.PostFlight)
         }
 
         TabsView(
@@ -501,7 +518,8 @@ fun RequestEditorView(
             onSelectTab = { selectedRequestTabIndex = it },
             contents = tabs.map {
                 { AppTabLabel(text = it.displayText) }
-            }
+            },
+            testTag = TestTag.RequestParameterTypeTab.name,
         )
         Box(
             modifier = if (!hasPayloadEditor) {
@@ -548,6 +566,7 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
+                        testTagPart = TestTagPart.RequestHeader,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
@@ -580,7 +599,16 @@ fun RequestEditorView(
                         },
                         knownVariables = environmentVariableKeys,
                         isSupportFileValue = false,
+                        testTagPart = TestTagPart.RequestQueryParameter,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+
+                RequestTab.PreFlight ->
+                    PreFlightEditorView(
+                        selectedExample = selectedExample,
+                        onRequestModified = onRequestModified,
+                        request = request,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     )
 
                 RequestTab.PostFlight -> Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -683,6 +711,59 @@ fun RequestEditorView(
 }
 
 @Composable
+private fun PreFlightEditorView(
+    modifier: Modifier = Modifier,
+    selectedExample: UserRequestExample,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    request: UserRequestTemplate
+) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
+            if (!request.isExampleBase(selectedExample)) {
+                OverrideCheckboxWithLabel(
+                    selectedExample = selectedExample,
+                    onRequestModified = onRequestModified,
+                    request = request,
+                    translateToValue = { overrides ->
+                        overrides.isOverridePreFlightScript
+                    },
+                    translateToNewOverrides = { isChecked, overrides ->
+                        overrides.copy(isOverridePreFlightScript = isChecked)
+                    },
+                )
+            }
+        }
+        val isEnabled = request.isExampleBase(selectedExample) || (selectedExample.overrides?.isOverridePreFlightScript == true)
+        val example = if (!request.isExampleBase(selectedExample) && (selectedExample.overrides?.isOverridePreFlightScript == false)) {
+            request.examples.first()
+        } else {
+            selectedExample
+        }
+        KotliteCodeEditorView(
+            text = example.preFlight.executeCode,
+            onTextChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            example.copy(
+                                preFlight = example.preFlight.copy(
+                                    executeCode = it
+                                )
+                            )
+                        )
+                    )
+                )
+            },
+            isEnabled = isEnabled,
+            isReadOnly = !isEnabled,
+            testTag = TestTag.RequestPreFlightScriptTextField.name,
+            modifier = Modifier.padding(top = 4.dp).fillMaxSize(),
+        )
+    }
+}
+
+@Composable
 private fun RequestServiceMethodSelector(
     modifier: Modifier = Modifier,
     service: String,
@@ -732,6 +813,7 @@ private fun RequestServiceMethodSelector(
             selectedItem = DropDownKeyValue(apiSpec?.id ?: "", apiSpec?.name ?: ""),
             onClickItem = { onSelectApiSpec(it.key); true },
             isLabelFillMaxWidth = true,
+            testTagParts = arrayOf(TestTagPart.RequestApiSpecDropdown),
             modifier = Modifier.weight(0.2f).padding(vertical = 4.dp).fillMaxHeight(),
         )
         DropDownView(
@@ -746,8 +828,21 @@ private fun RequestServiceMethodSelector(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
+                        .run {
+                            if (isLabel) {
+                                testTag(
+                                    buildTestTag(
+                                        TestTagPart.RequestGrpcServiceDropdown,
+                                        TestTagPart.DropdownLabel
+                                    )!!
+                                )
+                            } else {
+                                this
+                            }
+                        }
                 )
             },
+            testTagParts = arrayOf(TestTagPart.RequestGrpcServiceDropdown),
             modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
         )
         DropDownView(
@@ -755,6 +850,7 @@ private fun RequestServiceMethodSelector(
             selectedItem = DropDownValue(method),
             onClickItem = { onSelectMethod(it.displayText); true },
             isLabelFillMaxWidth = true,
+            testTagParts = arrayOf(TestTagPart.RequestGrpcMethodDropdown),
             modifier = Modifier.weight(0.4f).padding(vertical = 4.dp).fillMaxHeight(),
         )
 
@@ -764,7 +860,8 @@ private fun RequestServiceMethodSelector(
                     resource = "download-list.svg",
                     size = 24.dp,
                     onClick = onClickFetchApiSpec,
-                    modifier = Modifier.padding(4.dp),
+                    modifier = Modifier.padding(4.dp)
+                        .testTag(TestTag.RequestFetchApiSpecButton.name),
                 )
             }
         } else {
@@ -773,7 +870,8 @@ private fun RequestServiceMethodSelector(
                     resource = "close.svg",
                     size = 24.dp,
                     onClick = onClickCancelFetchApiSpec,
-                    modifier = Modifier.padding(4.dp),
+                    modifier = Modifier.padding(4.dp)
+                        .testTag(TestTag.RequestCancelFetchApiSpecButton.name),
                 )
             }
         }
@@ -792,10 +890,11 @@ private fun RequestKeyValueEditorView(
     isSupportFileValue: Boolean,
     keyPlaceholder: String = "Key",
     valuePlaceholder: String = "Value",
+    testTagPart: TestTagPart? = null,
 ) {
     val data = value ?: listOf()
     val activeBaseValues = baseValue?.filter { it.isEnabled }
-    Column(modifier = modifier.padding(8.dp)) {
+    Column(modifier = modifier.padding(8.dp).verticalScroll(rememberScrollState())) {
         if (activeBaseValues?.isNotEmpty() == true) {
             val isShowInheritedValues by remember { mutableStateOf(true) }
             InputFormHeader(text = "Inherited from Base")
@@ -812,6 +911,8 @@ private fun RequestKeyValueEditorView(
                 onItemAddLast = {_ ->},
                 onItemDelete = {_ ->},
                 onDisableChange = onDisableUpdate,
+                testTagPart1 = testTagPart,
+                testTagPart2 = TestTagPart.Inherited,
             )
 
             InputFormHeader(text = "This Example", modifier = Modifier.padding(top = 12.dp))
@@ -840,6 +941,8 @@ private fun RequestKeyValueEditorView(
             },
             onDisableChange = {_ ->},
 //                modifier = modifier,
+            testTagPart1 = testTagPart,
+            testTagPart2 = TestTagPart.Current,
         )
     }
 }
@@ -898,7 +1001,8 @@ private fun RequestBodyEditor(
                                     )
                                 )
                                 true
-                            }
+                            },
+                            testTagParts = arrayOf(TestTagPart.RequestBodyTypeDropdown),
                         )
                     } else {
                         AppText(selectedContentType.displayText)
@@ -943,7 +1047,8 @@ private fun RequestBodyEditor(
                                     )
                                 )
                                 true
-                            }
+                            },
+                            testTagParts = arrayOf(TestTagPart.RequestGraphqlOperationName.name),
                         )
                     }
                 }
@@ -1032,6 +1137,7 @@ private fun RequestBodyEditor(
                     },
                     knownVariables = environmentVariableKeys,
                     isSupportFileValue = false,
+                    testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm,
                     modifier = remainModifier,
                 )
 
@@ -1065,6 +1171,7 @@ private fun RequestBodyEditor(
                     },
                     knownVariables = environmentVariableKeys,
                     isSupportFileValue = true,
+                    testTagPart = TestTagPart.RequestBodyMultipartForm,
                     modifier = remainModifier,
                 )
 
@@ -1105,6 +1212,7 @@ private fun RequestBodyEditor(
                         )
                     },
                     transformations = listOf(GraphqlQuerySyntaxHighlightTransformation(colours = colors)),
+                    testTag = TestTag.RequestGraphqlDocumentTextField.name,
                     modifier = Modifier.fillMaxWidth().weight(0.62f),
                 )
 
@@ -1138,6 +1246,7 @@ private fun RequestBodyEditor(
                         )
                     },
                     transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    testTag = TestTag.RequestGraphqlVariablesTextField.name,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 200.dp).weight(0.38f),
                 )
             }
@@ -1149,28 +1258,31 @@ private fun RequestBodyEditor(
 
 @Composable
 private fun OverrideCheckboxWithLabel(
+    modifier: Modifier = Modifier,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     selectedExample: UserRequestExample,
     translateToValue: (UserRequestExample.Overrides) -> Boolean,
     translateToNewOverrides: (Boolean, UserRequestExample.Overrides) -> UserRequestExample.Overrides,
 ) {
-    AppText("Is Override Base? ")
-    AppCheckbox(
-        checked = translateToValue(selectedExample.overrides!!),
-        onCheckedChange = {
-            onRequestModified(
-                request.copy(
-                    examples = request.examples.copyWithChange(
-                        selectedExample.run {
-                            copy(overrides = translateToNewOverrides(it, overrides!!))
-                        }
+    Row(modifier) {
+        AppText("Is Override Base? ")
+        AppCheckbox(
+            checked = translateToValue(selectedExample.overrides!!),
+            onCheckedChange = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = translateToNewOverrides(it, overrides!!))
+                            }
+                        )
                     )
                 )
-            )
-        },
-        size = 16.dp,
-    )
+            },
+            size = 16.dp,
+        )
+    }
 }
 
 @Composable
@@ -1184,6 +1296,7 @@ private fun RequestBodyTextEditor(
     translateToText: (UserRequestExample) -> String?,
     translateTextChangeToNewUserRequestExample: (String) -> UserRequestExample,
     transformations: List<VisualTransformation>,
+    testTag: String? = null,
 ) {
     val colors = LocalColor.current
     val baseExample = request.examples.first()
@@ -1205,6 +1318,7 @@ private fun RequestBodyTextEditor(
                 )
             },
             transformations = transformations,
+            testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
         )
     } else {
         CodeEditorView(
@@ -1254,7 +1368,10 @@ fun BinaryFileInputView(modifier: Modifier = Modifier, filePath: String?, onFile
             AppTextButton(
                 text = filePath?.let { File(it).name } ?: "Choose a File",
                 onClick = { isShowFileDialog = true },
-                modifier = Modifier.align(Alignment.Center).border(width = 1.dp, color = colours.placeholder),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .border(width = 1.dp, color = colours.placeholder)
+                    .testTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!),
             )
         }
     }
@@ -1309,14 +1426,19 @@ fun StreamingPayloadEditorView(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Payload")
             Spacer(modifier = Modifier.weight(1f))
-            AppTextButton(text = "Send", isEnabled = isEnableSend) {
+            AppTextButton(
+                text = "Send",
+                isEnabled = isEnableSend,
+                modifier = Modifier.testTag(TestTag.RequestSendPayloadButton.name),
+            ) {
                 triggerSendPayload()
             }
             if (hasCompleteButton) {
                 AppTextButton(
                     text = "Complete",
                     isEnabled = connectionStatus == ConnectionStatus.OPEN_FOR_STREAMING,
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier.padding(start = 4.dp)
+                        .testTag(TestTag.RequestCompleteStreamButton.name),
                 ) {
                     onClickCompleteStream()
                 }
@@ -1382,6 +1504,7 @@ fun StreamingPayloadEditorView(
                     editExampleNameViewModel.onStartEdit(newExample.id)
                 },
                 modifier = Modifier.padding(4.dp)
+                    .testTag(TestTag.RequestAddPayloadExampleButton.name)
             )
         }
 
@@ -1403,12 +1526,13 @@ fun StreamingPayloadEditorView(
                 )
             },
             transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)),
+            testTag = TestTag.RequestPayloadTextField.name,
         )
     }
 }
 
 private enum class RequestTab(val displayText: String) {
-    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PostFlight("Post Flight")
+    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PreFlight("Pre Flight"), PostFlight("Post Flight")
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)

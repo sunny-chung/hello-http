@@ -3,6 +3,10 @@
 /archived
 /temp
 
+### JVM ###
+*.hprof
+*.hprof.*
+
 ### Gradle ###
 .gradle
 build/

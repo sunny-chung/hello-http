@@ -23,6 +23,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -51,6 +52,8 @@ fun KeyValueEditorView(
     onItemAddLast: (item: UserKeyValuePair) -> Unit,
     onItemDelete: (index: Int) -> Unit,
     onDisableChange: (Set<String>) -> Unit,
+    testTagPart1: TestTagPart? = null,
+    testTagPart2: TestTagPart? = null,
 ) {
     val colors = LocalColor.current
 
@@ -98,8 +101,8 @@ fun KeyValueEditorView(
             }
         }
 
-        LazyColumn {
-            items(count = keyValues.size + if (!isInheritedView) 1 else 0) { index ->
+        Column {
+            (0 until keyValues.size + if (!isInheritedView) 1 else 0).forEach { index ->
                 val it = if (index < keyValues.size) keyValues[index] else null
                 val isEnabled = it?.let { if (!isInheritedView) it.isEnabled else !disabledIds.contains(it.id) } ?: true
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -136,7 +139,12 @@ fun KeyValueEditorView(
                         textColor = if (isEnabled) colors.primary else colors.disabled,
                         hasIndicatorLine = !isInheritedView,
                         modifier = Modifier.weight(0.4f)
-                            .onKeyDownTabMoveFocus(if (index == 0) FocusPosition.Start else FocusPosition.Middle),
+                            .onKeyDownTabMoveFocus(if (index == 0) FocusPosition.Start else FocusPosition.Middle)
+                            .run {
+                                buildTestTag(testTagPart1, testTagPart2, TestTagPart.Key, index)?.let {
+                                    testTag(it)
+                                } ?: this
+                            },
                     )
                     if (it?.valueType == FieldValueType.String || it == null) {
                         AppTextFieldWithPlaceholder(
@@ -172,7 +180,12 @@ fun KeyValueEditorView(
                             textColor = if (isEnabled) colors.primary else colors.disabled,
                             hasIndicatorLine = !isInheritedView,
                             modifier = Modifier.weight(0.6f)
-                                .onKeyDownTabMoveFocus(if (index == keyValues.size) FocusPosition.End else FocusPosition.Middle),
+                                .onKeyDownTabMoveFocus(if (index == keyValues.size) FocusPosition.End else FocusPosition.Middle)
+                                .run {
+                                    buildTestTag(testTagPart1, testTagPart2, TestTagPart.Value, index)?.let {
+                                        testTag(it)
+                                    } ?: this
+                                },
                         )
                     } else {
                         val file = if (it.value.isNotEmpty()) File(it.value) else null
@@ -183,6 +196,11 @@ fun KeyValueEditorView(
                                 { log.d {"onClick file"}; fileDialogRequest = index; isShowFileDialog = true }
                             } else null,
                             modifier = Modifier.weight(0.6f).border(width = 1.dp, color = colors.placeholder)
+                                .run {
+                                    buildTestTag(testTagPart1, testTagPart2, index, TestTagPart.FileButton)?.let {
+                                        testTag(it)
+                                    } ?: this
+                                },
                         )
                     }
                     if (it != null) {
@@ -198,6 +216,7 @@ fun KeyValueEditorView(
                                     onItemChange(index, it.copy(valueType = valueType))
                                     true
                                 },
+                                testTagParts = arrayOf(testTagPart1, testTagPart2, index, TestTagPart.ValueTypeDropdown),
                                 modifier = Modifier.padding(horizontal = 4.dp)
                             )
                         }

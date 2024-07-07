@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -58,6 +59,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
 import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.util.formatByteSize
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -172,7 +174,12 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                 ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
                     ResponseBodyView(response = response)
                 } else {
-                    ResponseEmptyView(type = "body", isCommunicating = connectionStatus.isConnectionActive(), modifier = Modifier.fillMaxSize().padding(8.dp))
+                    ResponseEmptyView(
+                        type = "body",
+                        isCommunicating = connectionStatus.isConnectionActive(),
+                        modifier = Modifier.fillMaxSize().padding(8.dp)
+                            .testTag(TestTag.ResponseBodyEmpty.name)
+                    )
                 }
 
                 ResponseTab.Stream -> ResponseStreamView(response)
@@ -339,7 +346,12 @@ fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectio
         Pair("", colors.errorResponseBackground)
     }
     if (text.isNotEmpty()) {
-        DataLabel(modifier = modifier, text = text, backgroundColor = backgroundColor, textColor = colors.bright)
+        DataLabel(
+            modifier = modifier.testTag(TestTag.ResponseStatus.name),
+            text = text,
+            backgroundColor = backgroundColor,
+            textColor = colors.bright,
+        )
     }
 }
 
@@ -353,19 +365,13 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateT
     } else {
         "${duration.toMilliseconds()} ms"
     }
-    DataLabel(modifier = modifier, text = text)
+    DataLabel(modifier = modifier.testTag(TestTag.ResponseDuration.name), text = text)
 }
 
 @Composable
 fun ResponseSizeLabel(modifier: Modifier = Modifier, response: UserResponse) {
     val size = response.responseSizeInBytes ?: return
-    val text = if (size >= 10 * 1024L * 1024L) {
-        "${"%.1f".format(size / 1024.0 / 1024.0)} MB"
-    } else if (size >= 10 * 1024L) {
-        "${"%.1f".format(size / 1024.0)} KB"
-    } else {
-        "${size} B"
-    }
+    val text = formatByteSize(size)
     DataLabel(modifier = modifier, text = text)
 }
 
@@ -544,6 +550,7 @@ fun BodyViewerView(
                     } else {
                         emptyList()
                     },
+                    testTag = TestTag.ResponseBody.name,
                 )
             }
         } else {
@@ -553,6 +560,7 @@ fun BodyViewerView(
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
+                    testTag = TestTag.ResponseError.name,
                 )
             }
         }
@@ -718,7 +726,7 @@ fun ResponseStreamView(response: UserResponse) {
             }
         )
 
-        Box(modifier = Modifier.weight(0.4f)) {
+        Box(modifier = Modifier.weight(0.4f).testTag(TestTag.ResponseStreamLog.name)) {
             Box(
                 Modifier
                     .width(TIMESTAMP_COLUMN_WIDTH_DP + TYPE_COLUMN_WIDTH_DP)
@@ -753,6 +761,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 fontSize = fonts.streamFontSize,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
+                                    .testTag(TestTag.ResponseStreamLogItemTime.name)
                             )
                             AppText(
                                 text = when (it.type) {

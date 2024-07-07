@@ -15,10 +15,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.test.util.ObjectReferenceTracker
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import kotlin.reflect.KProperty1
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.javaField
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -33,7 +31,6 @@ class RequestDataTest {
                 ProtocolApplication.Graphql -> arrayOf(ContentType.Graphql)
             }.forEach { bodyType ->
                 val subjectIds = mutableSetOf<String>()
-                val subjectObjects = mutableListOf<Any>() // set is not used, because two different objects can be "equal"
                 fun generateUuidForSubject() = uuidString().also { subjectIds += it }
 
                 var baseExample: UserRequestExample? = null
@@ -153,27 +150,8 @@ class RequestDataTest {
                         }
                     }
                 )
-                fun trackAllObjects(parent: Any, tracker: MutableList<Any>) {
-                    if (tracker.any { it === parent }) return // prevent infinite loop due to cyclic dependencies
-                    parent::class.memberProperties.forEach {
-                        val clazz = it.javaField?.type
-//                        println(">> ${it.name} -- ${clazz?.simpleName} - ${clazz?.isPrimitive}, ${clazz?.isEnum}, ${clazz == String::class.java}")
-                        if (clazz?.isPrimitive == false && clazz?.isEnum == false && clazz != String::class.java) {
-                            val value = (it as KProperty1<Any, *>).get(parent)
-                            if (value != null) {
-                                tracker += value
-                                trackAllObjects(value, tracker)
-                            }
-                            if (value is Iterable<*>) {
-                                value.forEach { it?.let { trackAllObjects(it, tracker) } }
-                            } else if (value is Array<*>) {
-                                value.forEach { it?.let { trackAllObjects(it, tracker) } }
-                            }
-                        }
-                    }
-                }
-                trackAllObjects(subjectRequest, subjectObjects)
-                println("${subjectObjects.size} object references found")
+
+                val subjectRequestTracker = ObjectReferenceTracker(subjectRequest)
 
                 /** Assert all IDs are new **/
                 fun assertIdIsNew(id: String) = assert(id !in subjectIds)
@@ -200,10 +178,8 @@ class RequestDataTest {
                 }
 
                 /** Assert all object references are new **/
-                val newObjectRefs = mutableListOf<Any>()
-                trackAllObjects(copied, newObjectRefs)
-                newObjectRefs.forEach { newRef ->
-                    assert(subjectObjects.none { it === newRef }) { "Object is repeated. Protocol: $protocol; Body type: $bodyType; Object Class: ${newRef::class}; Object: $newRef" }
+                subjectRequestTracker.assertNoObjectReferenceIsCopied(copied) { ref ->
+                    "Object is repeated. Protocol: $protocol; Body type: $bodyType; Object Class: ${ref::class}; Object: $ref"
                 }
 
                 /** Assert all reference IDs are not broken **/
