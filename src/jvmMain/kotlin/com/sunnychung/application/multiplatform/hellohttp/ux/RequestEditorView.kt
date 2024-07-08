@@ -475,6 +475,21 @@ fun RequestEditorView(
                                 modifier = Modifier.padding(8.dp)
                             ) {
                                 AppText(text = it.name)
+                                AppImageButton(resource = "duplicate.svg", size = 16.dp, color = colors.placeholder) {
+                                    val copiedExample = it.deepCopyWithNewId()
+                                    log.d { "copied example -> ${copiedExample.id}" }
+                                    onRequestModified(
+                                        request.copy(examples = request.examples.let { examples ->
+                                            val r = examples.toMutableList()
+                                            r.add(index + 1, copiedExample)
+                                            log.d { "new examples = [\n${r.joinToString { "  ${it.id} -> ${it.name}\n" }}]" }
+                                            r
+                                        })
+                                    )
+                                    onSelectExample(copiedExample)
+                                    log.d { "onStartEdit ${copiedExample.id}" }
+                                    editExampleNameViewModel.onStartEdit(copiedExample.id)
+                                }
                                 if (index > 0) { // "Base" example cannot be deleted
                                     AppDeleteButton {
                                         onRequestModified(

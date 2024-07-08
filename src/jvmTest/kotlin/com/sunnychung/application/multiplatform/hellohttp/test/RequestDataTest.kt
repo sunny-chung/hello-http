@@ -22,7 +22,7 @@ import kotlin.test.assertEquals
 
 class RequestDataTest {
     @Test
-    fun `deepCopy ids should not has same ID or ref from previous request object, ID links are not broken, and no missing elements`() {
+    fun `UserRequestTemplate deepCopy ids should not has same ID or ref from previous request object, ID links are not broken, and no missing elements`() {
         ProtocolApplication.values().forEach { protocol ->
             when (protocol) {
                 ProtocolApplication.Http -> ContentType.values()
@@ -222,6 +222,137 @@ class RequestDataTest {
                     }
                 }
                 assertEquals(subjectRequest.payloadExamples?.size, copied.payloadExamples?.size)
+            }
+        }
+    }
+
+    @Test
+    fun `UserRequestExample deepCopy ids should not has same ID or ref from previous object, and no missing elements`() {
+        val subjectIds = mutableSetOf<String>()
+        fun generateUuidForSubject() = uuidString().also { subjectIds += it }
+        fun assertIdIsNew(id: String) = assert(id !in subjectIds)
+
+        fun randomStrings(count: Int): Set<String> = (0 until count)
+            .map { uuidString() }
+            .toSet()
+
+        ProtocolApplication.values().forEach { protocol ->
+            when (protocol) {
+                ProtocolApplication.Http -> ContentType.values()
+                ProtocolApplication.WebSocket -> arrayOf(ContentType.None)
+                ProtocolApplication.Grpc -> arrayOf(ContentType.Json)
+                ProtocolApplication.Graphql -> arrayOf(ContentType.Graphql)
+            }.forEach { bodyType ->
+                (0 until 10).forEach {
+                    val subject = UserRequestExample(
+                        id = generateUuidForSubject(),
+                        name = if (it == 0) "Base" else "Example $it",
+                        contentType = bodyType,
+                        headers = (0 until 10).map {
+                            UserKeyValuePair(
+                                id = generateUuidForSubject(),
+                                key = "Header $it",
+                                value = "Value $it",
+                                valueType = FieldValueType.String,
+                                isEnabled = true
+                            )
+                        },
+                        queryParameters = (0 until 10).map {
+                            UserKeyValuePair(
+                                id = generateUuidForSubject(),
+                                key = "Query $it",
+                                value = "Value $it",
+                                valueType = FieldValueType.String,
+                                isEnabled = true
+                            )
+                        },
+                        body = when (bodyType) {
+                            ContentType.Json, ContentType.Raw -> StringBody("")
+                            ContentType.Multipart -> MultipartBody(
+                                (0 until 10).map {
+                                    UserKeyValuePair(
+                                        id = generateUuidForSubject(),
+                                        key = "Multiparty Body $it",
+                                        value = "Value $it",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                }
+                            )
+
+                            ContentType.FormUrlEncoded -> FormUrlEncodedBody(
+                                (0 until 10).map {
+                                    UserKeyValuePair(
+                                        id = generateUuidForSubject(),
+                                        key = "Form Body $it",
+                                        value = "Value $it",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                }
+                            )
+
+                            ContentType.BinaryFile -> FileBody("/tmp/a")
+                            ContentType.Graphql -> GraphqlBody("", "", null)
+                            ContentType.None -> null
+                        },
+                        postFlight = PostFlightSpec(
+                            updateVariablesFromHeader = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "env_header_$it",
+                                    value = "Response Header $it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
+                            updateVariablesFromBody = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "env_body_$it",
+                                    value = "\$.response_json_path_$it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
+                        ),
+                        overrides = when (it) {
+                            0 -> null
+                            else -> UserRequestExample.Overrides(
+                                disabledHeaderIds = randomStrings(3),
+                                disabledQueryParameterIds = randomStrings(4),
+                                disabledBodyKeyValueIds = randomStrings(5),
+                                disablePostFlightUpdateVarIds = randomStrings(9),
+                            )
+                        }
+                    )
+
+                    val subjectRequestTracker = ObjectReferenceTracker(subject)
+                    val copied = subject.deepCopyWithNewId()
+
+                    /** Assert all object references are new **/
+                    subjectRequestTracker.assertNoObjectReferenceIsCopied(copied) { ref ->
+                        "Object is repeated. Object Class: ${ref::class}; Object: $ref"
+                    }
+
+                    /** Assert all IDs are new **/
+                    with (copied) {
+                        assertIdIsNew(id)
+                        headers.forEach { assertIdIsNew(it.id) }
+                        queryParameters.forEach { assertIdIsNew(it.id) }
+                        when (body) {
+                            is FormUrlEncodedBody -> (body as FormUrlEncodedBody).value.forEach {
+                                assertIdIsNew(it.id)
+                            }
+                            is MultipartBody -> (body as MultipartBody).value.forEach {
+                                assertIdIsNew(it.id)
+                            }
+                            else -> {}
+                        }
+                        postFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
+                        postFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
+                    }
+                }
             }
         }
     }

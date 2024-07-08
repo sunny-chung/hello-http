@@ -268,6 +268,50 @@ data class UserRequestExample(
                 && disablePostFlightUpdateVarIds.isEmpty()
     }
 
+    fun deepCopyWithNewId(isCreateOverridesIfMissing: Boolean = true): UserRequestExample {
+        fun List<UserKeyValuePair>.deepCopyWithNewId() = map {
+            it.copy(
+                id = uuidString(),
+            )
+        }
+
+        fun UserRequestBody.deepCopyWithNewId() = when(this) {
+            is FileBody -> FileBody(filePath)
+            is FormUrlEncodedBody -> FormUrlEncodedBody(value.deepCopyWithNewId())
+            is GraphqlBody -> GraphqlBody(document, variables, operationName)
+            is com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody -> MultipartBody(
+                value.deepCopyWithNewId()
+            )
+            is StringBody -> StringBody(value)
+        }
+
+        return copy(
+            id = uuidString(),
+            headers = headers.deepCopyWithNewId(),
+            queryParameters = queryParameters.deepCopyWithNewId(),
+            body = body?.deepCopyWithNewId(),
+            preFlight = preFlight.copy(),
+            postFlight = with (postFlight) {
+                copy(
+                    updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
+                    updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(),
+                )
+            },
+            overrides = overrides?.let { o ->
+                o.copy(
+                    disabledHeaderIds = o.disabledHeaderIds.map { it }.toSet(),
+                    disabledQueryParameterIds = o.disabledQueryParameterIds.map { it }.toSet(),
+                    disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { it }.toSet(),
+                    disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { it }.toSet(),
+                )
+            } ?: if (isCreateOverridesIfMissing) {
+                Overrides()
+            } else {
+                null
+            },
+        )
+    }
+
     companion object {
         fun create(application: ProtocolApplication): UserRequestExample {
             return when (application) {
