@@ -260,7 +260,13 @@ data class UserRequestExample(
         val isOverridePreFlightScript: Boolean = true,
 
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
-    )
+    ) {
+        fun hasNoDisable(): Boolean =
+            disabledHeaderIds.isEmpty()
+                && disabledQueryParameterIds.isEmpty()
+                && disabledBodyKeyValueIds.isEmpty()
+                && disablePostFlightUpdateVarIds.isEmpty()
+    }
 
     companion object {
         fun create(application: ProtocolApplication): UserRequestExample {

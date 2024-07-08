@@ -625,7 +625,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                         .includingDefaultValueFields()
 
                     if (methodDescriptor0.isClientStreaming || methodDescriptor0.isServerStreaming) {
-                        out.payloadExchanges = mutableListOf()
+                        out.payloadExchanges = Collections.synchronizedList(mutableListOf())
                     }
 
                     responseFlow = responseFlow.onEach {

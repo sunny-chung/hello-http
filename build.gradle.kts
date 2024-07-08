@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.io.ByteArrayOutputStream
@@ -88,6 +89,7 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation("org.junit.jupiter:junit-jupiter-params")
                 implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.2")
             }
         }
@@ -149,8 +151,11 @@ tasks.getByName("jvmMainClasses") {
 }
 
 tasks.withType<Test> {
+    useJUnitPlatform()
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+        showStandardStreams = true
+        exceptionFormat = TestExceptionFormat.FULL
     }
 }
 

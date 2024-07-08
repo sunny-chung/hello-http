@@ -50,15 +50,17 @@ class AutoBackupManager {
             .also { it.mkdirs() }
     }
 
-    suspend fun backupNow() {
+    suspend fun backupNow(destinationFile: File? = null) {
         val allProjects = AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!.projects
         if (allProjects.isEmpty()) {
             return
         }
 
         val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
-        val dir = backupDir()
-        val file = File(dir, "Hello-HTTP_backup_$dateTimeString.dump")
+        val file = destinationFile ?: run {
+            val dir = backupDir()
+            File(dir, "Hello-HTTP_backup_$dateTimeString.dump")
+        }
 
         DataDumpExporter().exportToFile(allProjects, file)
 

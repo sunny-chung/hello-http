@@ -42,7 +42,7 @@ data class UserResponse(
         // null = not support streaming; empty list = streaming without data
         if (application in setOf(ProtocolApplication.WebSocket, ProtocolApplication.Graphql))
             Collections.synchronizedList(mutableListOf())
-        else
+        else // for gRPC, a list is initialized in GrpcTransportClient if the method supports streaming
             null,
     var requestData: RequestData? = null,
     var closeReason: String? = null,
