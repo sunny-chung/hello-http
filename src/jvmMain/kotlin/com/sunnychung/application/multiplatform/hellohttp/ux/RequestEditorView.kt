@@ -516,6 +516,20 @@ fun RequestEditorView(
                 },
                 modifier = Modifier.padding(4.dp)
             )
+
+            DropDownView(
+                iconResource = "list-ul-alt.svg",
+                iconSize = 24.dp,
+                items = request.examples.map { DropDownKeyValue(it.id, it.name) },
+                isShowLabel = false,
+                onClickItem = { clicked ->
+                    request.examples.firstOrNull { it.id == clicked.key }?.let {
+                        onSelectExample(it)
+                        true
+                    } ?: false
+                },
+                modifier = Modifier.padding(4.dp)
+            )
         }
 
         val tabs = when (request.application) {
