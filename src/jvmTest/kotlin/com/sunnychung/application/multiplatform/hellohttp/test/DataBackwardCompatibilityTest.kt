@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenc
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
+import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -783,6 +784,7 @@ class DataBackwardCompatibilityTest {
                                     assertEquals("10", it.name)
                                     assertEquals("{\n  \"data\": 10\n}", it.body)
                                 }
+                                else -> throw NotImplementedError()
                             }
                         }
                     }
@@ -824,6 +826,7 @@ class DataBackwardCompatibilityTest {
                                     assertEquals("10", it.name)
                                     assertEquals("{\n  \"data\": 10\n}", it.body)
                                 }
+                                else -> throw NotImplementedError()
                             }
                         }
                     }
@@ -854,15 +857,415 @@ class DataBackwardCompatibilityTest {
                 }
 
                 project.subprojects.first { it.name == "Without Env" }.let { subproject ->
-                    // TODO add asserts
+                    assertEquals(0, subproject.environments.size)
+
+                    val requests = AppContext.RequestCollectionRepository
+                        .read(RequestsDI(subprojectId = subproject.id))!!
+                        .requests
+                    assertEquals(1, requests.size)
+
+                    val responses = AppContext.PersistResponseManager
+                        .loadResponseCollection(ResponsesDI(subprojectId = subproject.id))
+                        .responsesByRequestExampleId
+                    assert(responses.isNotEmpty())
+
+                    requests.first { it.name == "New Request" }.let {
+                        assertEquals(ProtocolApplication.Http, it.application)
+                        assertEquals("POST", it.method)
+                        assertEquals("http://testserver.net:18081/rest/echo", it.url)
+                        assertEquals(2, it.examples.size)
+                        var i = 0
+                        it.examples[i++].let { ex -> // Base Example
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\n  \"data\": 123\n}", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(1, ex.headers.size)
+                            ex.headers.first { it.key == "a" }.assert("va", true)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("Override", ex.name)
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\n  \"def\": \"gh\"  \n}", (ex.body as StringBody).value)
+                            assertEquals(true, ex.overrides!!.isOverrideBody)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assertEquals(true, ex.overrides?.hasNoDisable() ?: true)
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                    }
                 }
 
                 project.subprojects.first { it.name == "Without Requests" }.let { subproject ->
-                    // TODO add asserts
+                    assertEquals(0, subproject.environments.size)
+
+                    val requests = AppContext.RequestCollectionRepository
+                        .read(RequestsDI(subprojectId = subproject.id))!!
+                        .requests
+                    assertEquals(0, requests.size)
+
+                    val responses = AppContext.PersistResponseManager
+                        .loadResponseCollection(ResponsesDI(subprojectId = subproject.id))
+                        .responsesByRequestExampleId
+                    assert(responses.isEmpty())
                 }
 
                 project.subprojects.first { it.name == "Mixed Request Types" }.let { subproject ->
-                    // TODO add asserts
+                    assertEquals(1, subproject.environments.size)
+                    subproject.environments.first { it.name == "Cleartext" }.let { env ->
+                        env.variables.first { it.key == "prefix" }
+                            .assert("http://testserver.net:18081", true)
+                        env.variables.first { it.key == "ws" }
+                            .assert("ws://testserver.net:18081/ws", true)
+                        env.variables.first { it.key == "grpc" }
+                            .assert("grpc://testserver.net:18082", true)
+
+                        assertEquals(null, env.httpConfig.protocolVersion)
+
+                        assertEquals(null, env.sslConfig.isInsecure)
+                        assertEquals(0, env.sslConfig.trustedCaCertificates.size)
+                        assertEquals(null, env.sslConfig.isDisableSystemCaCertificates)
+                        assertEquals(0, env.sslConfig.clientCertificateKeyPairs.size)
+                    }
+
+                    val requests = AppContext.RequestCollectionRepository
+                        .read(RequestsDI(subprojectId = subproject.id))!!
+                        .requests
+                    assertEquals(7, requests.size)
+
+                    val responses = AppContext.PersistResponseManager
+                        .loadResponseCollection(ResponsesDI(subprojectId = subproject.id))
+                        .responsesByRequestExampleId
+                    assert(responses.isNotEmpty())
+
+                    val apiSpecs = AppContext.ApiSpecificationCollectionRepository.read(ApiSpecDI(project.id))!!
+                        .grpcApiSpecs
+                        .filter { it.id in subproject.grpcApiSpecIds }
+                    assertEquals(1, apiSpecs.size)
+                    val apiSpec = apiSpecs.first()
+                    assertEquals("testserver.net:18082", apiSpec.name)
+                    assertEquals(true, apiSpec.isActive)
+
+                    requests.first { it.name == "REST API" }.let {
+                        assertEquals(ProtocolApplication.Http, it.application)
+                        assertEquals("PUT", it.method)
+                        assertEquals("\${{prefix}}/rest/echo", it.url)
+                        assertEquals(4, it.examples.size)
+                        var i = 0
+                        it.examples[i++].let { ex -> // Base Example
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\"id\":1234}", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("1235", ex.name)
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\"id\":1235}", (ex.body as StringBody).value)
+                            assertEquals(true, ex.overrides!!.isOverrideBody)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assertEquals(true, ex.overrides?.hasNoDisable() ?: true)
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("1236", ex.name)
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{\"id\": 1236}", (ex.body as StringBody).value)
+                            assertEquals(true, ex.overrides!!.isOverrideBody)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assertEquals(true, ex.overrides?.hasNoDisable() ?: true)
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("Raw", ex.name)
+                            assertEquals(ContentType.Raw, ex.contentType)
+                            assertEquals("1237", (ex.body as StringBody).value)
+                            assertEquals(true, ex.overrides!!.isOverrideBody)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assertEquals(true, ex.overrides?.hasNoDisable() ?: true)
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                    }
+
+                    requests.first { it.name == "GraphQL Query - Sum" }.let {
+                        assertEquals(ProtocolApplication.Graphql, it.application)
+                        assertEquals("\${{prefix}}/graphql", it.url)
+                        assertEquals(3, it.examples.size)
+                        var i = 0
+                        it.examples[i++].let { ex -> // Base Example
+                            assertEquals(ContentType.Graphql, ex.contentType)
+                            (ex.body as GraphqlBody).let { body ->
+                                assert(body.operationName.isNullOrEmpty())
+                                assertEquals("", body.document)
+                                assertEquals("", body.variables)
+                            }
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            assert(ex.id !in responses)
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("Anonymous Op", ex.name)
+                            assertEquals(ContentType.Graphql, ex.contentType)
+                            (ex.body as GraphqlBody).let { body ->
+                                assert(body.operationName.isNullOrEmpty())
+                                assert(body.document.isNotEmpty())
+                                assertEquals("", body.variables)
+                            }
+                            assertEquals(true, ex.overrides!!.isOverrideBodyContent)
+                            assertEquals(true, ex.overrides!!.isOverrideBodyVariables)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assert(ex.overrides!!.hasNoDisable())
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("Variable", ex.name)
+                            assertEquals(ContentType.Graphql, ex.contentType)
+                            (ex.body as GraphqlBody).let { body ->
+                                assertEquals("GetSum", body.operationName)
+                                assert(body.document.isNotEmpty())
+                                assert(body.variables.isNotEmpty())
+                            }
+                            assertEquals(true, ex.overrides!!.isOverrideBodyContent)
+                            assertEquals(true, ex.overrides!!.isOverrideBodyVariables)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assert(ex.overrides!!.hasNoDisable())
+
+                            responses[ex.id]!!.assertHttpStatus200WithContent()
+                        }
+                    }
+
+                    requests.first { it.name == "GraphQL Subscription" }.let {
+                        assertEquals(ProtocolApplication.Graphql, it.application)
+                        assertEquals("\${{prefix}}/graphql", it.url)
+                        assertEquals(4, it.examples.size)
+                        var i = 0
+                        it.examples[i++].let { ex -> // Base Example
+                            assertEquals(ContentType.Graphql, ex.contentType)
+                            (ex.body as GraphqlBody).let { body ->
+                                assert(body.operationName.isNullOrEmpty())
+                                assert(body.document.isNotEmpty())
+                                assertEquals("", body.variables)
+                            }
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            assert(ex.id !in responses)
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("Normal", ex.name)
+                            assertEquals(ContentType.Graphql, ex.contentType)
+                            (ex.body as GraphqlBody).let { body ->
+                                assert(body.operationName.isNullOrEmpty())
+                                assertEquals("{\"seconds\": 2, \"stopAt\": 5}", body.variables)
+                            }
+                            assertEquals(false, ex.overrides!!.isOverrideBodyContent)
+                            assertEquals(true, ex.overrides!!.isOverrideBodyVariables)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assert(ex.overrides!!.hasNoDisable())
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(101, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(8, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("Cancel midway", ex.name)
+                            assertEquals(ContentType.Graphql, ex.contentType)
+                            (ex.body as GraphqlBody).let { body ->
+                                assert(body.operationName.isNullOrEmpty())
+                                assertEquals("{\"seconds\": 2, \"stopAt\": 5}", body.variables)
+                            }
+                            assertEquals(false, ex.overrides!!.isOverrideBodyContent)
+                            assertEquals(true, ex.overrides!!.isOverrideBodyVariables)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assert(ex.overrides!!.hasNoDisable())
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(101, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(5, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+                        it.examples[i++].let { ex ->
+                            assertEquals("Error", ex.name)
+                            assertEquals(ContentType.Graphql, ex.contentType)
+                            (ex.body as GraphqlBody).let { body ->
+                                assert(body.operationName.isNullOrEmpty())
+                                assertEquals("{\"seconds\": 1, \"stopAt\": 5, \"errorAt\": 3}", body.variables)
+                            }
+                            assertEquals(false, ex.overrides!!.isOverrideBodyContent)
+                            assertEquals(true, ex.overrides!!.isOverrideBodyVariables)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assert(ex.overrides!!.hasNoDisable())
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(101, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(7, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+                    }
+
+                    requests.first { it.name == "WebSocket" }.let {
+                        assertEquals(ProtocolApplication.WebSocket, it.application)
+                        assertEquals("\${{ws}}", it.url)
+                        assertEquals(1, it.examples.size)
+                        it.examples.first().let { ex -> // Base Example
+                            assertEquals(2, ex.queryParameters.size)
+                            ex.queryParameters.first { it.key == "q1" }.assert("abc", true)
+                            ex.queryParameters.first { it.key == "q2" }.assert("bcd", true)
+                            assertEquals(1, ex.headers.size)
+                            ex.headers.first { it.key == "h1" }.assert("hv1", true)
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(101, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(10, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+                        assertEquals(3, it.payloadExamples!!.size)
+                        it.payloadExamples!!.forEachIndexed { index, it ->
+                            when (index) {
+                                0 -> {
+                                    assertEquals("Echo", it.name)
+                                    assertEquals("!echo", it.body)
+                                }
+                                1 -> {
+                                    assertEquals("123", it.name)
+                                    assertEquals("123", it.body)
+                                }
+                                2 -> {
+                                    assertEquals("2345", it.name)
+                                    assertEquals("2345", it.body)
+                                }
+                                else -> throw NotImplementedError()
+                            }
+                        }
+                    }
+
+                    requests.first { it.name == "Unary" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("Hi", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(ContentType.Json, ex.contentType)
+                            assertEquals("{}", (ex.body as StringBody).value)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.assertGrpcOKWithContent()
+                        }
+                    }
+
+                    requests.first { it.name == "Bi-stream" }.let {
+                        assertEquals(ProtocolApplication.Grpc, it.application)
+                        assertEquals("\${{grpc}}", it.url)
+                        assertEquals(apiSpec.id, it.grpc!!.apiSpecId)
+                        assertEquals("sunnychung.grpc.services.MyService", it.grpc!!.service)
+                        assertEquals("BiStream", it.grpc!!.method)
+                        assertEquals(1, it.examples.size)
+
+                        it.examples.first().let { ex ->
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(1, ex.headers.size)
+                            ex.headers.first { it.key == "header1" }.assert("val1", true)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+
+                            responses[ex.id]!!.let { response ->
+                                assertEquals(0, response.statusCode)
+                                assert(response.headers!!.isNotEmpty())
+                                assertEquals(7, response.payloadExchanges!!.size)
+                                assert(response.rawExchange.exchanges.size > response.payloadExchanges!!.size)
+                            }
+                        }
+
+                        assertEquals(2, it.payloadExamples!!.size)
+                        it.payloadExamples!!.forEachIndexed { index, it ->
+                            when (index) {
+                                0 -> {
+                                    assertEquals("20", it.name)
+                                    assertEquals("{\"data\":20}", it.body)
+                                }
+                                1 -> {
+                                    assertEquals("123", it.name)
+                                    assertEquals("{\"data\":123}", it.body)
+                                }
+                                else -> throw NotImplementedError()
+                            }
+                        }
+                    }
+
+                    requests.first { it.name == "Empty Request" }.let {
+                        assertEquals(ProtocolApplication.Http, it.application)
+                        assertEquals("GET", it.method)
+                        assertEquals("", it.url)
+                        assertEquals(1, it.examples.size)
+                        it.examples.first().let { ex -> // Base Example
+                            assertEquals(ContentType.None, ex.contentType)
+                            assertEquals(0, ex.queryParameters.size)
+                            assertEquals(0, ex.headers.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromHeader.size)
+                            assertEquals(0, ex.postFlight.updateVariablesFromBody.size)
+                            assertEquals(true, ex.overrides?.hasNoDisable() ?: true)
+
+                            assert(ex.id !in responses)
+                        }
+                    }
                 }
             }
         }
