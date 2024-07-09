@@ -99,6 +99,7 @@ class KotlinSyntaxHighlightTransformation(private val colours: AppColor) : Visua
                         TokenType.Semicolon -> {}
                         TokenType.Comment -> styles += toSpanStyleRange(SpanStyle(color = colours.syntaxColor.comment))
                         TokenType.EOF -> return@with
+                        TokenType.Unknown -> {}
                     }
                 }
             }
