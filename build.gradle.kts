@@ -18,7 +18,7 @@ repositories {
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 //    maven("https://jitpack.io")
-    mavenLocal()
+//    mavenLocal()
 }
 
 val grpcVersion = "1.59.1"
