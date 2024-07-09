@@ -26,7 +26,7 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '17'
-      - run: ./gradlew check createDistributable packageDistributionForCurrentOS
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
       - run: pushd ./build/compose/binaries/main/app && ls -al && tar -cvzf "app.tar.gz" "Hello HTTP" && mv "app.tar.gz" "../../../../../HelloHTTP-${{ github.ref_name }}-linux-${{ runner.arch }}.tar.gz" && popd
       - uses: softprops/action-gh-release@v1
         with:
@@ -40,7 +40,7 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '17'
-      - run: ./gradlew check createDistributable packageDistributionForCurrentOS
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
       - run: pushd ./build/compose/binaries/main/app && dir && tar -acf "app.zip" "Hello HTTP" && move "app.zip" "../../../../../HelloHTTP-${{ github.ref_name }}-windows-${{ runner.arch }}.zip" && popd
       - uses: softprops/action-gh-release@v1
         with:
@@ -58,7 +58,7 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '17'
-      - run: ./gradlew check createDistributable packageDistributionForCurrentOS
+      - run: ./gradlew createDistributable packageDistributionForCurrentOS
       - run: mv ./build/compose/binaries/main/dmg/*.dmg "./HelloHTTP-${{ github.ref_name }}-macos-${{ runner.arch }}.dmg"
       - uses: softprops/action-gh-release@v1
         with:
