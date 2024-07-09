@@ -47,7 +47,11 @@ jobs:
           files: "HelloHTTP-${{ github.ref_name }}-windows-${{ runner.arch }}.zip"
           draft: true
   build-macos:
-    runs-on: macos-11
+    strategy:
+      matrix:
+        # macos-12 for Intel Mac, macos-14 for Apple Chips Mac
+        os: [macos-12, macos-14]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v3
