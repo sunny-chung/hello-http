@@ -50,12 +50,12 @@ class CustomScriptRequestResponseTest {
                             UserKeyValuePair("abc", "asdf"),
                             UserKeyValuePair("ghijK", "hi"),
                         ),
-                        preFlight = PreFlightSpec( // TODO use "|" instead of "+"
+                        preFlight = PreFlightSpec(
                             executeCode = """
                                 val signature = request
                                     .queryParameters
                                     .sortedBy { it.first }
-                                    .joinToString("+") { it.second }
+                                    .joinToString("|") { it.second }
                                     .let {
                                         it.encodeToByteArray()
                                             .toSha256Hash()
@@ -75,7 +75,7 @@ class CustomScriptRequestResponseTest {
         )
 
         assertEquals(
-            "4i+aLUo5nm8GQPEkKT+brpQIGYexiqDol2kfxnJHAgk=",
+            "xoQXCUOQaRLr3CeS9mGqEZLlCBRn36puu4NEO6KuF7c=",
             echoResponse.headers.first { it.name.equals("my-signature", ignoreCase = true) }.value
         )
     }
@@ -96,12 +96,12 @@ class CustomScriptRequestResponseTest {
                             UserKeyValuePair("abc", "asdf"),
                             UserKeyValuePair("ghijK", "hi"),
                         ),
-                        preFlight = PreFlightSpec( // TODO use "|" instead of "+"
+                        preFlight = PreFlightSpec(
                             executeCode = """
                                 val signature = request
                                     .queryParameters
                                     .sortedBy { it.first }
-                                    .joinToString("+") { it.second }
+                                    .joinToString("|") { it.second }
                                     .let {
                                         it.encodeToByteArray()
                                             .toSha256Hash()
@@ -122,7 +122,7 @@ class CustomScriptRequestResponseTest {
         )
 
         assertEquals(
-            "4i+aLUo5nm8GQPEkKT+brpQIGYexiqDol2kfxnJHAgk=",
+            "xoQXCUOQaRLr3CeS9mGqEZLlCBRn36puu4NEO6KuF7c=",
             echoResponse.queryParameters.first { it.name == "mysignature" }.value
         )
     }
