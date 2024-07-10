@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.6.0-beta.2] - 2024-07-09
+
+_Changes since 1.6.0-beta.1_
+
+**WARNING: Please [make a backup](https://sunny-chung.github.io/hello-http/features/data-import-export) before start using a pre-release version!**
+
+### Fixed
+- Could not send any HTTP request
+
+
 ## [1.6.0-beta.1] - 2024-07-09
 
 _Changes since 1.5.2_
