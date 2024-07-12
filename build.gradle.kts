@@ -172,6 +172,8 @@ compose.desktop {
             copyright = "© 2023 Sunny Chung"
             packageVersion = distributionVersion
 
+            modules("java.naming")
+
             macOS {
                 iconFile.set(project.file("appicon/appicon.icns"))
                 infoPlist {
