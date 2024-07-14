@@ -79,6 +79,7 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
                         if (submittedUpdates.contains(it)) continue
                         CoroutineScope(Dispatchers.IO).launch {
                             update(it) // update isExecutingUpdates inside this function
+                            yield()
                         }
                         submittedUpdates.add(it)
                     }

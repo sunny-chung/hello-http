@@ -13,6 +13,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -26,6 +27,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.CallDataU
 import com.sunnychung.application.multiplatform.hellohttp.network.util.flowAndStreamObserver
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.suspended
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import io.grpc.CallOptions
@@ -463,6 +465,9 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
     }
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -471,16 +476,22 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData {
         val uri = URI.create(request.url)
 
         val call = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
             subprojectConfig = subprojectConfig,
+            fireType = fireType,
+            loadTestState = parentLoadTestState,
         )
 
         val extra = request.extra as GrpcRequestExtra
@@ -606,14 +617,16 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
                 try {
-                    val cancel = { _: Throwable? ->
+                    val cancel = suspended { _: Throwable? ->
                         if (call.status.isConnectionActive()) {
                             try {
                                 responseObserver.onCompleted()
-                            } catch (_: Throwable) {}
+                            } catch (_: Throwable) {
+                            }
                             try {
                                 channel0.shutdown()
-                            } catch (_: Throwable) {}
+                            } catch (_: Throwable) {
+                            }
                             call.status = ConnectionStatus.DISCONNECTED
                         }
                     }
@@ -663,7 +676,9 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 requestObserver.onNext(request)
                             } catch (e: Throwable) {
                                 setStreamError(e)
-                                call.cancel(e)
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    call.cancel(e)
+                                }
                             }
                         }
                     }
@@ -677,7 +692,9 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                                 if (!hasInvokedCancelDueToError) {
                                     hasInvokedCancelDueToError = true
                                     setStreamError(e)
-                                    call.cancel(e)
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        call.cancel(e)
+                                    }
                                 }
                             }
                         }
@@ -778,6 +795,15 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
             }
         }
         return call
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        concurrency: Int,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 
     private fun buildFileDescriptor(proto: FileDescriptorProto, fileDescriptorProtoByFilename: Map<String, FileDescriptorProto>): FileDescriptor {

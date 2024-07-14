@@ -5,14 +5,19 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponseCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
+import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
@@ -35,7 +40,7 @@ class PersistResponseManager {
 
                 // force refresh UI
                 (callData.eventsStateFlow as MutableStateFlow<NetworkEvent?>).value =
-                    NetworkEvent("", KInstant.now(), "")
+                    NetworkEvent("", KInstant.now(), "", callData)
             }
         }
     }
@@ -43,7 +48,9 @@ class PersistResponseManager {
     private suspend fun persistCallResponse(callData: CallData) {
         val documentId = ResponsesDI(subprojectId = callData.subprojectId)
         val record = loadResponseCollection(documentId)
-        record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response
+        if (callData.status != ConnectionStatus.DISCONNECTED) { // prevent race condition among different calls of the same request example
+            record.responsesByRequestExampleId[callData.response.requestExampleId] = callData.response
+        }
         responseCollectionRepository.notifyUpdated(documentId)
     }
 

@@ -61,6 +61,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestInput
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
@@ -115,6 +116,7 @@ fun RequestEditorView(
     onClickFetchApiSpec: () -> Unit,
     onClickCancelFetchApiSpec: () -> Unit,
     isFetchingApiSpec: Boolean,
+    onRequestLoadTest: (LoadTestInput) -> Unit,
 ) {
     val colors = LocalColor.current
     val fonts = LocalFont.current
@@ -153,6 +155,7 @@ fun RequestEditorView(
     }
 
     var isShowCustomHttpMethodDialog by remember { mutableStateOf(false) }
+    var isShowLoadTestDialog by remember { mutableStateOf(false) }
 
     log.d { "RequestEditorView recompose $request" }
 
@@ -169,6 +172,15 @@ fun RequestEditorView(
                 )
                 isShowCustomHttpMethodDialog = false
             }
+        },
+    )
+
+    LoadTestDialog(
+        isEnabled = isShowLoadTestDialog,
+        onDismiss = { isShowLoadTestDialog = false },
+        onConfirm = { loadTestInput ->
+            onRequestLoadTest(loadTestInput)
+            isShowLoadTestDialog = false
         },
     )
 
@@ -317,6 +329,10 @@ fun RequestEditorView(
                 ProtocolApplication.Graphql -> if (isOneOffRequest) listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows) else emptyList()
                 ProtocolApplication.Grpc -> listOf(SendButtonDropdown.GrpcurlForLinux)
                 else -> listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows)
+            } + if (isOneOffRequest) {
+                listOf(SendButtonDropdown.LoadTest)
+            } else {
+                emptyList()
             }
             val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
@@ -373,6 +389,9 @@ fun RequestEditorView(
                                         log.d(e) { "Cannot copy grpcurl command" }
                                         false
                                     }
+                                }
+                                SendButtonDropdown.LoadTest.displayText -> {
+                                    isShowLoadTestDialog = true
                                 }
                             }
                             isSuccess
@@ -1569,5 +1588,6 @@ private data class ProtocolMethod(val application: ProtocolApplication, val meth
 private enum class SendButtonDropdown(val displayText: String) {
     CurlForLinux("Copy as cURL command (for Linux / macOS)"),
     GrpcurlForLinux("Copy as grpcurl command (for Linux / macOS)"),
-    PowershellInvokeWebrequestForWindows("Copy as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)")
+    PowershellInvokeWebrequestForWindows("Copy as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)"),
+    LoadTest("Load Test"),
 }

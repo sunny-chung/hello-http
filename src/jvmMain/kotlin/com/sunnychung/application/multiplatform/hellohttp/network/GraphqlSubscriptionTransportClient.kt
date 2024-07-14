@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientM
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -42,6 +43,9 @@ import kotlin.coroutines.resumeWithException
 class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientManager) : WebSocketTransportClient(networkClientManager) {
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -50,16 +54,22 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData {
         val payload = request.extra as GraphqlRequestBody
 
         val data = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
             subprojectConfig = subprojectConfig,
+            fireType = fireType,
+            loadTestState = parentLoadTestState,
         )
         val callId = data.id
         val uri: URI = request.getResolvedUri()
@@ -71,7 +81,6 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
             url = uri.toASCIIString(),
         )
 
-        val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
             val jsonMapper = jacksonObjectMapper()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
@@ -220,5 +229,14 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
         }
 
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        concurrency: Int,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 }

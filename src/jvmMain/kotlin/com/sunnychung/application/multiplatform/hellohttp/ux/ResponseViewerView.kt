@@ -152,7 +152,13 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
             }
         }
 
-        val tabs = if (
+        val tabs = if (response.type == UserResponse.Type.LoadTest) {
+            if (response.isError) {
+                listOf(ResponseTab.Body)
+            } else {
+                listOf(ResponseTab.Report)
+            }
+        } else if (
             // TODO these conditions are poorly written. any better semantics?
             (response.application == ProtocolApplication.WebSocket && response.statusCode == 101)
             || (response.application == ProtocolApplication.Grpc && response.payloadExchanges != null)
@@ -161,6 +167,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
         } else {
             listOf(ResponseTab.Body, ResponseTab.Header, ResponseTab.Raw)
         }
+        selectedTabIndex = minOf(selectedTabIndex, tabs.lastIndex)
         TabsView(
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
             selectedIndex = selectedTabIndex,
@@ -192,13 +199,18 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
 
                 ResponseTab.Raw ->
                     TransportTimelineView(protocol = response.protocol, exchange = response.rawExchange.copy(), response = response, modifier = Modifier.fillMaxSize())
+
+                ResponseTab.Report ->
+                    response.loadTestResult?.let { loadTestResult ->
+                        LoadTestReportView(loadTestResult = loadTestResult)
+                    } ?: ResponseEmptyView(type = "report", isCommunicating = connectionStatus.isConnectionActive())
             }
         }
     }
 }
 
 private enum class ResponseTab {
-    Body, Stream, Header, Raw
+    Body, Stream, Header, Raw, Report
 }
 
 @Composable

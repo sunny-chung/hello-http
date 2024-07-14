@@ -527,6 +527,7 @@ fun AppContentView() {
                                         projectId = selectedProject!!.id,
                                         subprojectId = selectedSubproject!!.id,
                                         subprojectConfig = selectedSubproject.configuration.copy(),
+                                        fireType = UserResponse.Type.Regular,
                                     )
                                 }
 
@@ -545,6 +546,16 @@ fun AppContentView() {
                                     },
                                     onClickSend = {
                                         onClickSendOrConnect()
+                                    },
+                                    onRequestLoadTest = { loadTestInput ->
+                                        networkClientManager.fireLoadTestRequests(
+                                            request = requestNonNull,
+                                            requestExampleId = selectedRequestExampleId!!,
+                                            environment = selectedEnvironment,
+                                            projectId = selectedProject!!.id,
+                                            subprojectId = selectedSubproject!!.id,
+                                            input = loadTestInput,
+                                        )
                                     },
                                     onClickCancel = {
                                         networkClientManager.cancel(selectedRequestExampleId!!)

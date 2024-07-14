@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.toOkHttpRequ
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -73,7 +74,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             val instant = KInstant.now()
             runBlocking {
                 log.d { "Network Event: $event" }
-                eventSharedFlow.emit(NetworkEvent(callId = callId, instant = instant, event = event))
+                eventSharedFlow.emit(NetworkEvent(callId = callId, instant = instant, event = event, callData[callId] ?: return@runBlocking))
             }
         }
 
@@ -225,16 +226,33 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             .build()
     }
 
-    override fun sendRequest(request: HttpRequest, requestExampleId: String, requestId: String, subprojectId: String, postFlightAction: ((UserResponse) -> Unit)?, httpConfig: HttpConfig, sslConfig: SslConfig, subprojectConfig: SubprojectConfiguration): CallData {
+    override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
+        client: Any?,
+        request: HttpRequest,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        subprojectConfig: SubprojectConfiguration,
+        postFlightAction: ((UserResponse) -> Unit)?,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState?,
+    ): CallData {
         val okHttpRequest = request.toOkHttpRequest()
 
         val data = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = okHttpRequest.body?.contentLength()?.toInt(),
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
             subprojectConfig = subprojectConfig,
+            fireType = UserResponse.Type.Regular,
         )
         val callId = data.id
 
@@ -251,7 +269,7 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
             call = httpClient.newCall(okHttpRequest),
         )
 
-        CoroutineScope(Dispatchers.IO).launch {
+        coroutineScope.launch {
             val callData = callData[call.id]!!
             callData.waitForPreparation()
             log.d { "Call ${call.id} is prepared" }
@@ -283,9 +301,18 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
                 executePostFlightAction(callId, out, postFlightAction)
             }
 
-            eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed"))
+            eventSharedFlow.emit(NetworkEvent(call.id, KInstant.now(), "Response completed", callData))
         }
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        concurrency: Int,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 }
 

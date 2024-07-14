@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
@@ -22,12 +23,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -61,19 +61,41 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    protected fun emitEvent(callId: String, event: String) =
+    protected fun emitEvent(callId: String, event: String, isForce: Boolean) =
         emitEvent(instant = KInstant.now(), callId = callId, event = event)
 
-    protected fun emitEvent(instant: KInstant, callId: String, event: String) {
-        runBlocking {
+    protected fun emitEvent(instant: KInstant, callId: String, event: String, isForce: Boolean) {
+        val data = callData[callId] ?: return Unit.also { log.w { "callId not found: $callId" } }
+        log.v { "call event $callId $event" }
+        if (!isForce && (data.fireType == UserResponse.Type.LoadTestChild)) {
+            return
+        }
+        val instant = KInstant.now()
+        CoroutineScope(Dispatchers.IO).launch {
             eventSharedFlow.emit(
                 NetworkEvent(
                     callId = callId,
+                    callData = data,
                     instant = instant,
                     event = event
                 )
             )
         }
+    }
+
+    suspend fun emitEndEvent(callId: String, callData: CallData) {
+        val instant = KInstant.now()
+//        runBlocking { // `runBlocking` with `emit` causes deadlock
+            eventSharedFlow.emit(
+                NetworkEvent(
+                    callId = callId,
+                    callData = callData,
+                    instant = instant,
+                    event = "<End>",
+                    isEnd = true,
+                )
+            )
+//        }
     }
 
     protected fun coroutineExceptionHandler() = CoroutineExceptionHandler { context, ex ->
@@ -144,36 +166,57 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun getCallData(callId: String) = callData[callId]
 
-    protected fun createCallData(
+    override fun createCallData(
+        callId: String?,
+        coroutineScope: CoroutineScope,
         requestBodySize: Int?,
         requestExampleId: String,
         requestId: String,
         subprojectId: String,
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState?,
     ): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
         val incomingBytesFlow = MutableSharedFlow<RawPayload>()
         val optionalResponseSize = AtomicInteger()
 
-        val callId = uuidString()
+        val callId = callId ?: uuidString()
 
         val outboundPayloadStorageLimit = subprojectConfig.outboundPayloadStorageLimit.takeIf { it >= 0 } ?: DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
         val inboundPayloadStorageLimit = subprojectConfig.inboundPayloadStorageLimit.takeIf { it >= 0 } ?: DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
 
         val data = CallData(
             id = callId,
+            coroutineScope = coroutineScope,
             subprojectId = subprojectId,
             sslConfig = sslConfig.copy(),
-            events = eventSharedFlow.asSharedFlow()
+            events = eventSharedFlow
+//                .asSharedFlow()
                 .filter { it.callId == callId }
-                .flowOn(Dispatchers.IO)
-                .shareIn(CoroutineScope(Dispatchers.IO), started = SharingStarted.Eagerly),
+                .takeWhile {
+                    log.v { "takeWhile $callId ${it.event} ${it.isEnd}" }
+//                log.v { "takeWhile ${it.event} ${data.isCompleted()}" }
+                    (!it.isEnd).also {
+//                    if (!it) coroutineScope.cancel(ResumableCancelException(data))
+                    }
+                }
+//            .flowOn(Dispatchers.IO)
+                .shareIn(coroutineScope, started = SharingStarted.Eagerly),
             eventsStateFlow = eventStateFlow,
             outgoingBytes = outgoingBytesFlow,
             incomingBytes = incomingBytesFlow,
+//            requestBodySize = requestBodySize,
             optionalResponseSize = optionalResponseSize,
-            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
+            response = UserResponse(
+                id = uuidString(),
+                requestId = requestId,
+                requestExampleId = requestExampleId,
+                type = fireType
+            ),
+            fireType = fireType,
+            loadTestState = loadTestState,
             cancel = {}
         )
         log.d { "Registering call #$callId" }
@@ -195,14 +238,8 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
                         lastExchange?.consumePayloadBuilder(isComplete = false)
                     }
-                    data.response.rawExchange.exchanges += RawExchange.Exchange(
-                        instant = it.instant,
-                        direction = RawExchange.Direction.Unspecified,
-                        detail = it.event
-                    )
                 }
-            }
-            .launchIn(CoroutineScope(Dispatchers.IO))
+                .launchIn(coroutineScope)
 
         fun processRawPayload(it: RawPayload, direction: RawExchange.Direction, approximateSize: Int?, storageLimit: Long) {
             synchronized(data.response.rawExchange.exchanges) {
@@ -247,7 +284,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                     storageLimit = outboundPayloadStorageLimit,
                 )
             }
-            .launchIn(CoroutineScope(Dispatchers.IO))
+            .launchIn(coroutineScope)
 
         data.jobs += data.incomingBytes
             .onEach {
@@ -258,7 +295,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                     storageLimit = inboundPayloadStorageLimit,
                 )
             }
-            .launchIn(CoroutineScope(Dispatchers.IO))
+            .launchIn(coroutineScope)
 
         log.d { "Created call #$callId" }
 
@@ -270,7 +307,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         withTimeout(3000) {
             while (!callData.isPrepared) {
                 log.d { "Wait for preparation" }
-                delay(100)
+                delay(5)
                 yield()
             }
         }
@@ -279,6 +316,10 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
     }
 
     fun executePostFlightAction(callId: String, out: UserResponse, postFlightAction: ((UserResponse) -> Unit)) {
+        if (callData[callId]?.let { it.fireType != UserResponse.Type.Regular } != false) {
+            return
+        }
+
         emitEvent(callId, "Executing Post Flight Actions")
         try {
             postFlightAction(out)
@@ -287,6 +328,13 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             out.postFlightErrorMessage = e.message
             emitEvent(callId, "Post Flight Actions Stopped with Error -- ${e.message}")
         }
+    }
+
+    suspend fun completeResponse(callId: String, response: UserResponse) {
+        val call = callData[callId] ?: return
+        call.complete()
+        callData.remove(callId) // avoid memory leak
+        emitEndEvent(callId, call) // Make an event to call.eventsStateFlow to cancel the flow. This event will not be collected.
     }
 }
 
@@ -297,3 +345,4 @@ fun CallData.consumePayloads(isComplete: Boolean = false) {
         }
     }
 }
+

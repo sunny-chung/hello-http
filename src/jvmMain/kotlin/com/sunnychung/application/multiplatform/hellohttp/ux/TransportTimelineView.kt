@@ -398,7 +398,7 @@ private fun TransportTimelineContentView(
     onDisposeLine: (itemIndex: Int, localLine: Int) -> Unit,
 ) {
     var totalLines = 0
-    exchange.exchanges.forEachIndexed { index, it ->
+    exchange.exchanges.sortedBy { it.instant }.forEachIndexed { index, it ->
         var text = it.detail
             ?: (it.payload ?: it.payloadBuilder?.toByteArray())
                 ?.let { bytes ->

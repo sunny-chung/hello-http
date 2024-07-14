@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -13,6 +14,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.Inspected
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.CoroutineScope
 import org.java_websocket.client.DnsResolver
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
@@ -32,6 +34,9 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
     }
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -40,16 +45,21 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData {
         val data = createCallData(
+            callId = callId,
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
             subprojectConfig = subprojectConfig,
+            fireType = fireType,
+            loadTestState = parentLoadTestState,
         )
-        val callId = data.id
         val uri: URI = request.getResolvedUri()
         val out = data.response
         out.application = ProtocolApplication.WebSocket
@@ -155,6 +165,15 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
         client.connect()
 
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        concurrency: Int,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return null
     }
 
     fun configureWebSocketClient(client: WebSocketClient, callId: String, sslConfig: SslConfig) {

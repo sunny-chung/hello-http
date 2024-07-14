@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -14,6 +15,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.KeyManager
@@ -23,7 +27,22 @@ import javax.net.ssl.X509TrustManager
 interface TransportClient {
     fun getCallData(callId: String): CallData?
 
+    fun createCallData(
+        callId: String? = null,
+        coroutineScope: CoroutineScope,
+        requestBodySize: Int?,
+        requestExampleId: String,
+        requestId: String,
+        subprojectId: String,
+        sslConfig: SslConfig,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState? = null,
+    ): CallData
+
     fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
+        client: Any? = null,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -32,15 +51,27 @@ interface TransportClient {
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState?,
     ): CallData
+
+    fun emitEvent(callId: String, event: String, isForce: Boolean = false)
+
+    fun createReusableNonInspectableClient(
+        parentCallId: String,
+        concurrency: Int,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig,
+    ): Any?
 }
 
-class NetworkEvent(val callId: String, val instant: KInstant, val event: String)
+class NetworkEvent(val callId: String, val instant: KInstant, val event: String, val callData: CallData, val isEnd: Boolean = false)
 class CallData(
     val id: String,
     val subprojectId: String,
     var isPrepared: Boolean = false,
     var status: ConnectionStatus = ConnectionStatus.PREPARING,
+    val coroutineScope: CoroutineScope,
 
     val sslConfig: SslConfig,
 
@@ -50,6 +81,10 @@ class CallData(
     val incomingBytes: SharedFlow<RawPayload>,
     val optionalResponseSize: AtomicInteger,
     val response: UserResponse,
+
+    // load test specific
+    val fireType: UserResponse.Type,
+    val loadTestState: LoadTestState? = null,
 
     val jobs: MutableList<Job> = mutableListOf(),
 
@@ -73,6 +108,21 @@ class CallData(
         sendEndOfStream = {}
         cancel = {}
     }
+    
+    private var isCompleted = MutableStateFlow(false)
+
+    fun complete() {
+        isCompleted.value = true
+    }
+
+    suspend fun awaitComplete() {
+        isCompleted
+            .onSubscription { emit(isCompleted.value) }
+            .filter { it == true }
+            .first()
+    }
+
+    fun isCompleted(): Boolean = isCompleted.value
 }
 
 class LiteCallData(

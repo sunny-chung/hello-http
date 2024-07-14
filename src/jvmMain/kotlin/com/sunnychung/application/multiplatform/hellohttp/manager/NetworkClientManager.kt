@@ -15,6 +15,11 @@ import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolve
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestInput
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestResponse
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
+import com.sunnychung.application.multiplatform.hellohttp.model.LongDuplicateContainer
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
@@ -22,20 +27,31 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.model.UserResponseByResponseTime
+import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.network.GraphqlSubscriptionTransportClient
+import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
+import com.sunnychung.application.multiplatform.hellohttp.network.TransportClient
+import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +60,9 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
+import java.io.Closeable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -57,6 +76,12 @@ import java.util.concurrent.atomic.AtomicInteger
  *                                     +--> PersistResponseManager --> Repository
  *
  * There are cyclic dependencies between NetworkClientManager and *TransportClient
+ *
+ *
+ * Caution:
+ *
+ * TransportClient and PersistResponseManager instances are created for every load test,
+ * so that SharedFlow instances inside them can be GC-ed, as SharedFlow cannot be stopped.
  */
 class NetworkClientManager : CallDataStore {
 
@@ -79,7 +104,38 @@ class NetworkClientManager : CallDataStore {
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
     override fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData> = liteCallDataMap
 
-    fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String, subprojectConfig: SubprojectConfiguration) {
+    fun fireRequest(
+        request: UserRequestTemplate,
+        requestExampleId: String,
+        environment: Environment?,
+        projectId: String,
+        subprojectId: String,
+        subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState? = null,
+        client: Any? = null,
+    ) : String {
+        val callId = uuidString()
+        CoroutineScope(Dispatchers.IO).launch {
+            suspendingFireRequest(callId, request, requestExampleId, environment, projectId, subprojectId, fireType, parentLoadTestState, client)
+        }
+        return callId
+    }
+
+    suspend fun suspendingFireRequest(
+        callId: String,
+        request: UserRequestTemplate,
+        requestExampleId: String,
+        environment: Environment?,
+        projectId: String,
+        subprojectId: String,
+        subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        parentLoadTestState: LoadTestState? = null,
+        client: Any? = null,
+        networkManager: TransportClient? = null,
+        persistResponseManager: PersistResponseManager = this.persistResponseManager,
+    ) : CallData = coroutineScope {
         val callData = try {
             val networkRequest = request.toHttpRequest(
                 exampleId = requestExampleId,
@@ -184,14 +240,11 @@ class NetworkClientManager : CallDataStore {
                     null
                 }
 
-            val networkManager = when (networkRequest.application) {
-                ProtocolApplication.Graphql -> graphqlSubscriptionTransportClient
-                ProtocolApplication.WebSocket -> webSocketTransportClient
-                ProtocolApplication.Grpc -> grpcTransportClient
-                else -> httpTransportClient
-            }
+            val networkManager = networkManager ?: networkRequest.getNetworkManager()
 
             networkManager.sendRequest(
+                callId = callId,
+                coroutineScope = this,
                 request = networkRequest,
                 requestExampleId = requestExampleId,
                 requestId = request.id,
@@ -200,10 +253,14 @@ class NetworkClientManager : CallDataStore {
                 httpConfig = environment?.httpConfig ?: HttpConfig(),
                 sslConfig = environment?.sslConfig ?: SslConfig(),
                 subprojectConfig = subprojectConfig,
+                fireType = fireType,
+                parentLoadTestState = parentLoadTestState,
+                client = client,
             )
         } catch (error: Throwable) {
             val d = CallData(
                 id = uuidString(),
+                coroutineScope = this,
                 subprojectId = subprojectId,
                 sslConfig = environment?.sslConfig ?: SslConfig(),
                 response = UserResponse(
@@ -213,6 +270,7 @@ class NetworkClientManager : CallDataStore {
                     isError = true,
                     errorMessage = error.message
                 ),
+                fireType = fireType,
 
                 events = emptySharedFlow(),
                 eventsStateFlow = MutableStateFlow(null),
@@ -222,22 +280,226 @@ class NetworkClientManager : CallDataStore {
                 cancel = {},
             )
             log.d(error) { "Got error while firing request" }
+
+            if (parentLoadTestState != null) {
+                d.complete()
+                onCompleteResponse(d)
+//                callDataMap[parentLoadTestState.callId]?.cancel?.invoke(error)
+            }
+
             // `networkManager.sendRequest` would update callDataMap, but on error nobody updates
             // so manually update here
             callDataMap[d.id] = d
             d
         }
-        val oldCallId = requestExampleToCallMapping.put(requestExampleId, callData.id)
-        if (oldCallId != null) {
-            CoroutineScope(Dispatchers.IO).launch {
-                callDataMap[oldCallId]?.cancel?.invoke(null)
-                callDataMap.remove(oldCallId)
+        if (fireType != UserResponse.Type.LoadTestChild) {
+            val oldCallId = requestExampleToCallMapping.put(requestExampleId, callData.id)
+            if (oldCallId != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    callDataMap[oldCallId]?.cancel?.invoke(null)
+                    callDataMap.remove(oldCallId)
+                    yield()
+                }
             }
+            callIdFlow.value = callData.id
+
+            persistResponseManager.registerCall(callData)
         }
-        callIdFlow.value = callData.id
-        persistResponseManager.registerCall(callData)
+        log.v { "call end prepare soon $callId" }
         if (!callData.response.isError) {
             callData.isPrepared = true
+            if (parentLoadTestState != null) {
+                parentLoadTestState.numRequestsSent.incrementAndGet()
+            }
+        }
+        log.v { "call just before return $callId" }
+        callData
+    }
+
+    private fun HttpRequest.getNetworkManager(): TransportClient = when (this.application) {
+        ProtocolApplication.Graphql -> graphqlSubscriptionTransportClient
+        ProtocolApplication.WebSocket -> webSocketTransportClient
+        ProtocolApplication.Grpc -> grpcTransportClient
+        else -> httpTransportClient
+    }
+
+    private fun HttpRequest.createNetworkManager(): TransportClient = when (this.application) {
+        ProtocolApplication.Graphql -> GraphqlSubscriptionTransportClient(this@NetworkClientManager)
+        ProtocolApplication.WebSocket -> WebSocketTransportClient(this@NetworkClientManager)
+        ProtocolApplication.Grpc -> GrpcTransportClient(this@NetworkClientManager)
+        else -> ApacheHttpTransportClient(this@NetworkClientManager)
+    }
+
+    fun fireLoadTestRequests(
+        input: LoadTestInput,
+        request: UserRequestTemplate,
+        requestExampleId: String,
+        environment: Environment?,
+        projectId: String,
+        subprojectId: String,
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            coroutineScope {
+                val coroutineContext = currentCoroutineContext()
+                val input = input.copy(
+                    requestId = request.id,
+                    requestExampleId = requestExampleId,
+                    application = ProtocolApplication.Http,
+//                requestData = // TODO refactor into specific transport manager
+                )
+                // TODO refactor into specific transport manager
+                val loadTestState =
+                    LoadTestState(input = input, startAt = KInstant.now(), callId = uuidString()) { resp ->
+                        if (resp.isError) {
+                            LoadTestResponse.Category.ClientError
+                        } else {
+                            if (resp.statusCode?.let { it >= 200 && it < 300 } == true) {
+                                LoadTestResponse.Category.Success
+                            } else {
+                                LoadTestResponse.Category.ServerError
+                            }
+                        }
+                    }
+
+                log.d { "Load test call #${loadTestState.callId}" }
+
+                var isCompleted = false
+                val networkRequest = request.toHttpRequest(
+                    exampleId = requestExampleId,
+                    environment = environment
+                )
+                val networkManager = networkRequest.createNetworkManager()
+                val persistResponseManager = PersistResponseManager()
+
+                val client = networkManager.createReusableNonInspectableClient(
+                    parentCallId = loadTestState.callId,
+                    concurrency = input.numConcurrent,
+                    httpConfig = environment?.httpConfig ?: HttpConfig(),
+                    sslConfig = environment?.sslConfig ?: SslConfig(),
+                )
+
+                val callData = networkManager.createCallData(
+                    callId = loadTestState.callId,
+                    coroutineScope = this,
+                    requestBodySize = null,
+                    requestExampleId = requestExampleId,
+                    requestId = request.id,
+                    subprojectId = subprojectId,
+                    sslConfig = environment?.sslConfig ?: SslConfig(),
+                    fireType = UserResponse.Type.LoadTest,
+                    loadTestState = loadTestState,
+                )
+                callData.cancel = { e ->
+                    isCompleted = true
+                    callData.status = ConnectionStatus.DISCONNECTED
+                    callData.response.loadTestResult = runBlocking { loadTestState.toResult(1000L) }
+                    networkManager.emitEvent(callData.id, "Completed")
+                    coroutineContext.cancel(e?.let {
+                        CancellationException(
+                            "Cancelled due to error: ${e.message}",
+                            e
+                        )
+                    })
+                    callData.cancel = {}
+                }
+                callData.status = ConnectionStatus.CONNECTING
+                callData.response.startAt = KInstant.now()
+                persistResponseManager.registerCall(callData)
+
+                val endTime = callData.response.startAt!! + input.intendedDuration
+
+                val oldCallId = requestExampleToCallMapping.put(requestExampleId, callData.id)
+                if (oldCallId != null) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        callDataMap[oldCallId]?.cancel?.invoke(null)
+                        callDataMap.remove(oldCallId)
+                        yield()
+                    }
+                }
+                callIdFlow.value = callData.id
+
+                val reportJob = launch {
+                    while (!isCompleted) {
+                        callData.response.loadTestResult = loadTestState.toResult(1000L)
+                        networkManager.emitEvent(callData.id, "update report")
+                        delay(1000L)
+                    }
+                    callData.response.loadTestResult = loadTestState.toResult(1000L)
+                    networkManager.emitEvent(callData.id, "update report")
+                    yield()
+                }
+
+                coroutineScope {
+                    (1..input.numConcurrent).forEach { i ->
+                        launch {
+                            do {
+                                val networkManager = networkRequest.createNetworkManager()
+                                val call = withTimeout(input.intendedDuration.toMilliseconds()) {
+                                    val subCallId = uuidString()
+                                    log.v { "LoadTest fireRequest C#$i $subCallId" }
+                                    val call = suspendingFireRequest(
+                                        callId = subCallId,
+                                        request = request,
+                                        requestExampleId = requestExampleId,
+                                        environment = environment,
+                                        projectId = projectId,
+                                        subprojectId = subprojectId,
+                                        fireType = UserResponse.Type.LoadTestChild,
+                                        parentLoadTestState = loadTestState,
+                                        client = client,
+                                        networkManager = networkManager,
+                                        persistResponseManager = persistResponseManager,
+                                    )
+                                    log.v { "LoadTest await C#$i $subCallId" }
+                                    call.awaitComplete()
+                                    log.v { "LoadTest complete C#$i $subCallId" }
+                                    launch {
+                                        onCompleteResponse(call)
+//                                    callDataMap.remove(call.id) // must discard child CallData to avoid memory leak
+                                        log.v { "LoadTest onCompleteResponse C#$i" }
+                                        yield()
+                                    }
+                                    call
+                                }
+                            } while (
+                                callData.status != ConnectionStatus.DISCONNECTED // not cancelled
+                                && !call.response.isError // not client-side error
+                                && KInstant.now() < endTime
+                            )
+                            yield()
+                        }
+                    }
+                }
+                log.d { "Load test end soon" }
+
+//                jobs.forEach { it.join() }
+                callData.response.endAt = KInstant.now()
+                isCompleted = true
+                reportJob.join()
+                callData.response.loadTestResult = loadTestState.toResult(1000L)
+                callData.status = ConnectionStatus.DISCONNECTED
+                when (client) {
+                    is Closeable -> {
+                        client.close()
+                        log.d { "Closed long client" }
+                    }
+                }
+                networkManager.emitEvent(callData.id, "Completed")
+                delay(1000L)
+                callDataMap.remove(callData.id)
+                System.gc()
+                log.d { "Complete load test. Result: ${callData.response.loadTestResult}" }
+                yield()
+            }
+        }
+    }
+
+    private fun onCompleteResponse(call: CallData) {
+        val response = call.response
+        call.loadTestState?.let { loadTestState ->
+            val endAt = response.endAt ?: KInstant.now()
+            loadTestState.latenciesMs += LongDuplicateContainer((endAt - response.startAt!!).toMilliseconds())
+            loadTestState.responsesOverResponseTime += UserResponseByResponseTime(response)
         }
     }
 
@@ -250,7 +512,7 @@ class NetworkClientManager : CallDataStore {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendEndOfStream() }
     }
 
-    fun cancel(selectedRequestExampleId: String) {
+    fun cancel(selectedRequestExampleId: String) = runBlocking {
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.cancel(null) }
     }
 
@@ -333,6 +595,7 @@ class NetworkClientManager : CallDataStore {
             if (oldCallId != null) {
                 liteCallDataMap[oldCallId]?.cancel?.invoke()
                 liteCallDataMap.remove(oldCallId)
+                yield()
             }
 
             val apiSpec = try {
@@ -375,6 +638,7 @@ class NetworkClientManager : CallDataStore {
                 projectCollectionRepository.updateSubproject(ProjectAndEnvironmentsDI(), subproject)
             }
             log.d { "after fetch grpc api spec" }
+            yield()
         }
         call.cancel = {
             job.cancel(null)
