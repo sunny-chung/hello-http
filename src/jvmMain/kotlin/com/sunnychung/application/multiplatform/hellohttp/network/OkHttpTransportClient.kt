@@ -234,10 +234,10 @@ class OkHttpTransportClient(networkClientManager: NetworkClientManager) : Abstra
         requestExampleId: String,
         requestId: String,
         subprojectId: String,
-        subprojectConfig: SubprojectConfiguration,
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
         fireType: UserResponse.Type,
         loadTestState: LoadTestState?,
     ): CallData {

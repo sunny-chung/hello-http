@@ -382,6 +382,8 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             outgoingBytesFlow = MutableSharedFlow(),
             incomingBytesFlow = MutableSharedFlow(),
             responseSize = AtomicInteger(0),
+            http2AccumulatedOutboundDataSerializeLimit = 0,
+            http2AccumulatedInboundDataSerializeLimit = 0,
             numThreads = concurrency,
         )
     }
@@ -406,6 +408,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         val (apacheHttpRequestCopied, _) = request.toApacheHttpRequest()
 
         val data = createCallData(
+            coroutineScope = coroutineScope,
             requestBodySize = approximateRequestBodySize.toInt(),
             requestExampleId = requestExampleId,
             requestId = requestId,
@@ -428,7 +431,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
                 ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
             http2AccumulatedInboundDataSerializeLimit = (subprojectConfig.accumulatedInboundDataStorageLimitPerCall.takeIf { it >= 0 }
                 ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
-            responseSize = data.optionalResponseSize
+            responseSize = data.optionalResponseSize,
             numThreads = null,
         )
 

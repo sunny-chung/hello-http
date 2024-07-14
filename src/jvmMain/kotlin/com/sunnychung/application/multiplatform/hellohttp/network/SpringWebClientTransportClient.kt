@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestBodyWithKeyValuePairs
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -78,6 +79,9 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
     }
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -85,16 +89,21 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
-        subprojectConfig: SubprojectConfiguration
+        subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState?,
     ): CallData {
         val uri = request.getResolvedUri()
         val data = createCallData(
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
             subprojectConfig = subprojectConfig,
+            fireType = fireType,
+            loadTestState = loadTestState,
         )
         val callId = data.id
 

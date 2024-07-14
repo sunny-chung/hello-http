@@ -554,6 +554,7 @@ fun AppContentView() {
                                             environment = selectedEnvironment,
                                             projectId = selectedProject!!.id,
                                             subprojectId = selectedSubproject!!.id,
+                                            subprojectConfig = selectedSubproject.configuration,
                                             input = loadTestInput,
                                         )
                                     },

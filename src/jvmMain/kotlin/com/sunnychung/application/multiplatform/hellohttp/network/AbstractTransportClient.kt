@@ -61,16 +61,15 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         eventSharedFlow.onEach { eventStateFlow.value = it }.launchIn(CoroutineScope(Dispatchers.IO))
     }
 
-    protected fun emitEvent(callId: String, event: String, isForce: Boolean) =
-        emitEvent(instant = KInstant.now(), callId = callId, event = event)
+    override fun emitEvent(callId: String, event: String, isForce: Boolean) =
+        emitEvent(instant = KInstant.now(), callId = callId, event = event, isForce = isForce)
 
-    protected fun emitEvent(instant: KInstant, callId: String, event: String, isForce: Boolean) {
+    override fun emitEvent(instant: KInstant, callId: String, event: String, isForce: Boolean) {
         val data = callData[callId] ?: return Unit.also { log.w { "callId not found: $callId" } }
         log.v { "call event $callId $event" }
         if (!isForce && (data.fireType == UserResponse.Type.LoadTestChild)) {
             return
         }
-        val instant = KInstant.now()
         CoroutineScope(Dispatchers.IO).launch {
             eventSharedFlow.emit(
                 NetworkEvent(
@@ -239,7 +238,8 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         lastExchange?.consumePayloadBuilder(isComplete = false)
                     }
                 }
-                .launchIn(coroutineScope)
+            }
+            .launchIn(coroutineScope)
 
         fun processRawPayload(it: RawPayload, direction: RawExchange.Direction, approximateSize: Int?, storageLimit: Long) {
             synchronized(data.response.rawExchange.exchanges) {

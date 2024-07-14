@@ -35,6 +35,7 @@ interface TransportClient {
         requestId: String,
         subprojectId: String,
         sslConfig: SslConfig,
+        subprojectConfig: SubprojectConfiguration,
         fireType: UserResponse.Type,
         loadTestState: LoadTestState? = null,
     ): CallData
@@ -56,6 +57,8 @@ interface TransportClient {
     ): CallData
 
     fun emitEvent(callId: String, event: String, isForce: Boolean = false)
+
+    fun emitEvent(instant: KInstant, callId: String, event: String, isForce: Boolean = false)
 
     fun createReusableNonInspectableClient(
         parentCallId: String,

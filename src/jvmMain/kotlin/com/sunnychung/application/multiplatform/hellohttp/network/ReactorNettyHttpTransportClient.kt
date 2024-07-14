@@ -8,6 +8,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBo
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
+import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.Protocol
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
@@ -516,6 +517,9 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
     }
 
     override fun sendRequest(
+        callId: String,
+        coroutineScope: CoroutineScope,
+        client: Any?,
         request: HttpRequest,
         requestExampleId: String,
         requestId: String,
@@ -523,16 +527,21 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
-        subprojectConfig: SubprojectConfiguration
+        subprojectConfig: SubprojectConfiguration,
+        fireType: UserResponse.Type,
+        loadTestState: LoadTestState?,
     ): CallData {
         val uri = request.getResolvedUri()
         val data = createCallData(
+            coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
             subprojectConfig = subprojectConfig,
+            fireType = fireType,
+            loadTestState = loadTestState,
         )
         val callId = data.id
 
@@ -656,5 +665,14 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
             emitEvent(callId, "Response completed")
         }
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        concurrency: Int,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        TODO("Not yet implemented")
     }
 }

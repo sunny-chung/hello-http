@@ -617,7 +617,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
 
                 var (responseFlow, responseObserver) = flowAndStreamObserver<DynamicMessage>()
                 try {
-                    val cancel = suspended { _: Throwable? ->
+                    val cancel = { _: Throwable? ->
                         if (call.status.isConnectionActive()) {
                             try {
                                 responseObserver.onCompleted()

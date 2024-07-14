@@ -1,7 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.test
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.atPercent
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class PercentTest {

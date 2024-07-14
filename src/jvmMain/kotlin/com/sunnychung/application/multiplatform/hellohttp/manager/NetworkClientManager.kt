@@ -117,7 +117,7 @@ class NetworkClientManager : CallDataStore {
     ) : String {
         val callId = uuidString()
         CoroutineScope(Dispatchers.IO).launch {
-            suspendingFireRequest(callId, request, requestExampleId, environment, projectId, subprojectId, fireType, parentLoadTestState, client)
+            suspendingFireRequest(callId, request, requestExampleId, environment, projectId, subprojectId, subprojectConfig, fireType, parentLoadTestState, client)
         }
         return callId
     }
@@ -337,6 +337,7 @@ class NetworkClientManager : CallDataStore {
         environment: Environment?,
         projectId: String,
         subprojectId: String,
+        subprojectConfig: SubprojectConfiguration,
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             coroutineScope {
@@ -385,6 +386,7 @@ class NetworkClientManager : CallDataStore {
                     requestExampleId = requestExampleId,
                     requestId = request.id,
                     subprojectId = subprojectId,
+                    subprojectConfig = subprojectConfig,
                     sslConfig = environment?.sslConfig ?: SslConfig(),
                     fireType = UserResponse.Type.LoadTest,
                     loadTestState = loadTestState,
@@ -444,6 +446,7 @@ class NetworkClientManager : CallDataStore {
                                         environment = environment,
                                         projectId = projectId,
                                         subprojectId = subprojectId,
+                                        subprojectConfig = subprojectConfig,
                                         fireType = UserResponse.Type.LoadTestChild,
                                         parentLoadTestState = loadTestState,
                                         client = client,
