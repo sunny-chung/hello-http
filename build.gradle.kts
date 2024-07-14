@@ -85,7 +85,7 @@ kotlin {
                 
 //                implementation("io.github.sunny-chung:composable-table:1.2.0")
 //                implementation("io.github.koalaplot:koalaplot-core:0.5.2")
-                implementation("io.github.koalaplot:koalaplot-core:0.6.0-dev4")
+                implementation("io.github.koalaplot:koalaplot-core:0.6.1")
 //                implementation("io.github.thechance101:chart:Beta-0.0.5")
 
 //                implementation(files("lib/charts-desktop-sources.jar"))
