@@ -152,6 +152,8 @@ fun EnvironmentEditorView(
     onDeleteEnvironment: (Environment) -> Unit,
     isFocusOnEnvNameField: Boolean,
 ) {
+    val colors = LocalColor.current
+
     val focusRequester = remember { FocusRequester() }
     var envName by remember { mutableStateOf(TextFieldValue(text = environment.name)) }
     envName = envName.copy(text = environment.name)
@@ -184,7 +186,7 @@ fun EnvironmentEditorView(
                     .testTag(TestTag.EnvironmentDialogEnvNameTextField.name)
             )
             AppTooltipArea(tooltipText = "Duplicate") {
-                AppImageButton(resource = "duplicate.svg", size = 24.dp) {
+                AppImageButton(resource = "duplicate.svg", size = 24.dp, color = colors.placeholder) {
                     onDuplicateEnvironment(environment)
                 }
             }
