@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.6.0-beta.4] - 2024-07-16
+
+_Changes since 1.6.0-beta.3_
+
 ### Fixed
 - Wrong color was used to highlight empty string literals in JSON
 - "Copy All" button was missing for plain HTTP and GraphQL requests
