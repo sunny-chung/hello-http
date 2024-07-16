@@ -60,6 +60,7 @@ import reactor.netty.NettyPipeline
 import reactor.netty.http.HttpInfos
 import reactor.netty.http.HttpProtocol
 import reactor.netty.http.client.HttpClient
+import reactor.netty.http.client.HttpClientRequest
 import reactor.netty.transport.logging.AdvancedByteBufFormat
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -88,6 +89,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
         http2AccumulatedOutboundDataSerializeLimit: Int,
         http2AccumulatedInboundDataSerializeLimit: Int,
+        onRequestSent: (HttpClientRequest) -> Unit,
     ) : HttpClient {
 //        System.setProperty(ReactorNetty.SSL_CLIENT_DEBUG, "true")
 
@@ -325,6 +327,9 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
             .observe { connection, state ->
 //                emitEvent(callId, "Connection state => $state")
             }
+            .doAfterRequest { request, connection ->
+                onRequestSent(request)
+            }
             .loggingHandler(object : ChannelDuplexHandler() {
                 fun emitRawPayload(direction: RawExchange.Direction, channel: Channel?, payload: Any) {
                     if (isHttp2Established) {
@@ -548,6 +553,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
             http2AccumulatedInboundDataSerializeLimit = (subprojectConfig.accumulatedInboundDataStorageLimitPerCall.takeIf { it >= 0 }
                 ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
+            onRequestSent = {},
         )
 
         CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
