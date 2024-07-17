@@ -11,6 +11,7 @@ navigation:
       - path: doc/features/request-examples-and-payload-examples.md
       - path: doc/features/custom-http-methods.md
       - path: doc/features/command-generation.md
+      - path: doc/features/subproject-configuration.md
       - path: doc/features/environments.md
       - path: doc/features/ssl-configuration.md
       - path: doc/features/functions.md

@@ -12,7 +12,7 @@ An example use case of user scripts is to generate some hash or signature with s
 
 ## Providing custom files for user script use
 
-Files can be imported into an [Environment](environments) to be consumed by user script. Only small files can be imported.
+Files can be imported into an [Environment](environments) to be consumed by user script. Only small files can be imported. They would be included into data dump files.
 
 ![User Files](../user-files.png)
 
