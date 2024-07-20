@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Pressing Ctrl-Enter/Cmd-Enter inside a request body textarea did not fire the current request
+
 ## [1.6.0-beta.4] - 2024-07-16
 
 _Changes since 1.6.0-beta.3_
