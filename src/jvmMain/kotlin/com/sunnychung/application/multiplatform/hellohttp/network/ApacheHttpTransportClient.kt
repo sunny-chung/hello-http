@@ -371,6 +371,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
     override fun createReusableNonInspectableClient(
         parentCallId: String,
         concurrency: Int,
+        request: HttpRequest,
         httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): MinimalHttpAsyncClient {

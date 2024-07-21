@@ -379,6 +379,7 @@ class NetworkClientManager : CallDataStore {
                 val client = networkManager.createReusableNonInspectableClient(
                     parentCallId = loadTestState.callId,
                     concurrency = input.numConcurrent,
+                    request = networkRequest,
                     httpConfig = environment?.httpConfig ?: HttpConfig(),
                     sslConfig = environment?.sslConfig ?: SslConfig(),
                 )
@@ -440,7 +441,7 @@ class NetworkClientManager : CallDataStore {
                         launch {
                             do {
                                 val networkManager = networkRequest.createNetworkManager()
-                                val call = withTimeout(input.intendedDuration.toMilliseconds()) {
+                                val call = withTimeout((endTime - KInstant.now()).toMilliseconds()) {
                                     val subCallId = uuidString()
                                     log.v { "LoadTest fireRequest C#$i $subCallId" }
                                     val call = suspendingFireRequest(
@@ -496,7 +497,7 @@ class NetworkClientManager : CallDataStore {
                 delay(1000L)
                 callDataMap.remove(callData.id)
                 System.gc()
-                log.d { "Complete load test. Result: ${callData.response.loadTestResult}" }
+                log.i { "Complete load test. Result: ${callData.response.loadTestResult}" }
                 yield()
             }
         }

@@ -81,10 +81,12 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
 
     protected fun buildHttpClient(
         callId: String,
-        callData: CallData,
+        callData: CallData?,
         isSsl: Boolean,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        isKeepAlive: Boolean,
+        isLogTransport: Boolean,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
         http2AccumulatedOutboundDataSerializeLimit: Int,
@@ -93,12 +95,6 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
 //        System.setProperty(ReactorNetty.SSL_CLIENT_DEBUG, "true")
 
         val sslContext = createSslContext(sslConfig)
-        val frameLogger = Http2FramePeeker(
-            outgoingBytesFlow = outgoingBytesFlow,
-            incomingBytesFlow = incomingBytesFlow,
-            http2AccumulatedOutboundDataSerializeLimit = http2AccumulatedOutboundDataSerializeLimit,
-            http2AccumulatedInboundDataSerializeLimit = http2AccumulatedInboundDataSerializeLimit,
-        )
         val httpClientId = uuidString()
 
         var isHttp2Established = false
@@ -147,7 +143,12 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         .build()
                 )
             }
+            .keepAlive(isKeepAlive)
             .doOnChannelInit { connectionObserver, channel, socketAddress ->
+                if (!isLogTransport) {
+                    return@doOnChannelInit
+                }
+
                 fun http2ClientConnectionPrefaceListener(isPropagateEvent: Boolean): ChannelInboundHandlerAdapter = @ChannelHandler.Sharable object : ChannelInboundHandlerAdapter() {
                     override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
                         log.i { "received ev $evt" }
@@ -281,7 +282,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                     }
                     log.i { "onConnected protocol $httpProtocolVersion" }
                     try {
-                        callData.response.protocol = ProtocolVersion(
+                        callData?.response?.protocol = ProtocolVersion(
                             protocol = Protocol.Http,
                             versionName = httpProtocolVersion.drop("HTTP/".length)
                         )
@@ -300,11 +301,13 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                             append(" and application protocol [$it]")
                         }
 
-                        CallDataUserResponseUtil.onTlsUpgraded(
-                            callData = callData,
-                            localCertificates = sslSession.localCertificates,
-                            peerCertificates = sslSession.peerCertificates
-                        )
+                        if (callData != null) {
+                            CallDataUserResponseUtil.onTlsUpgraded(
+                                callData = callData,
+                                localCertificates = sslSession.localCertificates,
+                                peerCertificates = sslSession.peerCertificates
+                            )
+                        }
 
                         append(".\n\n")
                         append("Client principal = [${sslSession.localPrincipal}]\n")
@@ -313,7 +316,9 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                     } else {
                         append(" without encryption.")
 
-                        CallDataUserResponseUtil.onConnected(callData.response)
+                        if (callData != null) {
+                            CallDataUserResponseUtil.onConnected(callData.response)
+                        }
                     }
                 }
                 emitEvent(instant = eventInstant, callId = callId, event = eventDescription)
@@ -326,126 +331,139 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
             .observe { connection, state ->
 //                emitEvent(callId, "Connection state => $state")
             }
-            .loggingHandler(object : ChannelDuplexHandler() {
-                fun emitRawPayload(direction: RawExchange.Direction, channel: Channel?, payload: Any) {
-                    if (isHttp2Established) {
-                        return
-                    }
-                    val receiveTime = KInstant.now()
-                    if (isHttp2ClientConnectionPrefaceSent && direction == RawExchange.Direction.Incoming && isStartWithHttp2ServerConnectionPrefaceFrame(payload)) {
-                        isHttp2Established = true
-                        return
-                    }
-                    log.v { "emitRawPayload $httpClientId h2=$isHttp2Established p=$isHttp2ClientConnectionPrefaceSent" }
-                    val streamId = (channel as? Http2StreamChannel)?.stream()?.id()
-                    val payloadHolder = if (streamId == null) {
-                        Http1Payload(receiveTime, readPayload(payload))
-                    } else {
-                        return // skip HTTP/2 frames. They are logged in Http2FramePeeker instead.
-                    }
-                    return runBlocking {
-                        when (direction) {
-                            RawExchange.Direction.Outgoing -> outgoingBytesFlow.emit(payloadHolder)
-                            RawExchange.Direction.Incoming -> incomingBytesFlow.emit(payloadHolder)
-                            RawExchange.Direction.Unspecified -> throw IllegalArgumentException("direction `$direction` is invalid")
+            .run {
+                if (!isLogTransport) {
+                    return@run this
+                }
+
+                val frameLogger = Http2FramePeeker(
+                    outgoingBytesFlow = outgoingBytesFlow,
+                    incomingBytesFlow = incomingBytesFlow,
+                    http2AccumulatedOutboundDataSerializeLimit = http2AccumulatedOutboundDataSerializeLimit,
+                    http2AccumulatedInboundDataSerializeLimit = http2AccumulatedInboundDataSerializeLimit,
+                )
+
+                loggingHandler(object : ChannelDuplexHandler() {
+                    fun emitRawPayload(direction: RawExchange.Direction, channel: Channel?, payload: Any) {
+                        if (isHttp2Established) {
+                            return
+                        }
+                        val receiveTime = KInstant.now()
+                        if (isHttp2ClientConnectionPrefaceSent && direction == RawExchange.Direction.Incoming && isStartWithHttp2ServerConnectionPrefaceFrame(payload)) {
+                            isHttp2Established = true
+                            return
+                        }
+                        log.v { "emitRawPayload $httpClientId h2=$isHttp2Established p=$isHttp2ClientConnectionPrefaceSent" }
+                        val streamId = (channel as? Http2StreamChannel)?.stream()?.id()
+                        val payloadHolder = if (streamId == null) {
+                            Http1Payload(receiveTime, readPayload(payload))
+                        } else {
+                            return // skip HTTP/2 frames. They are logged in Http2FramePeeker instead.
+                        }
+                        return runBlocking {
+                            when (direction) {
+                                RawExchange.Direction.Outgoing -> outgoingBytesFlow.emit(payloadHolder)
+                                RawExchange.Direction.Incoming -> incomingBytesFlow.emit(payloadHolder)
+                                RawExchange.Direction.Unspecified -> throw IllegalArgumentException("direction `$direction` is invalid")
+                            }
                         }
                     }
-                }
 
-                override fun channelActive(ctx: ChannelHandlerContext) {
-                    val httpCodec = ctx.pipeline().get(NettyPipeline.HttpCodec)
-                    val httpProtocolVersion = if (httpCodec is Http2FrameCodec) {
-                        "HTTP/2"
-                    } else { // null or HttpFrameCodec
-                        "HTTP/1.1"
+                    override fun channelActive(ctx: ChannelHandlerContext) {
+                        val httpCodec = ctx.pipeline().get(NettyPipeline.HttpCodec)
+                        val httpProtocolVersion = if (httpCodec is Http2FrameCodec) {
+                            "HTTP/2"
+                        } else { // null or HttpFrameCodec
+                            "HTTP/1.1"
+                        }
+
+                        val cid = ctx.channel().id()
+                        val remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
+
+                        log.i { "c active -- $httpProtocolVersion -- ${cid::class.qualifiedName} -- $cid" }
+
+                        emitEvent(callId, "Connected to [${remoteAddress.address.hostAddress}:${remoteAddress.port}] with [$httpProtocolVersion]")
+
+                        log.d { "channelActive pipeline =>\n${ctx.pipeline().joinToString("\n") { it.key }}" }
+
+                        super.channelActive(ctx)
                     }
 
-                    val cid = ctx.channel().id()
-                    val remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
+                    override fun channelInactive(ctx: ChannelHandlerContext) {
+    //                    emitEvent(callId, "Connection is inactive") // no use
+                        super.channelInactive(ctx)
+                    }
 
-                    log.i { "c active -- $httpProtocolVersion -- ${cid::class.qualifiedName} -- $cid" }
+                    override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+                        emitRawPayload(direction = RawExchange.Direction.Incoming, channel = ctx.channel(), payload = msg)
+                        super.channelRead(ctx, msg)
+                    }
 
-                    emitEvent(callId, "Connected to [${remoteAddress.address.hostAddress}:${remoteAddress.port}] with [$httpProtocolVersion]")
+                    override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
+                        log.i { "userEventTriggered $evt" }
+                        super.userEventTriggered(ctx, evt)
+                    }
 
-                    log.d { "channelActive pipeline =>\n${ctx.pipeline().joinToString("\n") { it.key }}" }
+                    override fun connect(
+                        ctx: ChannelHandlerContext?,
+                        remoteAddress: SocketAddress?,
+                        localAddress: SocketAddress?,
+                        promise: ChannelPromise?
+                    ) {
+                        super.connect(ctx, remoteAddress, localAddress, promise)
+                    }
 
-                    super.channelActive(ctx)
-                }
+                    override fun disconnect(ctx: ChannelHandlerContext?, promise: ChannelPromise?) {
+    //                    emitEvent(callId, "Disconnected") // no use
+                        super.disconnect(ctx, promise)
+                    }
 
-                override fun channelInactive(ctx: ChannelHandlerContext) {
-//                    emitEvent(callId, "Connection is inactive") // no use
-                    super.channelInactive(ctx)
-                }
+                    override fun close(ctx: ChannelHandlerContext?, promise: ChannelPromise?) {
+    //                    emitEvent(callId, "Terminating") // no use
+                        super.close(ctx, promise)
+                    }
 
-                override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-                    emitRawPayload(direction = RawExchange.Direction.Incoming, channel = ctx.channel(), payload = msg)
-                    super.channelRead(ctx, msg)
-                }
-
-                override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
-                    log.i { "userEventTriggered $evt" }
-                    super.userEventTriggered(ctx, evt)
-                }
-
-                override fun connect(
-                    ctx: ChannelHandlerContext?,
-                    remoteAddress: SocketAddress?,
-                    localAddress: SocketAddress?,
-                    promise: ChannelPromise?
-                ) {
-                    super.connect(ctx, remoteAddress, localAddress, promise)
-                }
-
-                override fun disconnect(ctx: ChannelHandlerContext?, promise: ChannelPromise?) {
-//                    emitEvent(callId, "Disconnected") // no use
-                    super.disconnect(ctx, promise)
-                }
-
-                override fun close(ctx: ChannelHandlerContext?, promise: ChannelPromise?) {
-//                    emitEvent(callId, "Terminating") // no use
-                    super.close(ctx, promise)
-                }
-
-                override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
-                    if (!isHttp2Established && !isHttp2ClientConnectionPrefaceSent) {
-                        synchronized(writeLock) {
-                            readPayload(msg).let {
-                                if (it.isNotEmpty()) {
-                                    writeQueue.addLast(it)
-                                    currentTotalWrittenBytes += it.size
+                    override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
+                        if (!isHttp2Established && !isHttp2ClientConnectionPrefaceSent) {
+                            synchronized(writeLock) {
+                                readPayload(msg).let {
+                                    if (it.isNotEmpty()) {
+                                        writeQueue.addLast(it)
+                                        currentTotalWrittenBytes += it.size
+                                    }
                                 }
                             }
                         }
+                        super.write(ctx, msg, promise)
                     }
-                    super.write(ctx, msg, promise)
-                }
 
-                override fun flush(ctx: ChannelHandlerContext?) {
-                    if (synchronized(writeLock) { writeQueue.isNotEmpty() }) {
-                        // does not guarantee the size of ByteArrayOutputStream is not changing
-                        val baos = ByteArrayOutputStream(currentTotalWrittenBytes)
-                        while (true) {
-                            val e = synchronized(writeLock) {
-                                writeQueue.pollFirst()?.also {
-                                    currentTotalWrittenBytes -= it.size
+                    override fun flush(ctx: ChannelHandlerContext?) {
+                        if (synchronized(writeLock) { writeQueue.isNotEmpty() }) {
+                            // does not guarantee the size of ByteArrayOutputStream is not changing
+                            val baos = ByteArrayOutputStream(currentTotalWrittenBytes)
+                            while (true) {
+                                val e = synchronized(writeLock) {
+                                    writeQueue.pollFirst()?.also {
+                                        currentTotalWrittenBytes -= it.size
+                                    }
                                 }
+                                if (e == null) {
+                                    break
+                                }
+                                baos.write(e)
                             }
-                            if (e == null) {
-                                break
-                            }
-                            baos.write(e)
+                            emitRawPayload(RawExchange.Direction.Outgoing, ctx?.channel(), baos.toByteArray())
                         }
-                        emitRawPayload(RawExchange.Direction.Outgoing, ctx?.channel(), baos.toByteArray())
+                        frameLogger.flush()
+                        super.flush(ctx)
                     }
-                    frameLogger.flush()
-                    super.flush(ctx)
-                }
-            })
-            .http2FrameLogger(frameLogger)
+                })
+                .http2FrameLogger(frameLogger)
+            }
             .compress(true)
             .headers { it.remove(HttpHeaderNames.ACCEPT_ENCODING) } // don't add "Accept-Encoding: gzip" header by default
             .doOnResponse { resp, conn ->
-                log.i { "NettyIO onResponse" }
+                log.d { "NettyIO onResponse" }
             }
             .doOnRequestError { req, err ->
                 log.d(err) { "NettyIO doOnRequestError" }
@@ -549,8 +567,10 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
             callId = callId,
             callData = data,
             isSsl = uri.scheme !in setOf("http", "ws"),
+            isKeepAlive = false,
             httpConfig = httpConfig,
             sslConfig = sslConfig,
+            isLogTransport = true,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
             incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
             http2AccumulatedOutboundDataSerializeLimit = (subprojectConfig.accumulatedOutboundDataStorageLimitPerCall.takeIf { it >= 0 }
@@ -638,7 +658,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                 out.startAt = KInstant.now()
                 data.status = ConnectionStatus.CONNECTING
 
-                log.i { "Request started at ${out.startAt!!.atLocalZoneOffset()}" }
+                log.d { "Request started at ${out.startAt!!.atLocalZoneOffset()}" }
 
                 requestBuilder
                     .awaitFirstOrNull()
@@ -670,6 +690,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
     override fun createReusableNonInspectableClient(
         parentCallId: String,
         concurrency: Int,
+        request: HttpRequest,
         httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): Any? {

@@ -47,10 +47,12 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
 
     fun buildWebClient(
         callId: String,
-        callData: CallData,
+        callData: CallData?,
         isSsl: Boolean,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        isKeepAlive: Boolean,
+        isLogTransport: Boolean,
         outgoingBytesFlow: MutableSharedFlow<RawPayload>,
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
         http2AccumulatedOutboundDataSerializeLimit: Int,
@@ -64,6 +66,8 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                     isSsl = isSsl,
                     httpConfig = httpConfig,
                     sslConfig = sslConfig,
+                    isKeepAlive = isKeepAlive,
+                    isLogTransport = isLogTransport,
                     outgoingBytesFlow = outgoingBytesFlow,
                     incomingBytesFlow = incomingBytesFlow,
                     http2AccumulatedOutboundDataSerializeLimit = http2AccumulatedOutboundDataSerializeLimit,
@@ -108,12 +112,14 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         )
         val callId = data.id
 
-        val client = buildWebClient(
+        val client = (client as? WebClient) ?: buildWebClient(
             callId = callId,
             callData = data,
             isSsl = uri.scheme !in setOf("http", "ws"),
             httpConfig = httpConfig,
             sslConfig = sslConfig,
+            isKeepAlive = false,
+            isLogTransport = true,
             outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
             incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
             http2AccumulatedOutboundDataSerializeLimit = (subprojectConfig.accumulatedOutboundDataStorageLimitPerCall.takeIf { it >= 0 }
@@ -180,7 +186,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                 out.startAt = KInstant.now()
                 data.status = ConnectionStatus.CONNECTING
 
-                log.i { "Request started at ${out.startAt!!.atLocalZoneOffset()}" }
+                log.d { "Request started at ${out.startAt!!.atLocalZoneOffset()}" }
 
                 requestBuilder
                     .awaitExchangeOrNull { resp ->
@@ -213,5 +219,27 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             completeResponse(callId, out)
         }
         return data
+    }
+
+    override fun createReusableNonInspectableClient(
+        parentCallId: String,
+        concurrency: Int,
+        request: HttpRequest,
+        httpConfig: HttpConfig,
+        sslConfig: SslConfig
+    ): Any? {
+        return buildWebClient(
+            callId = parentCallId,
+            callData = null,
+            isSsl = request.getResolvedUri().scheme !in setOf("http", "ws"),
+            isKeepAlive = true,
+            isLogTransport = false,
+            httpConfig = httpConfig,
+            sslConfig = sslConfig,
+            outgoingBytesFlow = MutableSharedFlow(),
+            incomingBytesFlow = MutableSharedFlow(),
+            http2AccumulatedOutboundDataSerializeLimit = 0,
+            http2AccumulatedInboundDataSerializeLimit = 0,
+        )
     }
 }
