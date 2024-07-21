@@ -465,8 +465,9 @@ class NetworkClientManager : CallDataStore {
                                     call
                                 }
                             } while (
-                                callData.status != ConnectionStatus.DISCONNECTED // not cancelled
-                                && !call.response.isError // not client-side error
+                                true
+//                                callData.status != ConnectionStatus.DISCONNECTED // not cancelled
+//                                && !call.response.isError // not client-side error
                                 && KInstant.now() < endTime
                             )
                             yield()
