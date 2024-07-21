@@ -34,6 +34,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStat
 import com.sunnychung.application.multiplatform.hellohttp.network.GraphqlSubscriptionTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
+import com.sunnychung.application.multiplatform.hellohttp.network.SpringWebClientTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.TransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
@@ -135,7 +136,10 @@ class NetworkClientManager : CallDataStore {
         client: Any? = null,
         networkManager: TransportClient? = null,
         persistResponseManager: PersistResponseManager = this.persistResponseManager,
-    ) : CallData = coroutineScope {
+    ) : CallData /*= coroutineScope*/ { // not creating coroutineScope here because otherwise the persistence update job would add 1 second to coroutine completion
+        if (parentLoadTestState != null) {
+            log.v { "LoadTest call ${parentLoadTestState.callId} -> child $callId" }
+        }
         val callData = try {
             val networkRequest = request.toHttpRequest(
                 exampleId = requestExampleId,
@@ -244,7 +248,7 @@ class NetworkClientManager : CallDataStore {
 
             networkManager.sendRequest(
                 callId = callId,
-                coroutineScope = this,
+                coroutineScope = CoroutineScope(Dispatchers.IO),
                 request = networkRequest,
                 requestExampleId = requestExampleId,
                 requestId = request.id,
@@ -260,7 +264,7 @@ class NetworkClientManager : CallDataStore {
         } catch (error: Throwable) {
             val d = CallData(
                 id = uuidString(),
-                coroutineScope = this,
+                coroutineScope = CoroutineScope(Dispatchers.IO),
                 subprojectId = subprojectId,
                 sslConfig = environment?.sslConfig ?: SslConfig(),
                 response = UserResponse(
@@ -313,7 +317,7 @@ class NetworkClientManager : CallDataStore {
             }
         }
         log.v { "call just before return $callId" }
-        callData
+        return callData
     }
 
     private fun HttpRequest.getNetworkManager(): TransportClient = when (this.application) {
@@ -327,7 +331,7 @@ class NetworkClientManager : CallDataStore {
         ProtocolApplication.Graphql -> GraphqlSubscriptionTransportClient(this@NetworkClientManager)
         ProtocolApplication.WebSocket -> WebSocketTransportClient(this@NetworkClientManager)
         ProtocolApplication.Grpc -> GrpcTransportClient(this@NetworkClientManager)
-        else -> ApacheHttpTransportClient(this@NetworkClientManager)
+        else -> SpringWebClientTransportClient(this@NetworkClientManager)
     }
 
     fun fireLoadTestRequests(

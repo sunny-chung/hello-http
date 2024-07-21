@@ -95,6 +95,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
     ): CallData {
         val uri = request.getResolvedUri()
         val data = createCallData(
+            callId = callId,
             coroutineScope = coroutineScope,
             requestBodySize = null,
             requestExampleId = requestExampleId,
@@ -209,6 +210,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                 executePostFlightAction(callId, out, postFlightAction)
             }
             emitEvent(callId, "Response completed")
+            completeResponse(callId, out)
         }
         return data
     }

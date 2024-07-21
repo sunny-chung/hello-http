@@ -673,6 +673,6 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         httpConfig: HttpConfig,
         sslConfig: SslConfig
     ): Any? {
-        TODO("Not yet implemented")
+        return null
     }
 }
