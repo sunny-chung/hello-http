@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/github/license/sunny-chung/hello-http)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/releases)
 [![Website](https://img.shields.io/badge/website-Hello%20HTTP-yellow)](https://sunny-chung.github.io/hello-http/)
+[![Verification Tests](https://github.com/sunny-chung/hello-http/actions/workflows/run-test.yaml/badge.svg?branch=main)](https://github.com/sunny-chung/hello-http/actions/workflows/run-test.yaml?query=branch%3Amain)
 
 This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket, GraphQL (including
 subscriptions) and gRPC endpoints. This is an alternative to Postman, Insomnia REST, etc.
