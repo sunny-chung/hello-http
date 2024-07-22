@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.6.0-beta.4" // must be in 'x.y.z' for native distributions
+version = "1.6.0" // must be in 'x.y.z' for native distributions
 
 repositories {
     google()
