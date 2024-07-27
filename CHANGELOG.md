@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Prettify button in JSON request editor. This includes GraphQL and gRPC.
 
 ## [1.6.0] - 2024-07-22
 
