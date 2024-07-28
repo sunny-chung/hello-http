@@ -11,8 +11,10 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.serializer.KInstantAsLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import java.io.ByteArrayOutputStream
 import java.text.DecimalFormat
 import java.util.*
+import java.util.concurrent.atomic.AtomicLong
 
 const val MAX_CAPTURED_REQUEST_BODY_SIZE = 2 * 1024 * 1024 // 2 MB
 
@@ -158,7 +160,26 @@ class RequestData(
     var body: ByteArray? = null,
     var bodySize: Long? = null,
 ) {
-    fun isNotEmpty() = headers != null
+    @Transient var bodyPayloadBuilder: ByteArrayOutputStream? = ByteArrayOutputStream()
+    @Transient val bodySizeBuilder = AtomicLong(0)
+
+    fun isNotEmpty() = !headers.isNullOrEmpty()
+
+    fun body() = body ?: bodyPayloadBuilder?.toByteArray()?.takeIf { it.isNotEmpty() }
+
+    fun bodySize() = bodySize ?: bodySizeBuilder.get().takeIf { it > 0 }
+
+    fun flush(isRemoveBuilder: Boolean = false) {
+        bodyPayloadBuilder?.let { builder ->
+            body = builder.toByteArray()
+            if (isRemoveBuilder) {
+                bodyPayloadBuilder = null
+            }
+        }
+        bodySizeBuilder.let {
+            bodySize = it.get()
+        }
+    }
 }
 
 class UserResponseByResponseTime(val userResponse: UserResponse) : Comparable<UserResponseByResponseTime> {
@@ -183,7 +204,10 @@ class UserResponseByResponseTime(val userResponse: UserResponse) : Comparable<Us
 val TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.lll (Z)"
 val BODY_BLOCK_DELIMITER = "`````"
 
-fun UserResponse.hasSomethingToCopy() = !isError && requestData?.isNotEmpty() == true
+fun UserResponse.hasSomethingToCopy(): Boolean {
+    requestData?.flush()
+    return !isError && requestData?.isNotEmpty() == true
+}
 
 fun UserResponse.describeApplicationLayer() =
     when {
@@ -208,14 +232,14 @@ ${
 $BODY_BLOCK_DELIMITER
 
 ${
-    if (requestData?.body?.isNotEmpty() == true) {
+    if (requestData?.body()?.isNotEmpty() == true) {
 """Body:
 $BODY_BLOCK_DELIMITER
-${requestData?.body?.decodeToString().orEmpty()}
+${requestData?.body()?.decodeToString().orEmpty()}
 $BODY_BLOCK_DELIMITER${
     com.sunnychung.application.multiplatform.hellohttp.util.let(
-        requestData?.body,
-        requestData?.bodySize
+        requestData?.body(),
+        requestData?.bodySize()
     ) { body, actualSize ->
         if (body.size < actualSize) {
             " ...(truncated, total size: ${DecimalFormat("#,###").format(actualSize)} bytes)"

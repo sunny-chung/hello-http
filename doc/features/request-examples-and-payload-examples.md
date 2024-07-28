@@ -43,6 +43,16 @@ Among these items, individual inheritance can be disabled by unselecting the che
 ## Renaming a Request Example
 Just double-click the Request Example, make changes and hit enter.
 
+## Duplicating a Request Example
+Click the duplicate button next to the name of the Example, and then give a name to the new one.
+
+![Dupplicating a Request Example](../duplicate-request-example.gif)
+
+## Navigating among Request Examples
+Request Examples can be navigated by scrolling the Example tabs in horizontal direction, vertical direction or clicking the "List" button next to the "Add Request Example" button.
+
+![Navigating among Request Examples](../navigate-request-examples.gif)
+
 ## Payload Examples
 
 For WebSocket and gRPC calls that support client streaming, each request contains one or more Payload Example to allow

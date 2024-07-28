@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -73,6 +74,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMethod
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.parser.JsonParser
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
@@ -494,20 +496,26 @@ fun RequestEditorView(
                                 modifier = Modifier.padding(8.dp)
                             ) {
                                 AppText(text = it.name)
-                                AppImageButton(resource = "duplicate.svg", size = 16.dp, color = colors.placeholder) {
-                                    val copiedExample = it.deepCopyWithNewId()
-                                    log.d { "copied example -> ${copiedExample.id}" }
-                                    onRequestModified(
-                                        request.copy(examples = request.examples.let { examples ->
-                                            val r = examples.toMutableList()
-                                            r.add(index + 1, copiedExample)
-                                            log.d { "new examples = [\n${r.joinToString { "  ${it.id} -> ${it.name}\n" }}]" }
-                                            r
-                                        })
-                                    )
-                                    onSelectExample(copiedExample)
-                                    log.d { "onStartEdit ${copiedExample.id}" }
-                                    editExampleNameViewModel.onStartEdit(copiedExample.id)
+                                AppTooltipArea(tooltipText = "Duplicate") {
+                                    AppImageButton(
+                                        resource = "duplicate.svg",
+                                        size = 16.dp,
+                                        color = colors.placeholder
+                                    ) {
+                                        val copiedExample = it.deepCopyWithNewId()
+                                        log.d { "copied example -> ${copiedExample.id}" }
+                                        onRequestModified(
+                                            request.copy(examples = request.examples.let { examples ->
+                                                val r = examples.toMutableList()
+                                                r.add(index + 1, copiedExample)
+                                                log.d { "new examples = [\n${r.joinToString { "  ${it.id} -> ${it.name}\n" }}]" }
+                                                r
+                                            })
+                                        )
+                                        onSelectExample(copiedExample)
+                                        log.d { "onStartEdit ${copiedExample.id}" }
+                                        editExampleNameViewModel.onStartEdit(copiedExample.id)
+                                    }
                                 }
                                 if (index > 0) { // "Base" example cannot be deleted
                                     AppDeleteButton {
@@ -1135,6 +1143,7 @@ private fun RequestBodyEditor(
             ContentType.Json, ContentType.Raw -> {
                 RequestBodyTextEditor(
                     request = request,
+                    contentType = selectedContentType,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
                     selectedExample = selectedExample,
@@ -1247,6 +1256,7 @@ private fun RequestBodyEditor(
             ContentType.Graphql -> {
                 RequestBodyTextEditor(
                     request = request,
+                    contentType = selectedContentType,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
                     selectedExample = selectedExample,
@@ -1281,6 +1291,7 @@ private fun RequestBodyEditor(
                 }
                 RequestBodyTextEditor(
                     request = request,
+                    contentType = ContentType.Json,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
                     selectedExample = selectedExample,
@@ -1336,6 +1347,7 @@ private fun OverrideCheckboxWithLabel(
 @Composable
 private fun RequestBodyTextEditor(
     modifier: Modifier,
+    contentType: ContentType,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     environmentVariableKeys: Set<String>,
@@ -1349,25 +1361,48 @@ private fun RequestBodyTextEditor(
     val colors = LocalColor.current
     val baseExample = request.examples.first()
 
-    if (overridePredicate(selectedExample.overrides)) {
-        CodeEditorView(
-            modifier = modifier,
-            isReadOnly = false,
-            isEnableVariables = true,
-            knownVariables = environmentVariableKeys,
-            text = translateToText(selectedExample) ?: "",
-            onTextChange = {
-                onRequestModified(
-                    request.copy(
-                        examples = request.examples.copyWithChange(
-                            translateTextChangeToNewUserRequestExample(it)
-                        )
-                    )
+    val changeText = { it: String ->
+        onRequestModified(
+            request.copy(
+                examples = request.examples.copyWithChange(
+                    translateTextChangeToNewUserRequestExample(it)
                 )
-            },
-            transformations = transformations,
-            testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
+            )
         )
+    }
+
+    val prettifyHandler = when (contentType) {
+        ContentType.Json -> { code: String ->
+            try {
+                val prettified = JsonParser(code).prettify().prettyString
+                changeText(prettified)
+            } catch (e: Throwable) {
+                AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: "Error while prettifying as JSON")
+            }
+        }
+
+        else -> null
+    }
+
+    if (overridePredicate(selectedExample.overrides)) {
+        val content = translateToText(selectedExample) ?: ""
+        FloatingButtonContainer(
+            buttonImage = "prettier.svg",
+            tooltip = "Prettify",
+            isEnabled = prettifyHandler != null,
+            onClickButton = { prettifyHandler!!(content) },
+            modifier = modifier,
+        ) {
+            CodeEditorView(
+                isReadOnly = false,
+                isEnableVariables = true,
+                knownVariables = environmentVariableKeys,
+                text = content,
+                onTextChange = changeText,
+                transformations = transformations,
+                testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
+            )
+        }
     } else {
         CodeEditorView(
             modifier = modifier,

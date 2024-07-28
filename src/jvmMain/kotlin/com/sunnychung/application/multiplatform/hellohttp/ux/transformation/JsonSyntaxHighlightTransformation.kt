@@ -9,7 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 
-private val TOKEN_REGEX = "(?<!\\\\)(\".+?(?<!\\\\)\"(?:\\s*:)?)|(?<=[,\\[\\]{}:])\\s*([^,\\s\"\\[\\]{}]+?)\\s*(?=[,\\[\\]{}:])".toRegex()
+private val TOKEN_REGEX = "(?<!\\\\)(\".*?(?<!\\\\)\"(?:\\s*:)?)|(?<=[,\\[\\]{}:])\\s*([^,\\s\"\\[\\]{}]+?)\\s*(?=[,\\[\\]{}:])".toRegex()
 
 private val OBJECT_KEY_REGEX = "(\".*?(?<!\\\\)\")\\s*:".toRegex()
 private val STRING_LITERAL_REGEX = "\".*?(?<!\\\\)\"".toRegex()

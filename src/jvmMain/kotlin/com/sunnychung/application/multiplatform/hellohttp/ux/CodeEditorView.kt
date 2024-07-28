@@ -460,8 +460,16 @@ fun CodeEditorView(
                                     if (it.type == KeyEventType.KeyDown) {
                                         when (it.key) {
                                             Key.Enter -> {
-                                                onPressEnterAddIndent()
-                                                true
+                                                if (!it.isShiftPressed
+                                                    && !it.isAltPressed
+                                                    && !it.isCtrlPressed
+                                                    && !it.isMetaPressed
+                                                    ) {
+                                                    onPressEnterAddIndent()
+                                                    true
+                                                } else {
+                                                    false
+                                                }
                                             }
 
                                             Key.Tab -> {

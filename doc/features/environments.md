@@ -10,8 +10,8 @@ Development.
 Each environment may contain the followings:
 - Zero or more variables
 - HTTP protocol version preference
-- SSL verification preference
-- Zero or more user files (for scripts)
+- [SSL verification preference](ssl-configuration)
+- Zero or more [user files (for scripts)](user-script)
 
 ## Creating an Environment
 
@@ -30,3 +30,9 @@ use.
 Variables that can be resolved are highlighted in blue, otherwise it is in red.
 
 If no environment is selected, all variables are unresolvable and thus they will be all red.
+
+## Duplicating an Environment
+
+Click the duplicate icon located in top-right corner of the dialog to duplicate. Everything under this environment, including imported certificates and files, would be duplicated.
+
+![Duplicating an Environment](../duplicate-environment.gif)

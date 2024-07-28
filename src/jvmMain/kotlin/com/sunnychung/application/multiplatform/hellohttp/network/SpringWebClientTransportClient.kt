@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.LoadTestState
+import com.sunnychung.application.multiplatform.hellohttp.model.MAX_CAPTURED_REQUEST_BODY_SIZE
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestBodyWithKeyValuePairs
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestData
@@ -24,16 +25,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
+import org.reactivestreams.Publisher
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.InputStreamResource
+import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.client.MultipartBodyBuilder
+import org.springframework.http.client.reactive.ClientHttpRequest
+import org.springframework.http.client.reactive.ClientHttpRequestDecorator
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.reactive.function.BodyInserter
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBodyOrNull
 import org.springframework.web.reactive.function.client.awaitExchangeOrNull
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import reactor.netty.http.client.HttpClientRequest
 import reactor.netty.http.client.HttpClientResponse
 import java.io.File
 import java.io.FileInputStream
@@ -57,6 +66,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         incomingBytesFlow: MutableSharedFlow<RawPayload>,
         http2AccumulatedOutboundDataSerializeLimit: Int,
         http2AccumulatedInboundDataSerializeLimit: Int,
+        doOnRequestSent: (HttpClientRequest) -> Unit,
     ) : WebClient {
         return WebClient.builder()
             .clientConnector(
@@ -71,7 +81,8 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                     outgoingBytesFlow = outgoingBytesFlow,
                     incomingBytesFlow = incomingBytesFlow,
                     http2AccumulatedOutboundDataSerializeLimit = http2AccumulatedOutboundDataSerializeLimit,
-                    http2AccumulatedInboundDataSerializeLimit = http2AccumulatedInboundDataSerializeLimit
+                    http2AccumulatedInboundDataSerializeLimit = http2AccumulatedInboundDataSerializeLimit,
+                    onRequestSent = doOnRequestSent,
                 )
                 .let { ReactorClientHttpConnector(it) }
             )
@@ -112,6 +123,8 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         )
         val callId = data.id
 
+        val sentRequestHeaders: MutableList<Pair<String, String>> = mutableListOf()
+
         val client = (client as? WebClient) ?: buildWebClient(
             callId = callId,
             callData = data,
@@ -126,6 +139,12 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                 ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
             http2AccumulatedInboundDataSerializeLimit = (subprojectConfig.accumulatedInboundDataStorageLimitPerCall.takeIf { it >= 0 }
                 ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
+            doOnRequestSent = { req ->
+                log.d { "Req header = ${req.requestHeaders()}" }
+                sentRequestHeaders += req.requestHeaders().map { e ->
+                    e.toPair()
+                }
+            },
         )
 
         CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
@@ -133,7 +152,11 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             log.d { "Call $callId is prepared" }
 
             val out = data.response
-            out.requestData = RequestData() // TODO
+            out.requestData = RequestData(
+                method = request.method,
+                url = request.url,
+                headers = sentRequestHeaders,
+            )
 
             data.cancel = {
                 log.i { "Cancel call #$callId" }
@@ -148,23 +171,24 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                     .method(org.springframework.http.HttpMethod.valueOf(request.method.uppercase()))
                     .uri(uri)
                     .headers { builder ->
+                        log.v { "Building header" }
                         request.headers.forEach { (h, v) ->
                             builder.add(h, v)
                         }
                     }
                     .run {
-                        when (val body = request.body) {
-                            is StringBody -> body(BodyInserters.fromValue(body.value))
+                        val bodyInserter = when (val body = request.body) {
+                            is StringBody -> BodyInserters.fromValue(body.value)
 
-                            is FileBody -> body(BodyInserters.fromResource(InputStreamResource(FileInputStream(File(body.filePath!!)))))
+                            is FileBody -> BodyInserters.fromResource(InputStreamResource(FileInputStream(File(body.filePath!!))))
 
-                            is FormUrlEncodedBody -> body(BodyInserters.fromFormData(
+                            is FormUrlEncodedBody -> BodyInserters.fromFormData(
                                 body.value.groupBy({ it.key }, { it.value })
                                     .let { LinkedMultiValueMap(it) }
-                            ))
+                            )
 
                             is MultipartBody -> {
-                                body(BodyInserters.fromMultipartData(
+                                BodyInserters.fromMultipartData(
                                     MultipartBodyBuilder()
                                         .apply {
                                             (body as RequestBodyWithKeyValuePairs).value.forEach {
@@ -175,12 +199,31 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                                             }
                                         }
                                         .build()
-                                ))
+                                )
                             }
 
                             is GraphqlBody -> throw UnsupportedOperationException()
-                            null -> this
+                            null -> null
                         }
+                        bodyInserter
+                            ?.let { inserter ->
+                                inserter as BodyInserter<*, in ClientHttpRequest>
+                                body { outputMessage, context ->
+                                    val interceptor: ClientHttpRequestDecorator = object : ClientHttpRequestDecorator(outputMessage) {
+                                        override fun writeWith(body: Publisher<out DataBuffer>): Mono<Void> {
+                                            return Flux.from(body)
+                                                .doOnNext { buffer ->
+                                                    out.requestData?.appendBody(buffer)
+                                                }
+                                                .let {
+                                                    super.writeWith(it)
+                                                }
+                                        }
+                                    }
+                                    inserter.insert(interceptor, context)
+                                }
+                            }
+                            ?: this
                     }
 
                 out.startAt = KInstant.now()
@@ -242,4 +285,22 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             http2AccumulatedInboundDataSerializeLimit = 0,
         )
     }
+}
+
+fun RequestData.appendBody(buffer: DataBuffer) {
+    val bodyBuilder = bodyPayloadBuilder ?: return
+    val numBytesStoreCapacity = MAX_CAPTURED_REQUEST_BODY_SIZE - bodyBuilder.size()
+    val bufferSize = buffer.readableByteCount()
+    if (bufferSize <= 0) return
+    bodySizeBuilder.addAndGet(bufferSize.toLong())
+    if (numBytesStoreCapacity <= 0) {
+        flush(isRemoveBuilder = true)
+        return
+    }
+    val numBytesToTake = minOf(numBytesStoreCapacity, bufferSize)
+    val tempBytesArray = ByteArray(numBytesToTake)
+    val originalReadPos = buffer.readPosition()
+    buffer.read(tempBytesArray, 0, numBytesToTake)
+    buffer.readPosition(originalReadPos)
+    bodyBuilder.writeBytes(tempBytesArray)
 }
