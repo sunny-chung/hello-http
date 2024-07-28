@@ -283,6 +283,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             incomingBytesFlow = MutableSharedFlow(),
             http2AccumulatedOutboundDataSerializeLimit = 0,
             http2AccumulatedInboundDataSerializeLimit = 0,
+            doOnRequestSent = {},
         )
     }
 }
