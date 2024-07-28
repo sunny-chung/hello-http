@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -72,6 +73,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMethod
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.parser.JsonParser
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
@@ -1122,6 +1124,7 @@ private fun RequestBodyEditor(
             ContentType.Json, ContentType.Raw -> {
                 RequestBodyTextEditor(
                     request = request,
+                    contentType = selectedContentType,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
                     selectedExample = selectedExample,
@@ -1234,6 +1237,7 @@ private fun RequestBodyEditor(
             ContentType.Graphql -> {
                 RequestBodyTextEditor(
                     request = request,
+                    contentType = selectedContentType,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
                     selectedExample = selectedExample,
@@ -1268,6 +1272,7 @@ private fun RequestBodyEditor(
                 }
                 RequestBodyTextEditor(
                     request = request,
+                    contentType = ContentType.Json,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
                     selectedExample = selectedExample,
@@ -1323,6 +1328,7 @@ private fun OverrideCheckboxWithLabel(
 @Composable
 private fun RequestBodyTextEditor(
     modifier: Modifier,
+    contentType: ContentType,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     environmentVariableKeys: Set<String>,
@@ -1336,25 +1342,48 @@ private fun RequestBodyTextEditor(
     val colors = LocalColor.current
     val baseExample = request.examples.first()
 
-    if (overridePredicate(selectedExample.overrides)) {
-        CodeEditorView(
-            modifier = modifier,
-            isReadOnly = false,
-            isEnableVariables = true,
-            knownVariables = environmentVariableKeys,
-            text = translateToText(selectedExample) ?: "",
-            onTextChange = {
-                onRequestModified(
-                    request.copy(
-                        examples = request.examples.copyWithChange(
-                            translateTextChangeToNewUserRequestExample(it)
-                        )
-                    )
+    val changeText = { it: String ->
+        onRequestModified(
+            request.copy(
+                examples = request.examples.copyWithChange(
+                    translateTextChangeToNewUserRequestExample(it)
                 )
-            },
-            transformations = transformations,
-            testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
+            )
         )
+    }
+
+    val prettifyHandler = when (contentType) {
+        ContentType.Json -> { code: String ->
+            try {
+                val prettified = JsonParser(code).prettify().prettyString
+                changeText(prettified)
+            } catch (e: Throwable) {
+                AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: "Error while prettifying as JSON")
+            }
+        }
+
+        else -> null
+    }
+
+    if (overridePredicate(selectedExample.overrides)) {
+        val content = translateToText(selectedExample) ?: ""
+        FloatingButtonContainer(
+            buttonImage = "prettier.svg",
+            tooltip = "Prettify",
+            isEnabled = prettifyHandler != null,
+            onClickButton = { prettifyHandler!!(content) },
+            modifier = modifier,
+        ) {
+            CodeEditorView(
+                isReadOnly = false,
+                isEnableVariables = true,
+                knownVariables = environmentVariableKeys,
+                text = content,
+                onTextChange = changeText,
+                transformations = transformations,
+                testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
+            )
+        }
     } else {
         CodeEditorView(
             modifier = modifier,
