@@ -117,7 +117,11 @@ class DataBackwardCompatibilityTest {
         }
 
         val allVersions = appVersionsHavingTestData()
-        val index = allVersions.indexOfFirst { it == currentVersion }
+        val index = allVersions.indexOfFirst { it == currentVersion }.also {
+            if (it < 0) {
+                throw IllegalArgumentException("`allVersions` does not include the current version code '$currentVersion'")
+            }
+        }
         val appVersionToCopyDataFrom = allVersions[index - 1]
         val sourceBackupFile = File(testDataBaseDirOfAppVersion(appVersionToCopyDataFrom), "app-data-backup.dump")
 
