@@ -4,6 +4,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -15,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.AppText
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
@@ -106,19 +109,23 @@ fun BigMonospaceText(
 //        log.v { "rowStartCharIndices = ${it}" }
     }
 
-//    rememberLast(rowStartCharIndices.size) {
-//        scrollState::class.declaredMemberProperties.first { it.name == "maxValue" }
-//            .apply {
-//                (this as KMutableProperty<Int>)
-//                setter.isAccessible = true
-//                setter.call(scrollState, ((rowStartCharIndices.size - 1) * lineHeight).roundToInt())
-//            }
-//    }
+    rememberLast(height, rowStartCharIndices.size, lineHeight) {
+        scrollState::class.declaredMemberProperties.first { it.name == "maxValue" }
+            .apply {
+                (this as KMutableProperty<Int>)
+                setter.isAccessible = true
+                setter.call(scrollState, maxOf(0f, rowStartCharIndices.size * lineHeight - height).roundToInt())
+            }
+    }
 
+    val coroutineScope = rememberCoroutineScope() // for scrolling
     var scrollOffset by remember { mutableStateOf(0f) }
 //    val scrollState =
     val scrollableState = rememberScrollableState { delta ->
-        scrollOffset = minOf(maxOf(0f, scrollOffset - delta), maxOf(0f, rowStartCharIndices.size * lineHeight - height))
+        coroutineScope.launch {
+            scrollState.scrollBy(-delta)
+        }
+//        scrollOffset = minOf(maxOf(0f, scrollOffset - delta), maxOf(0f, rowStartCharIndices.size * lineHeight - height))
         delta
     }
 
@@ -131,13 +138,13 @@ fun BigMonospaceText(
             .clipToBounds()
             .scrollable(scrollableState, orientation = Orientation.Vertical)
     ) {
-//        val viewportTop = scrollState.value.toFloat()
-        val viewportTop = scrollOffset
+        val viewportTop = scrollState.value.toFloat()
+//        val viewportTop = scrollOffset
         val viewportBottom = viewportTop + height
         if (lineHeight > 0) {
             val firstRowIndex = maxOf(0, (viewportTop / lineHeight).toInt())
             val lastRowIndex = minOf(rowStartCharIndices.lastIndex, (viewportBottom / lineHeight).toInt() + 1)
-            log.v { "row index = [$firstRowIndex, $lastRowIndex]; scroll = $scrollOffset ~ $viewportBottom; line h = $lineHeight" }
+            log.v { "row index = [$firstRowIndex, $lastRowIndex]; scroll = $viewportTop ~ $viewportBottom; line h = $lineHeight" }
             with(density) {
                 (firstRowIndex..lastRowIndex).forEach { i ->
                     val startIndex = rowStartCharIndices[i]
@@ -159,11 +166,6 @@ fun BigMonospaceText(
                 }
             }
         }
-
-//        VerticalScrollbar(
-//            modifier = Modifier.align(Alignment.CenterEnd),
-//            adapter = rememberScrollbarAdapter(scrollState, ((rowStartCharIndices.size - 1) * lineHeight).roundToInt()),
-//        )
     }
 }
 
