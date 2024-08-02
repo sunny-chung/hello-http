@@ -63,6 +63,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearch
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -437,64 +438,76 @@ fun CodeEditorView(
                     },
                     modifier = Modifier.fillMaxHeight(),
                 )
-                AppTextField(
-                    value = textValue,
-                    onValueChange = {
-                        textValue = it
-                        log.d { "CEV sel ${textValue.selection.start}" }
-                        onTextChange?.invoke(it.text)
-                    },
-                    visualTransformation = visualTransformationToUse,
-                    readOnly = isReadOnly,
-                    textStyle = LocalTextStyle.current.copy(
-                        fontFamily = FontFamily.Monospace,
+                if (isReadOnly) {
+                    BigMonospaceText(
+                        text = textValue.text,
+                        visualTransformation = visualTransformationToUse,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
-                    ),
-                    colors = colors,
-                    onTextLayout = { textLayoutResult = it },
-                    modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
-                        .focusRequester(textFieldFocusRequester)
-                        .run {
-                            if (!isReadOnly) {
-                                this.onPreviewKeyEvent {
-                                    if (it.type == KeyEventType.KeyDown) {
-                                        when (it.key) {
-                                            Key.Enter -> {
-                                                if (!it.isShiftPressed
-                                                    && !it.isAltPressed
-                                                    && !it.isCtrlPressed
-                                                    && !it.isMetaPressed
+                        scrollState = scrollState,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+//                    return@Row // compose bug: return here would crash
+                } else {
+
+                    AppTextField(
+                        value = textValue,
+                        onValueChange = {
+                            textValue = it
+                            log.d { "CEV sel ${textValue.selection.start}" }
+                            onTextChange?.invoke(it.text)
+                        },
+                        visualTransformation = visualTransformationToUse,
+                        readOnly = isReadOnly,
+                        textStyle = LocalTextStyle.current.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = LocalFont.current.codeEditorBodyFontSize,
+                        ),
+                        colors = colors,
+                        onTextLayout = { textLayoutResult = it },
+                        modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
+                            .focusRequester(textFieldFocusRequester)
+                            .run {
+                                if (!isReadOnly) {
+                                    this.onPreviewKeyEvent {
+                                        if (it.type == KeyEventType.KeyDown) {
+                                            when (it.key) {
+                                                Key.Enter -> {
+                                                    if (!it.isShiftPressed
+                                                        && !it.isAltPressed
+                                                        && !it.isCtrlPressed
+                                                        && !it.isMetaPressed
                                                     ) {
-                                                    onPressEnterAddIndent()
-                                                    true
-                                                } else {
-                                                    false
+                                                        onPressEnterAddIndent()
+                                                        true
+                                                    } else {
+                                                        false
+                                                    }
                                                 }
-                                            }
 
-                                            Key.Tab -> {
-                                                onPressTab(it.isShiftPressed)
-                                                true
-                                            }
+                                                Key.Tab -> {
+                                                    onPressTab(it.isShiftPressed)
+                                                    true
+                                                }
 
-                                            else -> false
+                                                else -> false
+                                            }
+                                        } else {
+                                            false
                                         }
-                                    } else {
-                                        false
                                     }
+                                } else {
+                                    this
                                 }
-                            } else {
-                                this
                             }
-                        }
-                        .run {
-                            if (testTag != null) {
-                                testTag(testTag)
-                            } else {
-                                this
+                            .run {
+                                if (testTag != null) {
+                                    testTag(testTag)
+                                } else {
+                                    this
+                                }
                             }
-                        }
-                )
+                    )
+                }
             }
             VerticalScrollbar(
                 modifier = Modifier.align(Alignment.CenterEnd),
