@@ -51,12 +51,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
@@ -597,7 +600,6 @@ fun LineNumbersView(
     val colours = LocalColor.current
     val fonts = LocalFont.current
     var size by remember { mutableStateOf<IntSize?>(null) }
-    val textMeasurer = rememberTextMeasurer()
     val textStyle = LocalTextStyle.current.copy(
         fontSize = fonts.codeEditorLineNumberFontSize,
         fontFamily = FontFamily.Monospace,
@@ -613,93 +615,143 @@ fun LineNumbersView(
     lastTextLayoutResult = textLayoutResult
     lastLineTops = lineTops
 
-    val lineNumDigits = lineTops?.let { "${it.lastIndex}".length } ?: 1
-    val width = rememberLast(lineNumDigits, collapsableLines.isEmpty()) {
-        maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
-            4.dp + (if (collapsableLines.isNotEmpty()) 24.dp else 0.dp) + 4.dp
-    }
+    val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
 
+    var lineHeight = 0f
+    val viewportTop = scrollState.value.toFloat()
+    val (firstLine, lastLine) = if (size != null && textLayoutResult != null && lineTops != null) {
+        val viewportBottom = viewportTop + size!!.height
+        log.d { "LineNumbersView before calculation" }
+        // 0-based line index
+        // include the partially visible line before the first line that is entirely visible
+        val firstLine = maxOf(0, lineTops.binarySearchForInsertionPoint { if (it >= viewportTop) 1 else -1 } - 1)
+        val lastLine = lineTops.binarySearchForInsertionPoint { if (it > viewportBottom) 1 else -1 }
+        log.v { "LineNumbersView $firstLine ~ <$lastLine / $viewportTop ~ $viewportBottom" }
+        log.v { "lineTops = $lineTops" }
+        log.v { "collapsedLines = $collapsedLines" }
+        log.d { "LineNumbersView after calculation" }
+        lineHeight = textLayoutResult.getLineBottom(0) - textLayoutResult.getLineTop(0)
+
+        firstLine to lastLine
+    } else {
+        0 to -1
+    }
+    CoreLineNumbersView(
+        modifier = modifier.onGloballyPositioned { size = it.size },
+        firstLine = firstLine,
+        lastLine = minOf(lastLine, (lineTops?.size ?: 0) - 1),
+        totalLines = lineTops?.size ?: 1,
+        lineHeight = lineHeight.toDp(),
+        getLineOffset = { (lineTops!![it] - viewportTop).toDp() },
+        textStyle = textStyle,
+        collapsedLinesState = collapsedLinesState,
+        onCollapseLine = onCollapseLine,
+        onExpandLine = onExpandLine
+    )
+}
+
+/**
+ * The purpose of this class is to avoid unnecessary heavy computations of cache keys.
+ * It must be wrapped by another @Composable with collapsableLines and collapsedLines as parameters.
+ */
+class CollapsedLinesState(val collapsableLines: List<IntRange>, collapsedLines: List<IntRange>) {
     val collapsableLinesMap = collapsableLines.associateBy { it.start }
     val collapsedLines = collapsedLines.associateBy { it.first }.toSortedMap() // TODO optimize using range tree
+}
+
+@Composable
+private fun CoreLineNumbersView(
+    modifier: Modifier = Modifier,
+    firstLine: Int,
+    lastLine: Int,
+    totalLines: Int,
+    lineHeight: Dp,
+    getLineOffset: (Int) -> Dp,
+    textStyle: TextStyle,
+//    collapsableLines: List<IntRange>,
+//    collapsedLines: List<IntRange>,
+    collapsedLinesState: CollapsedLinesState,
+    onCollapseLine: (Int) -> Unit,
+    onExpandLine: (Int) -> Unit,
+) = with(LocalDensity.current) {
+    val colours = LocalColor.current
+    val fonts = LocalFont.current
+
+    val collapsableLines = collapsedLinesState.collapsableLines
+    val collapsableLinesMap = collapsedLinesState.collapsableLinesMap
+    val collapsedLines = collapsedLinesState.collapsedLines
+
+    val textMeasurer = rememberTextMeasurer()
+    val lineNumDigits = "$totalLines".length
+    val width = rememberLast(lineNumDigits, collapsableLines.isEmpty()) {
+        maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
+                4.dp + (if (collapsableLines.isNotEmpty()) 24.dp else 0.dp) + 4.dp
+    }
 
     Box(
         modifier = modifier
             .width(width)
             .fillMaxHeight()
             .clipToBounds()
-            .onGloballyPositioned { size = it.size }
             .background(colours.backgroundLight)
             .padding(top = 6.dp, start = 4.dp, end = 4.dp), // see AppTextField
     ) {
-        if (size != null && textLayoutResult != null && lineTops != null) {
-            val viewportTop = scrollState.value.toFloat()
-            val viewportBottom = viewportTop + size!!.height
-            log.d { "LineNumbersView before calculation" }
-            // 0-based line index
-            // include the partially visible line before the first line that is entirely visible
-            val firstLine = maxOf(0, lineTops.binarySearchForInsertionPoint { if (it >= viewportTop) 1 else -1 } - 1)
-            val lastLine = lineTops.binarySearchForInsertionPoint { if (it > viewportBottom) 1 else -1 }
-            log.v { "LineNumbersView $firstLine ~ <$lastLine / $viewportTop ~ $viewportBottom" }
-            log.v { "lineTops = $lineTops" }
-            log.v { "collapsedLines = $collapsedLines" }
-            log.d { "LineNumbersView after calculation" }
-            val lineHeight = textLayoutResult.getLineBottom(0) - textLayoutResult.getLineTop(0)
 
-            var ii: Int = firstLine
-            while (ii < minOf(lastLine, lineTops.size - 1)) {
-                val i: Int = ii // `ii` is passed by ref
+        var ii: Int = firstLine
+        while (ii < lastLine) {
+            val i: Int = ii // `ii` is passed by ref
 
-                if (i > firstLine && lineTops[i] - lineTops[i-1] < 1) {
-                    // optimization: there is an instant that collapsedLines is empty but lineTops = [0, 0, ..., 0, 1234]
-                    // skip drawing if there are duplicated lineTops
-                } else {
-                    Row(
+            if (i > firstLine && getLineOffset(i).value - getLineOffset(i - 1).value < 1) {
+                // optimization: there is an instant that collapsedLines is empty but lineTops = [0, 0, ..., 0, 1234]
+                // skip drawing if there are duplicated lineTops
+            } else {
+                Row(
+                    modifier = Modifier
+                        .height(lineHeight)
+                        .offset(y = getLineOffset(i)),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.CenterEnd,
                         modifier = Modifier
-                            .height(lineHeight.toDp())
-                            .offset(y = (lineTops[i] - viewportTop).toDp()),
+                            .weight(1f)
                     ) {
-                        Box(
-                            contentAlignment = Alignment.CenterEnd,
+                        AppText(
+                            text = "${i + 1}",
+                            style = textStyle,
+                            fontSize = fonts.codeEditorLineNumberFontSize,
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
+                            color = colours.unimportant,
+                        )
+                    }
+                    if (collapsableLinesMap.contains(i)) {
+                        AppImageButton(
+                            resource = if (collapsedLines.containsKey(i)) "expand.svg" else "collapse.svg",
+                            size = 12.dp,
+                            innerPadding = PaddingValues(horizontal = 4.dp),
+                            onClick = {
+                                if (collapsedLines.containsKey(i)) {
+                                    onExpandLine(i)
+                                } else {
+                                    onCollapseLine(i)
+                                }
+                            },
                             modifier = Modifier
-                                .weight(1f)
-                        ) {
-                            AppText(
-                                text = "${i + 1}",
-                                style = textStyle,
-                                fontSize = fonts.codeEditorLineNumberFontSize,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1,
-                                color = colours.unimportant,
-                            )
-                        }
-                        if (collapsableLinesMap.contains(i)) {
-                            AppImageButton(
-                                resource = if (collapsedLines.containsKey(i)) "expand.svg" else "collapse.svg",
-                                size = 12.dp,
-                                innerPadding = PaddingValues(horizontal = 4.dp),
-                                onClick = {
-                                    if (collapsedLines.containsKey(i)) {
-                                        onExpandLine(i)
-                                    } else {
-                                        onCollapseLine(i)
-                                    }
-                                },
-                                modifier = modifier
-                                    .width(24.dp)
-                                    .padding(start = 4.dp),
-                            )
-                        } else if (collapsableLines.isNotEmpty()) {
-                            Spacer(modifier.width(24.dp))
-                        }
+                                .fillMaxHeight()
+                                .width(24.dp)
+                                .padding(start = 4.dp),
+                        )
+                    } else if (collapsableLines.isNotEmpty()) {
+                        Spacer(Modifier.fillMaxHeight().width(24.dp))
                     }
                 }
-                collapsedLines.headMap(i + 1).forEach {
-                    if (it.value.contains(i)) {
-                        ii = maxOf(ii, it.value.last)
-                    }
-                }
-                ++ii
             }
+            collapsedLines.headMap(i + 1).forEach {
+                if (it.value.contains(i)) {
+                    ii = maxOf(ii, it.value.last)
+                }
+            }
+            ++ii
         }
     }
 }
