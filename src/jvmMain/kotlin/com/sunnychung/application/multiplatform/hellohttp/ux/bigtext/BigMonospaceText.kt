@@ -161,13 +161,10 @@ fun BigMonospaceText(
     }
 
     val coroutineScope = rememberCoroutineScope() // for scrolling
-    var scrollOffset by remember { mutableStateOf(0f) }
-//    val scrollState =
     val scrollableState = rememberScrollableState { delta ->
         coroutineScope.launch {
             scrollState.scrollBy(-delta)
         }
-//        scrollOffset = minOf(maxOf(0f, scrollOffset - delta), maxOf(0f, rowStartCharIndices.size * lineHeight - height))
         delta
     }
     var draggedPoint by remember { mutableStateOf<Offset>(Offset.Zero) }
@@ -274,7 +271,6 @@ fun BigMonospaceText(
             }
             .focusable(isSelectable) // `focusable` should be after callback modifiers that use focus
     ) {
-//        val viewportTop = scrollOffset
         val viewportBottom = viewportTop + height
         if (lineHeight > 0) {
             val firstRowIndex = maxOf(0, (viewportTop / lineHeight).toInt())
