@@ -38,6 +38,22 @@ class CollapseTransformation(colours: AppColor, collapsedCharRanges: List<IntRan
 
         return TransformedText(modifiedText, CollapseTransformationOffsetMapping(collapsedCharRanges))
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is CollapseTransformation) return false
+
+        if (collapsedStyle != other.collapsedStyle) return false
+        if (collapsedCharRanges != other.collapsedCharRanges) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = collapsedStyle.hashCode()
+        result = 31 * result + collapsedCharRanges.hashCode()
+        return result
+    }
 }
 
 /**

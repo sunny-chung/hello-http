@@ -7,7 +7,7 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 
-class MultipleVisualTransformation(val transforms: List<VisualTransformation>) : VisualTransformation {
+data class MultipleVisualTransformation(val transforms: List<VisualTransformation>) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         var annotatedStringResult = text
         val mappings = mutableListOf<OffsetMapping>()

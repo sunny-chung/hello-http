@@ -63,6 +63,21 @@ class FunctionTransformation(val themeColors: AppColor) : VisualTransformation {
             offsetMapping = offsetMapping
         )
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is FunctionTransformation) return false
+
+        if (themeColors !== other.themeColors) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return themeColors.hashCode()
+    }
+
+
 }
 
 // offset mapping of environment variables and functions are the same

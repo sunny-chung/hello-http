@@ -3,7 +3,6 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,12 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.onClick
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
@@ -56,24 +53,23 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.CollapseTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.CollapseTransformationOffsetMapping
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
@@ -423,34 +419,54 @@ fun CodeEditorView(
         Box(modifier = Modifier.weight(1f).onGloballyPositioned { textFieldSize = it.size }) {
 //        log.v { "CodeEditorView text=$text" }
             Row {
-                LineNumbersView(
-                    scrollState = scrollState,
-                    textLayoutResult = textLayoutResult,
-                    lineTops = lineTops,
-                    collapsableLines = collapsableLines,
-                    collapsedLines = collapsedLines.values.toList(),
-                    onCollapseLine = { i ->
-                        val index = collapsableLines.indexOfFirst { it.start == i }
-                        collapsedLines[collapsableLines[index]] = collapsableLines[index]
-                        collapsedChars[collapsableChars[index]] = collapsableChars[index]
-                    },
-                    onExpandLine = { i ->
-                        val index = collapsableLines.indexOfFirst { it.start == i }
-                        collapsedLines -= collapsableLines[index]
-                        collapsedChars -= collapsableChars[index]
-                    },
-                    modifier = Modifier.fillMaxHeight(),
-                )
+                val onCollapseLine = { i: Int ->
+                    val index = collapsableLines.indexOfFirst { it.start == i }
+                    collapsedLines[collapsableLines[index]] = collapsableLines[index]
+                    collapsedChars[collapsableChars[index]] = collapsableChars[index]
+                }
+                val onExpandLine = { i: Int ->
+                    val index = collapsableLines.indexOfFirst { it.start == i }
+                    collapsedLines -= collapsableLines[index]
+                    collapsedChars -= collapsableChars[index]
+                }
+
                 if (isReadOnly) {
+                    val bigTextViewState = remember { BigTextViewState() }
+                    var layoutResult by remember { mutableStateOf<BigTextLayoutResult?>(null) }
+
+                    BigLineNumbersView(
+                        scrollState = scrollState,
+                        bigTextViewState = bigTextViewState,
+                        textLayout = layoutResult,
+                        collapsableLines = collapsableLines,
+                        collapsedLines = collapsedLines.values.toList(),
+                        onCollapseLine = onCollapseLine,
+                        onExpandLine = onExpandLine,
+                        modifier = Modifier.fillMaxHeight(),
+                    )
+
                     BigMonospaceText(
                         text = textValue.text,
+                        padding = PaddingValues(4.dp),
                         visualTransformation = visualTransformationToUse,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
                         scrollState = scrollState,
+                        viewState = bigTextViewState,
+                        onTextLayoutResult = { layoutResult = it },
                         modifier = Modifier.fillMaxSize(),
                     )
 //                    return@Row // compose bug: return here would crash
                 } else {
+                    LineNumbersView(
+                        scrollState = scrollState,
+                        textLayoutResult = textLayoutResult,
+                        lineTops = lineTops,
+                        collapsableLines = collapsableLines,
+                        collapsedLines = collapsedLines.values.toList(),
+                        onCollapseLine = onCollapseLine,
+                        onExpandLine = onExpandLine,
+                        modifier = Modifier.fillMaxHeight(),
+                    )
 
                     AppTextField(
                         value = textValue,
@@ -637,7 +653,6 @@ fun LineNumbersView(
         0 to -1
     }
     CoreLineNumbersView(
-        modifier = modifier.onGloballyPositioned { size = it.size },
         firstLine = firstLine,
         lastLine = minOf(lastLine, (lineTops?.size ?: 0) - 1),
         totalLines = lineTops?.size ?: 1,
@@ -646,7 +661,48 @@ fun LineNumbersView(
         textStyle = textStyle,
         collapsedLinesState = collapsedLinesState,
         onCollapseLine = onCollapseLine,
-        onExpandLine = onExpandLine
+        onExpandLine = onExpandLine,
+        modifier = modifier.onGloballyPositioned { size = it.size }
+    )
+}
+
+@OptIn(TemporaryApi::class)
+@Composable
+fun BigLineNumbersView(
+    modifier: Modifier = Modifier,
+    bigTextViewState: BigTextViewState,
+    textLayout: BigTextLayoutResult?,
+    scrollState: ScrollState,
+    collapsableLines: List<IntRange>,
+    collapsedLines: List<IntRange>,
+    onCollapseLine: (Int) -> Unit,
+    onExpandLine: (Int) -> Unit,
+) = with(LocalDensity.current) {
+    val colours = LocalColor.current
+    val fonts = LocalFont.current
+
+    val textStyle = LocalTextStyle.current.copy(
+        fontSize = fonts.codeEditorLineNumberFontSize,
+        fontFamily = FontFamily.Monospace,
+        color = colours.unimportant,
+    )
+    val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
+
+    val viewportTop = scrollState.value
+    val firstLine = textLayout?.findLineNumberByRowNumber(bigTextViewState.firstVisibleRow) ?: 0
+    val lastLine = (textLayout?.findLineNumberByRowNumber(bigTextViewState.lastVisibleRow) ?: -100) + 1
+    log.v { "lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${textLayout?.totalLinesBeforeTransformation}" }
+    CoreLineNumbersView(
+        firstLine = firstLine,
+        lastLine = minOf(lastLine, textLayout?.totalLinesBeforeTransformation ?: 1),
+        totalLines = textLayout?.totalLinesBeforeTransformation ?: 1,
+        lineHeight = (textLayout?.rowHeight ?: 0f).toDp(),
+        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
+        textStyle = textStyle,
+        collapsedLinesState = collapsedLinesState,
+        onCollapseLine = onCollapseLine,
+        onExpandLine = onExpandLine,
+        modifier = modifier
     )
 }
 
