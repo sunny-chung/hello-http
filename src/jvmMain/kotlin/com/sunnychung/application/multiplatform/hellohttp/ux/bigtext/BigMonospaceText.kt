@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.onClick
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
@@ -56,8 +55,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
-import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
@@ -70,8 +67,6 @@ import kotlin.math.roundToInt
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.isAccessible
-
-private val LINE_BREAK_REGEX = "\n".toRegex()
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -91,7 +86,9 @@ fun BigMonospaceText(
     val textSelectionColors = LocalTextSelectionColors.current
     val fontFamilyResolver = LocalFontFamilyResolver.current
     val clipboardManager = LocalClipboardManager.current
+
     val focusRequester = remember { FocusRequester() }
+    val textLayouter = remember { MonospaceTextLayouter() }
 
     var width by remember { mutableIntStateOf(0) }
     var height by remember { mutableIntStateOf(0) }
@@ -128,69 +125,12 @@ fun BigMonospaceText(
             log.v { "transformed text = `$it`" }
         }
     }
-    // a line may span multiple rows
     val layoutResult = rememberLast(transformedText.text.length, transformedText.hashCode(), numOfCharsPerLine) {
-        if (numOfCharsPerLine < 1) {
-            return@rememberLast BigTextLayoutResult(
-                lineRowSpans = listOf(1),
-                lineFirstRowIndices = listOf(0),
-                rowStartCharIndices = listOf(0),
-                rowHeight = lineHeight,
-                totalLinesBeforeTransformation = 1,
-                totalLines = 1,
-                totalRows = 1,
-            )
-        }
-        val originalLineStartIndices = (
-            sequenceOf(0) +
-                LINE_BREAK_REGEX.findAll(text).sortedBy { it.range.last }.map { it.range.last + 1 }
-        ).toList()
-        val transformedLineStartIndices = (
-            sequenceOf(0) +
-                LINE_BREAK_REGEX.findAll(transformedText.text).sortedBy { it.range.last }.map { it.range.last + 1 }
-        ).toList()
-        val lineRowSpans = MutableList(originalLineStartIndices.size) { 1 }
-        val lineRowIndices = MutableList(originalLineStartIndices.size + 1) { 0 }
-        val transformedRowStartCharIndices = transformedLineStartIndices.flatMapIndexed { index, it ->
-            if (index + 1 <= transformedLineStartIndices.lastIndex) {
-                val numCharsInThisLine = transformedLineStartIndices[index + 1] - it - (if (transformedText.text[transformedLineStartIndices[index + 1] - 1] == '\n') 1 else 0)
-                val numOfRows = numCharsInThisLine divRoundUp numOfCharsPerLine
-                (0 until numOfRows).map { j ->
-                    (it + j * numOfCharsPerLine).also { k ->
-                        log.v { "calc index $index -> $it ($numCharsInThisLine, $numOfCharsPerLine) $k" }
-                    }
-                }
-            } else {
-                listOf(it)
-            }
-        }.also {
-            log.v { "rowStartCharIndices = $it" }
-        }
-        originalLineStartIndices.forEachIndexed { index, it ->
-            val transformedStartCharIndex = transformedText.offsetMapping.originalToTransformed(originalLineStartIndices[index])
-            val transformedEndCharIndex = if (index + 1 <= originalLineStartIndices.lastIndex) {
-                transformedText.offsetMapping.originalToTransformed(originalLineStartIndices[index + 1])
-            } else {
-                transformedText.text.lastIndex + 1
-            }
-            val displayRowStart = transformedRowStartCharIndices.binarySearchForMinIndexOfValueAtLeast(transformedStartCharIndex)
-            val displayRowEnd = transformedRowStartCharIndices.binarySearchForMinIndexOfValueAtLeast(transformedEndCharIndex)
-            val numOfRows = displayRowEnd - displayRowStart
-            lineRowSpans[index] = numOfRows
-            lineRowIndices[index + 1] = lineRowIndices[index] + numOfRows
-            log.v { "lineRowSpans[$index] = ${lineRowSpans[index]} ($transformedStartCharIndex ..< $transformedEndCharIndex) (L $displayRowStart ..< $displayRowEnd)" }
-        }
-        log.v { "totalLinesBeforeTransformation = ${originalLineStartIndices.size}" }
-        log.v { "totalLines = ${transformedLineStartIndices.size}" }
-        log.v { "totalRows = ${transformedRowStartCharIndices.size}" }
-        BigTextLayoutResult(
-            lineRowSpans = lineRowSpans.toList(),
-            lineFirstRowIndices = lineRowIndices.toList(),
-            rowStartCharIndices = transformedRowStartCharIndices,
-            rowHeight = lineHeight,
-            totalLines = transformedLineStartIndices.size,
-            totalRows = transformedRowStartCharIndices.size,
-            totalLinesBeforeTransformation = originalLineStartIndices.size,
+        textLayouter.layout(
+            text = text,
+            transformedText = transformedText,
+            lineHeight = lineHeight,
+            numOfCharsPerLine = numOfCharsPerLine,
         ).also {
             if (onTextLayoutResult != null) {
                 onTextLayoutResult(it)
@@ -380,26 +320,6 @@ fun BigMonospaceText(
     }
 }
 
-@OptIn(TemporaryApi::class)
-class BigTextLayoutResult(
-    /** Number of transformed row spans of non-transformed lines */
-    @property:TemporaryApi val lineRowSpans: List<Int>, // O(L)
-    /** First transformed row index of non-transformed lines */
-    @property:TemporaryApi val lineFirstRowIndices: List<Int>, // O(L)
-    /** Transformed start char index of transformed rows */
-    internal val rowStartCharIndices: List<Int>, // O(R)
-    val rowHeight: Float,
-    val totalLines: Int,
-    val totalRows: Int,
-    /** Total number of lines before transformation */ val totalLinesBeforeTransformation: Int,
-) {
-    fun findLineNumberByRowNumber(rowNumber: Int): Int {
-        return lineFirstRowIndices.binarySearchForMinIndexOfValueAtLeast(rowNumber)
-    }
-
-    fun getLineTop(originalLineNumber: Int): Float = lineFirstRowIndices[originalLineNumber] * rowHeight
-}
-
 class BigTextViewState {
     var firstVisibleRow: Int by mutableStateOf(0)
         internal set
@@ -416,15 +336,5 @@ class BigTextViewState {
     internal fun updateSelectionByTransformedSelection(transformedText: TransformedText) {
         selection = transformedText.offsetMapping.transformedToOriginal(transformedSelection.first) ..
                 transformedText.offsetMapping.transformedToOriginal(transformedSelection.last)
-    }
-}
-
-private infix fun Int.divRoundUp(other: Int): Int {
-    val div = this / other
-    val remainder = this % other
-    return if (remainder == 0) {
-        div
-    } else {
-        div + 1
     }
 }
