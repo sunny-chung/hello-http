@@ -450,6 +450,7 @@ fun CodeEditorView(
                         padding = PaddingValues(4.dp),
                         visualTransformation = visualTransformationToUse,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
+                        isSelectable = true,
                         scrollState = scrollState,
                         viewState = bigTextViewState,
                         onTextLayoutResult = { layoutResult = it },
