@@ -7,6 +7,8 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
@@ -62,6 +65,9 @@ fun BigMonospaceText(
     val fontFamilyResolver = LocalFontFamilyResolver.current
     var width by remember { mutableIntStateOf(0) }
     var height by remember { mutableIntStateOf(0) }
+    val contentWidth = width - with(density) {
+        (padding.calculateStartPadding(LayoutDirection.Ltr) + padding.calculateEndPadding(LayoutDirection.Ltr)).toPx()
+    }
     var lineHeight by remember { mutableStateOf(0f) }
     val textStyle = LocalTextStyle.current.copy(
         fontSize = fontSize,
@@ -73,7 +79,7 @@ fun BigMonospaceText(
             Paragraph(
                 text = "0".repeat(1000),
                 style = textStyle,
-                constraints = Constraints(maxWidth = width),
+                constraints = Constraints(maxWidth = contentWidth.toInt()),
                 density = density,
                 fontFamilyResolver = fontFamilyResolver,
             ).let {
