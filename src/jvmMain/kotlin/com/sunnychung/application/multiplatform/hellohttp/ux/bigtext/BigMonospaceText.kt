@@ -41,6 +41,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
@@ -48,6 +50,7 @@ import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
@@ -230,6 +233,7 @@ fun BigMonospaceText(
     var draggedPoint by remember { mutableStateOf<Offset>(Offset.Zero) }
     var selectionStart by remember { mutableStateOf<Int>(-1) }
     var selectionEnd by remember { mutableStateOf<Int>(-1) }
+    var isHoldingShiftKey by remember { mutableStateOf(false) }
 
     val viewportTop = scrollState.value.toFloat()
 
@@ -269,8 +273,7 @@ fun BigMonospaceText(
                     val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y)
                     selectionStart = selectedCharIndex
                     viewState.transformedSelection = selectedCharIndex .. selectedCharIndex
-                    viewState.selection = transformedText.offsetMapping.transformedToOriginal(viewState.transformedSelection.first) ..
-                            transformedText.offsetMapping.transformedToOriginal(viewState.transformedSelection.last)
+                    viewState.updateSelectionByTransformedSelection(transformedText)
                     focusRequester.requestFocus()
                     focusRequester.captureFocus()
                 },
@@ -280,13 +283,30 @@ fun BigMonospaceText(
                     val selectedCharIndex = getTransformedCharIndex(x = draggedPoint.x, y = draggedPoint.y)
                     selectionEnd = selectedCharIndex
                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
-                    viewState.selection = transformedText.offsetMapping.transformedToOriginal(viewState.transformedSelection.first) ..
-                        transformedText.offsetMapping.transformedToOriginal(viewState.transformedSelection.last)
+                    viewState.updateSelectionByTransformedSelection(transformedText)
                 }
             )
-            .onClick {
-                viewState.transformedSelection = IntRange.EMPTY
-                focusRequester.freeFocus()
+            .pointerInput(layoutResult, scrollState.value, lineHeight, charWidth, transformedText.text.length, transformedText.text.hashCode()) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        when (event.type) {
+                            PointerEventType.Press -> {
+                                val position = event.changes.first().position
+                                log.v { "press ${position.x} ${position.y}" }
+                                if (isHoldingShiftKey) {
+                                    selectionEnd = getTransformedCharIndex(x = position.x, y = position.y)
+                                    log.v { "selectionEnd => $selectionEnd" }
+                                    viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
+                                    viewState.updateSelectionByTransformedSelection(transformedText)
+                                } else {
+                                    viewState.transformedSelection = IntRange.EMPTY
+                                    focusRequester.freeFocus()
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .onFocusChanged { log.v { "BigMonospaceText onFocusChanged ${it.isFocused}" } }
             .onPreviewKeyEvent {
@@ -300,6 +320,14 @@ fun BigMonospaceText(
                         )
                         clipboardManager.setText(AnnotatedString(textToCopy))
                         true
+                    }
+                    it.type == KeyEventType.KeyDown && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
+                        isHoldingShiftKey = true
+                        false
+                    }
+                    it.type == KeyEventType.KeyUp && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
+                        isHoldingShiftKey = false
+                        false
                     }
                     else -> false
                 }
@@ -384,6 +412,11 @@ class BigTextViewState {
     var selection: IntRange by mutableStateOf(0 .. -1)
 
     fun hasSelection(): Boolean = !transformedSelection.isEmpty()
+
+    internal fun updateSelectionByTransformedSelection(transformedText: TransformedText) {
+        selection = transformedText.offsetMapping.transformedToOriginal(transformedSelection.first) ..
+                transformedText.offsetMapping.transformedToOriginal(transformedSelection.last)
+    }
 }
 
 private infix fun Int.divRoundUp(other: Int): Int {
