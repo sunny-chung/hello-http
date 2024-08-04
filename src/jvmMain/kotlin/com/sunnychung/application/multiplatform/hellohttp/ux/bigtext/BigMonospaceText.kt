@@ -57,6 +57,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalTextInputService
+import androidx.compose.ui.semantics.editableText
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.font.FontFamily
@@ -321,6 +324,13 @@ private fun CoreBigMonospaceText(
             .padding(padding)
             .scrollable(scrollableState, orientation = Orientation.Vertical)
             .focusRequester(focusRequester)
+            .semantics {
+                if (isEditable) {
+                    editableText = transformedText.text
+                } else {
+                    this.text = transformedText.text
+                }
+            }
             .onDrag(
                 enabled = isSelectable,
                 onDragStart = {
