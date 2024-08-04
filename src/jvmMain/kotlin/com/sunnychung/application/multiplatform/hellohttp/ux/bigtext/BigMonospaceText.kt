@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
@@ -433,15 +434,51 @@ private fun CoreBigMonospaceText(
                             false
                         }
                     }
-                    isEditable && it.type == KeyEventType.KeyDown && it.key == Key.Enter && !it.isShiftPressed && !it.isCtrlPressed && !it.isAltPressed && !it.isMetaPressed -> {
-                        onType("\n")
-                        true
-                    }
-                    isEditable && it.type == KeyEventType.KeyDown && it.key == Key.Backspace -> {
-                        onDelete(TextFBDirection.Backward)
-                    }
-                    isEditable && it.type == KeyEventType.KeyDown && it.key == Key.Delete -> {
-                        onDelete(TextFBDirection.Forward)
+                    isEditable && it.type == KeyEventType.KeyDown -> when {
+                        it.key == Key.Enter && !it.isShiftPressed && !it.isCtrlPressed && !it.isAltPressed && !it.isMetaPressed -> {
+                            onType("\n")
+                            true
+                        }
+                        it.key == Key.Backspace -> {
+                            onDelete(TextFBDirection.Backward)
+                        }
+                        it.key == Key.Delete -> {
+                            onDelete(TextFBDirection.Forward)
+                        }
+                        it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
+                            val delta = if (it.key == Key.DirectionRight) 1 else -1
+                            if (viewState.transformedCursorIndex + delta in 0 .. transformedText.text.length) {
+                                viewState.transformedCursorIndex += delta
+                                viewState.updateCursorIndexByTransformed(transformedText)
+                            }
+                            true
+                        }
+                        it.key in listOf(Key.DirectionUp, Key.DirectionDown) -> {
+                            val row = layoutResult.rowStartCharIndices.binarySearchForMinIndexOfValueAtLeast(viewState.transformedCursorIndex)
+                            val newRow = row + if (it.key == Key.DirectionDown) 1 else -1
+                            viewState.transformedCursorIndex = Unit.let {
+                                if (newRow < 0) {
+                                    0
+                                } else if (newRow > layoutResult.rowStartCharIndices.lastIndex) {
+                                    transformedText.text.length
+                                } else {
+                                    val col = viewState.transformedCursorIndex - layoutResult.rowStartCharIndices[row]
+                                    val newRowLength = if (newRow + 1 <= layoutResult.rowStartCharIndices.lastIndex) {
+                                        layoutResult.rowStartCharIndices[newRow + 1] - 1
+                                    } else {
+                                        transformedText.text.length
+                                    } - layoutResult.rowStartCharIndices[newRow]
+                                    if (col <= newRowLength) {
+                                        layoutResult.rowStartCharIndices[newRow] + col
+                                    } else {
+                                        layoutResult.rowStartCharIndices[newRow] + newRowLength
+                                    }
+                                }
+                            }
+                            viewState.updateCursorIndexByTransformed(transformedText)
+                            true
+                        }
+                        else -> false
                     }
                     else -> false
                 }
