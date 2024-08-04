@@ -550,7 +550,7 @@ fun CodeEditorView(
                         scrollState = scrollState,
                         viewState = bigTextViewState,
                         onTextLayout = { layoutResult = it },
-                        modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
+                        modifier = Modifier.fillMaxSize()
                             .focusRequester(textFieldFocusRequester)
                             .run {
                                 if (!isReadOnly) {
