@@ -340,6 +340,8 @@ private fun CoreBigMonospaceText(
                     selectionEnd = selectedCharIndex
                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
                     viewState.updateSelectionByTransformedSelection(transformedText)
+                    viewState.transformedCursorIndex = selectionEnd + if (selectionEnd == viewState.transformedSelection.last) 1 else 0
+                    viewState.updateCursorIndexByTransformed(transformedText)
                 }
             )
             .pointerInput(isEditable, layoutResult, scrollState.value, lineHeight, charWidth, transformedText.text.length, transformedText.text.hashCode()) {
