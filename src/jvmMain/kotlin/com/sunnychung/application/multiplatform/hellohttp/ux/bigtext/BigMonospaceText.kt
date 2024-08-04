@@ -68,7 +68,6 @@ import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.isAccessible
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BigMonospaceText(
     modifier: Modifier = Modifier,
@@ -77,6 +76,36 @@ fun BigMonospaceText(
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
+    visualTransformation: VisualTransformation,
+    scrollState: ScrollState = rememberScrollState(),
+    viewState: BigTextViewState = remember { BigTextViewState() },
+    onTextLayoutResult: ((BigTextLayoutResult) -> Unit)? = null,
+) = CoreBigMonospaceText(
+    modifier = modifier,
+    text = InefficientBigText(text),
+    padding = padding,
+    fontSize = fontSize,
+    color = color,
+    isSelectable = isSelectable,
+    isEditable = false,
+    onUpdateText = {},
+    visualTransformation = visualTransformation,
+    scrollState = scrollState,
+    viewState = viewState,
+    onTextLayoutResult = onTextLayoutResult,
+)
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CoreBigMonospaceText(
+    modifier: Modifier = Modifier,
+    text: BigText,
+    padding: PaddingValues = PaddingValues(4.dp),
+    fontSize: TextUnit = LocalFont.current.bodyFontSize,
+    color: Color = LocalColor.current.text,
+    isSelectable: Boolean = false,
+    isEditable: Boolean = false,
+    onUpdateText: (BigText) -> Unit,
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
@@ -121,13 +150,13 @@ fun BigMonospaceText(
     }
     val visualTransformationToUse = visualTransformation
     val transformedText = rememberLast(text.length, text.hashCode(), visualTransformationToUse) {
-        visualTransformationToUse.filter(AnnotatedString(text)).also {
+        visualTransformationToUse.filter(AnnotatedString(text.fullString())).also {
             log.v { "transformed text = `$it`" }
         }
     }
     val layoutResult = rememberLast(transformedText.text.length, transformedText.hashCode(), numOfCharsPerLine) {
         textLayouter.layout(
-            text = text,
+            text = text.fullString(),
             transformedText = transformedText,
             lineHeight = lineHeight,
             numOfCharsPerLine = numOfCharsPerLine,
