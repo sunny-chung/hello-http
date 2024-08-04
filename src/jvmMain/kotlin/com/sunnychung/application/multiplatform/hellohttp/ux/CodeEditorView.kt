@@ -62,8 +62,11 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.InefficientBigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -430,21 +433,21 @@ fun CodeEditorView(
                     collapsedChars -= collapsableChars[index]
                 }
 
+                val bigTextViewState = remember { BigTextViewState() }
+                var layoutResult by remember { mutableStateOf<BigTextLayoutResult?>(null) }
+
+                BigLineNumbersView(
+                    scrollState = scrollState,
+                    bigTextViewState = bigTextViewState,
+                    textLayout = layoutResult,
+                    collapsableLines = collapsableLines,
+                    collapsedLines = collapsedLines.values.toList(),
+                    onCollapseLine = onCollapseLine,
+                    onExpandLine = onExpandLine,
+                    modifier = Modifier.fillMaxHeight(),
+                )
+
                 if (isReadOnly) {
-                    val bigTextViewState = remember { BigTextViewState() }
-                    var layoutResult by remember { mutableStateOf<BigTextLayoutResult?>(null) }
-
-                    BigLineNumbersView(
-                        scrollState = scrollState,
-                        bigTextViewState = bigTextViewState,
-                        textLayout = layoutResult,
-                        collapsableLines = collapsableLines,
-                        collapsedLines = collapsedLines.values.toList(),
-                        onCollapseLine = onCollapseLine,
-                        onExpandLine = onExpandLine,
-                        modifier = Modifier.fillMaxHeight(),
-                    )
-
                     BigMonospaceText(
                         text = textValue.text,
                         padding = PaddingValues(4.dp),
@@ -458,7 +461,7 @@ fun CodeEditorView(
                     )
 //                    return@Row // compose bug: return here would crash
                 } else {
-                    LineNumbersView(
+                    /*LineNumbersView(
                         scrollState = scrollState,
                         textLayoutResult = textLayoutResult,
                         lineTops = lineTops,
@@ -496,6 +499,69 @@ fun CodeEditorView(
                                                         && !it.isAltPressed
                                                         && !it.isCtrlPressed
                                                         && !it.isMetaPressed
+                                                    ) {
+                                                        onPressEnterAddIndent()
+                                                        true
+                                                    } else {
+                                                        false
+                                                    }
+                                                }
+
+                                                Key.Tab -> {
+                                                    onPressTab(it.isShiftPressed)
+                                                    true
+                                                }
+
+                                                else -> false
+                                            }
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                } else {
+                                    this
+                                }
+                            }
+                            .run {
+                                if (testTag != null) {
+                                    testTag(testTag)
+                                } else {
+                                    this
+                                }
+                            }
+                    )*/
+
+                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(InefficientBigText(text)) } // FIXME performance
+
+                    BigMonospaceTextField(
+                        text = bigTextValue,
+                        onTextChange = {
+                            bigTextValue = it
+                            log.d { "CEV sel ${textValue.selection.start}" }
+                            onTextChange?.invoke(it.fullString())
+                        },
+                        visualTransformation = visualTransformationToUse,
+                        fontSize = LocalFont.current.codeEditorBodyFontSize,
+//                        textStyle = LocalTextStyle.current.copy(
+//                            fontFamily = FontFamily.Monospace,
+//                            fontSize = LocalFont.current.codeEditorBodyFontSize,
+//                        ),
+//                        colors = colors,
+                        scrollState = scrollState,
+                        viewState = bigTextViewState,
+                        onTextLayout = { layoutResult = it },
+                        modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
+                            .focusRequester(textFieldFocusRequester)
+                            .run {
+                                if (!isReadOnly) {
+                                    this.onPreviewKeyEvent {
+                                        if (it.type == KeyEventType.KeyDown) {
+                                            when (it.key) {
+                                                Key.Enter -> {
+                                                    if (!it.isShiftPressed
+                                                        && !it.isAltPressed
+                                                        && !it.isCtrlPressed
+                                                        && !it.isMetaPressed && false // FIXME
                                                     ) {
                                                         onPressEnterAddIndent()
                                                         true

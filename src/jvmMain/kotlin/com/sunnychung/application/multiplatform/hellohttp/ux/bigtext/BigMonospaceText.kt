@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.isTypedEvent
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
@@ -34,21 +35,35 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalTextInputService
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.CommitTextCommand
+import androidx.compose.ui.text.input.ImeOptions
+import androidx.compose.ui.text.input.SetComposingTextCommand
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Constraints
@@ -58,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
+import com.sunnychung.application.multiplatform.hellohttp.extension.toTextInput
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -88,7 +104,34 @@ fun BigMonospaceText(
     color = color,
     isSelectable = isSelectable,
     isEditable = false,
-    onUpdateText = {},
+    onTextChange = {},
+    visualTransformation = visualTransformation,
+    scrollState = scrollState,
+    viewState = viewState,
+    onTextLayout = onTextLayout,
+)
+
+@Composable
+fun BigMonospaceTextField(
+    modifier: Modifier = Modifier,
+    text: BigText,
+    padding: PaddingValues = PaddingValues(4.dp),
+    fontSize: TextUnit = LocalFont.current.bodyFontSize,
+    color: Color = LocalColor.current.text,
+    onTextChange: (BigText) -> Unit,
+    visualTransformation: VisualTransformation,
+    scrollState: ScrollState = rememberScrollState(),
+    viewState: BigTextViewState = remember { BigTextViewState() },
+    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
+) = CoreBigMonospaceText(
+    modifier = modifier,
+    text = text,
+    padding = padding,
+    fontSize = fontSize,
+    color = color,
+    isSelectable = true,
+    isEditable = true,
+    onTextChange = onTextChange,
     visualTransformation = visualTransformation,
     scrollState = scrollState,
     viewState = viewState,
@@ -105,7 +148,7 @@ private fun CoreBigMonospaceText(
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
     isEditable: Boolean = false,
-    onUpdateText: (BigText) -> Unit,
+    onTextChange: (BigText) -> Unit,
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
@@ -115,12 +158,15 @@ private fun CoreBigMonospaceText(
     val textSelectionColors = LocalTextSelectionColors.current
     val fontFamilyResolver = LocalFontFamilyResolver.current
     val clipboardManager = LocalClipboardManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val textInputService = LocalTextInputService.current
 
     val focusRequester = remember { FocusRequester() }
     val textLayouter = remember { MonospaceTextLayouter() }
 
     var width by remember { mutableIntStateOf(0) }
     var height by remember { mutableIntStateOf(0) }
+    var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val contentWidth = width - with(density) {
         (padding.calculateStartPadding(LayoutDirection.Ltr) + padding.calculateEndPadding(LayoutDirection.Ltr)).toPx()
     }
@@ -203,11 +249,11 @@ private fun CoreBigMonospaceText(
 
     val viewportTop = scrollState.value.toFloat()
 
-    fun getTransformedCharIndex(x: Float, y: Float): Int {
+    fun getTransformedCharIndex(x: Float, y: Float, mode: ResolveCharPositionMode): Int {
         val row = ((viewportTop + y) / lineHeight).toInt()
         val col = (x / charWidth).toInt()
         if (row > layoutResult.rowStartCharIndices.lastIndex) {
-            return transformedText.text.length - 1
+            return maxOf(0, transformedText.text.length - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
         } else if (row < 0) {
             return 0
         }
@@ -216,16 +262,52 @@ private fun CoreBigMonospaceText(
             if (row + 1 <= layoutResult.rowStartCharIndices.lastIndex) {
                 layoutResult.rowStartCharIndices[row + 1] - 1
             } else {
-                transformedText.text.length - 1
+                maxOf(0, transformedText.text.length - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
             }
         )
     }
+
+    fun onType(textInput: String) {
+        log.v { "key in '$textInput'" }
+        text.insertAt(viewState.cursorIndex, textInput)
+        viewState.cursorIndex += textInput.length
+        viewState.updateTransformedCursorIndexByOriginal(transformedText)
+        log.v { "set cursor pos 2 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
+        onTextChange(text)
+    }
+
+    fun onDelete(direction: TextFBDirection): Boolean {
+        val cursor = viewState.cursorIndex
+        when (direction) {
+            TextFBDirection.Forward -> {
+                if (cursor + 1 <= text.length) {
+                    text.delete(cursor, cursor + 1)
+                    onTextChange(text)
+                    return true
+                }
+            }
+            TextFBDirection.Backward -> {
+                if (cursor - 1 >= 0) {
+                    text.delete(cursor - 1, cursor)
+                    --viewState.cursorIndex
+                    viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                    log.v { "set cursor pos 3 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
+                    onTextChange(text)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    val tv = remember { TextFieldValue() } // this value is not used
 
     Box(
         modifier = modifier
             .onGloballyPositioned {
                 width = it.size.width
                 height = it.size.height
+                layoutCoordinates = it
             }
             .clipToBounds()
             .padding(padding)
@@ -236,23 +318,23 @@ private fun CoreBigMonospaceText(
                 onDragStart = {
                     log.v { "onDragStart ${it.x} ${it.y}" }
                     draggedPoint = it
-                    val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y)
+                    val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y, mode = ResolveCharPositionMode.Selection)
                     selectionStart = selectedCharIndex
                     viewState.transformedSelection = selectedCharIndex .. selectedCharIndex
                     viewState.updateSelectionByTransformedSelection(transformedText)
                     focusRequester.requestFocus()
-                    focusRequester.captureFocus()
+//                    focusRequester.captureFocus()
                 },
                 onDrag = {
                     log.v { "onDrag ${it.x} ${it.y}" }
                     draggedPoint += it
-                    val selectedCharIndex = getTransformedCharIndex(x = draggedPoint.x, y = draggedPoint.y)
+                    val selectedCharIndex = getTransformedCharIndex(x = draggedPoint.x, y = draggedPoint.y, mode = ResolveCharPositionMode.Selection)
                     selectionEnd = selectedCharIndex
                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
                     viewState.updateSelectionByTransformedSelection(transformedText)
                 }
             )
-            .pointerInput(layoutResult, scrollState.value, lineHeight, charWidth, transformedText.text.length, transformedText.text.hashCode()) {
+            .pointerInput(isEditable, layoutResult, scrollState.value, lineHeight, charWidth, transformedText.text.length, transformedText.text.hashCode()) {
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
@@ -261,20 +343,66 @@ private fun CoreBigMonospaceText(
                                 val position = event.changes.first().position
                                 log.v { "press ${position.x} ${position.y}" }
                                 if (isHoldingShiftKey) {
-                                    selectionEnd = getTransformedCharIndex(x = position.x, y = position.y)
+                                    selectionEnd = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Selection)
                                     log.v { "selectionEnd => $selectionEnd" }
                                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
                                     viewState.updateSelectionByTransformedSelection(transformedText)
                                 } else {
                                     viewState.transformedSelection = IntRange.EMPTY
-                                    focusRequester.freeFocus()
+//                                    focusRequester.freeFocus()
+
+                                    if (isEditable) {
+                                        viewState.transformedCursorIndex = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Cursor)
+                                        viewState.updateCursorIndexByTransformed(transformedText)
+                                        log.v { "set cursor pos 1 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
+                                        focusRequester.requestFocus()
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-            .onFocusChanged { log.v { "BigMonospaceText onFocusChanged ${it.isFocused}" } }
+            .onFocusChanged {
+                log.v { "BigMonospaceText onFocusChanged ${it.isFocused}" }
+                if (isEditable) {
+                    if (it.isFocused) {
+                        val textInputSession = textInputService?.startInput(
+                            tv,
+                            ImeOptions.Default,
+                            { ed ->
+                                log.v { "onEditCommand [$ed] ${ed.joinToString { it::class.simpleName!! }} $tv" }
+                                ed.forEach {
+                                    when (it) {
+                                        is CommitTextCommand -> {
+                                            if (it.text.isNotEmpty()) {
+                                                onType(it.text)
+                                            }
+                                        }
+                                        is SetComposingTextCommand -> { // temporary text, e.g. SetComposingTextCommand(text='竹戈', newCursorPosition=1)
+                                            // TODO
+                                        }
+                                    }
+                                }
+                            },
+                            { a -> log.v { "onImeActionPerformed $a" } },
+                        )
+                        textInputSession?.notifyFocusedRect(
+                            Rect(
+                                layoutCoordinates!!.positionInRoot(),
+                                Size(
+                                    layoutCoordinates!!.size.width.toFloat(),
+                                    layoutCoordinates!!.size.height.toFloat()
+                                )
+                            )
+                        )
+                        log.v { "started text input session" }
+//                        keyboardController?.show()
+                    } else {
+//                        keyboardController?.hide()
+                    }
+                }
+            }
             .onPreviewKeyEvent {
                 log.v { "BigMonospaceText onPreviewKeyEvent" }
                 when {
@@ -295,10 +423,32 @@ private fun CoreBigMonospaceText(
                         isHoldingShiftKey = false
                         false
                     }
+                    isEditable && it.isTypedEvent -> {
+                        log.v { "key type '${it.key}'" }
+                        val textInput = it.toTextInput()
+                        if (textInput != null) {
+                            onType(textInput)
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    isEditable && it.type == KeyEventType.KeyDown && it.key == Key.Enter && !it.isShiftPressed && !it.isCtrlPressed && !it.isAltPressed && !it.isMetaPressed -> {
+                        onType("\n")
+                        true
+                    }
+                    isEditable && it.type == KeyEventType.KeyDown && it.key == Key.Backspace -> {
+                        onDelete(TextFBDirection.Backward)
+                    }
+                    isEditable && it.type == KeyEventType.KeyDown && it.key == Key.Delete -> {
+                        onDelete(TextFBDirection.Forward)
+                    }
                     else -> false
                 }
             }
+//            .then(BigTextInputModifierElement(1))
             .focusable(isSelectable) // `focusable` should be after callback modifiers that use focus
+
     ) {
         val viewportBottom = viewportTop + height
         if (lineHeight > 0) {
@@ -316,10 +466,16 @@ private fun CoreBigMonospaceText(
                     } else {
                         rowStartCharIndices[i + 1]
                     }
-                    log.v { "line #$i: [$startIndex, $endIndex)" }
+                    val nonVisualEndIndex = maxOf(endIndex, startIndex + 1)
+                    val cursorDisplayRangeEndIndex = if (i + 1 > rowStartCharIndices.lastIndex) {
+                        transformedText.text.length
+                    } else {
+                        maxOf(rowStartCharIndices[i + 1] - 1, startIndex)
+                    }
+//                    log.v { "line #$i: [$startIndex, $endIndex)" }
                     val yOffset = (- viewportTop + (i/* - firstRowIndex*/) * lineHeight).toDp()
                     if (viewState.hasSelection()) {
-                        val intersection = viewState.transformedSelection intersect (startIndex .. endIndex - 1)
+                        val intersection = viewState.transformedSelection intersect (startIndex .. nonVisualEndIndex - 1)
                         if (!intersection.isEmpty()) {
                             Box(
                                 Modifier
@@ -339,6 +495,15 @@ private fun CoreBigMonospaceText(
                         maxLines = 1,
                         modifier = Modifier.offset(y = yOffset)
                     )
+                    if (isEditable && viewState.transformedCursorIndex in startIndex .. cursorDisplayRangeEndIndex) {
+                        BigTextFieldCursor(
+                            lineHeight = lineHeight.toDp(),
+                            modifier = Modifier.offset(
+                                x = ((viewState.transformedCursorIndex - startIndex) * charWidth).toDp(),
+                                y = yOffset,
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -362,4 +527,23 @@ class BigTextViewState {
         selection = transformedText.offsetMapping.transformedToOriginal(transformedSelection.first) ..
                 transformedText.offsetMapping.transformedToOriginal(transformedSelection.last)
     }
+
+    internal var transformedCursorIndex by mutableStateOf(0)
+    var cursorIndex by mutableStateOf(0)
+
+    fun updateCursorIndexByTransformed(transformedText: TransformedText) {
+        cursorIndex = transformedText.offsetMapping.transformedToOriginal(transformedCursorIndex)
+    }
+
+    fun updateTransformedCursorIndexByOriginal(transformedText: TransformedText) {
+        transformedCursorIndex = transformedText.offsetMapping.originalToTransformed(cursorIndex)
+    }
+}
+
+private enum class ResolveCharPositionMode {
+    Selection, Cursor
+}
+
+private enum class TextFBDirection {
+    Forward, Backward
 }

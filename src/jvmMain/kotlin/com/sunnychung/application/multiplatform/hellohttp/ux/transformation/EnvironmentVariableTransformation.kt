@@ -62,6 +62,22 @@ class EnvironmentVariableTransformation(val themeColors: AppColor, val knownVari
             offsetMapping = offsetMapping
         )
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is EnvironmentVariableTransformation) return false
+
+        if (themeColors !== other.themeColors) return false
+        if (knownVariables != other.knownVariables) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = themeColors.hashCode()
+        result = 31 * result + knownVariables.hashCode()
+        return result
+    }
 }
 
 private const val PREFIX_LENGTH = 3
