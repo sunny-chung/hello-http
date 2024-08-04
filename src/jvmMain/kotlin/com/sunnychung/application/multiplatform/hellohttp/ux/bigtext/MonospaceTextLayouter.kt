@@ -32,7 +32,7 @@ class MonospaceTextLayouter {
         val transformedRowStartCharIndices = transformedLineStartIndices.flatMapIndexed { index, it ->
             if (index + 1 <= transformedLineStartIndices.lastIndex) {
                 val numCharsInThisLine = transformedLineStartIndices[index + 1] - it - (if (transformedText.text[transformedLineStartIndices[index + 1] - 1] == '\n') 1 else 0)
-                val numOfRows = numCharsInThisLine divRoundUp numOfCharsPerLine
+                val numOfRows = maxOf(1, numCharsInThisLine divRoundUp numOfCharsPerLine)
                 (0 until numOfRows).map { j ->
                     (it + j * numOfCharsPerLine).also { k ->
                         log.v { "calc index $index -> $it ($numCharsInThisLine, $numOfCharsPerLine) $k" }
