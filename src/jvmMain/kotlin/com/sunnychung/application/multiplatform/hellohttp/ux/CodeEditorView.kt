@@ -453,7 +453,7 @@ fun CodeEditorView(
                         isSelectable = true,
                         scrollState = scrollState,
                         viewState = bigTextViewState,
-                        onTextLayoutResult = { layoutResult = it },
+                        onTextLayout = { layoutResult = it },
                         modifier = Modifier.fillMaxSize(),
                     )
 //                    return@Row // compose bug: return here would crash

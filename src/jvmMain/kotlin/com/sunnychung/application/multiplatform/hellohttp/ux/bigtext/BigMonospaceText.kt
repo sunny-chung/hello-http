@@ -79,7 +79,7 @@ fun BigMonospaceText(
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
-    onTextLayoutResult: ((BigTextLayoutResult) -> Unit)? = null,
+    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
     text = InefficientBigText(text),
@@ -92,7 +92,7 @@ fun BigMonospaceText(
     visualTransformation = visualTransformation,
     scrollState = scrollState,
     viewState = viewState,
-    onTextLayoutResult = onTextLayoutResult,
+    onTextLayout = onTextLayout,
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -109,7 +109,7 @@ private fun CoreBigMonospaceText(
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
-    onTextLayoutResult: ((BigTextLayoutResult) -> Unit)? = null,
+    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     val textSelectionColors = LocalTextSelectionColors.current
@@ -161,8 +161,8 @@ private fun CoreBigMonospaceText(
             lineHeight = lineHeight,
             numOfCharsPerLine = numOfCharsPerLine,
         ).also {
-            if (onTextLayoutResult != null) {
-                onTextLayoutResult(it)
+            if (onTextLayout != null) {
+                onTextLayout(it)
             }
         }
     }
