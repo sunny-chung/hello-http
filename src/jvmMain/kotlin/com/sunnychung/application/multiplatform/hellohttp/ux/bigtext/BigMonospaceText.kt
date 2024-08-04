@@ -271,6 +271,12 @@ private fun CoreBigMonospaceText(
 
     fun onType(textInput: String) {
         log.v { "key in '$textInput'" }
+        if (viewState.hasSelection()) {
+            text.delete(viewState.selection.start, viewState.selection.endInclusive + 1)
+            viewState.cursorIndex = viewState.selection.start
+            viewState.selection = IntRange.EMPTY
+            viewState.transformedSelection = IntRange.EMPTY
+        }
         text.insertAt(viewState.cursorIndex, textInput)
         viewState.cursorIndex += textInput.length
         viewState.updateTransformedCursorIndexByOriginal(transformedText)
