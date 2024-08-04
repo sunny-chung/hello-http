@@ -247,6 +247,7 @@ private fun CoreBigMonospaceText(
     var selectionStart by remember { mutableStateOf<Int>(-1) }
     var selectionEnd by remember { mutableStateOf<Int>(-1) }
     var isHoldingShiftKey by remember { mutableStateOf(false) }
+    var isFocused by remember { mutableStateOf(false) }
 
     val viewportTop = scrollState.value.toFloat()
 
@@ -366,6 +367,7 @@ private fun CoreBigMonospaceText(
             }
             .onFocusChanged {
                 log.v { "BigMonospaceText onFocusChanged ${it.isFocused}" }
+                isFocused = it.isFocused
                 if (isEditable) {
                     if (it.isFocused) {
                         val textInputSession = textInputService?.startInput(
@@ -532,7 +534,7 @@ private fun CoreBigMonospaceText(
                         maxLines = 1,
                         modifier = Modifier.offset(y = yOffset)
                     )
-                    if (isEditable && viewState.transformedCursorIndex in startIndex .. cursorDisplayRangeEndIndex) {
+                    if (isEditable && isFocused && viewState.transformedCursorIndex in startIndex .. cursorDisplayRangeEndIndex) {
                         BigTextFieldCursor(
                             lineHeight = lineHeight.toDp(),
                             modifier = Modifier.offset(
