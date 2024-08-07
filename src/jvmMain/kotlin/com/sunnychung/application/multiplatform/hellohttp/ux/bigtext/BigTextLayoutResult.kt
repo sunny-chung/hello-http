@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
+import com.sunnychung.application.multiplatform.hellohttp.util.UnicodeCharMeasurer
 
 @OptIn(TemporaryApi::class)
 class BigTextLayoutResult(
@@ -15,10 +16,13 @@ class BigTextLayoutResult(
     val totalLines: Int,
     val totalRows: Int,
     /** Total number of lines before transformation */ val totalLinesBeforeTransformation: Int,
+    private val charMeasurer: UnicodeCharMeasurer,
 ) {
     fun findLineNumberByRowNumber(rowNumber: Int): Int {
         return lineFirstRowIndices.binarySearchForMinIndexOfValueAtLeast(rowNumber)
     }
 
     fun getLineTop(originalLineNumber: Int): Float = lineFirstRowIndices[originalLineNumber] * rowHeight
+
+    fun findCharWidth(char: String) = charMeasurer.findCharWidth(char)
 }

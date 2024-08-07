@@ -62,6 +62,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.CommitTextCommand
 import androidx.compose.ui.text.input.ImeOptions
@@ -69,6 +70,7 @@ import androidx.compose.ui.text.input.SetComposingTextCommand
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.substring
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
@@ -165,8 +167,22 @@ private fun CoreBigMonospaceText(
     val keyboardController = LocalSoftwareKeyboardController.current
     val textInputService = LocalTextInputService.current
 
+    val textStyle = LocalTextStyle.current.copy(
+        fontSize = fontSize,
+        fontFamily = FontFamily.Monospace,
+        color = color,
+    )
+
     val focusRequester = remember { FocusRequester() }
-    val textLayouter = remember { MonospaceTextLayouter() }
+    val textLayouter = remember(density, fontFamilyResolver, textStyle) {
+        MonospaceTextLayouter(
+            TextMeasurer(
+                fontFamilyResolver,
+                density,
+                LayoutDirection.Ltr,
+            ), textStyle
+        )
+    }
 
     var width by remember { mutableIntStateOf(0) }
     var height by remember { mutableIntStateOf(0) }
@@ -176,11 +192,6 @@ private fun CoreBigMonospaceText(
     }
     var lineHeight by remember { mutableStateOf(0f) }
     var charWidth by remember { mutableStateOf(0f) }
-    val textStyle = LocalTextStyle.current.copy(
-        fontSize = fontSize,
-        fontFamily = FontFamily.Monospace,
-        color = color,
-    )
     val numOfCharsPerLine = rememberLast(density.density, density.fontScale, fontSize, width) {
         if (width > 0) {
             Paragraph(
@@ -204,12 +215,12 @@ private fun CoreBigMonospaceText(
             log.v { "transformed text = `$it`" }
         }
     }
-    val layoutResult = rememberLast(transformedText.text.length, transformedText.hashCode(), numOfCharsPerLine) {
+    val layoutResult = rememberLast(transformedText.text.length, transformedText.hashCode(), textStyle, lineHeight, contentWidth, textLayouter) {
         textLayouter.layout(
             text = text.fullString(),
             transformedText = transformedText,
             lineHeight = lineHeight,
-            numOfCharsPerLine = numOfCharsPerLine,
+            contentWidth = contentWidth,
         ).also {
             if (onTextLayout != null) {
                 onTextLayout(it)
@@ -256,20 +267,40 @@ private fun CoreBigMonospaceText(
 
     fun getTransformedCharIndex(x: Float, y: Float, mode: ResolveCharPositionMode): Int {
         val row = ((viewportTop + y) / lineHeight).toInt()
-        val col = (x / charWidth).toInt()
+//        val col = (x / charWidth).toInt()
         if (row > layoutResult.rowStartCharIndices.lastIndex) {
             return maxOf(0, transformedText.text.length - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
         } else if (row < 0) {
             return 0
         }
-        return minOf(
-            layoutResult.rowStartCharIndices[row] + col,
-            if (row + 1 <= layoutResult.rowStartCharIndices.lastIndex) {
-                layoutResult.rowStartCharIndices[row + 1] - 1
-            } else {
-                maxOf(0, transformedText.text.length - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
+        val numCharsInThisRow = if (row + 1 <= layoutResult.rowStartCharIndices.lastIndex) {
+            layoutResult.rowStartCharIndices[row + 1] - layoutResult.rowStartCharIndices[row] - 1
+        } else {
+            maxOf(0, transformedText.text.length - layoutResult.rowStartCharIndices[row] - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
+        }
+        val charIndex = (layoutResult.rowStartCharIndices[row] .. layoutResult.rowStartCharIndices[row] + numCharsInThisRow).let { range ->
+            var accumWidth = 0f
+            range.first {
+                if (it < range.last) {
+                    accumWidth += layoutResult.findCharWidth(transformedText.text.substring(it..it))
+                }
+                return@first (x < accumWidth || it >= range.last)
             }
-        )
+        }
+        return charIndex
+    }
+
+    fun getTransformedStringWidth(start: Int, endExclusive: Int): Float {
+        return (start .. endExclusive - 1)
+            .map {
+                val char = transformedText.text.substring(it..it)
+                if (char == "\n") { // selecting \n shows a narrow width
+                    textLayouter.charMeasurer.findCharWidth(" ")
+                } else {
+                    layoutResult.findCharWidth(char)
+                }
+            }
+            .sum()
     }
 
     fun onType(textInput: String) {
@@ -354,7 +385,7 @@ private fun CoreBigMonospaceText(
                     viewState.updateCursorIndexByTransformed(transformedText)
                 }
             )
-            .pointerInput(isEditable, layoutResult, scrollState.value, lineHeight, charWidth, transformedText.text.length, transformedText.text.hashCode()) {
+            .pointerInput(isEditable, layoutResult, scrollState.value, lineHeight, contentWidth, transformedText.text.length, transformedText.text.hashCode()) {
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
@@ -470,6 +501,7 @@ private fun CoreBigMonospaceText(
                             if (viewState.transformedCursorIndex + delta in 0 .. transformedText.text.length) {
                                 viewState.transformedCursorIndex += delta
                                 viewState.updateCursorIndexByTransformed(transformedText)
+                                log.v { "set cursor pos LR => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
                             }
                             true
                         }
@@ -534,29 +566,37 @@ private fun CoreBigMonospaceText(
                     if (viewState.hasSelection()) {
                         val intersection = viewState.transformedSelection intersect (startIndex .. nonVisualEndIndex - 1)
                         if (!intersection.isEmpty()) {
+                            log.v { "row #$i - intersection: $intersection" }
                             Box(
                                 Modifier
                                     .height(lineHeight.toDp())
-                                    .width((intersection.length * charWidth).toDp())
-                                    .offset(x = ((intersection.start - startIndex) * charWidth).toDp(), y = yOffset)
+                                    .width(getTransformedStringWidth(intersection.start, intersection.endInclusive + 1).toDp())
+                                    .offset(x = getTransformedStringWidth(startIndex, intersection.start).toDp(), y = yOffset)
                                     .background(color = textSelectionColors.backgroundColor) // `background` modifier must be after `offset` in order to take effect
                             )
                         }
                     }
+                    val rowText = transformedText.text.subSequence(
+                        startIndex = startIndex,
+                        endIndex = endIndex,
+                    )
+                    log.v { "text R$i TT $startIndex ..< $endIndex: $rowText" }
                     BasicText(
-                        text = transformedText.text.subSequence(
-                            startIndex = startIndex,
-                            endIndex = endIndex,
-                        ),
+                        text = rowText,
                         style = textStyle,
                         maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.offset(y = yOffset)
                     )
                     if (isEditable && isFocused && viewState.transformedCursorIndex in startIndex .. cursorDisplayRangeEndIndex) {
+                        var x = 0f
+                        (startIndex + 1 .. viewState.transformedCursorIndex).forEach {
+                            x += layoutResult.findCharWidth(transformedText.text.substring(it - 1.. it - 1))
+                        }
                         BigTextFieldCursor(
                             lineHeight = lineHeight.toDp(),
                             modifier = Modifier.offset(
-                                x = ((viewState.transformedCursorIndex - startIndex) * charWidth).toDp(),
+                                x = x.toDp(),
                                 y = yOffset,
                             )
                         )

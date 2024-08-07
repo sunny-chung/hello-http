@@ -1,14 +1,20 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TransformedText
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
+import com.sunnychung.application.multiplatform.hellohttp.util.UnicodeCharMeasurer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 
 private val LINE_BREAK_REGEX = "\n".toRegex()
 
-class MonospaceTextLayouter {
-    fun layout(text: String, transformedText: TransformedText, lineHeight: Float, numOfCharsPerLine: Int): BigTextLayoutResult {
-        if (numOfCharsPerLine < 1) {
+class MonospaceTextLayouter(textMeasurer: TextMeasurer, textStyle: TextStyle) {
+    val charMeasurer = UnicodeCharMeasurer(textMeasurer, textStyle)
+
+    fun layout(text: String, transformedText: TransformedText, lineHeight: Float, contentWidth: Float): BigTextLayoutResult {
+        log.v { "layout cw=$contentWidth" }
+        if (contentWidth < 1) {
             return BigTextLayoutResult(
                 lineRowSpans = listOf(1),
                 lineFirstRowIndices = listOf(0),
@@ -17,32 +23,65 @@ class MonospaceTextLayouter {
                 totalLinesBeforeTransformation = 1,
                 totalLines = 1,
                 totalRows = 1,
+                charMeasurer = charMeasurer,
             )
         }
-        val originalLineStartIndices = (
+        charMeasurer.measureFullText(text) // O(S lg C)
+
+        val originalLineStartIndices = ( // O(L lg L)
                 sequenceOf(0) +
                         LINE_BREAK_REGEX.findAll(text).sortedBy { it.range.last }.map { it.range.last + 1 }
                 ).toList()
-        val transformedLineStartIndices = (
+        val transformedLineStartIndices = ( // O(L lg L)
                 sequenceOf(0) +
                         LINE_BREAK_REGEX.findAll(transformedText.text).sortedBy { it.range.last }.map { it.range.last + 1 }
                 ).toList()
         val lineRowSpans = MutableList(originalLineStartIndices.size) { 1 }
         val lineRowIndices = MutableList(originalLineStartIndices.size + 1) { 0 }
-        val transformedRowStartCharIndices = transformedLineStartIndices.flatMapIndexed { index, it ->
+        val transformedRowStartCharIndices = listOf(0) + transformedLineStartIndices.flatMapIndexed { index, lineStartIndex ->
             if (index + 1 <= transformedLineStartIndices.lastIndex) {
-                val numCharsInThisLine = transformedLineStartIndices[index + 1] - it - (if (transformedText.text[transformedLineStartIndices[index + 1] - 1] == '\n') 1 else 0)
-                val numOfRows = maxOf(1, numCharsInThisLine divRoundUp numOfCharsPerLine)
-                (0 until numOfRows).map { j ->
-                    (it + j * numOfCharsPerLine).also { k ->
-                        log.v { "calc index $index -> $it ($numCharsInThisLine, $numOfCharsPerLine) $k" }
+                val numCharsInThisLine = transformedLineStartIndices[index + 1] - lineStartIndex - (if (transformedText.text[transformedLineStartIndices[index + 1] - 1] == '\n') 1 else 0)
+                // O(line string length * lg C)
+                val charWidths = text.substring(lineStartIndex, lineStartIndex + numCharsInThisLine).map { charMeasurer.findCharWidth(it.toString()) }
+//                val numOfRows = maxOf(1, numCharsInThisLine divRoundUp numOfCharsPerLine)
+//                (0 until numOfRows).map { j ->
+//                    (it + j * numOfCharsPerLine).also { k ->
+//                        log.v { "calc index $index -> $it ($numCharsInThisLine, $numOfCharsPerLine) $k" }
+//                    }
+//                }
+                var numCharsPerRow = mutableListOf<Int>()
+                var currentRowOccupiedWidth = 0f
+                var numCharsInCurrentRow = 0
+                charWidths.forEachIndexed { i, w -> // O(line string length)
+                    if (currentRowOccupiedWidth + w > contentWidth && numCharsInCurrentRow > 0) {
+                        numCharsPerRow += numCharsInCurrentRow
+                        numCharsInCurrentRow = 0
+                        currentRowOccupiedWidth = 0f
                     }
+                    currentRowOccupiedWidth += w
+                    ++numCharsInCurrentRow
+                }
+                if (numCharsInCurrentRow > 0) {
+                    numCharsPerRow += numCharsInCurrentRow
+                }
+                if (numCharsPerRow.isEmpty()) {
+                    numCharsPerRow += 0
+                }
+                var s = 0
+                numCharsPerRow.mapIndexed { index, it ->
+                    s += it
+                    minOf(
+                        lineStartIndex + s + if (index >= numCharsPerRow.lastIndex) 1 else 0 /* skip the last char '\n' */,
+                        text.length
+                    )
                 }
             } else {
-                listOf(it)
+                emptyList()
+            }.also {
+                log.v { "transformedLineStartIndices flatMap $index -> $it" }
             }
         }.also {
-            log.v { "rowStartCharIndices = $it" }
+            log.v { "transformedRowStartCharIndices = $it" }
         }
         originalLineStartIndices.forEachIndexed { index, it ->
             val transformedStartCharIndex = transformedText.offsetMapping.originalToTransformed(originalLineStartIndices[index])
@@ -69,6 +108,7 @@ class MonospaceTextLayouter {
             totalLines = transformedLineStartIndices.size,
             totalRows = transformedRowStartCharIndices.size,
             totalLinesBeforeTransformation = originalLineStartIndices.size,
+            charMeasurer = charMeasurer,
         )
     }
 }
