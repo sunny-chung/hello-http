@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.document.KInstantAsLongCompat
 import com.sunnychung.application.multiplatform.hellohttp.serializer.SynchronizedListSerializer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
@@ -21,8 +22,8 @@ data class RawExchange(
     @Persisted
     @Serializable
     class Exchange(
-        val instant: KInstantAsLong,
-        var lastUpdateInstant: KInstantAsLong? = null,
+        val instant: KInstantAsLongCompat,
+        var lastUpdateInstant: KInstantAsLongCompat? = null,
         val direction: Direction,
         val detail: String?,
         @Transient var payloadBuilder: ByteArrayOutputStream? = null,
