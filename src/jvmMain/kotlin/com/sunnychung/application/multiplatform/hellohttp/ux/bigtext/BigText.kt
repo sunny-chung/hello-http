@@ -11,7 +11,7 @@ interface BigText {
 
     fun substring(start: Int, endExclusive: Int): String
 
-    fun substring(range: IntRange): String
+    fun substring(range: IntRange): String = substring(range.start, range.endInclusive + 1)
 
     fun append(text: String)
 
