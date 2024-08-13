@@ -44,8 +44,11 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
     }
 
     override fun delete(start: Int, endExclusive: Int) {
-        bigTextImpl.delete(start, endExclusive)
-        stringImpl.delete(start, endExclusive)
+        log.d { "delete $start ..< $endExclusive" }
+        printDebugIfError {
+            bigTextImpl.delete(start, endExclusive)
+            stringImpl.delete(start, endExclusive)
+        }
         verify()
     }
 
@@ -64,9 +67,15 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
     }
 
     fun verify(label: String = "") {
-        try {
+        printDebugIfError(label) {
             length
             fullString()
+        }
+    }
+
+    fun printDebugIfError(label: String = "", operation: () -> Unit) {
+        try {
+            operation()
         } catch (e: Throwable) {
             printDebug(label)
             throw e

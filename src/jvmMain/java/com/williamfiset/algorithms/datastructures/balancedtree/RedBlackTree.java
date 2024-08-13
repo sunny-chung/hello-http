@@ -278,7 +278,7 @@ public class RedBlackTree<T extends Comparable<T>> implements Iterable<T> {
         return true;
     }
 
-    private void deleteFix(Node x) {
+    protected void deleteFix(Node x) {
         while (x != root && x.getColor() == BLACK) {
             if (x == x.getParent().getLeft()) {
                 Node w = x.getParent().getRight();
@@ -335,12 +335,12 @@ public class RedBlackTree<T extends Comparable<T>> implements Iterable<T> {
         x.setColor(BLACK);
     }
 
-    private Node successor(Node root) {
+    protected Node successor(Node root) {
         if (root == NIL || root.left == NIL) return root;
         else return successor(root.left);
     }
 
-    private void transplant(Node u, Node v) {
+    protected void transplant(Node u, Node v) {
         if (u.parent == NIL) {
             root = v;
         } else if (u == u.parent.left) {

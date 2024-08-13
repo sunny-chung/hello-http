@@ -13,12 +13,15 @@ val log = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText")
 
+var isD = false
+
 class BigTextImpl : BigText {
     val tree = RedBlackTree2<BigTextNodeValue>(
         object : RedBlackTreeComputations<BigTextNodeValue> {
             override fun recomputeFromLeaf(it: RedBlackTree<BigTextNodeValue>.Node) = recomputeAggregatedValues(it)
             override fun computeWhenLeftRotate(x: BigTextNodeValue, y: BigTextNodeValue) = computeWhenLeftRotate0(x, y)
             override fun computeWhenRightRotate(x: BigTextNodeValue, y: BigTextNodeValue) = computeWhenRightRotate0(x, y)
+//            override fun transferComputeResultTo(from: BigTextNodeValue, to: BigTextNodeValue) = transferComputeResultTo0(from, to)
         }
     )
     val buffers = mutableListOf<TextBuffer>()
@@ -106,7 +109,7 @@ class BigTextImpl : BigText {
             if (splitAtIndex > 0) {
                 node.value.bufferOffsetEndExclusive = node.value.bufferOffsetStart + splitAtIndex
             } else {
-                tree.delete(node.value)
+                tree.delete(node)
                 node = tree.findNodeByCharIndex(maxOf(0, position - 1))
                 insertDirection = InsertDirection.Left
             }
@@ -159,11 +162,11 @@ class BigTextImpl : BigText {
             }
         }
 
-        log.d { inspect("Finish " + node?.value?.debugKey()) }
+        log.d { inspect("Finish I " + node?.value?.debugKey()) }
     }
 
     fun recomputeAggregatedValues(node: RedBlackTree<BigTextNodeValue>.Node) {
-        log.v { inspect("${node.value?.debugKey()} start") }
+        log.d { inspect("${node.value?.debugKey()} start") }
 
         var node = node
         while (node.isNotNil()) {
@@ -189,6 +192,11 @@ class BigTextImpl : BigText {
         y.leftStringLength -= x.leftStringLength + x.bufferLength
         // TODO calc other metrics
     }
+
+//    fun transferComputeResultTo0(from: BigTextNodeValue, to: BigTextNodeValue) {
+//        to.leftStringLength = from.leftStringLength
+//        // TODO calc other metrics
+//    }
 
     override val length: Int
         get() = tree.root.length()
@@ -244,7 +252,75 @@ class BigTextImpl : BigText {
     }
 
     override fun delete(start: Int, endExclusive: Int) {
-        TODO("Not yet implemented")
+        require(start <= endExclusive) { "start should be <= endExclusive" }
+        require(0 <= start) { "Invalid start" }
+        require(endExclusive <= length) { "endExclusive is out of bound" }
+
+        if (start == endExclusive) {
+            return
+        }
+
+        log.d { "delete $start ..< $endExclusive" }
+
+        var node: RedBlackTree<BigTextNodeValue>.Node? = tree.findNodeByCharIndex(endExclusive - 1)
+        var nodeRange = charIndexRangeOfNode(node!!)
+        val newNodesInDescendingOrder = mutableListOf<BigTextNodeValue>()
+        while (node?.isNotNil() == true && start <= nodeRange.endInclusive) {
+            if (endExclusive - 1 in nodeRange.start..nodeRange.last - 1) {
+                // need to split
+                val splitAtIndex = endExclusive - nodeRange.start
+                log.d { "Split E at $splitAtIndex" }
+                newNodesInDescendingOrder += BigTextNodeValue().apply { // the second part of the existing string
+                    bufferIndex = node!!.value.bufferIndex
+                    bufferOffsetStart = node!!.value.bufferOffsetStart + splitAtIndex
+                    bufferOffsetEndExclusive = node!!.value.bufferOffsetEndExclusive
+
+                    leftStringLength = 0
+                }
+            }
+            if (start in nodeRange.start + 1 .. nodeRange.last) {
+                // need to split
+                val splitAtIndex = start - nodeRange.start
+                log.d { "Split S at $splitAtIndex" }
+                newNodesInDescendingOrder += BigTextNodeValue().apply { // the first part of the existing string
+                    bufferIndex = node!!.value.bufferIndex
+                    bufferOffsetStart = node!!.value.bufferOffsetStart
+                    bufferOffsetEndExclusive = node!!.value.bufferOffsetStart + splitAtIndex
+
+                    leftStringLength = 0
+                }
+            }
+            val prev = tree.prevNode(node)
+            log.d { "Delete node ${node!!.value.debugKey()} at ${nodeRange.start} .. ${nodeRange.last}" }
+            if (isD && nodeRange.start == 384) {
+                isD = true
+            }
+            tree.delete(node)
+            log.d { inspect("After delete " + node?.value?.debugKey()) }
+//            if (!tree.delete(node.value)) {
+//                throw IllegalStateException("Cannot delete node ${node.value.debugKey()} at ${nodeRange.start} .. ${nodeRange.last}")
+//            }
+            node = prev
+//            nodeRange = nodeRange.start - chunkSize .. nodeRange.last - chunkSize
+            if (node != null) {
+                nodeRange = charIndexRangeOfNode(node) // TODO optimize by calculation instead of querying
+            }
+        }
+
+        newNodesInDescendingOrder.asReversed().forEach {
+            if (node != null) {
+                node = tree.insertRight(node!!, it)
+            } else {
+                node = tree.insertValue(it)
+            }
+        }
+
+        log.v { inspect("Finish D " + node?.value?.debugKey()) }
+    }
+
+    fun charIndexRangeOfNode(node: RedBlackTree<BigTextNodeValue>.Node): IntRange {
+        val start = findPositionStart(node)
+        return start until start + node.value.bufferLength
     }
 
     override fun hashCode(): Int {

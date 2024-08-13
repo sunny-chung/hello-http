@@ -1,6 +1,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
+import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextVerifyImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.isD
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -218,6 +220,19 @@ class BigTextImplTest {
     }
 
     @Test
+    fun insertAtVariousPositions() {
+        val t = BigTextVerifyImpl(chunkSize = 64)
+        t.append((0..653).map { 'a' + (it % 26) }.joinToString(""))
+        t.insertAt(80, (0..79).map { 'A' + (it % 26) }.joinToString(""))
+        t.insertAt(0, (0..25).map { '0' + (it % 10) }.joinToString(""))
+        t.printDebug()
+        val len = 654 + 80 + 26
+        assertEquals(len / 64 + 1, t.buffers.size)
+        assertEquals(len, t.length)
+        assertEquals(len, t.fullString().length)
+    }
+
+    @Test
     fun multipleRandomInserts() {
         val t = BigTextVerifyImpl(chunkSize = 64)
         var totalLength = 0
@@ -248,5 +263,47 @@ class BigTextImplTest {
             totalLength += length
             assertEquals(totalLength, t.length)
         }
+    }
+
+    @Test
+    fun deleteWithinChunk() {
+        val t = BigTextVerifyImpl(chunkSize = 64)
+        t.append((0 until 64 * 3).map { 'a' + (it % 26) }.joinToString(""))
+        t.delete(64 * 2 + 10, 64 * 2 + 30)
+        t.delete(64 * 1 + 10, 64 * 1 + 30)
+        t.delete(64 * 0 + 10, 64 * 0 + 30)
+        val len = 64 * 3 - 20 * 3
+        assertEquals(len, t.length)
+        assertEquals(len, t.fullString().length)
+    }
+
+    @Test
+    fun deleteAmongChunks() {
+        val t = BigTextVerifyImpl(chunkSize = 64)
+        t.append((0 until 64 * 10).map { 'a' + (it % 26) }.joinToString(""))
+        val d1range = 64 * 4 + 10 until 64 * 7 + 30
+        isD = true
+        t.delete(d1range)
+        val d2range = 64 * 8 + 10 - d1range.length until 64 * 9 + 47 - d1range.length
+        t.delete(d2range)
+        val d3range = 64 * 1 + 10 until 64 * 3 + 30
+        t.delete(d3range)
+        val len = 64 * 10 - d1range.length - d2range.length - d3range.length
+        assertEquals(len, t.length)
+        assertEquals(len, t.fullString().length)
+    }
+
+    @Test
+    fun deleteAtBeginning() {
+        val t = BigTextVerifyImpl(chunkSize = 64)
+        t.append((0 until 654).map { 'a' + (it % 26) }.joinToString(""))
+        t.delete(0 .. 19)
+        t.delete(0 .. 19)
+        t.delete(0 .. 19)
+        t.delete(0 .. 19)
+        t.delete(0 .. 29)
+        val len = 654 - 20 * 4 - 30
+        assertEquals(len, t.length)
+        assertEquals(len, t.fullString().length)
     }
 }

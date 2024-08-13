@@ -11,6 +11,7 @@ interface RedBlackTreeComputations<T : Comparable<T>> {
     fun recomputeFromLeaf(it: RedBlackTree<T>.Node)
     fun computeWhenLeftRotate(x: T, y: T)
     fun computeWhenRightRotate(x: T, y: T)
+//    fun transferComputeResultTo(from: T, to: T)
 }
 
 open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T>) : RedBlackTree<T>() where T : Comparable<T>, T : DebuggableNode<T> {
@@ -137,6 +138,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
     override fun insertFix(z: Node) {
         computations.recomputeFromLeaf(z)
         super.insertFix(z)
+        NIL.setParent(NIL)
     }
 
     fun leftmost(node: Node): Node {
@@ -166,7 +168,9 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      */
     override fun leftRotate(x: Node) {
         val y = x.right
-        computations.computeWhenLeftRotate(x.value, y.value)
+        if (x.isNotNil() && y.isNotNil()) {
+            computations.computeWhenLeftRotate(x.value, y.value)
+        }
         super.leftRotate(x)
     }
 
@@ -181,8 +185,227 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      */
     override fun rightRotate(y: Node) {
         val x = y.left
-        computations.computeWhenRightRotate(x.value, y.value)
+        if (x.isNotNil() && y.isNotNil()) {
+            computations.computeWhenRightRotate(x.value, y.value)
+        }
         super.rightRotate(y)
+    }
+
+    override fun delete(key: T): Boolean {
+        throw UnsupportedOperationException()
+    }
+
+    /**
+     * The original code is buggy. Override to fix.
+     * Reference: microsoft/vscode-textbuffer
+     */
+    fun delete(node: Node) {
+        var z: Node = node
+        val x: Node
+        var y: Node = z // temporary reference y
+        var y_original_color: Boolean = y.getColor()
+
+        if (z.getLeft() === NIL) {
+            x = z.getRight()
+        } else if (z.getRight() === NIL) {
+            x = z.getLeft()
+        } else {
+            y = successor(z.getRight())
+            x = y.getRight()
+        }
+        if (y === root) {
+            root = x
+            x.color = BLACK
+            root.parent = NIL
+            return
+        }
+
+        y_original_color = y.getColor()
+        if (y === y.parent.left) {
+            y.parent.left = x
+        } else {
+            y.parent.right = x
+        }
+
+        if (y === z) {
+            x.setParent(y.getParent())
+            computations.recomputeFromLeaf(x)
+        } else {
+            if (y.getParent() === z) {
+                x.setParent(y)
+            } else {
+                x.setParent(y.getParent())
+            }
+            computations.recomputeFromLeaf(x)
+            y.setLeft(z.getLeft())
+            y.setRight(z.getRight())
+            y.setParent(z.getParent())
+            y.setColor(z.getColor())
+
+            if (z === root) {
+                root = y
+            } else {
+                if (z === z.parent.left) {
+                    z.parent.left = y
+                } else {
+                    z.parent.right = y
+                }
+            }
+
+            if (y.left !== NIL) {
+                y.left.parent = y
+                computations.recomputeFromLeaf(y.getLeft())
+            }
+            if (y.right !== NIL) {
+                y.right.parent = y
+                computations.recomputeFromLeaf(y.getRight())
+            }
+
+            computations.recomputeFromLeaf(y)
+        }
+//        computations.recomputeFromLeaf(x)
+
+        if (y_original_color == BLACK) deleteFix(x)
+        nodeCount--
+    }
+
+    private fun delete_notUsed(node: Node) {
+        var z: Node = node
+        val x: Node
+        var y: Node = z // temporary reference y
+        var y_original_color: Boolean = y.getColor()
+
+        if (z.getLeft() === NIL) {
+            x = z.getRight()
+            transplant(z, z.getRight())
+
+            computations.recomputeFromLeaf(x)
+        } else if (z.getRight() === NIL) {
+            x = z.getLeft()
+            transplant(z, z.getLeft())
+
+            computations.recomputeFromLeaf(x)
+        } else {
+            y = successor(z.getRight())
+            y_original_color = y.getColor()
+            x = y.getRight()
+            if (y.getParent() === z) {
+                x.setParent(y)
+                computations.recomputeFromLeaf(x)
+            } else {
+                transplant(y, y.getRight())
+                y.setRight(z.getRight())
+                y.getRight().setParent(y)
+                computations.recomputeFromLeaf(y.getRight())
+            }
+            transplant(z, y)
+            y.setLeft(z.getLeft())
+            y.getLeft().setParent(y)
+            y.setColor(z.getColor())
+
+//            computations.transferComputeResultTo(z.getValue(), y.getValue())
+
+            computations.recomputeFromLeaf(y.getLeft())
+        }
+        if (y_original_color == BLACK) deleteFix(x)
+        nodeCount--
+    }
+
+    /**
+     * The original code is buggy. Override to fix.
+     */
+    override fun transplant(u: Node, v: Node) {
+        if (u.parent === NIL) {
+            root = v
+        } else if (u === u.parent.left) {
+            u.parent.left = v
+        } else {
+            u.parent.right = v
+        }
+        if (u.left !== NIL) {
+            u.left.parent = v
+        }
+        if (u.right !== NIL) {
+            u.right.parent = v
+        }
+        if (v !== NIL) {
+            v.parent = u.parent
+        }
+    }
+
+    /**
+     * The original code is buggy. Override to fix.
+     * References: Bibeknam/algorithmtutorprograms and microsoft/vscode-textbuffer
+     */
+    override fun deleteFix(x: Node) {
+        var x = x
+        while (x !== root && x.getColor() == BLACK) {
+            if (x === x.getParent().getLeft()) {
+                var w: Node = x.getParent().getRight()
+                if (w.getColor() == RED) {
+                    w.setColor(BLACK)
+                    x.getParent().setColor(RED)
+                    leftRotate(x.parent)
+                    w = x.getParent().getRight()
+                }
+                if (w.getLeft().getColor() == BLACK && w.getRight().getColor() == BLACK) {
+                    w.setColor(RED)
+                    x = x.getParent()
+                    continue
+                } else if (w.getRight().getColor() == BLACK) {
+                    w.getLeft().setColor(BLACK)
+                    w.setColor(RED)
+                    rightRotate(w)
+                    w = x.getParent().getRight()
+                }
+//                if (w.getRight().getColor() == RED) {
+                    w.setColor(x.getParent().getColor())
+                    x.getParent().setColor(BLACK)
+                    w.getRight().setColor(BLACK)
+                    leftRotate(x.getParent())
+                    x = root
+//                }
+            } else {
+                var w: Node = (x.getParent().getLeft())
+                if (w.color == RED) {
+                    w.color = BLACK
+                    x.getParent().setColor(RED)
+                    rightRotate(x.getParent())
+                    w = x.getParent().getLeft()
+                }
+                if (w.right.color == BLACK && w.left.color == BLACK) {
+                    w.color = RED
+                    x = x.getParent()
+                    continue
+                } else if (w.left.color == BLACK) {
+                    w.right.color = BLACK
+                    w.color = RED
+                    leftRotate(w)
+                    w = (x.getParent().getLeft())
+                }
+//                if (w.left.color == RED) {
+                    w.color = x.getParent().getColor()
+                    x.getParent().setColor(BLACK)
+                    w.left.color = BLACK
+                    rightRotate(x.getParent())
+                    x = root
+//                }
+            }
+        }
+        x.setColor(BLACK)
+    }
+
+    fun prevNode(node: Node): Node? {
+        if (node.left.isNotNil()) {
+            return rightmost(node.left)
+        }
+        var node = node
+        var parent = node.parent
+        while (parent.isNotNil() && parent.left === node) {
+            node = parent
+            parent = node.parent
+        }
+        return parent.takeIf { it.isNotNil() }
     }
 
 //    fun visitUpwards(node: Node, visitor: (T) -> Unit) {
@@ -202,7 +425,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
             }
             node.left.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--L-->${visit(it)}") }
             node.right.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--R-->${visit(it)}") }
-//            node.parent.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--P-->${node.parent.value.debugKey()}") }
+            node.parent.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--P-->${node.parent.value.debugKey()}") }
             return key
         }
         visit(root)
