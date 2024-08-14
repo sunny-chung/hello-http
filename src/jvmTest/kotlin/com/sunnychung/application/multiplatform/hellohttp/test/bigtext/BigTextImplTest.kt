@@ -438,7 +438,7 @@ class BigTextImplTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = [64, 1024, 16 * 1024, 64 * 1024, 512 * 1024])
+    @ValueSource(ints = [64, 1024, 16 * 1024, 64 * 1024, 512 * 1024, 2 * 1024 * 1024])
     fun multipleRandomOperations(chunkSize: Int) {
         val t = BigTextVerifyImpl(chunkSize = chunkSize)
         var totalLength = 0
@@ -466,7 +466,7 @@ class BigTextImplTest {
                 in 4..8 -> t.insertAt(random(0, t.length), newString)
                 in 9..11 -> if (t.length > 0) {
                     val p1 = random(0, t.length)
-                    val p2 = p1 + minOf(length, t.length - p1) // p1 + p2 <= t.length
+                    val p2 = minOf(t.length, p1 + random(0, t.length - p1)) // p1 + p2 <= t.length
                     t.delete(minOf(p1, p2), maxOf(p1, p2))
                 } else {
                     t.delete(0, 0)
@@ -496,7 +496,7 @@ class BigTextImplTest {
             }
         }
     }
-    
+
     /**
      * Benchmark:
      *
