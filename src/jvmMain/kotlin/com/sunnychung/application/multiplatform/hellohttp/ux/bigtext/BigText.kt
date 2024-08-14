@@ -13,13 +13,13 @@ interface BigText {
 
     fun substring(range: IntRange): String = substring(range.start, range.endInclusive + 1)
 
-    fun append(text: String)
+    fun append(text: String): Int
 
-    fun insertAt(pos: Int, text: String)
+    fun insertAt(pos: Int, text: String): Int
 
-    fun delete(start: Int, endExclusive: Int)
+    fun delete(start: Int, endExclusive: Int): Int
 
-    fun delete(range: IntRange) = delete(range.start, range.endInclusive + 1)
+    fun delete(range: IntRange): Int = delete(range.start, range.endInclusive + 1)
 
     override fun hashCode(): Int
 

@@ -1,13 +1,33 @@
 package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextVerifyImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.isD
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+/**
+ * Some cases in this test may look very specific, but they had consistently failed before.
+ */
 class BigTextImplTest {
+
+    companion object {
+        @JvmStatic
+        fun argumentsOfMultipleRandomDeletes(): Array<IntArray>
+            = arrayOf(64, 1024, 16 * 1024, 64 * 1024, 128 * 1024, 512 * 1024) // chunk size
+                .flatMap { chunkSize ->
+                    arrayOf(64, 100, 200, 257, 1024, 64 * 1024, 1024 * 1024, 5 * 1024 * 1024, 12 * 1024 * 1024 + 3) // initial length
+                        .map { initialLength ->
+                            intArrayOf(chunkSize, initialLength)
+                        }
+                }
+                .toTypedArray()
+    }
 
     @Test
     fun appendMultipleShort() {
@@ -232,19 +252,32 @@ class BigTextImplTest {
         assertEquals(len, t.fullString().length)
     }
 
-    @Test
-    fun multipleRandomInserts() {
-        val t = BigTextVerifyImpl(chunkSize = 64)
+    /**
+     * Benchmark:
+     *
+     *  Chunk Size  | Completion Time (s)
+     *  64B         | 13.3
+     *  1KB         | 6.9
+     *  16KB        | 9.2
+     *  64KB        | 12.9
+     *  128KB       | 16.0
+     *  512KB       | 49.5
+     *  2MB         | 194
+     */
+    @ParameterizedTest
+    @ValueSource(ints = [64, 1024, 16 * 1024, 64 * 1024, 128 * 1024, 512 * 1024])
+    fun multipleRandomInserts(chunkSize: Int) {
+        val t = BigTextVerifyImpl(chunkSize = chunkSize)
         var totalLength = 0
         repeat(2000) {
             println("it #$it")
-            val length = when (Random.nextInt(0, 6)) {
+            val length = when (random(0, 6)) {
                 0 -> 0
-                1 -> Random.nextInt(1, 20)
-                2 -> Random.nextInt(20, 100)
-                3 -> Random.nextInt(100, 400)
-                4 -> Random.nextInt(400, 4000)
-                5 -> Random.nextInt(4000, 100000)
+                1 -> random(1, 20)
+                2 -> random(20, 100)
+                3 -> random(100, 400)
+                4 -> random(400, 4000)
+                5 -> random(4000, 100000)
                 else -> throw IllegalStateException()
             }
             val newString = if (length > 0) {
@@ -253,11 +286,11 @@ class BigTextImplTest {
             } else {
                 ""
             }
-            when (Random.nextInt(0, 6)) {
+            when (random(0, 6)) {
                 0 -> t.append(newString)
                 1 -> t.insertAt(t.length, newString)
                 2 -> t.insertAt(0, newString)
-                in 3..5 -> t.insertAt(if (t.length > 0) Random.nextInt(0, t.length) else 0, newString)
+                in 3..5 -> t.insertAt(if (t.length > 0) random(0, t.length) else 0, newString)
                 else -> throw IllegalStateException()
             }
             totalLength += length
@@ -306,4 +339,152 @@ class BigTextImplTest {
         assertEquals(len, t.length)
         assertEquals(len, t.fullString().length)
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [60, 64, 67, 128, 192, 640, 6483, 64_000_000, 64_000_001, 64 * 1024 * 1024])
+    fun deleteWholeThing(length: Int) {
+//        val t = BigTextVerifyImpl(chunkSize = 64)
+        val t = BigTextImpl(chunkSize = 64)
+        t.append("X".repeat(length))
+        assertEquals(length, t.length)
+        if (length == 640) isD = true
+        t.delete(0 until t.length)
+        assertEquals(0, t.length)
+        assertEquals(0, t.fullString().length)
+        assertEquals(0, t.tree.size())
+    }
+
+    @Test
+    fun deleteWithinLongerChunk() {
+        val t = BigTextVerifyImpl(chunkSize = 1024)
+        t.append((0 until 1024).map { 'a' + (it % 26) }.joinToString(""))
+        t.delete(300 .. 319)
+        t.delete(300 .. 800)
+        isD = true
+        t.delete(0 .. 279)
+        t.delete(13 .. 69)
+        val len = 1024 - 20 - 501 - 280 - 57
+        assertEquals(len, t.length)
+        assertEquals(len, t.fullString().length)
+    }
+
+    @Test
+    fun deleteSomeLeftChunks() {
+        val t = BigTextVerifyImpl(chunkSize = 64)
+//        t.append((0 until 16384).map { 'a' + (it % 26) }.joinToString(""))
+//        t.delete(3443 .. 4568)
+        t.append((0 until 1024).map { 'a' + (it % 26) }.joinToString(""))
+        t.delete(343 .. 456)
+        val len = 1024 - (457 - 343)
+        assertEquals(len, t.length)
+        assertEquals(len, t.fullString().length)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 12 * 1024, 6 * 1024 * 1024])
+    fun deleteRepeatedlyAtBeginning(initialLength: Int) {
+        val t = BigTextVerifyImpl(chunkSize = 64)
+        var len = initialLength
+//        t.append((0 until len).map { 'a' + (it % 26) }.joinToString(""))
+        t.append((0 until len).map { 'a' + Random.nextInt(26) }.joinToString(""))
+        repeat(1200) {
+            if (t.length >= 12) {
+                len += t.delete(0..11)
+                if (t.length == 76) isD = true
+            }
+        }
+        assertEquals(len, t.length)
+        assertEquals(len, t.fullString().length)
+    }
+
+    @ParameterizedTest
+    @MethodSource("argumentsOfMultipleRandomDeletes")
+    fun multipleRandomDeletes(arguments: IntArray) {
+        val chunkSize = arguments[0]
+        val initialLength = arguments[1]
+
+        val t = BigTextVerifyImpl(chunkSize = chunkSize)
+        t.append((0 until initialLength).map { 'a' + (it % 26) }.joinToString(""))
+        var totalLength = initialLength
+        repeat(3000) {
+            println("it #$it")
+            val length = when (random(0, 6)) {
+                0 -> 0
+                1 -> random(1, 20)
+                2 -> random(20, 100)
+                3 -> random(100, 400)
+                4 -> random(400, if (initialLength <= 1024 * 1024) 2000 else 4000)
+                5 -> random(
+                    if (initialLength <= 1024 * 1024) 2000 else 4000,
+                    if (initialLength <= 1024 * 1024) 12000 else 60000
+                )
+                else -> throw IllegalStateException()
+            }
+            val textLengthChange = when (random(0, 5)) {
+                in 0 .. 2 -> if (t.length > 0) {
+                    val p1 = random(0, t.length)
+                    val p2 = p1 + minOf(length, t.length - p1) // p1 + p2 <= t.length
+                    t.delete(minOf(p1, p2), maxOf(p1, p2))
+                } else {
+                    t.delete(0, 0)
+                }
+                3 -> t.delete(0, random(0, minOf(length, t.length))) // delete from start
+                4 -> t.delete(t.length - random(0, minOf(length, t.length)), t.length) // delete from end
+                else -> throw IllegalStateException()
+            }
+            totalLength += textLengthChange
+            assertEquals(totalLength, t.length)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 1024, 16 * 1024, 64 * 1024, 512 * 1024])
+    fun multipleRandomOperations(chunkSize: Int) {
+        val t = BigTextVerifyImpl(chunkSize = chunkSize)
+        var totalLength = 0
+        repeat(5000) {
+            println("it #$it")
+            val length = when (random(0, 6)) {
+                0 -> 0
+                1 -> random(1, 20)
+                2 -> random(20, 100)
+                3 -> random(100, 400)
+                4 -> random(400, 4000)
+                5 -> random(4000, 100000)
+                else -> throw IllegalStateException()
+            }
+            val newString = if (length > 0) {
+                val startChar: Char = if (it % 2 == 0) 'A' else 'a'
+                (0 until length - 1).asSequence().map { (startChar + it % 26).toString() }.joinToString("") + "|"
+            } else {
+                ""
+            }
+            val textLengthChange = when (random(0, 15)) {
+                in 0 .. 1 -> t.append(newString)
+                2 -> t.insertAt(t.length, newString)
+                3 -> t.insertAt(0, newString)
+                in 4..8 -> t.insertAt(random(0, t.length), newString)
+                in 9..11 -> if (t.length > 0) {
+                    val p1 = random(0, t.length)
+                    val p2 = p1 + minOf(length, t.length - p1) // p1 + p2 <= t.length
+                    t.delete(minOf(p1, p2), maxOf(p1, p2))
+                } else {
+                    t.delete(0, 0)
+                }
+                12 -> t.delete(0, random(0, minOf(length, t.length))) // delete from start
+                13 -> t.delete(t.length - random(0, minOf(length, t.length)), t.length) // delete from end
+                14 -> t.delete(0, t.length) // delete whole string
+                else -> throw IllegalStateException()
+            }
+            totalLength += textLengthChange
+            assertEquals(totalLength, t.length)
+        }
+    }
+}
+
+private fun random(from: Int, toExclusive: Int): Int {
+    if (toExclusive == from) {
+        return 0
+    }
+    return Random.nextInt(from, toExclusive)
 }

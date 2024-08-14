@@ -16,6 +16,8 @@ interface RedBlackTreeComputations<T : Comparable<T>> {
 
 open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T>) : RedBlackTree<T>() where T : Comparable<T>, T : DebuggableNode<T> {
 
+    fun getRoot() = root
+
     fun lastNodeOrNull(): Node? {
         var child: Node = root
         while (child.getLeft().isNotNil() || child.getRight().isNotNil()) {
@@ -165,13 +167,24 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      *       x   c            a   y
      *      / \                  / \
      *     a   b                b   c
+     *
+     * The original code is buggy. Override to fix.
      */
     override fun leftRotate(x: Node) {
         val y = x.right
         if (x.isNotNil() && y.isNotNil()) {
             computations.computeWhenLeftRotate(x.value, y.value)
         }
-        super.leftRotate(x)
+
+        // leftRotate
+        x.setRight(y.getLeft())
+        if (y.getLeft() !== NIL) y.getLeft().setParent(x)
+        y.setParent(x.getParent())
+        if (x.getParent() === NIL) root = y
+        else if (x === x.getParent().getLeft()) x.getParent().setLeft(y)
+        else x.getParent().setRight(y)
+        y.setLeft(x)
+        x.setParent(y)
     }
 
     /**
@@ -182,13 +195,24 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      *       x   c            a   y
      *      / \                  / \
      *     a   b                b   c
+     *
+     * The original code is buggy. Override to fix.
      */
     override fun rightRotate(y: Node) {
         val x = y.left
         if (x.isNotNil() && y.isNotNil()) {
             computations.computeWhenRightRotate(x.value, y.value)
         }
-        super.rightRotate(y)
+
+        // rightRotate
+        y.left = x.right
+        if (x.right !== NIL) x.right.parent = y
+        x.parent = y.parent
+        if (y.parent === NIL) root = x
+        else if (y === y.parent.left) y.parent.left = x
+        else y.parent.right = x
+        x.right = y
+        y.parent = x
     }
 
     override fun delete(key: T): Boolean {
@@ -216,7 +240,9 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
         if (y === root) {
             root = x
             x.color = BLACK
+            z.detach()
             root.parent = NIL
+            nodeCount--
             return
         }
 
@@ -228,9 +254,11 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
         }
 
         if (y === z) {
+            // x can be NIL, but it works with changing parent of x. lets set it back later, after deleteFix().
             x.setParent(y.getParent())
             computations.recomputeFromLeaf(x)
         } else {
+            val w = y.getParent()
             if (y.getParent() === z) {
                 x.setParent(y)
             } else {
@@ -260,12 +288,15 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
                 y.right.parent = y
                 computations.recomputeFromLeaf(y.getRight())
             }
-
-            computations.recomputeFromLeaf(y)
+            if (w !== NIL && w !== z) {
+                computations.recomputeFromLeaf(w)
+            }
         }
-//        computations.recomputeFromLeaf(x)
+        computations.recomputeFromLeaf(y)
+        z.detach()
 
         if (y_original_color == BLACK) deleteFix(x)
+        NIL.setParent(NIL)
         nodeCount--
     }
 
@@ -429,6 +460,12 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
             return key
         }
         visit(root)
+    }
+
+    fun Node.detach() {
+        parent = NIL
+        left = NIL
+        right = NIL
     }
 }
 

@@ -29,27 +29,31 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
         return r
     }
 
-    override fun append(text: String) {
+    override fun append(text: String): Int {
         println("append ${text.length}")
-        bigTextImpl.append(text)
+        val r = bigTextImpl.append(text)
         stringImpl.append(text)
         verify()
+        return r
     }
 
-    override fun insertAt(pos: Int, text: String) {
+    override fun insertAt(pos: Int, text: String): Int {
         println("insert $pos, ${text.length}")
-        bigTextImpl.insertAt(pos, text)
+        val r = bigTextImpl.insertAt(pos, text)
         stringImpl.insertAt(pos, text)
         verify()
+        return r
     }
 
-    override fun delete(start: Int, endExclusive: Int) {
-        log.d { "delete $start ..< $endExclusive" }
+    override fun delete(start: Int, endExclusive: Int): Int {
+        println("delete $start ..< $endExclusive")
+        var r: Int = 0
         printDebugIfError {
-            bigTextImpl.delete(start, endExclusive)
+            r = bigTextImpl.delete(start, endExclusive)
             stringImpl.delete(start, endExclusive)
         }
         verify()
+        return r
     }
 
     override fun hashCode(): Int {
@@ -73,7 +77,7 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
         }
     }
 
-    fun printDebugIfError(label: String = "", operation: () -> Unit) {
+    fun printDebugIfError(label: String = "ERROR", operation: () -> Unit) {
         try {
             operation()
         } catch (e: Throwable) {

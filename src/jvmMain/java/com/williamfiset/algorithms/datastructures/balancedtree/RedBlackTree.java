@@ -96,7 +96,7 @@ public class RedBlackTree<T extends Comparable<T>> implements Iterable<T> {
     }
 
     // The root node of the RB tree.
-    public Node root;
+    protected Node root;
 
     // Tracks the number of nodes inside the tree.
     protected int nodeCount = 0;

@@ -13,7 +13,7 @@ val log = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText")
 
-var isD = false
+internal var isD = false
 
 class BigTextImpl : BigText {
     val tree = RedBlackTree2<BigTextNodeValue>(
@@ -32,7 +32,7 @@ class BigTextImpl : BigText {
         chunkSize = 64
     }
 
-    internal constructor(chunkSize: Int) {
+    constructor(chunkSize: Int) {
         this.chunkSize = chunkSize
     }
 
@@ -65,10 +65,6 @@ class BigTextImpl : BigText {
         return start
     }
 
-    private fun appendChunk(chunkedString: String) {
-        insertChunkAtPosition(tree.root.length(), chunkedString)
-    }
-
     private fun insertChunkAtPosition(position: Int, chunkedString: String) {
         log.d { "insertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
@@ -79,7 +75,7 @@ class BigTextImpl : BigText {
             buffers.last().takeIf { it.length + chunkedString.length <= chunkSize }
         } else null
         if (buffer == null) {
-            buffer = TextBuffer()
+            buffer = TextBuffer(chunkSize)
             buffers += buffer
         }
         require(buffer.length + chunkedString.length <= chunkSize)
@@ -166,7 +162,7 @@ class BigTextImpl : BigText {
     }
 
     fun recomputeAggregatedValues(node: RedBlackTree<BigTextNodeValue>.Node) {
-        log.d { inspect("${node.value?.debugKey()} start") }
+        log.v { inspect("${node.value?.debugKey()} start") }
 
         var node = node
         while (node.isNotNil()) {
@@ -199,7 +195,7 @@ class BigTextImpl : BigText {
 //    }
 
     override val length: Int
-        get() = tree.root.length()
+        get() = tree.getRoot().length()
 
     override fun fullString(): String {
         return tree.joinToString("") {
@@ -211,8 +207,8 @@ class BigTextImpl : BigText {
         TODO("Not yet implemented")
     }
 
-    override fun append(text: String) {
-        insertAt(length, text)
+    override fun append(text: String): Int {
+        return insertAt(length, text)
 //        var start = 0
 //        while (start < text.length) {
 //            var last = buffers.lastOrNull()?.length
@@ -227,7 +223,7 @@ class BigTextImpl : BigText {
 //        }
     }
 
-    override fun insertAt(pos: Int, text: String) {
+    override fun insertAt(pos: Int, text: String): Int {
         var start = 0
         val prevNode = tree.findNodeByCharIndex(maxOf(0, pos - 1))
         val nodeStart = prevNode?.let { findPositionStart(it) }?.also {
@@ -249,15 +245,16 @@ class BigTextImpl : BigText {
             start += append
             last = buffers.last().length
         }
+        return text.length
     }
 
-    override fun delete(start: Int, endExclusive: Int) {
+    override fun delete(start: Int, endExclusive: Int): Int {
         require(start <= endExclusive) { "start should be <= endExclusive" }
         require(0 <= start) { "Invalid start" }
         require(endExclusive <= length) { "endExclusive is out of bound" }
 
         if (start == endExclusive) {
-            return
+            return 0
         }
 
         log.d { "delete $start ..< $endExclusive" }
@@ -266,6 +263,9 @@ class BigTextImpl : BigText {
         var nodeRange = charIndexRangeOfNode(node!!)
         val newNodesInDescendingOrder = mutableListOf<BigTextNodeValue>()
         while (node?.isNotNil() == true && start <= nodeRange.endInclusive) {
+            if (isD && nodeRange.start == 0) {
+                isD = true
+            }
             if (endExclusive - 1 in nodeRange.start..nodeRange.last - 1) {
                 // need to split
                 val splitAtIndex = endExclusive - nodeRange.start
@@ -297,9 +297,6 @@ class BigTextImpl : BigText {
             }
             tree.delete(node)
             log.d { inspect("After delete " + node?.value?.debugKey()) }
-//            if (!tree.delete(node.value)) {
-//                throw IllegalStateException("Cannot delete node ${node.value.debugKey()} at ${nodeRange.start} .. ${nodeRange.last}")
-//            }
             node = prev
 //            nodeRange = nodeRange.start - chunkSize .. nodeRange.last - chunkSize
             if (node != null) {
@@ -310,12 +307,17 @@ class BigTextImpl : BigText {
         newNodesInDescendingOrder.asReversed().forEach {
             if (node != null) {
                 node = tree.insertRight(node!!, it)
+            } else if (!tree.isEmpty) { // no previous node, so insert at leftmost of the tree
+                val leftmost = tree.leftmost(tree.getRoot())
+                node = tree.insertLeft(leftmost, it)
             } else {
                 node = tree.insertValue(it)
             }
         }
 
-        log.v { inspect("Finish D " + node?.value?.debugKey()) }
+        log.d { inspect("Finish D " + node?.value?.debugKey()) }
+
+        return -(endExclusive - start)
     }
 
     fun charIndexRangeOfNode(node: RedBlackTree<BigTextNodeValue>.Node): IntRange {

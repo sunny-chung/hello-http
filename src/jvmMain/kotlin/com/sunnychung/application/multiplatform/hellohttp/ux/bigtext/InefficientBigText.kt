@@ -16,16 +16,19 @@ class InefficientBigText(text: String) : BigText {
     override fun substring(range: IntRange): String =
         substring(range.first, range.last)
 
-    override fun append(text: String) {
+    override fun append(text: String): Int {
         string += text
+        return text.length
     }
 
-    override fun insertAt(pos: Int, text: String) {
+    override fun insertAt(pos: Int, text: String): Int {
         string = string.insert(pos, text)
+        return text.length
     }
 
-    override fun delete(start: Int, endExclusive: Int) {
+    override fun delete(start: Int, endExclusive: Int): Int {
         string = string.removeRange(start, endExclusive)
+        return -(endExclusive - start)
     }
 
     override fun hashCode(): Int =

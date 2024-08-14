@@ -29,8 +29,8 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
         "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()}"
 }
 
-class TextBuffer {
-    private val buffer = StringBuilder()
+class TextBuffer(val size: Int) {
+    private val buffer = StringBuilder(size)
 
     var lineOffsetStarts: List<Int> = emptyList()
 //    var rowOffsetStarts: List<Int> = emptyList()
