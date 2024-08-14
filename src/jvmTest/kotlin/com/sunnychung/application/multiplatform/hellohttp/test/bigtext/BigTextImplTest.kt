@@ -480,6 +480,67 @@ class BigTextImplTest {
             assertEquals(totalLength, t.length)
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 1024, 64 * 1024])
+    fun exhaustSubstring(chunkSize: Int) {
+        (0..1025).forEach { length -> // O(length ^ 3) * O(verify), where O(verify) = O(length)
+            val t = BigTextVerifyImpl(chunkSize = chunkSize)
+            t.append((0 until length).map { 'a' + Random.nextInt(26) }.joinToString(""))
+            (0 .. length - 1).forEach { i ->
+                (i .. length).forEach { j ->
+//                    println("substring $i, $j")
+                    val ss = t.substring(i, j) // the substring content is verified by BigTextVerifyImpl
+                    assertEquals(j - i, ss.length)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Benchmark:
+     *
+     *  Chunk Size  | Completion Time (s)
+     *  64B         | 86
+     *  1KB         | 49.0
+     *  64KB        | 41.4
+     *  512KB       | 41.7
+     *  2MB         | 38.2
+     */
+    @ParameterizedTest
+    @ValueSource(ints = [64, 1024, 64 * 1024, 512 * 1024, 2 * 1024 * 1024])
+    fun randomLongSubstring(chunkSize: Int) {
+        repeat(500) { // 500 * O(length) * 1000
+            println("it #$it")
+            val length = when (random(0, 5)) {
+                0 -> random(1026, 4097)
+                1 -> random(4097, 65537)
+                2 -> random(65537, 100 * 1024 + 1)
+                3 -> random(100 * 1024 + 1, 1 * 1024 * 1024 + 1)
+                4 -> random(1 * 1024 * 1024 + 1, 16 * 1024 * 1024)
+                else -> throw IllegalStateException()
+            }
+            val t = BigTextVerifyImpl(chunkSize = chunkSize)
+            t.append((0 until length).map { 'a' + Random.nextInt(26) }.joinToString(""))
+
+            repeat(1000) {
+                val p1 = random(0, length)
+                val pl: Int = when (random(0, 6)) {
+                    0 -> t.length * 5 / 100
+                    1 -> t.length * 16 / 100
+                    2 -> t.length * 34 / 100
+                    3 -> t.length * 63 / 100
+                    4 -> t.length * 87 / 100
+                    5 -> t.length
+                    else -> throw IllegalStateException()
+                }
+                val p2 = minOf(length, p1 + random(0, maxOf(2, pl - p1))) // p1 + p2 <= t.length
+//                println("L = $length. ss $p1 ..< $p2")
+                val ss = t.substring(p1, p2)
+                assertEquals(p2 - p1, ss.length)
+            }
+        }
+    }
 }
 
 private fun random(from: Int, toExclusive: Int): Int {

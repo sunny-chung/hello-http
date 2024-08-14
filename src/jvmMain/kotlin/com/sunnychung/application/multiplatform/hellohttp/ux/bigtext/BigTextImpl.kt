@@ -199,12 +199,42 @@ class BigTextImpl : BigText {
 
     override fun fullString(): String {
         return tree.joinToString("") {
-            buffers[it.bufferIndex].toString().substring(it.bufferOffsetStart, it.bufferOffsetEndExclusive)
+            buffers[it.bufferIndex].subSequence(it.bufferOffsetStart, it.bufferOffsetEndExclusive)
         }
     }
 
-    override fun substring(start: Int, endExclusive: Int): String {
-        TODO("Not yet implemented")
+    override fun substring(start: Int, endExclusive: Int): String { // O(lg L + (e - s))
+        require(start <= endExclusive) { "start should be <= endExclusive" }
+        require(0 <= start) { "Invalid start" }
+        require(endExclusive <= length) { "endExclusive is out of bound" }
+
+        if (start == endExclusive) {
+            return ""
+        }
+
+        val result = StringBuilder(endExclusive - start)
+        var node = tree.findNodeByCharIndex(start) ?: throw IllegalStateException("Cannot find string node for position $start")
+        var nodeStartPos = findPositionStart(node)
+        var numRemainCharsToCopy = endExclusive - start
+        var copyFromBufferIndex = start - nodeStartPos + node.value.bufferOffsetStart
+        while (numRemainCharsToCopy > 0) {
+            val numCharsToCopy = minOf(endExclusive, nodeStartPos + node.value.bufferLength) - maxOf(start, nodeStartPos)
+            val copyUntilBufferIndex = copyFromBufferIndex + numCharsToCopy
+            if (numCharsToCopy > 0) {
+                val subsequence = buffers[node.value.bufferIndex].subSequence(copyFromBufferIndex, copyUntilBufferIndex)
+                result.append(subsequence)
+                numRemainCharsToCopy -= numCharsToCopy
+            } else {
+                break
+            }
+            if (numRemainCharsToCopy > 0) {
+                nodeStartPos += node.value.bufferLength
+                node = tree.nextNode(node) ?: throw IllegalStateException("Cannot find the next string node")
+                copyFromBufferIndex = node.value.bufferOffsetStart
+            }
+        }
+
+        return result.toString()
     }
 
     override fun append(text: String): Int {

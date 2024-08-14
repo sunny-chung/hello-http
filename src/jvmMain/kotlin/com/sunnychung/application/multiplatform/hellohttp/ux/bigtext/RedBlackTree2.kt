@@ -439,6 +439,19 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
         return parent.takeIf { it.isNotNil() }
     }
 
+    fun nextNode(node: Node): Node? {
+        if (node.right.isNotNil()) {
+            return leftmost(node.right)
+        }
+        var node = node
+        var parent = node.parent
+        while (parent.isNotNil() && parent.right === node) {
+            node = parent
+            parent = node.parent
+        }
+        return parent.takeIf { it.isNotNil() }
+    }
+
 //    fun visitUpwards(node: Node, visitor: (T) -> Unit) {
 //        var node = node
 //        while (node.isNotNil()) {

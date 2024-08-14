@@ -52,4 +52,8 @@ class TextBuffer(val size: Int) {
     override fun toString(): String {
         return buffer.toString()
     }
+
+    fun subSequence(start: Int, endExclusive: Int): CharSequence {
+        return buffer.subSequence(start, endExclusive)
+    }
 }
