@@ -152,6 +152,7 @@ tasks.getByName("jvmMainClasses") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    jvmArgs("-Xmx6144m")
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
         showStandardStreams = true
