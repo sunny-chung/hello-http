@@ -6,6 +6,7 @@ import co.touchlab.kermit.MutableLoggerConfig
 import co.touchlab.kermit.Severity
 import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlin.random.Random
 import kotlin.test.Test
@@ -19,16 +20,23 @@ class BigTextImplBenchmarkTest {
 
     private fun chunkSizes() = listOf(64, 1024, 64 * 1024, 256 * 1024, 1024 * 1024, 2 * 1024 * 1024, 4 * 1024 * 1024)
 
+    private fun measureOne(operation: () -> Unit): KDuration {
+        val startInstant = KInstant.now()
+        operation()
+        val endInstant = KInstant.now()
+        return endInstant - startInstant
+    }
+
     private fun benchmark(label: String, testOperation: (BigTextImpl, String) -> Unit) {
         chunkSizes().forEach { chunkSize ->
             log.i("-".repeat(29))
             val logHeader = "[$label] [chunkSize=$chunkSize]"
             log.i("$logHeader Start")
-            val startInstant = KInstant.now()
-            val text = BigTextImpl(chunkSize = chunkSize)
-            testOperation(text, logHeader)
-            val endInstant = KInstant.now()
-            log.i("$logHeader End. ${(endInstant - startInstant).millis / 1000.0}s")
+            val testDuration = measureOne {
+                val text = BigTextImpl(chunkSize = chunkSize)
+                testOperation(text, logHeader)
+            }
+            log.i("$logHeader End. ${testDuration.millis / 1000.0}s")
             log.i("-".repeat(29))
         }
     }
@@ -255,6 +263,26 @@ class BigTextImplBenchmarkTest {
             }
             log.i("$logHeader Remain length = ${t.length}")
             log.i("$logHeader Node Count = ${t.tree.size()}")
+        }
+    }
+
+    @Test
+    fun length() {
+        benchmark("length") { t, logHeader ->
+            val durations = mutableListOf<KDuration>()
+            repeat(5) {
+                val text = BigTextImpl(t.chunkSize)
+                text.append("a".repeat(random(1_006_984_321, 1_200_000_000)))
+                var l = 0
+                log.i("$logHeader Start evaluating length")
+                durations += measureOne {
+                    repeat(10_000_000) {
+                        l = text.length
+                    }
+                }
+                log.i("$logHeader Length = $l")
+            }
+            log.i("$logHeader Average: ${durations.map { it.millis }.average() / 1000.0}s")
         }
     }
 }
