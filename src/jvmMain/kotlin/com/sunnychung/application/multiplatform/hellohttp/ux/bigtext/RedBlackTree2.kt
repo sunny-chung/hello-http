@@ -1,10 +1,13 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
+import java.util.Stack
 
 interface DebuggableNode<T : Comparable<T>> {
     fun debugKey(): String
     fun debugLabel(node: RedBlackTree<T>.Node): String
+    fun attach(node: RedBlackTree<T>.Node)
+    fun detach()
 }
 
 interface RedBlackTreeComputations<T : Comparable<T>> {
@@ -75,6 +78,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
         }
 
         val z: Node = Node(`val`, RED, y, NIL, NIL)
+        `val`.attach(z)
 
         if (y === NIL) {
             root = z
@@ -98,6 +102,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      */
     fun insertLeft(parent: Node, value: T): Node {
         val z: Node = Node(value, RED, parent, NIL, NIL)
+        value.attach(z)
         if (root.isNil) {
             TODO("insertLeft root")
         }
@@ -109,6 +114,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
             z.parent = prevNode
         }
         insertFix(z)
+        computations.recomputeFromLeaf(z)
         nodeCount++
         return z
     }
@@ -122,6 +128,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      */
     fun insertRight(parent: Node, value: T): Node {
         val z: Node = Node(value, RED, parent, NIL, NIL)
+        value.attach(z)
         if (root.isNil) {
             TODO("insertRight root")
         }
@@ -133,6 +140,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
             z.parent = nextNode
         }
         insertFix(z)
+        computations.recomputeFromLeaf(z)
         nodeCount++
         return z
     }
@@ -459,6 +467,42 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
 //        }
 //    }
 
+    fun visitInPostOrder(visitor: (Node) -> Unit) {
+        fun visit(node: Node) {
+            if (node.isNil) return
+            visit(node.left)
+            visit(node.right)
+            visitor(node)
+        }
+        visit(root)
+    }
+
+    fun pathUntilRoot(node: Node): List<Node> = buildList {
+        if (node.isNil) {
+            throw IllegalArgumentException("Given node does not exist")
+        }
+        var n = node
+        while (n.isNotNil()) {
+            add(n)
+            n = n.parent
+        }
+    }
+
+    fun lowestCommonAncestor(node1: Node, node2: Node): Node {
+        val path1 = pathUntilRoot(node1)
+        val path2 = pathUntilRoot(node2)
+        var i1 = path1.lastIndex
+        var i2 = path2.lastIndex
+        while (i1 >= 0 && i2 >= 0) {
+            if (path1[i1] !== path2[i2]) {
+                return path1[i1 + 1]
+            }
+            --i1
+            --i2
+        }
+        throw IllegalArgumentException("One or more given nodes do not belong to this tree")
+    }
+
     fun debugTree(prepend: String = "    "): String = buildString {
         fun visit(node: Node): String {
             val key = node.value?.debugKey().toString()
@@ -476,6 +520,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
     }
 
     fun Node.detach() {
+        value?.detach()
         parent = NIL
         left = NIL
         right = NIL

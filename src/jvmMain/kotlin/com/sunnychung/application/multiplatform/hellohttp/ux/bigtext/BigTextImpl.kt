@@ -4,6 +4,7 @@ import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.MutableLoggerConfig
 import co.touchlab.kermit.Severity
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
@@ -12,6 +13,11 @@ val log = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText")
+
+val logQ = Logger(object : MutableLoggerConfig {
+    override var logWriterList: List<LogWriter> = listOf(JvmLogger())
+    override var minSeverity: Severity = Severity.Info
+}, tag = "BigTextQuery")
 
 internal var isD = false
 
@@ -53,12 +59,45 @@ class BigTextImpl : BigText {
         }
     }
 
+    fun RedBlackTree2<BigTextNodeValue>.findNodeByLineBreaks(index: Int): Pair<RedBlackTree<BigTextNodeValue>.Node, Int>? {
+        var find = index
+        var lineStart = 0
+        return findNode {
+            index
+            when (find) {
+                in Int.MIN_VALUE until it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
+//                it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
+                in it.value.leftNumOfLineBreaks until it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange -> 0
+                in it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange  until Int.MAX_VALUE -> 1.also { compareResult ->
+                    val isTurnRight = compareResult > 0
+                    if (isTurnRight) {
+                        find -= it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange
+                        lineStart += it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange
+                    }
+                }
+                else -> throw IllegalStateException("what is find? $find")
+            }
+        }?.let { it to /*lineStart *//*+ it.value.leftNumOfLineBreaks*/ findLineStart(it) }
+    }
+
     fun findPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
         var start = node.value.leftStringLength
         var node = node
         while (node.parent.isNotNil()) {
             if (node === node.parent.right) {
                 start += node.parent.value.leftStringLength + node.parent.value.bufferLength
+            }
+            node = node.parent
+        }
+        return start
+    }
+
+    fun findLineStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
+        var start = node.value.leftNumOfLineBreaks
+        var node = node
+        while (node.parent.isNotNil()) {
+            if (node === node.parent.right) {
+                start += node.parent.value.leftNumOfLineBreaks + node.parent.value.bufferNumLineBreaksInRange
             }
             node = node.parent
         }
@@ -158,7 +197,15 @@ class BigTextImpl : BigText {
             }
         }
 
-        log.d { inspect("Finish I " + node?.value?.debugKey()) }
+        log.v { inspect("Finish I " + node?.value?.debugKey()) }
+    }
+
+    fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue) = with (nodeValue) {
+//        bufferNumLineBreaksInRange = buffers[bufferIndex].lineOffsetStarts.subSet(bufferOffsetStart, bufferOffsetEndExclusive).size
+        bufferNumLineBreaksInRange = buffers[bufferIndex].lineOffsetStarts.run {
+            binarySearchForMinIndexOfValueAtLeast(bufferOffsetEndExclusive - 1) + 1 - maxOf(0, binarySearchForMinIndexOfValueAtLeast(bufferOffsetStart))
+        }
+        leftNumOfLineBreaks = node?.left?.numLineBreaks() ?: 0
     }
 
     fun recomputeAggregatedValues(node: RedBlackTree<BigTextNodeValue>.Node) {
@@ -168,8 +215,13 @@ class BigTextImpl : BigText {
         while (node.isNotNil()) {
             val left = node.left.takeIf { it.isNotNil() }
             with (node.getValue()) {
+                // recompute leftStringLength
                 leftStringLength = left?.length() ?: 0
-                log.d { ">> ${node.value.debugKey()} -> $leftStringLength (${left?.value?.debugKey()}/ ${left?.length()})" }
+                log.v { ">> ${node.value.debugKey()} -> $leftStringLength (${left?.value?.debugKey()}/ ${left?.length()})" }
+
+                // recompute leftNumOfLineBreaks
+                computeCurrentNodeProperties(this)
+
                 // TODO calc other metrics
             }
             log.v { ">> ${node.parent.value?.debugKey()} parent -> ${node.value?.debugKey()}" }
@@ -235,6 +287,34 @@ class BigTextImpl : BigText {
         }
 
         return result.toString()
+    }
+
+    fun findLineString(lineIndex: Int): String {
+        fun findCharPosOfLineOffset(node: RedBlackTree<BigTextNodeValue>.Node, lineOffset: Int): Int {
+            val buffer = buffers[node.value!!.bufferIndex]
+            val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
+            val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset)
+            val charOffsetInBuffer = if (offsetedLineOffset >= 0) {
+                buffer.lineOffsetStarts[offsetedLineOffset] + 1
+            } else {
+                0
+            }
+            return findPositionStart(node) + (charOffsetInBuffer - node.value!!.bufferOffsetStart)
+        }
+
+        val (startNode, startNodeLineStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
+        val endNodeFindPair = tree.findNodeByLineBreaks(lineIndex)
+        val endCharIndex = if (endNodeFindPair != null) { // includes the last '\n' char
+            val (endNode, endNodeLineStart) = endNodeFindPair
+            require(endNodeLineStart <= lineIndex)
+//            val lca = tree.lowestCommonAncestor(startNode, endNode)
+            findCharPosOfLineOffset(endNode, lineIndex - endNodeLineStart)
+        } else {
+            length
+        }
+        val startCharIndex = findCharPosOfLineOffset(startNode, lineIndex - 1 - startNodeLineStart)
+        logQ.d { "line #$lineIndex -> $startCharIndex ..< $endCharIndex" }
+        return substring(startCharIndex, endCharIndex) // includes the last '\n' char
     }
 
     override fun append(text: String): Int {
@@ -380,6 +460,13 @@ fun RedBlackTree<BigTextNodeValue>.Node.length(): Int =
     (getValue()?.leftStringLength ?: 0) +
         (getValue()?.bufferLength ?: 0) +
         (getRight().takeIf { it.isNotNil() }?.length() ?: 0)
+
+fun RedBlackTree<BigTextNodeValue>.Node.numLineBreaks(): Int {
+    val value = getValue()
+    return (value?.leftNumOfLineBreaks ?: 0) +
+        (value?.bufferNumLineBreaksInRange ?: 0) +
+        (getRight().takeIf { it.isNotNil() }?.numLineBreaks() ?: 0)
+}
 
 private enum class InsertDirection {
     Left, Right, Undefined
