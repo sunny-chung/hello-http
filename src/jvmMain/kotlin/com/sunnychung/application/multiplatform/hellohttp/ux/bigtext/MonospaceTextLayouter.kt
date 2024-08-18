@@ -10,7 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 
 private val LINE_BREAK_REGEX = "\n".toRegex()
 
-class MonospaceTextLayouter {
+class MonospaceTextLayouter : TextLayouter {
     val charMeasurer: CharMeasurer
 
     constructor(charMeasurer: CharMeasurer) {
@@ -117,6 +117,38 @@ class MonospaceTextLayouter {
             totalLinesBeforeTransformation = originalLineStartIndices.size,
             charMeasurer = charMeasurer,
         )
+    }
+
+    override fun indexCharWidth(text: String) {
+        charMeasurer.measureFullText(text)
+    }
+
+    override fun layoutOneLine(line: CharSequence, contentWidth: Float, firstRowOccupiedWidth: Float, offset: Int): Pair<List<Int>, Float> {
+        val charWidths = line.map { charMeasurer.findCharWidth(it.toString()) }
+        val isOffsetLastLine = line.endsWith('\n')
+        var numCharsPerRow = mutableListOf<Int>()
+        var currentRowOccupiedWidth = firstRowOccupiedWidth
+        var numCharsInCurrentRow = 0
+        charWidths.forEachIndexed { i, w -> // O(line string length)
+            if (currentRowOccupiedWidth + w > contentWidth && numCharsInCurrentRow > 0) {
+                numCharsPerRow += numCharsInCurrentRow
+                numCharsInCurrentRow = 0
+                currentRowOccupiedWidth = 0f
+            }
+            currentRowOccupiedWidth += w
+            ++numCharsInCurrentRow
+        }
+//        if (numCharsInCurrentRow > 0) {
+//            numCharsPerRow += numCharsInCurrentRow
+//        }
+//        if (numCharsPerRow.isEmpty()) {
+//            numCharsPerRow += 0
+//        }
+        var s = 0
+        return numCharsPerRow.mapIndexed { index, it ->
+            s += it
+            offset + s + if (index >= numCharsPerRow.lastIndex && isOffsetLastLine) 1 else 0 /* skip the last char '\n' */
+        } to currentRowOccupiedWidth
     }
 }
 

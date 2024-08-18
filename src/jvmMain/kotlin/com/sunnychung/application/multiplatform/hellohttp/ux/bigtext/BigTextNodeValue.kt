@@ -2,15 +2,16 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.util.findAllIndicesOfChar
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
-import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree.Node
+import java.util.SortedSet
 import kotlin.random.Random
 
 class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNodeValue> {
     var leftNumOfLineBreaks: Int = -1
-    var leftNumOfRows: Int = -1
-    var leftLastRowWidth: Int = -1
+    var leftNumOfRowBreaks: Int = -1
     var leftStringLength: Int = -1
-//    var rowOffsetStarts: List<Int> = emptyList()
+//    var rowBreakOffsets: SortedSet<Int> = sortedSetOf()
+    var rowBreakOffsets: List<Int> = emptyList()
+    var lastRowWidth: Float = -1f
 
     var bufferIndex: Int = -1
     var bufferOffsetStart: Int = -1

@@ -20,6 +20,11 @@ val logQ = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Query")
 
+val logL = Logger(object : MutableLoggerConfig {
+    override var logWriterList: List<LogWriter> = listOf(JvmLogger())
+    override var minSeverity: Severity = Severity.Info
+}, tag = "BigText.Layout")
+
 internal var isD = false
 
 class BigTextImpl : BigText {
@@ -34,6 +39,9 @@ class BigTextImpl : BigText {
     val buffers = mutableListOf<TextBuffer>()
 
     val chunkSize: Int // TODO change to a large number
+
+    private var layouter: TextLayouter? = null
+    private var contentWidth: Float? = null
 
     constructor() {
         chunkSize = 64
@@ -79,6 +87,26 @@ class BigTextImpl : BigText {
                 else -> throw IllegalStateException("what is find? $find")
             }
         }?.let { it to lineStart + it.value.leftNumOfLineBreaks /*findLineStart(it)*/ }
+    }
+
+    fun RedBlackTree2<BigTextNodeValue>.findNodeByRowBreaks(index: Int): Pair<RedBlackTree<BigTextNodeValue>.Node, Int>? {
+        var find = index
+        var rowStart = 0
+        return findNode {
+            index
+            when (find) {
+                in Int.MIN_VALUE until it.value.leftNumOfRowBreaks -> if (it.left.isNotNil()) -1 else 0
+                in it.value.leftNumOfRowBreaks until it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size -> 0
+                in it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size  until Int.MAX_VALUE -> 1.also { compareResult ->
+                    val isTurnRight = compareResult > 0
+                    if (isTurnRight) {
+                        find -= it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size
+                        rowStart += it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size
+                    }
+                }
+                else -> throw IllegalStateException("what is find? $find")
+            }
+        }?.let { it to rowStart + it.value.leftNumOfRowBreaks /*findLineStart(it)*/ }
     }
 
     fun findPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
@@ -208,6 +236,8 @@ class BigTextImpl : BigText {
         }
         leftNumOfLineBreaks = node?.left?.numLineBreaks() ?: 0
         log.v { ">> leftNumOfLineBreaks ${node?.value?.debugKey()} -> $leftNumOfLineBreaks" }
+
+        leftNumOfRowBreaks = node?.left?.numRowBreaks() ?: 0
     }
 
     fun recomputeAggregatedValues(node: RedBlackTree<BigTextNodeValue>.Node) {
@@ -321,6 +351,37 @@ class BigTextImpl : BigText {
         }
         val startCharIndex = findCharPosOfLineOffset(startNode, lineIndex - startNodeLineStart)
         logQ.d { "line #$lineIndex -> $startCharIndex ..< $endCharIndex" }
+        return substring(startCharIndex, endCharIndex) // includes the last '\n' char
+    }
+
+    fun findRowString(rowIndex: Int): String {
+        /**
+         * @param rowOffset 0 = start of buffer; 1 = char index of the first row break
+         */
+        fun findCharPosOfRowOffset(node: RedBlackTree<BigTextNodeValue>.Node, rowOffset: Int): Int {
+            val charOffsetInBuffer = if (rowOffset - 1 > node.value!!.rowBreakOffsets.size - 1) {
+                node.value!!.bufferOffsetEndExclusive
+            } else if (rowOffset - 1 >= 0) {
+                val offsetedRowOffset = rowOffset - 1
+                node.value!!.rowBreakOffsets[offsetedRowOffset]
+            } else {
+                node.value!!.bufferOffsetStart
+            }
+            return findPositionStart(node) + (charOffsetInBuffer - node.value!!.bufferOffsetStart)
+        }
+
+        val (startNode, startNodeRowStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
+        val endNodeFindPair = tree.findNodeByRowBreaks(rowIndex)
+        val endCharIndex = if (endNodeFindPair != null) { // includes the last '\n' char
+            val (endNode, endNodeRowStart) = endNodeFindPair
+            require(endNodeRowStart <= rowIndex) { "Node ${endNode.value.debugKey()} violates [endNodeRowStart <= rowIndex]" }
+//            val lca = tree.lowestCommonAncestor(startNode, endNode)
+            findCharPosOfRowOffset(endNode, rowIndex + 1 - endNodeRowStart)
+        } else {
+            length
+        }
+        val startCharIndex = findCharPosOfRowOffset(startNode, rowIndex - startNodeRowStart)
+        logQ.d { "row #$rowIndex -> $startCharIndex ..< $endCharIndex" }
         return substring(startCharIndex, endCharIndex) // includes the last '\n' char
     }
 
@@ -465,6 +526,78 @@ class BigTextImpl : BigText {
         println(inspect(label))
     }
 
+    fun setLayouter(layouter: TextLayouter) {
+        if (this.layouter == layouter) {
+            return
+        }
+
+        tree.forEach {
+            val buffer = buffers[it.bufferIndex]
+            val chunkString = buffer.subSequence(it.bufferOffsetStart, it.bufferOffsetEndExclusive)
+            layouter.indexCharWidth(chunkString.toString())
+        }
+
+        this.layouter = layouter
+
+        layout()
+    }
+
+    fun setContentWidth(contentWidth: Float) {
+        if (this.contentWidth == contentWidth) {
+            return
+        }
+
+        this.contentWidth = contentWidth
+
+        layout()
+    }
+
+    fun layout() {
+        val layouter = this.layouter ?: return
+        val contentWidth = this.contentWidth ?: return
+
+        var lastOccupiedWidth = 0f
+        val treeLastIndex = tree.size() - 1
+        tree.forEachIndexed { index, node ->
+            val buffer = buffers[node.bufferIndex]
+            val lineBreakIndexFrom = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.bufferOffsetStart)
+            val lineBreakIndexTo = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.bufferOffsetEndExclusive - 1)
+            var charStartIndexInBuffer = node.bufferOffsetStart
+//            node.rowBreakOffsets.clear()
+            val rowBreakOffsets = mutableListOf<Int>()
+            (lineBreakIndexFrom .. lineBreakIndexTo).forEach { lineBreakEntryIndex ->
+                val lineBreakCharIndex = buffer.lineOffsetStarts[lineBreakEntryIndex]
+                val subsequence = buffer.subSequence(charStartIndexInBuffer, lineBreakCharIndex)
+                logL.d { "node ${node.debugKey()} line break #$lineBreakEntryIndex seq $charStartIndexInBuffer ..< $lineBreakCharIndex" }
+
+                val (rowCharOffsets, _) = layouter.layoutOneLine(subsequence, contentWidth, lastOccupiedWidth, charStartIndexInBuffer)
+//                node.rowBreakOffsets += rowCharOffsets
+                logL.d { "row break add $rowCharOffsets" }
+                rowBreakOffsets += rowCharOffsets
+                logL.d { "row break add ${lineBreakCharIndex + 1}" }
+                rowBreakOffsets += lineBreakCharIndex + 1
+
+                charStartIndexInBuffer = lineBreakCharIndex + 1
+                lastOccupiedWidth = 0f
+            }
+            if (charStartIndexInBuffer < node.bufferOffsetEndExclusive) {
+                val subsequence = buffer.subSequence(charStartIndexInBuffer, node.bufferOffsetEndExclusive)
+                logL.d { "node ${node.debugKey()} last row seq $charStartIndexInBuffer ..< ${node.bufferOffsetEndExclusive}" }
+
+                val (rowCharOffsets, lastRowOccupiedWidth) = layouter.layoutOneLine(subsequence, contentWidth, lastOccupiedWidth, charStartIndexInBuffer)
+//                node.rowBreakOffsets += rowCharOffsets
+                logL.d { "row break add $rowCharOffsets" }
+                rowBreakOffsets += rowCharOffsets
+                lastOccupiedWidth = lastRowOccupiedWidth
+            }
+            node.rowBreakOffsets = rowBreakOffsets
+            node.lastRowWidth = lastOccupiedWidth
+        }
+
+    }
+
+    val numOfRows: Int
+        get() = tree.getRoot().numRowBreaks() + 1
 
 }
 
@@ -478,6 +611,13 @@ fun RedBlackTree<BigTextNodeValue>.Node.numLineBreaks(): Int {
     return (value?.leftNumOfLineBreaks ?: 0) +
         (value?.bufferNumLineBreaksInRange ?: 0) +
         (getRight().takeIf { it.isNotNil() }?.numLineBreaks() ?: 0)
+}
+
+fun RedBlackTree<BigTextNodeValue>.Node.numRowBreaks(): Int {
+    val value = getValue()
+    return (value?.leftNumOfRowBreaks ?: 0) +
+        (value?.rowBreakOffsets?.size ?: 0) +
+        (getRight().takeIf { it.isNotNil() }?.numRowBreaks() ?: 0)
 }
 
 private enum class InsertDirection {
