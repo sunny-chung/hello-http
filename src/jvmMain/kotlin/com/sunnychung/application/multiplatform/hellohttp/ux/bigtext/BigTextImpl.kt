@@ -78,7 +78,7 @@ class BigTextImpl : BigText {
                 }
                 else -> throw IllegalStateException("what is find? $find")
             }
-        }?.let { it to /*lineStart *//*+ it.value.leftNumOfLineBreaks*/ findLineStart(it) }
+        }?.let { it to lineStart + it.value.leftNumOfLineBreaks /*findLineStart(it)*/ }
     }
 
     fun findPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
@@ -292,17 +292,16 @@ class BigTextImpl : BigText {
     }
 
     fun findLineString(lineIndex: Int): String {
-
         /**
          * @param lineOffset 0 = start of buffer; 1 = char index after the first '\n'
          */
         fun findCharPosOfLineOffset(node: RedBlackTree<BigTextNodeValue>.Node, lineOffset: Int): Int {
             val buffer = buffers[node.value!!.bufferIndex]
-            val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
-            val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
             val charOffsetInBuffer = if (lineOffset - 1 > buffer.lineOffsetStarts.lastIndex) {
                 node.value!!.bufferOffsetEndExclusive
             } else if (lineOffset - 1 >= 0) {
+                val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
+                val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
                 buffer.lineOffsetStarts[offsetedLineOffset] + 1
             } else {
                 node.value!!.bufferOffsetStart
