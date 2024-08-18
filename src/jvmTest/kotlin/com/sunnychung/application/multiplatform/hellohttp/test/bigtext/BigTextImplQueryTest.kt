@@ -2,7 +2,6 @@ package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextVerifyImpl
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import kotlin.random.Random

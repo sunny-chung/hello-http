@@ -2,7 +2,6 @@ package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextVerifyImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.isD
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource

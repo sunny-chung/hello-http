@@ -1,4 +1,8 @@
-package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
+package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
+
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.InefficientBigText
 
 internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : BigText {
     val bigTextImpl = if (chunkSize > 0) BigTextImpl(chunkSize) else BigTextImpl()
