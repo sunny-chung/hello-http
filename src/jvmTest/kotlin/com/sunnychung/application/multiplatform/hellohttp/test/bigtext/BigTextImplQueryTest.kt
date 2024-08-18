@@ -143,6 +143,22 @@ class BigTextImplQueryTest {
         }
     }
 
+    @Test
+    fun findLineStringAfterRemoves2() {
+        val lines = ((1..12)/* + (0 .. 23) + (13 .. 1029)*/).map { "${('0' + it % 10).toString().repeat(it)}\n" }.joinToString("")
+        val t = BigTextVerifyImpl(chunkSize = 65536).apply {
+            append(lines)
+            delete(0, 18)
+        }
+        val s = t.stringImpl.fullString()
+        println("len = ${s.length}")
+        val splitted = s.split("\n")
+        splitted.forEachIndexed { i, line ->
+            val result = t.bigTextImpl.findLineString(i)
+            assertEquals(if (i == splitted.lastIndex) line else "$line\n", result)
+        }
+    }
+
     fun generateString(length: Int): String {
         return "${('0' + length % 10).toString().repeat(length)}\n"
     }

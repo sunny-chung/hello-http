@@ -302,7 +302,7 @@ class BigTextImpl : BigText {
             val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
             val charOffsetInBuffer = if (lineOffset - 1 > buffer.lineOffsetStarts.lastIndex) {
                 node.value!!.bufferOffsetEndExclusive
-            } else if (offsetedLineOffset >= 0) {
+            } else if (lineOffset - 1 >= 0) {
                 buffer.lineOffsetStarts[offsetedLineOffset] + 1
             } else {
                 node.value!!.bufferOffsetStart
