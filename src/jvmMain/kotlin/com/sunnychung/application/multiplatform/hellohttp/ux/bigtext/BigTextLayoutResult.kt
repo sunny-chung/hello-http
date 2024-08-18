@@ -1,7 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
-import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
 import com.sunnychung.application.multiplatform.hellohttp.util.UnicodeCharMeasurer
 
 @OptIn(TemporaryApi::class)
@@ -19,7 +19,7 @@ class BigTextLayoutResult(
     private val charMeasurer: UnicodeCharMeasurer,
 ) {
     fun findLineNumberByRowNumber(rowNumber: Int): Int {
-        return lineFirstRowIndices.binarySearchForMinIndexOfValueAtLeast(rowNumber)
+        return lineFirstRowIndices.binarySearchForMaxIndexOfValueAtMost(rowNumber)
     }
 
     fun getLineTop(originalLineNumber: Int): Float = lineFirstRowIndices[originalLineNumber] * rowHeight

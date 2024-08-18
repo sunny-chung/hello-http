@@ -3,7 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TransformedText
-import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
 import com.sunnychung.application.multiplatform.hellohttp.util.UnicodeCharMeasurer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 
@@ -90,8 +90,8 @@ class MonospaceTextLayouter(textMeasurer: TextMeasurer, textStyle: TextStyle) {
             } else {
                 transformedText.text.lastIndex + 1
             }
-            val displayRowStart = transformedRowStartCharIndices.binarySearchForMinIndexOfValueAtLeast(transformedStartCharIndex)
-            val displayRowEnd = transformedRowStartCharIndices.binarySearchForMinIndexOfValueAtLeast(transformedEndCharIndex)
+            val displayRowStart = transformedRowStartCharIndices.binarySearchForMaxIndexOfValueAtMost(transformedStartCharIndex)
+            val displayRowEnd = transformedRowStartCharIndices.binarySearchForMaxIndexOfValueAtMost(transformedEndCharIndex)
             val numOfRows = displayRowEnd - displayRowStart
             lineRowSpans[index] = numOfRows
             lineRowIndices[index + 1] = lineRowIndices[index] + numOfRows

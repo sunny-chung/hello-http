@@ -4,6 +4,7 @@ import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.MutableLoggerConfig
 import co.touchlab.kermit.Severity
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
@@ -17,7 +18,7 @@ val log = Logger(object : MutableLoggerConfig {
 val logQ = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
     override var minSeverity: Severity = Severity.Info
-}, tag = "BigTextQuery")
+}, tag = "BigText.Query")
 
 internal var isD = false
 
@@ -203,9 +204,10 @@ class BigTextImpl : BigText {
     fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue) = with (nodeValue) {
 //        bufferNumLineBreaksInRange = buffers[bufferIndex].lineOffsetStarts.subSet(bufferOffsetStart, bufferOffsetEndExclusive).size
         bufferNumLineBreaksInRange = buffers[bufferIndex].lineOffsetStarts.run {
-            binarySearchForMinIndexOfValueAtLeast(bufferOffsetEndExclusive - 1) + 1 - maxOf(0, binarySearchForMinIndexOfValueAtLeast(bufferOffsetStart))
+            binarySearchForMinIndexOfValueAtLeast(bufferOffsetEndExclusive) - maxOf(0, binarySearchForMinIndexOfValueAtLeast(bufferOffsetStart))
         }
         leftNumOfLineBreaks = node?.left?.numLineBreaks() ?: 0
+        log.v { ">> leftNumOfLineBreaks ${node?.value?.debugKey()} -> $leftNumOfLineBreaks" }
     }
 
     fun recomputeAggregatedValues(node: RedBlackTree<BigTextNodeValue>.Node) {
@@ -290,14 +292,20 @@ class BigTextImpl : BigText {
     }
 
     fun findLineString(lineIndex: Int): String {
+
+        /**
+         * @param lineOffset 0 = start of buffer; 1 = char index after the first '\n'
+         */
         fun findCharPosOfLineOffset(node: RedBlackTree<BigTextNodeValue>.Node, lineOffset: Int): Int {
             val buffer = buffers[node.value!!.bufferIndex]
             val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
-            val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset)
-            val charOffsetInBuffer = if (offsetedLineOffset >= 0) {
+            val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
+            val charOffsetInBuffer = if (lineOffset - 1 > buffer.lineOffsetStarts.lastIndex) {
+                node.value!!.bufferOffsetEndExclusive
+            } else if (offsetedLineOffset >= 0) {
                 buffer.lineOffsetStarts[offsetedLineOffset] + 1
             } else {
-                0
+                node.value!!.bufferOffsetStart
             }
             return findPositionStart(node) + (charOffsetInBuffer - node.value!!.bufferOffsetStart)
         }
@@ -306,13 +314,13 @@ class BigTextImpl : BigText {
         val endNodeFindPair = tree.findNodeByLineBreaks(lineIndex)
         val endCharIndex = if (endNodeFindPair != null) { // includes the last '\n' char
             val (endNode, endNodeLineStart) = endNodeFindPair
-            require(endNodeLineStart <= lineIndex)
+            require(endNodeLineStart <= lineIndex) { "Node ${endNode.value.debugKey()} violates [endNodeLineStart <= lineIndex]" }
 //            val lca = tree.lowestCommonAncestor(startNode, endNode)
-            findCharPosOfLineOffset(endNode, lineIndex - endNodeLineStart)
+            findCharPosOfLineOffset(endNode, lineIndex + 1 - endNodeLineStart)
         } else {
             length
         }
-        val startCharIndex = findCharPosOfLineOffset(startNode, lineIndex - 1 - startNodeLineStart)
+        val startCharIndex = findCharPosOfLineOffset(startNode, lineIndex - startNodeLineStart)
         logQ.d { "line #$lineIndex -> $startCharIndex ..< $endCharIndex" }
         return substring(startCharIndex, endCharIndex) // includes the last '\n' char
     }
@@ -424,6 +432,11 @@ class BigTextImpl : BigText {
                 node = tree.insertValue(it)
             }
         }
+
+//        // FIXME remove
+//        tree.visitInPostOrder {
+//            computeCurrentNodeProperties(it.value)
+//        }
 
         log.d { inspect("Finish D " + node?.value?.debugKey()) }
 

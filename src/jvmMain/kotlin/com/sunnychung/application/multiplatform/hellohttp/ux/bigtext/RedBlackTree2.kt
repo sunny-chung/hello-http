@@ -88,6 +88,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
             y.right = z
         }
         insertFix(z)
+        computations.recomputeFromLeaf(z)
 
         nodeCount++
         return z
@@ -193,6 +194,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
         else x.getParent().setRight(y)
         y.setLeft(x)
         x.setParent(y)
+        computations.recomputeFromLeaf(x)
     }
 
     /**
@@ -221,6 +223,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
         else y.parent.right = x
         x.right = y
         y.parent = x
+        computations.recomputeFromLeaf(y)
     }
 
     override fun delete(key: T): Boolean {
@@ -250,6 +253,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
             x.color = BLACK
             z.detach()
             root.parent = NIL
+            computations.recomputeFromLeaf(x)
             nodeCount--
             return
         }
