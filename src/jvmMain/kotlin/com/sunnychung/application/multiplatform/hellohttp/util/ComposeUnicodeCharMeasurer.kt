@@ -4,13 +4,13 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import java.util.LinkedHashMap
 
-class UnicodeCharMeasurer(private val measurer: TextMeasurer, private val style: TextStyle) {
+class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val style: TextStyle) : CharMeasurer {
     private val charWidth: MutableMap<String, Float> = LinkedHashMap<String, Float>(256)
 
     /**
      * Time complexity = O(S lg C)
      */
-    fun measureFullText(text: String) {
+    override fun measureFullText(text: String) {
         val charToMeasure = mutableSetOf<String>()
         text.forEach {
             val s = it.toString()
@@ -25,7 +25,7 @@ class UnicodeCharMeasurer(private val measurer: TextMeasurer, private val style:
     /**
      * Time complexity = O(lg C)
      */
-    fun findCharWidth(char: String): Float {
+    override fun findCharWidth(char: String): Float {
         when (char.codePoints().findFirst().asInt) {
             in 0x4E00..0x9FFF,
                 in 0x3400..0x4DBF,

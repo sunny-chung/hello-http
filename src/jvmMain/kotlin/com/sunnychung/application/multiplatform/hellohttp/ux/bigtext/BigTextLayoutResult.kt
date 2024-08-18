@@ -2,7 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
-import com.sunnychung.application.multiplatform.hellohttp.util.UnicodeCharMeasurer
+import com.sunnychung.application.multiplatform.hellohttp.util.CharMeasurer
 
 @OptIn(TemporaryApi::class)
 class BigTextLayoutResult(
@@ -16,7 +16,7 @@ class BigTextLayoutResult(
     val totalLines: Int,
     val totalRows: Int,
     /** Total number of lines before transformation */ val totalLinesBeforeTransformation: Int,
-    private val charMeasurer: UnicodeCharMeasurer,
+    private val charMeasurer: CharMeasurer,
 ) {
     fun findLineNumberByRowNumber(rowNumber: Int): Int {
         return lineFirstRowIndices.binarySearchForMaxIndexOfValueAtMost(rowNumber)

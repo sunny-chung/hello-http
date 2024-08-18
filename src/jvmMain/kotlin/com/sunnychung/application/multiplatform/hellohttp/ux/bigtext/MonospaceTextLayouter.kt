@@ -4,13 +4,20 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TransformedText
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
-import com.sunnychung.application.multiplatform.hellohttp.util.UnicodeCharMeasurer
+import com.sunnychung.application.multiplatform.hellohttp.util.CharMeasurer
+import com.sunnychung.application.multiplatform.hellohttp.util.ComposeUnicodeCharMeasurer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 
 private val LINE_BREAK_REGEX = "\n".toRegex()
 
-class MonospaceTextLayouter(textMeasurer: TextMeasurer, textStyle: TextStyle) {
-    val charMeasurer = UnicodeCharMeasurer(textMeasurer, textStyle)
+class MonospaceTextLayouter {
+    val charMeasurer: CharMeasurer
+
+    constructor(charMeasurer: CharMeasurer) {
+        this.charMeasurer = charMeasurer
+    }
+
+    constructor(textMeasurer: TextMeasurer, textStyle: TextStyle) : this(ComposeUnicodeCharMeasurer(textMeasurer, textStyle))
 
     fun layout(text: String, transformedText: TransformedText, lineHeight: Float, contentWidth: Float): BigTextLayoutResult {
         log.v { "layout cw=$contentWidth" }
