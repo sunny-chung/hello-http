@@ -44,10 +44,11 @@ class BigTextImpl : BigText {
     private var contentWidth: Float? = null
 
     constructor() {
-        chunkSize = 64
+        chunkSize = 2 * 1024 * 1024 // 2 MB
     }
 
     constructor(chunkSize: Int) {
+        require(chunkSize > 0) { "chunkSize must be positive" }
         this.chunkSize = chunkSize
     }
 
