@@ -21,6 +21,16 @@ interface BigText {
 
     fun delete(range: IntRange): Int = delete(range.start, range.endInclusive + 1)
 
+    fun replace(start: Int, endExclusive: Int, text: String) {
+        delete(start, endExclusive)
+        insertAt(start, text)
+    }
+
+    fun replace(range: IntRange, text: String) {
+        delete(range)
+        insertAt(range.start, text)
+    }
+
     override fun hashCode(): Int
 
     override fun equals(other: Any?): Boolean

@@ -334,7 +334,7 @@ class BigTextImplLayoutTest {
                         in 2..3 -> t.length
                         else -> random.nextInt(t.length + 1)
                     }
-                    t.insertAt(pos, randomString(length, isAddNewLine = random.nextBoolean()) + "\n")
+                    t.insertAt(pos, randomString(length, isAddNewLine = random.nextBoolean()))
                     logL.d { t.inspect("after relayout $repeatIt $softWrapAt, $i") }
                     println("Iterate $repeatIt, $softWrapAt, $i")
                     if (i >= 43) {
@@ -571,6 +571,158 @@ class BigTextImplLayoutTest {
                     t.delete(pos, min(t.length, pos + length))
                     logL.d { t.inspect("after relayout $repeatIt $softWrapAt, $i") }
                     println("Iterate $repeatIt, $softWrapAt, $i")
+                    verifyBigTextImplAgainstTestString(
+                        testString = t.stringImpl.fullString(),
+                        bigTextImpl = t.bigTextImpl,
+                        softWrapAt = softWrapAt
+                    )
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64])
+    fun replaceTriggersRelayout1(chunkSize: Int) {
+        val beingReplaced = "XYZ\n"
+        val initial = "abcd\nABCDEFGHIJ<BCDEFGHIJ<xyz\nW${beingReplaced}abcd"
+        val replaceAs = "@\n"
+        val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+            append(initial)
+            bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            bigTextImpl.setContentWidth(16f * 10 + 1.23f)
+            printDebug("after 1st layout")
+        }
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        val pos = initial.indexOf(beingReplaced)
+        t.replace(pos, pos + beingReplaced.length, replaceAs)
+        t.printDebug("after relayout")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64])
+    fun replaceTriggersRelayout2(chunkSize: Int) {
+        val beingReplaced = "XYZ\n"
+        val initial = "abcd\nABCDEFGHIJ<BCDEFGHIJ<xyz\n${beingReplaced}abcd"
+        val replaceAs = "1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.\n"
+        val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+            append(initial)
+            bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            bigTextImpl.setContentWidth(16f * 10 + 1.23f)
+            printDebug("after 1st layout")
+        }
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        var pos = initial.indexOf(beingReplaced)
+        t.replace(pos, pos + beingReplaced.length, replaceAs)
+        t.printDebug("after relayout")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+
+        pos = initial.indexOf("H")
+        t.replace(pos, pos + 9, "--\n-")
+        t.printDebug("after relayout")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64])
+    fun replaceSameLength(chunkSize: Int) {
+        val replaceAs = "1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.\n"
+        val beingReplaced = replaceAs.lowercase()
+        val initial = "abcd\nABCDEFGHIJ<BCDEFGHIJ<xyz\n${beingReplaced}abcd"
+        val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+            append(initial)
+            bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            bigTextImpl.setContentWidth(16f * 10 + 1.23f)
+            printDebug("after 1st layout")
+        }
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        var pos = initial.indexOf(beingReplaced)
+        t.replace(pos, pos + beingReplaced.length, replaceAs)
+        t.printDebug("after relayout")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun replaceNewLines(chunkSize: Int) {
+        val initial = "\n\nabc\n\ndefghij\n\n\n\n\nxyz\n\n\n\n\n\n\n\n\n\nA\n\n\n"
+        val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+            append(initial)
+            bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            bigTextImpl.setContentWidth(16f * 10 + 1.23f)
+        }
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        listOf((25..32), (14 .. 16), (14 .. 15), (5 .. 7), (1 .. 1), (0 .. 0), (14 .. 16)).forEach {
+            t.replace(it, "A\n\n")
+            t.printDebug("after delete $it")
+            verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun replaceAtBeginning(chunkSize: Int) {
+        random = Random(123456) // use a fixed seed for easier debug
+        listOf(10, 25, 37, 100, 1000, 10000).forEach { softWrapAt ->
+            val initial = randomString(66666, isAddNewLine = true)
+            val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+                append(initial)
+                bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                bigTextImpl.setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            val lengths = listOf(15, 4, 1, 1, 2, 8, 16, 19, 200, 1235, 2468, 10001, 257)
+            lengths.forEachIndexed { i, it ->
+                t.replace(0 until lengths.random(random), randomString(it, isAddNewLine = false) + "\n")
+//                t.printDebug("after relayout $softWrapAt, $i")
+                verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    @Order(Integer.MAX_VALUE - 100) // This test is pretty time-consuming. Run at the last!
+    fun manyInsertsAndDeletes(chunkSize: Int) { //if (chunkSize != 256) return
+        random = Random(34567890) // use a fixed seed for easier debug
+        repeat(10) { repeatIt ->
+            listOf(10, 37, 100, 1000, 10000).forEach { softWrapAt ->
+                val initial = randomString(random.nextInt(1000, 2000), isAddNewLine = true)
+                val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+                    append(initial)
+                    bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                    bigTextImpl.setContentWidth(16f * softWrapAt + 1.23f)
+                }
+                val numOperationTimes = if (repeatIt > 0) {
+                    when (softWrapAt) {
+                        in 0 .. 30 -> 809
+                        in 31 .. 200 -> 1207
+                        else -> 1807
+                    }
+                } else {
+                    2109
+                }
+                repeat(numOperationTimes) { i ->
+                    val length = when (random.nextInt(100)) {
+                        in 0..44 -> random.nextInt(10)
+                        in 45..69 -> random.nextInt(10, 100)
+                        in 70..87 -> random.nextInt(100, 1000)
+                        in 88..97 -> random.nextInt(1000, 10000)
+                        in 98..99 -> random.nextInt(10000, 80000)
+                        else -> throw IllegalStateException()
+                    }
+                    val pos = when (random.nextInt(10)) {
+                        in 0..1 -> 0
+                        in 2..3 -> t.length
+                        else -> random.nextInt(t.length + 1)
+                    }
+                    println("Iterate $repeatIt, $softWrapAt, $i")
+                    when (random.nextInt(5)) {
+                        in 0 .. 1 -> t.insertAt(pos, randomString(length, isAddNewLine = random.nextBoolean()))
+                        in 2 .. 3 -> t.delete(pos, min(t.length, pos + length))
+                        4 -> t.replace(pos, min(t.length, pos + length), randomString(length, isAddNewLine = random.nextBoolean()))
+                    }
+                    logL.d { t.inspect("after relayout $repeatIt $softWrapAt, $i") }
                     verifyBigTextImplAgainstTestString(
                         testString = t.stringImpl.fullString(),
                         bigTextImpl = t.bigTextImpl,
