@@ -519,6 +519,12 @@ class BigTextImpl : BigText {
 //            computeCurrentNodeProperties(it.value)
 //        }
 
+        newNodesInDescendingOrder.forEach {
+            val startPos = findPositionStart(it.node!!)
+            val endPos = startPos + it.bufferLength
+            layout(startPos, endPos)
+        }
+
         layout(maxOf(0, start - 1), minOf(length, start + 1))
 
         log.d { inspect("Finish D " + node?.value?.debugKey()) }
@@ -662,7 +668,11 @@ class BigTextImpl : BigText {
         logL.d { "charStartIndexInBuffer = $charStartIndexInBuffer" }
 
         // we are starting at charStartIndexInBuffer without carrying over last width, so include the row break at charStartIndexInBuffer
-        val restoreRowBreakOffsets = nodeValue.rowBreakOffsets.subList(0, maxOf(0, nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(charStartIndexInBuffer) + 1))
+        val restoreRowBreakOffsets = if (startPos > 0) {
+            nodeValue.rowBreakOffsets.subList(0, maxOf(0, nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(charStartIndexInBuffer) + 1))
+        } else {
+            emptyList()
+        }
         logL.d { "restore row breaks of starting node $restoreRowBreakOffsets" }
         var hasRestoredRowBreaks = false
 
