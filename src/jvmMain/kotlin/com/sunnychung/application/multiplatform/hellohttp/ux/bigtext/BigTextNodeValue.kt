@@ -11,7 +11,8 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
     var leftStringLength: Int = -1
 //    var rowBreakOffsets: SortedSet<Int> = sortedSetOf()
     var rowBreakOffsets: List<Int> = emptyList()
-    var lastRowWidth: Float = -1f
+    var lastRowWidth: Float = 0f
+    var isEndWithForceRowBreak: Boolean = false
 
     var bufferIndex: Int = -1
     var bufferOffsetStart: Int = -1
@@ -39,7 +40,7 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
 
     override fun debugKey(): String = "$key"
     override fun debugLabel(node: RedBlackTree<BigTextNodeValue>.Node): String =
-        "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()}"
+        "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()} r $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth"
 }
 
 class TextBuffer(val size: Int) {

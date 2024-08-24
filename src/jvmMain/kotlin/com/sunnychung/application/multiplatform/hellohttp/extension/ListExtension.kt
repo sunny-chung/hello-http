@@ -53,3 +53,40 @@ fun List<Int>.binarySearchForMinIndexOfValueAtLeast(searchValue: Int): Int {
     val insertionPoint = binarySearchForInsertionPoint { if (it >= searchValue) 1 else -1 }
     return insertionPoint
 }
+
+/**
+ * `this` has to be ascending. `newElements` has to be strictly ascending.
+ */
+fun <T : Comparable<T>> MutableList<T>.addToThisAscendingListWithoutDuplicate(newElements: List<T>) {
+    if (isEmpty()) {
+        this.addAll(newElements)
+        return
+    }
+    val thisLast = last()
+    var insertStartIndex = 0
+    while (insertStartIndex <= newElements.lastIndex && thisLast >= newElements[insertStartIndex]) {
+        ++insertStartIndex
+    }
+    if (insertStartIndex > newElements.lastIndex) {
+        return
+    } else if (insertStartIndex == 0) {
+        this.addAll(newElements)
+        return
+    }
+    this.addAll(newElements.subList(insertStartIndex, newElements.size))
+}
+
+/**
+ * `this` has to be ascending. `newElements` has to be strictly ascending.
+ */
+fun <T : Comparable<T>> MutableList<T>.addToThisAscendingListWithoutDuplicate(newElement: T) {
+    if (isEmpty()) {
+        this.add(newElement)
+        return
+    }
+    val thisLast = last()
+    if (thisLast == newElement) {
+        return
+    }
+    this.add(newElement)
+}

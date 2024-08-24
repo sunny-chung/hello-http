@@ -4,6 +4,7 @@ import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.MutableLoggerConfig
 import co.touchlab.kermit.Severity
+import com.sunnychung.application.multiplatform.hellohttp.extension.addToThisAscendingListWithoutDuplicate
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
@@ -26,6 +27,8 @@ val logL = Logger(object : MutableLoggerConfig {
 }, tag = "BigText.Layout")
 
 internal var isD = false
+
+private const val EPS = 1e-4f
 
 class BigTextImpl : BigText {
     val tree = RedBlackTree2<BigTextNodeValue>(
@@ -160,6 +163,7 @@ class BigTextImpl : BigText {
             }
         }
         var insertDirection: InsertDirection = InsertDirection.Undefined
+        val toBeRelayouted = mutableListOf<BigTextNodeValue>()
         val newNodeValues = if (node != null && position in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1) {
             val splitAtIndex = position - nodeStart
             log.d { "> split at $splitAtIndex" }
@@ -179,6 +183,7 @@ class BigTextImpl : BigText {
                 insertDirection = InsertDirection.Left
             }
             require(splitAtIndex + chunkedString.length <= chunkSize)
+            toBeRelayouted += secondPartNodeValue
             listOf(
                 BigTextNodeValue().apply { // new string
                     bufferIndex = buffers.lastIndex
@@ -225,6 +230,12 @@ class BigTextImpl : BigText {
                     tree.insertValue(it)
                 }
             }
+        }
+
+        toBeRelayouted.forEach {
+            val startPos = findPositionStart(it.node!!)
+            val endPos = startPos + it.bufferLength
+            layout(startPos, endPos)
         }
 
         log.v { inspect("Finish I " + node?.value?.debugKey()) }
@@ -281,6 +292,9 @@ class BigTextImpl : BigText {
 
     override val length: Int
         get() = tree.getRoot().length()
+
+    val lastIndex: Int
+        get() = length - 1
 
     override fun fullString(): String {
         return tree.joinToString("") {
@@ -371,7 +385,12 @@ class BigTextImpl : BigText {
             return findPositionStart(node) + (charOffsetInBuffer - node.value!!.bufferOffsetStart)
         }
 
-        val (startNode, startNodeRowStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
+        val (startNode, startNodeRowStart) = tree.findNodeByRowBreaks(rowIndex - 1) ?:
+            if (rowIndex <= numOfRows) {
+                return ""
+            } else {
+                throw IndexOutOfBoundsException("numOfRows = $numOfRows; but given index = $rowIndex")
+            }
         val endNodeFindPair = tree.findNodeByRowBreaks(rowIndex)
         val endCharIndex = if (endNodeFindPair != null) { // includes the last '\n' char
             val (endNode, endNodeRowStart) = endNodeFindPair
@@ -424,6 +443,7 @@ class BigTextImpl : BigText {
             start += append
             last = buffers.last().length
         }
+        layout(maxOf(0, pos - 1), minOf(length, pos + text.length + 1))
         return text.length
     }
 
@@ -499,6 +519,8 @@ class BigTextImpl : BigText {
 //            computeCurrentNodeProperties(it.value)
 //        }
 
+        layout(maxOf(0, start - 1), minOf(length, start + 1))
+
         log.d { inspect("Finish D " + node?.value?.debugKey()) }
 
         return -(endExclusive - start)
@@ -519,8 +541,18 @@ class BigTextImpl : BigText {
 
     fun inspect(label: String = "") = buildString {
         appendLine("[$label] Buffer:\n${buffers.mapIndexed { i, it -> "    $i:\t$it\n" }.joinToString("")}")
+        appendLine("[$label] Buffer Line Breaks:\n${buffers.mapIndexed { i, it -> "    $i:\t${it.lineOffsetStarts}\n" }.joinToString("")}")
         appendLine("[$label] Tree:\nflowchart TD\n${tree.debugTree()}")
         appendLine("[$label] String:\n${fullString()}")
+        if (layouter != null && contentWidth != null) {
+            appendLine("[$label] Layouted String:\n${(0 until numOfRows).joinToString("") { 
+                try {
+                    "{${findRowString(it)}}\n"
+                } catch (e: Throwable) {
+                    "[$e]!\n"
+                }
+            }}")
+        }
     }
 
     fun printDebug(label: String = "") {
@@ -556,6 +588,9 @@ class BigTextImpl : BigText {
     fun layout() {
         val layouter = this.layouter ?: return
         val contentWidth = this.contentWidth ?: return
+
+        return layout(0, length)
+        // the code below doesn't pass insertTriggersRelayout3(16)
 
         var lastOccupiedWidth = 0f
         val treeLastIndex = tree.size() - 1
@@ -597,8 +632,215 @@ class BigTextImpl : BigText {
 
     }
 
+    protected fun layout(startPos: Int, endPosExclusive: Int) {
+        val layouter = this.layouter ?: return
+        val contentWidth = this.contentWidth ?: return
+
+        var lastOccupiedWidth = 0f
+        var node: RedBlackTree<BigTextNodeValue>.Node? = tree.findNodeByCharIndex(startPos) ?: return
+        logL.d { "layout($startPos, $endPosExclusive)" }
+        logL.v { inspect("before layout($startPos, $endPosExclusive)") }
+        var nodeStartPos = findPositionStart(node!!)
+        val nodeValue = node.value
+        val buffer = buffers[nodeValue.bufferIndex]
+        var lineBreakIndexFrom = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(
+            (startPos - nodeStartPos) + nodeValue.bufferOffsetStart
+        )
+        var charStartIndexInBuffer = nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost((startPos - nodeStartPos) + nodeValue.bufferOffsetStart).let {
+            if (it >= 0) {
+                nodeValue.rowBreakOffsets[it]
+            } else {
+                val prevNode = tree.prevNode(node!!)
+                if (prevNode != null) {
+                    lastOccupiedWidth = prevNode.value.lastRowWidth // carry over
+                    logL.d { "carry over width $lastOccupiedWidth" }
+                }
+
+                nodeValue.bufferOffsetStart
+            }
+        }
+        logL.d { "charStartIndexInBuffer = $charStartIndexInBuffer" }
+
+        // we are starting at charStartIndexInBuffer without carrying over last width, so include the row break at charStartIndexInBuffer
+        val restoreRowBreakOffsets = nodeValue.rowBreakOffsets.subList(0, maxOf(0, nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(charStartIndexInBuffer) + 1))
+        logL.d { "restore row breaks of starting node $restoreRowBreakOffsets" }
+        var hasRestoredRowBreaks = false
+
+        var isBreakOnEncounterLineBreak = false
+
+        // TODO refactor
+        while (node != null) {
+            var isBreakAfterThisIteration = false
+            val nodeValue = node.value
+            val buffer = buffers[nodeValue.bufferIndex]
+            val lineBreakIndexTo =
+                buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(nodeValue.bufferOffsetEndExclusive - 1)
+                    .let {
+                        if (endPosExclusive in nodeStartPos..nodeStartPos + nodeValue.bufferLength) {
+                            minOf(
+                                it,
+                                buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(endPosExclusive - nodeStartPos + nodeValue.bufferOffsetStart)
+                            )
+                        } else {
+                            it
+                        }
+                    }
+            logL.d { "node ${nodeValue.debugKey()} LB $lineBreakIndexFrom .. $lineBreakIndexTo P $nodeStartPos" }
+            logL.d { "buffer ${nodeValue.bufferIndex} LB ${buffer.lineOffsetStarts}" }
+
+//            if (lineBreakIndexFrom > lineBreakIndexTo) {
+            if (nodeStartPos > endPosExclusive + 1) { // do 1 more char because last round may just fill up the row but a row break is not created
+                logL.d { "set BreakOnEncounterLineBreak" }
+                isBreakOnEncounterLineBreak = true
+            }
+
+//            nodeValue.rowBreakOffsets.clear()
+            val rowBreakOffsets = mutableListOf<Int>()
+            var isEndWithForceRowBreak = false
+            logL.d { "orig row breaks ${nodeValue.rowBreakOffsets}" }
+//            if (true || nodeStartPos == 0) {
+//                // we are starting at charStartIndexInBuffer without carrying over last width, so include the row break at charStartIndexInBuffer
+//                rowBreakOffsets += nodeValue.rowBreakOffsets.subList(0, maxOf(0, nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(charStartIndexInBuffer) + 1))
+//                logL.d { "restore row breaks of leftmost node $rowBreakOffsets" }
+//            } else {
+//                rowBreakOffsets += nodeValue.rowBreakOffsets.subList(
+//                    0,
+//                    maxOf(0, nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(charStartIndexInBuffer - 1) + 1)
+//                )
+//                logL.d { "restore row breaks $rowBreakOffsets" }
+//            }
+            if (!hasRestoredRowBreaks) {
+                rowBreakOffsets.addToThisAscendingListWithoutDuplicate(restoreRowBreakOffsets)
+                hasRestoredRowBreaks = true
+            }
+            (lineBreakIndexFrom..lineBreakIndexTo).forEach { lineBreakEntryIndex ->
+                val lineBreakCharIndex = buffer.lineOffsetStarts[lineBreakEntryIndex]
+                val subsequence = buffer.subSequence(charStartIndexInBuffer, lineBreakCharIndex)
+                logL.d { "node ${nodeValue.debugKey()} buf #${nodeValue.bufferIndex} line break #$lineBreakEntryIndex seq $charStartIndexInBuffer ..< $lineBreakCharIndex" }
+
+                val (rowCharOffsets, _) = layouter.layoutOneLine(
+                    subsequence,
+                    contentWidth,
+                    lastOccupiedWidth,
+                    charStartIndexInBuffer
+                )
+//                nodeValue.rowBreakOffsets += rowCharOffsets
+                logL.d { "row break add $rowCharOffsets lw = 0" }
+                rowBreakOffsets.addToThisAscendingListWithoutDuplicate(rowCharOffsets)
+
+                if (subsequence.isEmpty() && lastOccupiedWidth >= contentWidth - EPS) {
+                    logL.d { "row break add carry-over force break ${lineBreakCharIndex}" }
+                    rowBreakOffsets.addToThisAscendingListWithoutDuplicate(lineBreakCharIndex)
+                }
+
+                charStartIndexInBuffer = lineBreakCharIndex + 1
+                if (lineBreakCharIndex + 1 < nodeValue.bufferOffsetEndExclusive) {
+                    logL.d { "row break add ${lineBreakCharIndex + 1}" }
+                    rowBreakOffsets.addToThisAscendingListWithoutDuplicate(lineBreakCharIndex + 1)
+                    lastOccupiedWidth = 0f
+                } else {
+                    lastOccupiedWidth = contentWidth + 0.1f // force a row break at the start of next layout
+                    isEndWithForceRowBreak = true
+                }
+
+                if (isBreakOnEncounterLineBreak) {
+                    isBreakAfterThisIteration = true
+                }
+            }
+            val nextBoundary = if (
+                lineBreakIndexTo + 1 <= buffer.lineOffsetStarts.lastIndex
+//                    && buffer.lineOffsetStarts[lineBreakIndexTo + 1] - node.value.bufferOffsetStart + nodeStartPos < endPosExclusive
+                    && buffer.lineOffsetStarts[lineBreakIndexTo + 1] < nodeValue.bufferOffsetEndExclusive
+            ) {
+                buffer.lineOffsetStarts[lineBreakIndexTo + 1]
+            } else {
+                nodeValue.bufferOffsetEndExclusive
+            }
+//            if (charStartIndexInBuffer < nodeValue.bufferOffsetEndExclusive) {
+//            if (charStartIndexInBuffer < nodeValue.bufferOffsetEndExclusive && nodeStartPos + charStartIndexInBuffer - nodeValue.bufferOffsetStart < endPosExclusive) {
+            if (charStartIndexInBuffer < nextBoundary) {
+//                val subsequence = buffer.subSequence(charStartIndexInBuffer, nodeValue.bufferOffsetEndExclusive)
+                val readRowUntilPos = nextBoundary //nodeValue.bufferOffsetEndExclusive //minOf(nodeValue.bufferOffsetEndExclusive, endPosExclusive - nodeStartPos + nodeValue.bufferOffsetStart)
+                logL.d { "node ${nodeValue.debugKey()} last row seq $charStartIndexInBuffer ..< ${readRowUntilPos}. start = $nodeStartPos" }
+                val subsequence = buffer.subSequence(charStartIndexInBuffer, readRowUntilPos)
+
+                val (rowCharOffsets, lastRowOccupiedWidth) = layouter.layoutOneLine(
+                    subsequence,
+                    contentWidth,
+                    lastOccupiedWidth,
+                    charStartIndexInBuffer
+                )
+//                nodeValue.rowBreakOffsets += rowCharOffsets
+                logL.d { "row break add $rowCharOffsets lw = $lastRowOccupiedWidth" }
+                rowBreakOffsets.addToThisAscendingListWithoutDuplicate(rowCharOffsets)
+                lastOccupiedWidth = lastRowOccupiedWidth
+                charStartIndexInBuffer = readRowUntilPos
+            }
+            if (charStartIndexInBuffer < nodeValue.bufferOffsetEndExclusive) {
+//                val preserveIndexFrom = nodeValue.rowBreakOffsets.binarySearchForMinIndexOfValueAtLeast(endPosExclusive)
+                val searchForValue = minOf(nodeValue.bufferOffsetEndExclusive, maxOf((rowBreakOffsets.lastOrNull() ?: -1) + 1, charStartIndexInBuffer))
+                val preserveIndexFrom = nodeValue.rowBreakOffsets.binarySearchForMinIndexOfValueAtLeast(searchForValue)
+                val preserveIndexTo = if (nodeStartPos + nodeValue.bufferLength >= length) {
+                    nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(nodeValue.bufferOffsetEndExclusive) // keep the row after the last '\n'
+                } else {
+                    nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(nodeValue.bufferOffsetEndExclusive - 1)
+                }
+                logL.d { "reach the end, preserve RB from $preserveIndexFrom (at least $searchForValue) ~ $preserveIndexTo (${nodeValue.bufferOffsetEndExclusive}). RB = ${nodeValue.rowBreakOffsets}." }
+                val restoreRowBreaks = nodeValue.rowBreakOffsets.subList(preserveIndexFrom, minOf(nodeValue.rowBreakOffsets.size, preserveIndexTo + 1))
+                if (restoreRowBreaks.isNotEmpty() || nodeValue.isEndWithForceRowBreak) {
+                    rowBreakOffsets.addToThisAscendingListWithoutDuplicate(restoreRowBreaks)
+                    logL.d { "Restore lw ${nodeValue.lastRowWidth}." }
+                    lastOccupiedWidth = nodeValue.lastRowWidth
+                    isEndWithForceRowBreak = isEndWithForceRowBreak || nodeValue.isEndWithForceRowBreak
+                }
+            }
+            nodeValue.rowBreakOffsets = rowBreakOffsets
+            nodeValue.lastRowWidth = lastOccupiedWidth
+            nodeValue.isEndWithForceRowBreak = isEndWithForceRowBreak
+            recomputeAggregatedValues(node) // TODO optimize
+
+            if (isBreakOnEncounterLineBreak && isBreakAfterThisIteration) { // TODO it can be further optimized to break immediately on line break
+                logL.d { "break" }
+                break
+            }
+
+            node = tree.nextNode(node)?.also {
+                logL.d { "node ${node!!.value.debugKey()} b#${node!!.value.bufferIndex} next ${it.value.debugKey()} b#${it!!.value.bufferIndex}" }
+            }
+            if (node != null) {
+                nodeStartPos += nodeValue.bufferLength
+                val nodeValue = node.value
+                val buffer = buffers[nodeValue.bufferIndex]
+                lineBreakIndexFrom = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(nodeValue.bufferOffsetStart)
+                charStartIndexInBuffer = nodeValue.bufferOffsetStart
+            }
+        }
+
+//        tree.visitInPostOrder {
+//            recomputeAggregatedValues(it)
+//        }
+    }
+
     val numOfRows: Int
-        get() = tree.getRoot().numRowBreaks() + 1
+        get() = tree.getRoot().numRowBreaks() + 1 + // TODO cache the result
+            run {
+                val lastNode = tree.rightmost(tree.getRoot()).takeIf { it.isNotNil() }
+                val lastValue = lastNode?.value ?: return@run 0
+                val lastLineOffset = buffers[lastValue.bufferIndex].lineOffsetStarts.let {
+                    val lastIndex = it.binarySearchForMaxIndexOfValueAtMost(lastValue.bufferOffsetEndExclusive - 1)
+                    if (lastIndex in 0 .. it.lastIndex) {
+                        it[lastIndex]
+                    } else {
+                        null
+                    }
+                } ?: return@run 0
+                val lastNodePos = findPositionStart(lastNode)
+                if (lastNodePos + (lastLineOffset - lastValue.bufferOffsetStart) == lastIndex) {
+                    1 // one extra row if the string ends with '\n'
+                } else {
+                    0
+                }
+            }
 
 }
 

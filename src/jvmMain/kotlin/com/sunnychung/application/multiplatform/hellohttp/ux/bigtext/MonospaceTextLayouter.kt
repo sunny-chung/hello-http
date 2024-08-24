@@ -130,7 +130,7 @@ class MonospaceTextLayouter : TextLayouter {
         var currentRowOccupiedWidth = firstRowOccupiedWidth
         var numCharsInCurrentRow = 0
         charWidths.forEachIndexed { i, w -> // O(line string length)
-            if (currentRowOccupiedWidth + w > contentWidth && numCharsInCurrentRow > 0) {
+            if (currentRowOccupiedWidth + w > contentWidth && (numCharsInCurrentRow > 0 || currentRowOccupiedWidth > 0)) {
                 numCharsPerRow += numCharsInCurrentRow
                 numCharsInCurrentRow = 0
                 currentRowOccupiedWidth = 0f

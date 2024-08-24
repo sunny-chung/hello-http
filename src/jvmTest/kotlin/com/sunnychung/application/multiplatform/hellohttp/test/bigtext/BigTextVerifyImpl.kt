@@ -91,4 +91,6 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
     }
 
     fun printDebug(label: String = "") = bigTextImpl.printDebug(label)
+
+    fun inspect(label: String = "") = bigTextImpl.inspect(label)
 }
