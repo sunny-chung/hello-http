@@ -317,13 +317,14 @@ private fun CoreBigMonospaceText(
 //        }
 
         val rowString = text.findRowString(row)
+        val rowPositionStart = text.findRowPositionStartIndexByRowIndex(row)
         var accumWidth = 0f
         val charIndex = rowString.indexOfFirst {
             accumWidth += textLayouter.charMeasurer.findCharWidth(it.toString())
             x < accumWidth
         }.takeIf { it >= 0 } ?: rowString.length
 
-        return charIndex
+        return rowPositionStart + charIndex
     }
 
     fun getTransformedStringWidth(start: Int, endExclusive: Int): Float {
@@ -421,7 +422,7 @@ private fun CoreBigMonospaceText(
                     viewState.updateCursorIndexByTransformed(transformedText)
                 }
             )
-            .pointerInput(isEditable, text, scrollState.value, lineHeight, contentWidth, transformedText.text.length, transformedText.text.hashCode()) {
+            .pointerInput(isEditable, text, text.hasLayouted, scrollState.value, lineHeight, contentWidth, transformedText.text.length, transformedText.text.hashCode()) {
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
