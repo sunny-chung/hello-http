@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,13 +59,16 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryAp
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
+import com.sunnychung.application.multiplatform.hellohttp.util.ComposeUnicodeCharMeasurer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.InefficientBigText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.MonospaceTextLayouter
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.createFromLargeString
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -436,10 +438,23 @@ fun CodeEditorView(
                 val bigTextViewState = remember { BigTextViewState() }
                 var layoutResult by remember { mutableStateOf<BigTextLayoutResult?>(null) }
 
-                BigLineNumbersView(
+//                BigLineNumbersView(
+//                    scrollState = scrollState,
+//                    bigTextViewState = bigTextViewState,
+//                    textLayout = layoutResult,
+//                    collapsableLines = collapsableLines,
+//                    collapsedLines = collapsedLines.values.toList(),
+//                    onCollapseLine = onCollapseLine,
+//                    onExpandLine = onExpandLine,
+//                    modifier = Modifier.fillMaxHeight(),
+//                )
+
+                var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(textValue.text)) }
+
+                BigTextLineNumbersView(
                     scrollState = scrollState,
                     bigTextViewState = bigTextViewState,
-                    textLayout = layoutResult,
+                    bigText = bigTextValue as BigTextImpl,
                     collapsableLines = collapsableLines,
                     collapsedLines = collapsedLines.values.toList(),
                     onCollapseLine = onCollapseLine,
@@ -449,7 +464,7 @@ fun CodeEditorView(
 
                 if (isReadOnly) {
                     BigMonospaceText(
-                        text = textValue.text,
+                        text = bigTextValue as BigTextImpl,
                         padding = PaddingValues(4.dp),
                         visualTransformation = visualTransformationToUse,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
@@ -531,7 +546,7 @@ fun CodeEditorView(
                             }
                     )*/
 
-                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(InefficientBigText(text)) } // FIXME performance
+                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
                     BigMonospaceTextField(
                         text = bigTextValue,
@@ -780,6 +795,51 @@ fun BigLineNumbersView(
 class CollapsedLinesState(val collapsableLines: List<IntRange>, collapsedLines: List<IntRange>) {
     val collapsableLinesMap = collapsableLines.associateBy { it.start }
     val collapsedLines = collapsedLines.associateBy { it.first }.toSortedMap() // TODO optimize using range tree
+}
+
+@Composable
+fun BigTextLineNumbersView(
+    modifier: Modifier = Modifier,
+    bigTextViewState: BigTextViewState,
+    bigText: BigTextImpl,
+    scrollState: ScrollState,
+    collapsableLines: List<IntRange>,
+    collapsedLines: List<IntRange>,
+    onCollapseLine: (Int) -> Unit,
+    onExpandLine: (Int) -> Unit,
+) = with(LocalDensity.current) {
+    val colours = LocalColor.current
+    val fonts = LocalFont.current
+
+    val textStyle = LocalTextStyle.current.copy(
+        fontSize = fonts.codeEditorLineNumberFontSize,
+        fontFamily = FontFamily.Monospace,
+        color = colours.unimportant,
+    )
+    val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
+
+    var prevHasLayouted by remember { mutableStateOf(false) }
+    prevHasLayouted = bigText.hasLayouted
+    prevHasLayouted
+
+    val viewportTop = scrollState.value
+    val firstLine = bigText.findLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
+    val lastLine = (bigText.findLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
+    log.v { "lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${bigText.numOfLines}" }
+    val rowHeight = ((bigText.layouter as? MonospaceTextLayouter)?.charMeasurer as? ComposeUnicodeCharMeasurer)?.getRowHeight() ?: 0f
+    CoreLineNumbersView(
+        firstLine = firstLine,
+        lastLine = minOf(lastLine, bigText.numOfLines ?: 1),
+        totalLines = bigText.numOfLines ?: 1,
+        lineHeight = (rowHeight).toDp(),
+//        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
+        getLineOffset = { ( bigText.findFirstRowIndexOfLine(it) * rowHeight - viewportTop).toDp() },
+        textStyle = textStyle,
+        collapsedLinesState = collapsedLinesState,
+        onCollapseLine = onCollapseLine,
+        onExpandLine = onExpandLine,
+        modifier = modifier
+    )
 }
 
 @Composable

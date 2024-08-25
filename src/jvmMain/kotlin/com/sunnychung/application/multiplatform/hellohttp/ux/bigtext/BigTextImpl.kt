@@ -43,7 +43,9 @@ class BigTextImpl : BigText {
 
     val chunkSize: Int // TODO change to a large number
 
-    private var layouter: TextLayouter? = null
+    var layouter: TextLayouter? = null
+        private set
+
     private var contentWidth: Float? = null
 
     constructor() {
@@ -113,7 +115,114 @@ class BigTextImpl : BigText {
         }?.let { it to rowStart + it.value.leftNumOfRowBreaks /*findLineStart(it)*/ }
     }
 
-    fun findPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
+    fun findPositionByRowIndex(index: Int): Int {
+        if (!hasLayouted) {
+            return 0
+        }
+
+        return tree.findNodeByRowBreaks(index - 1)!!.second
+    }
+
+    fun findRowIndexByPosition(position: Int): Int {
+        if (!hasLayouted) {
+            return 0
+        }
+
+        val node = tree.findNodeByCharIndex(position)!!
+        val startPos = findPositionStart(node)
+        val nv = node.value
+        val rowIndexInThisPartition = nv.rowBreakOffsets.binarySearchForMinIndexOfValueAtLeast(position - startPos)
+        val startRowIndex = findRowStart(node)
+        return startRowIndex + rowIndexInThisPartition
+    }
+
+    fun findRowPositionStartIndexByRowIndex(index: Int): Int {
+        if (!hasLayouted) {
+            return 0
+        }
+
+        val node = tree.findNodeByRowBreaks(index - 1)!!.first
+        val rowStart = findRowStart(node)
+        val startPos = findPositionStart(node)
+        return startPos + if (index > 0) {
+            node.value.rowBreakOffsets[index - 1 - rowStart]
+        } else {
+            0
+        }
+    }
+
+    fun findLineIndexByRowIndex(rowIndex: Int): Int {
+        if (!hasLayouted) {
+            return 0
+        }
+
+        val (node, rowIndexStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
+        val rowOffset = if (rowIndex > 0) {
+            node.value.rowBreakOffsets[rowIndex - 1 - rowIndexStart]
+        } else {
+            0
+        }
+
+        val lineBreakOffsetStarts = buffers[node.value.bufferIndex].lineOffsetStarts
+        val lineBreakIndex = lineBreakOffsetStarts.binarySearchForMaxIndexOfValueAtMost(rowOffset)
+        return if (lineBreakIndex < 0) {
+            0
+        } else {
+            val lineStart = findLineStart(node)
+            lineStart + lineBreakIndex + 1
+        }
+    }
+
+    fun findFirstRowIndexOfLineOfRowIndex(rowIndex: Int): Int {
+        if (!hasLayouted) {
+            return 0
+        }
+
+        val lineIndex = findLineIndexByRowIndex(rowIndex)
+        val (lineStartNode, lineIndexStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
+//        val positionOfLineStartNode = findPositionStart(lineStartNode)
+        val lineOffsetStarts = buffers[lineStartNode.value.bufferIndex].lineOffsetStarts
+        val inRangeLineStartIndex = lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineStartNode.value.bufferOffsetStart)
+        val lineOffset = if (lineIndex - 1 >= 0) {
+            lineOffsetStarts[inRangeLineStartIndex + lineIndex - 1 - lineIndexStart]
+        } else {
+            0
+        }
+
+        val rowBreakOffsetIndex = lineStartNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(lineOffset + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */).also { // if lineOffset == 0, it should return -1
+            if (it !in lineStartNode.value.rowBreakOffsets.indices && lineOffset != 0) {
+                throw IndexOutOfBoundsException("Cannot find rowBreakOffset $lineOffset")
+            }
+        }
+        val rowBreaksStart = findRowStart(lineStartNode)
+        return rowBreaksStart + rowBreakOffsetIndex + 1
+    }
+
+    fun findFirstRowIndexOfLine(lineIndex: Int): Int {
+        if (!hasLayouted) {
+            return 0
+        }
+
+        val (lineStartNode, lineIndexStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
+//        val positionOfLineStartNode = findPositionStart(lineStartNode)
+        val lineOffsetStarts = buffers[lineStartNode.value.bufferIndex].lineOffsetStarts
+        val inRangeLineStartIndex = lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineStartNode.value.bufferOffsetStart)
+        val lineOffset = if (lineIndex - 1 >= 0) {
+            lineOffsetStarts[inRangeLineStartIndex + lineIndex - 1 - lineIndexStart]
+        } else {
+            0
+        }
+
+        val rowBreakOffsetIndex = lineStartNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(lineOffset + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */).also { // if lineOffset == 0, it should return -1
+            if (it !in lineStartNode.value.rowBreakOffsets.indices && lineOffset != 0) {
+                throw IndexOutOfBoundsException("Cannot find rowBreakOffset $lineOffset")
+            }
+        }
+        val rowBreaksStart = findRowStart(lineStartNode)
+        return rowBreaksStart + rowBreakOffsetIndex + 1
+    }
+
+    protected fun findPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
         var start = node.value.leftStringLength
         var node = node
         while (node.parent.isNotNil()) {
@@ -125,12 +234,24 @@ class BigTextImpl : BigText {
         return start
     }
 
-    fun findLineStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
+    protected fun findLineStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
         var start = node.value.leftNumOfLineBreaks
         var node = node
         while (node.parent.isNotNil()) {
             if (node === node.parent.right) {
                 start += node.parent.value.leftNumOfLineBreaks + node.parent.value.bufferNumLineBreaksInRange
+            }
+            node = node.parent
+        }
+        return start
+    }
+
+    protected fun findRowStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
+        var start = node.value.leftNumOfRowBreaks
+        var node = node
+        while (node.parent.isNotNil()) {
+            if (node === node.parent.right) {
+                start += node.parent.value.leftNumOfRowBreaks + node.parent.value.rowBreakOffsets.size
             }
             node = node.parent
         }
@@ -538,11 +659,13 @@ class BigTextImpl : BigText {
     }
 
     override fun hashCode(): Int {
-        TODO("Not yet implemented")
+//        TODO("Not yet implemented")
+        return super.hashCode()
     }
 
     override fun equals(other: Any?): Boolean {
-        TODO("Not yet implemented")
+//        TODO("Not yet implemented")
+        return super.equals(other)
     }
 
     fun inspect(label: String = "") = buildString {
@@ -582,6 +705,8 @@ class BigTextImpl : BigText {
     }
 
     fun setContentWidth(contentWidth: Float) {
+        require(contentWidth > EPS) { "contentWidth must be positive" }
+
         if (this.contentWidth == contentWidth) {
             return
         }
@@ -831,6 +956,9 @@ class BigTextImpl : BigText {
 //        }
     }
 
+    val hasLayouted: Boolean
+        get() = layouter != null && contentWidth != null
+
     val numOfRows: Int
         get() = tree.getRoot().numRowBreaks() + 1 + // TODO cache the result
             run {
@@ -851,6 +979,43 @@ class BigTextImpl : BigText {
                     0
                 }
             }
+
+    val numOfLines: Int
+        get() = tree.getRoot().numLineBreaks() + 1
+
+    val lastRowIndex: Int
+        get() = numOfRows - 1
+
+    /**
+     * This is an expensive operation that defeats the purpose of BigText.
+     * TODO: take out all the usage of this function
+     */
+//    fun produceLayoutResult(): BigTextLayoutResult {
+//        val lineFirstRowIndices = ArrayList<Int>(numOfLines)
+//        val rowStartCharIndices = ArrayList<Int>(numOfRows)
+//
+//        tree.forEach { nv ->
+//            val pos = findPositionStart(nv.node!!)
+//            rowStartCharIndices += nv.rowBreakOffsets.map { it - nv.bufferOffsetStart + pos }
+//        }
+//
+//        tree.forEach { nv ->
+//            if (nv.bufferNumLineBreaksInRange < 1) {
+//                return@forEach
+//            }
+//            val pos = findPositionStart(nv.node!!)
+//            val buffer = buffers[nv.bufferIndex]
+//            val lb = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(nv.bufferOffsetStart)
+//            val ub = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(nv.bufferOffsetEndExclusive - 1)
+//
+//            rows += nv.rowBreakOffsets.map { it - nv.bufferOffsetStart + pos }
+//        }
+//
+//        return BigTextLayoutResult(
+//            lineRowSpans = emptyList(), // not used
+//            lineFirstRowIndices =
+//        )
+//    }
 
 }
 
@@ -875,4 +1040,8 @@ fun RedBlackTree<BigTextNodeValue>.Node.numRowBreaks(): Int {
 
 private enum class InsertDirection {
     Left, Right, Undefined
+}
+
+fun BigText.Companion.createFromLargeString(initialContent: String) = BigTextImpl().apply {
+    append(initialContent)
 }

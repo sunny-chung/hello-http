@@ -6,6 +6,9 @@ import java.util.LinkedHashMap
 
 class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val style: TextStyle) : CharMeasurer {
     private val charWidth: MutableMap<String, Float> = LinkedHashMap<String, Float>(256)
+    private val charHeight: Float = measurer.measure("|\n|").let {
+        it.getLineTop(1) - it.getLineTop(0)
+    }
 
     /**
      * Time complexity = O(S lg C)
@@ -48,6 +51,8 @@ class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val
             }
         }
     }
+
+    fun getRowHeight(): Float = charHeight
 
     fun measureExactWidthOf(targets: List<String>): List<Float> {
         val result = measurer.measure(targets.joinToString("\n"), style, softWrap = false)

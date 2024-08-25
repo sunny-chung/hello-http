@@ -34,4 +34,6 @@ interface BigText {
     override fun hashCode(): Int
 
     override fun equals(other: Any?): Boolean
+
+    companion object
 }
