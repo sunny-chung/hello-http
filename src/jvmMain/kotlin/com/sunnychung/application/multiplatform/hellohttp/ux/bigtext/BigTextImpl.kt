@@ -83,7 +83,7 @@ class BigTextImpl : BigText {
                 in Int.MIN_VALUE until it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
 //                it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
                 in it.value.leftNumOfLineBreaks until it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange -> 0
-                in it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange  until Int.MAX_VALUE -> 1.also { compareResult ->
+                in it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
                         find -= it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange
@@ -103,7 +103,7 @@ class BigTextImpl : BigText {
             when (find) {
                 in Int.MIN_VALUE until it.value.leftNumOfRowBreaks -> if (it.left.isNotNil()) -1 else 0
                 in it.value.leftNumOfRowBreaks until it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size -> 0
-                in it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size  until Int.MAX_VALUE -> 1.also { compareResult ->
+                in it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
                         find -= it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size
@@ -128,10 +128,17 @@ class BigTextImpl : BigText {
             return 0
         }
 
+        this.length.let { length ->
+            if (position == length) {
+                return lastRowIndex
+            } else if (position > length) {
+                throw IndexOutOfBoundsException("position = $position but length = $length")
+            }
+        }
         val node = tree.findNodeByCharIndex(position)!!
         val startPos = findPositionStart(node)
         val nv = node.value
-        val rowIndexInThisPartition = nv.rowBreakOffsets.binarySearchForMinIndexOfValueAtLeast(position - startPos)
+        val rowIndexInThisPartition = nv.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(position - startPos + nv.bufferOffsetStart) + 1
         val startRowIndex = findRowStart(node)
         return startRowIndex + rowIndexInThisPartition
     }
@@ -145,12 +152,16 @@ class BigTextImpl : BigText {
         val rowStart = findRowStart(node)
         val startPos = findPositionStart(node)
         return startPos + if (index > 0) {
-            node.value.rowBreakOffsets[index - 1 - rowStart]
+            node.value.rowBreakOffsets[index - 1 - rowStart] - node.value.bufferOffsetStart
         } else {
             0
         }
     }
 
+    /**
+     * @param rowIndex 0-based
+     * @return 0-based
+     */
     fun findLineIndexByRowIndex(rowIndex: Int): Int {
         if (!hasLayouted) {
             return 0
@@ -173,6 +184,22 @@ class BigTextImpl : BigText {
         }
     }
 
+    fun RedBlackTree<BigTextNodeValue>.Node.findRowBreakIndexOfLineOffset(lineOffset: Int): Int {
+        return value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(lineOffset + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */).let { // if lineOffset == 0, it should return -1
+            if (it in value.rowBreakOffsets.indices) {
+                return@let it
+            }
+            if (it == -1 && lineOffset == 0) {
+                return@let it
+            }
+            if (lineOffset + 1 == value.bufferOffsetEndExclusive && value.isEndWithForceRowBreak) {
+                return@let value.rowBreakOffsets.size
+            }
+            throw IndexOutOfBoundsException("Cannot find rowBreakOffset ${lineOffset + 1}")
+        }
+    }
+
+    @Deprecated("not used. need to be fixed before use.")
     fun findFirstRowIndexOfLineOfRowIndex(rowIndex: Int): Int {
         if (!hasLayouted) {
             return 0
@@ -189,15 +216,15 @@ class BigTextImpl : BigText {
             0
         }
 
-        val rowBreakOffsetIndex = lineStartNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(lineOffset + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */).also { // if lineOffset == 0, it should return -1
-            if (it !in lineStartNode.value.rowBreakOffsets.indices && lineOffset != 0) {
-                throw IndexOutOfBoundsException("Cannot find rowBreakOffset $lineOffset")
-            }
-        }
+        val rowBreakOffsetIndex = lineStartNode.findRowBreakIndexOfLineOffset(lineOffset)
         val rowBreaksStart = findRowStart(lineStartNode)
         return rowBreaksStart + rowBreakOffsetIndex + 1
     }
 
+    /**
+     * @param lineIndex 0-based line index
+     * @return 0-based row index
+     */
     fun findFirstRowIndexOfLine(lineIndex: Int): Int {
         if (!hasLayouted) {
             return 0
@@ -208,17 +235,21 @@ class BigTextImpl : BigText {
         val lineOffsetStarts = buffers[lineStartNode.value.bufferIndex].lineOffsetStarts
         val inRangeLineStartIndex = lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineStartNode.value.bufferOffsetStart)
         val lineOffset = if (lineIndex - 1 >= 0) {
-            lineOffsetStarts[inRangeLineStartIndex + lineIndex - 1 - lineIndexStart]
+            lineOffsetStarts[inRangeLineStartIndex + lineIndex - 1 - lineIndexStart] - lineStartNode.value.bufferOffsetStart
         } else {
             0
         }
+        val lineStartPos = findPositionStart(lineStartNode) + lineOffset
 
-        val rowBreakOffsetIndex = lineStartNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(lineOffset + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */).also { // if lineOffset == 0, it should return -1
-            if (it !in lineStartNode.value.rowBreakOffsets.indices && lineOffset != 0) {
-                throw IndexOutOfBoundsException("Cannot find rowBreakOffset $lineOffset")
-            }
-        }
-        val rowBreaksStart = findRowStart(lineStartNode)
+//        val rowBreakOffsetIndex = lineStartNode.findRowBreakIndexOfLineOffset(lineOffset)
+//        val rowBreaksStart = findRowStart(lineStartNode)
+//        return rowBreaksStart + rowBreakOffsetIndex + 1
+
+        val rowStartPos = lineStartPos + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */
+        val actualNode = tree.findNodeByCharIndex(rowStartPos) ?: throw IndexOutOfBoundsException("pos $rowStartPos is out of bound. length = $length")
+        val actualNodeStartPos = findPositionStart(actualNode)
+        val rowBreakOffsetIndex = actualNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart)
+        val rowBreaksStart = findRowStart(actualNode)
         return rowBreaksStart + rowBreakOffsetIndex + 1
     }
 
@@ -246,6 +277,9 @@ class BigTextImpl : BigText {
         return start
     }
 
+    /**
+     * Find the first 0-based row index of the node, in the global domain of this BigText.
+     */
     protected fun findRowStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
         var start = node.value.leftNumOfRowBreaks
         var node = node

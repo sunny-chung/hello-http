@@ -81,6 +81,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Mult
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
+import kotlin.random.Random
 
 val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024 // 4 MB
 
@@ -450,10 +451,12 @@ fun CodeEditorView(
 //                )
 
                 var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(textValue.text)) }
+                var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
 
                 BigTextLineNumbersView(
                     scrollState = scrollState,
                     bigTextViewState = bigTextViewState,
+                    bigTextValueId = bigTextValueId,
                     bigText = bigTextValue as BigTextImpl,
                     collapsableLines = collapsableLines,
                     collapsedLines = collapsedLines.values.toList(),
@@ -546,14 +549,15 @@ fun CodeEditorView(
                             }
                     )*/
 
-                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
+//                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
                     BigMonospaceTextField(
                         text = bigTextValue,
                         onTextChange = {
-                            bigTextValue = it
-                            log.d { "CEV sel ${textValue.selection.start}" }
-                            onTextChange?.invoke(it.fullString())
+//                            bigTextValue = it
+//                            log.d { "CEV sel ${textValue.selection.start}" }
+//                            onTextChange?.invoke(it.fullString())
+                            bigTextValueId = it.changeId
                         },
                         visualTransformation = visualTransformationToUse,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
@@ -801,6 +805,7 @@ class CollapsedLinesState(val collapsableLines: List<IntRange>, collapsedLines: 
 fun BigTextLineNumbersView(
     modifier: Modifier = Modifier,
     bigTextViewState: BigTextViewState,
+    bigTextValueId: Long,
     bigText: BigTextImpl,
     scrollState: ScrollState,
     collapsableLines: List<IntRange>,

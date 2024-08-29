@@ -82,6 +82,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.random.Random
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.isAccessible
@@ -147,7 +148,7 @@ fun BigMonospaceTextField(
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
-    onTextChange: (BigText) -> Unit,
+    onTextChange: (BigTextChangeEvent) -> Unit,
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
@@ -177,7 +178,7 @@ private fun CoreBigMonospaceText(
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
     isEditable: Boolean = false,
-    onTextChange: (BigText) -> Unit,
+    onTextChange: (BigTextChangeEvent) -> Unit,
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
@@ -322,7 +323,8 @@ private fun CoreBigMonospaceText(
         val charIndex = rowString.indexOfFirst {
             accumWidth += textLayouter.charMeasurer.findCharWidth(it.toString())
             x < accumWidth
-        }.takeIf { it >= 0 } ?: rowString.length
+        }.takeIf { it >= 0 }
+            ?: rowString.length - if (rowString.endsWith('\n')) 1 else 0
 
         return rowPositionStart + charIndex
     }
@@ -340,6 +342,20 @@ private fun CoreBigMonospaceText(
             .sum()
     }
 
+    fun onValueChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
+        viewState.lastVisibleRow = minOf(viewState.lastVisibleRow, text.lastRowIndex)
+
+        viewState.version = Random.nextLong()
+        val event = BigTextChangeEvent(
+            changeId = viewState.version,
+            bigText = text,
+            eventType = eventType,
+            changeStartIndex = changeStartIndex,
+            changeEndExclusiveIndex = changeEndExclusiveIndex,
+        )
+        onTextChange(event)
+    }
+
     fun onType(textInput: String) {
         log.v { "key in '$textInput'" }
         if (viewState.hasSelection()) {
@@ -348,11 +364,12 @@ private fun CoreBigMonospaceText(
             viewState.selection = IntRange.EMPTY
             viewState.transformedSelection = IntRange.EMPTY
         }
-        text.insertAt(viewState.cursorIndex, textInput)
+        val insertPos = viewState.cursorIndex
+        text.insertAt(insertPos, textInput)
         viewState.cursorIndex += textInput.length
         viewState.updateTransformedCursorIndexByOriginal(transformedText)
         log.v { "set cursor pos 2 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
-        onTextChange(text)
+        onValueChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
     }
 
     fun onDelete(direction: TextFBDirection): Boolean {
@@ -361,7 +378,7 @@ private fun CoreBigMonospaceText(
             TextFBDirection.Forward -> {
                 if (cursor + 1 <= text.length) {
                     text.delete(cursor, cursor + 1)
-                    onTextChange(text)
+                    onValueChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
                     return true
                 }
             }
@@ -371,7 +388,7 @@ private fun CoreBigMonospaceText(
                     --viewState.cursorIndex
                     viewState.updateTransformedCursorIndexByOriginal(transformedText)
                     log.v { "set cursor pos 3 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
-                    onTextChange(text)
+                    onValueChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
                     return true
                 }
             }
@@ -535,6 +552,7 @@ private fun CoreBigMonospaceText(
                         }
                         it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
                             val delta = if (it.key == Key.DirectionRight) 1 else -1
+                            viewState.transformedSelection = IntRange.EMPTY // TODO handle Shift key
                             if (viewState.transformedCursorIndex + delta in 0 .. transformedText.text.length) {
                                 viewState.transformedCursorIndex += delta
                                 viewState.updateCursorIndexByTransformed(transformedText)
@@ -546,6 +564,7 @@ private fun CoreBigMonospaceText(
 //                            val row = layoutResult.rowStartCharIndices.binarySearchForMaxIndexOfValueAtMost(viewState.transformedCursorIndex)
                             val row = text.findRowIndexByPosition(viewState.transformedCursorIndex)
                             val newRow = row + if (it.key == Key.DirectionDown) 1 else -1
+                            viewState.transformedSelection = IntRange.EMPTY // TODO handle Shift key
                             viewState.transformedCursorIndex = Unit.let {
                                 if (newRow < 0) {
                                     0
@@ -646,6 +665,14 @@ private fun CoreBigMonospaceText(
 }
 
 class BigTextViewState {
+    /**
+     * A unique value that changes when the BigText string value is changed.
+     *
+     * This field is generated randomly and is NOT a sequence number.
+     */
+    var version: Long by mutableStateOf(0)
+        internal set
+
     var firstVisibleRow: Int by mutableStateOf(0)
         internal set
 

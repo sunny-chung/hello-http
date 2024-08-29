@@ -10,6 +10,9 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
     var leftNumOfRowBreaks: Int = -1
     var leftStringLength: Int = -1
 //    var rowBreakOffsets: SortedSet<Int> = sortedSetOf()
+    /**
+     * Row break positions in the domain of character indices of the {bufferIndex}-th buffer.
+     */
     var rowBreakOffsets: List<Int> = emptyList()
     var lastRowWidth: Float = 0f
     var isEndWithForceRowBreak: Boolean = false
@@ -46,6 +49,9 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
 class TextBuffer(val size: Int) {
     private val buffer = StringBuilder(size)
 
+    /**
+     * Line break positions in the domain of character indices of this buffer.
+     */
     var lineOffsetStarts: List<Int> = emptyList()
 //    var lineOffsetStarts: SortedSet<Int> = sortedSetOf()
 //    var rowOffsetStarts: List<Int> = emptyList()
