@@ -58,7 +58,9 @@ import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalTextInputService
 import androidx.compose.ui.semantics.editableText
+import androidx.compose.ui.semantics.insertTextAtCursor
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setText
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
@@ -413,8 +415,18 @@ private fun CoreBigMonospaceText(
             .semantics {
                 if (isEditable) {
                     editableText = transformedText.text
+                    setText {
+                        text.replace(0, text.length, it.text)
+                        true
+                    }
+                    insertTextAtCursor {
+                        text.insertAt(viewState.cursorIndex, it.text)
+                        true
+                    }
                 } else {
                     this.text = transformedText.text
+                    setText { false }
+                    insertTextAtCursor { false }
                 }
             }
             .onDrag(
