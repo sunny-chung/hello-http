@@ -830,7 +830,7 @@ fun BigTextLineNumbersView(
     val viewportTop = scrollState.value
     val firstLine = bigText.findLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
     val lastLine = (bigText.findLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
-    log.v { "lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${bigText.numOfLines}" }
+    log.v { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${bigText.numOfLines}" }
     val rowHeight = ((bigText.layouter as? MonospaceTextLayouter)?.charMeasurer as? ComposeUnicodeCharMeasurer)?.getRowHeight() ?: 0f
     CoreLineNumbersView(
         firstLine = firstLine,

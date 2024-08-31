@@ -167,21 +167,36 @@ class BigTextImpl : BigText {
             return 0
         }
 
+        require(rowIndex in (0 .. numOfRows)) { "Row index $rowIndex is out of bound. numOfRows = $numOfRows"}
+        if (rowIndex == 0) {
+            return 0
+        }
+
         val (node, rowIndexStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
         val rowOffset = if (rowIndex > 0) {
             node.value.rowBreakOffsets[rowIndex - 1 - rowIndexStart]
         } else {
             0
         }
+        val positionStart = findPositionStart(node)
+        val rowPositionStart = positionStart + rowOffset - node.value.bufferOffsetStart
+        val lineBreakPosition = rowPositionStart - 1
 
-        val lineBreakOffsetStarts = buffers[node.value.bufferIndex].lineOffsetStarts
-        val lineBreakIndex = lineBreakOffsetStarts.binarySearchForMaxIndexOfValueAtMost(rowOffset)
-        return if (lineBreakIndex < 0) {
+        val lineBreakAtNode = tree.findNodeByCharIndex(lineBreakPosition)!!
+        val lineStart = findLineStart(lineBreakAtNode)
+        val positionStartOfLineBreakNode = findPositionStart(lineBreakAtNode)
+        val lineBreakOffsetStarts = buffers[lineBreakAtNode.value.bufferIndex].lineOffsetStarts
+        val lineBreakMinIndex = lineBreakOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineBreakAtNode.value.bufferOffsetStart)
+        val lineBreakIndex = lineBreakOffsetStarts.binarySearchForMaxIndexOfValueAtMost(lineBreakPosition - positionStartOfLineBreakNode + lineBreakAtNode.value.bufferOffsetStart)
+        return (lineStart + if (lineBreakIndex < lineBreakMinIndex) {
             0
         } else {
-            val lineStart = findLineStart(node)
-            lineStart + lineBreakIndex + 1
-        }
+            /**
+             * If lineBreakIndex >= lineBreakMinIndex, there are at least (lineBreakIndex - lineBreakMinIndex + 1) line breaks before this position.
+             * If there is 1 line break before, then line index should be 1, etc..
+             */
+            lineBreakIndex - lineBreakMinIndex + 1
+        }).also { log.d { "findLineIndexByRowIndex($rowIndex) = $it" } }
     }
 
     fun RedBlackTree<BigTextNodeValue>.Node.findRowBreakIndexOfLineOffset(lineOffset: Int): Int {
