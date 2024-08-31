@@ -215,12 +215,17 @@ class BigTextImplQueryTest {
                     t.delete(start, start + len)
                 }
             }
+//            t.verifyAllLines()
         }
-        val splitted = t.stringImpl.fullString().split("\n")
-        splitted.forEachIndexed { i, line ->
-            val result = t.bigTextImpl.findLineString(i)
-            assertEquals(if (i == splitted.lastIndex) line else "$line\n", result)
-        }
+        t.verifyAllLines()
+    }
+}
+
+private fun BigTextVerifyImpl.verifyAllLines() {
+    val splitted = this.stringImpl.fullString().split("\n")
+    splitted.forEachIndexed { i, line ->
+        val result = this.bigTextImpl.findLineString(i)
+        assertEquals(if (i == splitted.lastIndex) line else "$line\n", result)
     }
 }
 

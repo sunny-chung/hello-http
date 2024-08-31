@@ -460,7 +460,7 @@ class BigTextImpl : BigText {
     override fun substring(start: Int, endExclusive: Int): String { // O(lg L + (e - s))
         require(start <= endExclusive) { "start should be <= endExclusive" }
         require(0 <= start) { "Invalid start" }
-        require(endExclusive <= length) { "endExclusive is out of bound" }
+        require(endExclusive <= length) { "endExclusive is out of bound. length = $length" }
 
         if (start == endExclusive) {
             return ""
@@ -492,16 +492,20 @@ class BigTextImpl : BigText {
     }
 
     fun findLineString(lineIndex: Int): String {
+        require(0 <= lineIndex) { "lineIndex $lineIndex must be non-negative." }
+        require(lineIndex <= numOfLines) { "lineIndex $lineIndex out of bound, numOfLines = $numOfLines." }
+
         /**
-         * @param lineOffset 0 = start of buffer; 1 = char index after the first '\n'
+         * @param lineOffset 0 = start of buffer; 1 = char index after the 1st '\n'; 2 = char index after the 2nd '\n'; ...
          */
         fun findCharPosOfLineOffset(node: RedBlackTree<BigTextNodeValue>.Node, lineOffset: Int): Int {
             val buffer = buffers[node.value!!.bufferIndex]
-            val charOffsetInBuffer = if (lineOffset - 1 > buffer.lineOffsetStarts.lastIndex) {
+            val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
+            val lineEndIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value!!.bufferOffsetEndExclusive - 1)
+            val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
+            val charOffsetInBuffer = if (offsetedLineOffset > lineEndIndexInBuffer) {
                 node.value!!.bufferOffsetEndExclusive
             } else if (lineOffset - 1 >= 0) {
-                val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
-                val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
                 buffer.lineOffsetStarts[offsetedLineOffset] + 1
             } else {
                 node.value!!.bufferOffsetStart
