@@ -287,7 +287,6 @@ private fun CoreBigMonospaceText(
         delta
     }
     var draggedPoint by remember { mutableStateOf<Offset>(Offset.Zero) }
-    var selectionStart by remember { mutableStateOf<Int>(-1) }
     var selectionEnd by remember { mutableStateOf<Int>(-1) }
     var isHoldingShiftKey by remember { mutableStateOf(false) }
     var isFocused by remember { mutableStateOf(false) }
@@ -368,6 +367,7 @@ private fun CoreBigMonospaceText(
         text.insertAt(insertPos, textInput)
         viewState.cursorIndex += textInput.length
         viewState.updateTransformedCursorIndexByOriginal(transformedText)
+        viewState.transformedSelectionStart = viewState.transformedCursorIndex
         log.v { "set cursor pos 2 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
         onValueChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
     }
@@ -387,6 +387,7 @@ private fun CoreBigMonospaceText(
                     text.delete(cursor - 1, cursor)
                     --viewState.cursorIndex
                     viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                    viewState.transformedSelectionStart = viewState.transformedCursorIndex
                     log.v { "set cursor pos 3 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
                     onValueChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
                     return true
@@ -422,16 +423,17 @@ private fun CoreBigMonospaceText(
                     log.v { "onDragStart ${it.x} ${it.y}" }
                     draggedPoint = it
                     val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y, mode = ResolveCharPositionMode.Selection)
-                    selectionStart = selectedCharIndex
                     viewState.transformedSelection = selectedCharIndex .. selectedCharIndex
                     viewState.updateSelectionByTransformedSelection(transformedText)
+                    viewState.transformedSelectionStart = selectedCharIndex
                     focusRequester.requestFocus()
 //                    focusRequester.captureFocus()
                 },
-                onDrag = {
+                onDrag = { // onDragStart happens before onDrag
                     log.v { "onDrag ${it.x} ${it.y}" }
                     draggedPoint += it
                     val selectedCharIndex = getTransformedCharIndex(x = draggedPoint.x, y = draggedPoint.y, mode = ResolveCharPositionMode.Selection)
+                    val selectionStart = viewState.transformedSelectionStart
                     selectionEnd = selectedCharIndex
                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
                     viewState.updateSelectionByTransformedSelection(transformedText)
@@ -439,15 +441,16 @@ private fun CoreBigMonospaceText(
                     viewState.updateCursorIndexByTransformed(transformedText)
                 }
             )
-            .pointerInput(isEditable, text, text.hasLayouted, scrollState.value, lineHeight, contentWidth, transformedText.text.length, transformedText.text.hashCode()) {
+            .pointerInput(isEditable, text, text.hasLayouted, viewState, viewportTop, lineHeight, contentWidth, transformedText.text.length, transformedText.text.hashCode()) {
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
                         when (event.type) {
                             PointerEventType.Press -> {
                                 val position = event.changes.first().position
-                                log.v { "press ${position.x} ${position.y}" }
+                                log.v { "press ${position.x} ${position.y} shift=$isHoldingShiftKey" }
                                 if (isHoldingShiftKey) {
+                                    val selectionStart = viewState.transformedSelectionStart
                                     selectionEnd = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Selection)
                                     log.v { "selectionEnd => $selectionEnd" }
                                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
@@ -459,6 +462,7 @@ private fun CoreBigMonospaceText(
                                     if (isEditable) {
                                         viewState.transformedCursorIndex = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Cursor)
                                         viewState.updateCursorIndexByTransformed(transformedText)
+                                        viewState.transformedSelectionStart = viewState.transformedCursorIndex
                                         log.v { "set cursor pos 1 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
                                         focusRequester.requestFocus()
                                     }
@@ -556,6 +560,7 @@ private fun CoreBigMonospaceText(
                             if (viewState.transformedCursorIndex + delta in 0 .. transformedText.text.length) {
                                 viewState.transformedCursorIndex += delta
                                 viewState.updateCursorIndexByTransformed(transformedText)
+                                viewState.transformedSelectionStart = viewState.transformedCursorIndex
                                 log.v { "set cursor pos LR => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
                             }
                             true
@@ -585,6 +590,7 @@ private fun CoreBigMonospaceText(
                                 }
                             }
                             viewState.updateCursorIndexByTransformed(transformedText)
+                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
                             true
                         }
                         else -> false
@@ -680,6 +686,12 @@ class BigTextViewState {
         internal set
 
     internal var transformedSelection: IntRange by mutableStateOf(0 .. -1)
+
+    /**
+     * `transformedSelectionStart` can be different from `transformedSelection.start`.
+     * If a text is selected from position 5 to 1, transformedSelection = (1 .. 5) while transformedSelectionStart = 5.
+     */
+    var transformedSelectionStart: Int by mutableStateOf(0)
 
     var selection: IntRange by mutableStateOf(0 .. -1)
 
