@@ -422,10 +422,12 @@ private fun CoreBigMonospaceText(
                 onDragStart = {
                     log.v { "onDragStart ${it.x} ${it.y}" }
                     draggedPoint = it
-                    val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y, mode = ResolveCharPositionMode.Selection)
-                    viewState.transformedSelection = selectedCharIndex .. selectedCharIndex
-                    viewState.updateSelectionByTransformedSelection(transformedText)
-                    viewState.transformedSelectionStart = selectedCharIndex
+                    if (!isHoldingShiftKey) {
+                        val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y, mode = ResolveCharPositionMode.Selection)
+                        viewState.transformedSelection = selectedCharIndex..selectedCharIndex
+                        viewState.updateSelectionByTransformedSelection(transformedText)
+                        viewState.transformedSelectionStart = selectedCharIndex
+                    }
                     focusRequester.requestFocus()
 //                    focusRequester.captureFocus()
                 },
