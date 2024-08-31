@@ -460,15 +460,16 @@ private fun CoreBigMonospaceText(
                                 } else {
                                     viewState.transformedSelection = IntRange.EMPTY
 //                                    focusRequester.freeFocus()
-
-                                    if (isEditable) {
-                                        viewState.transformedCursorIndex = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Cursor)
-                                        viewState.updateCursorIndexByTransformed(transformedText)
-                                        viewState.transformedSelectionStart = viewState.transformedCursorIndex
-                                        log.v { "set cursor pos 1 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
-                                        focusRequester.requestFocus()
-                                    }
                                 }
+
+                                viewState.transformedCursorIndex = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Cursor)
+                                viewState.updateCursorIndexByTransformed(transformedText)
+                                if (!isHoldingShiftKey) {
+                                    viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                                }
+                                log.v { "set cursor pos 1 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
+
+                                focusRequester.requestFocus()
                             }
                         }
                     }
