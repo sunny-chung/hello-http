@@ -603,6 +603,14 @@ private fun CoreBigMonospaceText(
             }
 //            .then(BigTextInputModifierElement(1))
             .focusable(isSelectable) // `focusable` should be after callback modifiers that use focus
+            .semantics {
+                log.d { "semantic lambda" }
+                if (isEditable) {
+                    editableText = AnnotatedString(text.fullString(), transformedText.text.spanStyles)
+                } else {
+                    this.text = AnnotatedString(text.fullString(), transformedText.text.spanStyles)
+                }
+            }
 
     ) {
         val viewportBottom = viewportTop + height

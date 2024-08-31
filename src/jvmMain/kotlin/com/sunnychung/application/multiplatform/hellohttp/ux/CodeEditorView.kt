@@ -475,7 +475,14 @@ fun CodeEditorView(
                         scrollState = scrollState,
                         viewState = bigTextViewState,
                         onTextLayout = { layoutResult = it },
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize()
+                            .run {
+                                if (testTag != null) {
+                                    testTag(testTag)
+                                } else {
+                                    this
+                                }
+                            }
                     )
 //                    return@Row // compose bug: return here would crash
                 } else {
