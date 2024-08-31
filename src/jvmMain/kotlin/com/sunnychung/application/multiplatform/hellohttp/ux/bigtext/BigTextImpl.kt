@@ -148,7 +148,14 @@ class BigTextImpl : BigText {
             return 0
         }
 
-        val node = tree.findNodeByRowBreaks(index - 1)!!.first
+        require(index in (0 .. numOfRows)) { "Row index $index is out of bound. numOfRows = $numOfRows" }
+        if (index == 0) {
+            return 0;
+        }
+
+        val node = (tree.findNodeByRowBreaks(index - 1)
+            ?: throw IllegalStateException("Cannot find the node right after ${index - 1} row breaks")
+        ).first
         val rowStart = findRowStart(node)
         val startPos = findPositionStart(node)
         return startPos + if (index > 0) {
@@ -245,7 +252,13 @@ class BigTextImpl : BigText {
             return 0
         }
 
-        val (lineStartNode, lineIndexStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
+        require(lineIndex in (0 .. numOfLines)) { "Line index $lineIndex is out of bound. numOfLines = $numOfLines" }
+        if (lineIndex == 0) {
+            return 0;
+        }
+
+        val (lineStartNode, lineIndexStart) = tree.findNodeByLineBreaks(lineIndex - 1)
+            ?: throw IllegalStateException("Cannot find the node right after ${lineIndex - 1} line breaks")
 //        val positionOfLineStartNode = findPositionStart(lineStartNode)
         val lineOffsetStarts = buffers[lineStartNode.value.bufferIndex].lineOffsetStarts
         val inRangeLineStartIndex = lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineStartNode.value.bufferOffsetStart)
