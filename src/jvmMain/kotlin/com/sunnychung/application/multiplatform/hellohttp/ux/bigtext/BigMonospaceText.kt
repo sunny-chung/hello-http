@@ -573,6 +573,17 @@ private fun CoreBigMonospaceText(
                         clipboardManager.setText(AnnotatedString(textToCopy))
                         true
                     }
+                    isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.V -> {
+                        // Hit Ctrl-C or Cmd-C to copy
+                        log.d { "BigMonospaceTextField hit paste" }
+                        val textToPaste = clipboardManager.getText()?.text
+                        if (!textToPaste.isNullOrEmpty()) {
+                            onType(textToPaste)
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     it.type == KeyEventType.KeyDown && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
                         isHoldingShiftKey = true
                         false
