@@ -158,7 +158,9 @@ class BigTextImpl : BigText {
         ).first
         val rowStart = findRowStart(node)
         val startPos = findPositionStart(node)
-        return startPos + if (index > 0) {
+        return startPos + if (index - 1 - rowStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
+            node.value.bufferLength
+        } else if (index > 0) {
             node.value.rowBreakOffsets[index - 1 - rowStart] - node.value.bufferOffsetStart
         } else {
             0
@@ -180,7 +182,9 @@ class BigTextImpl : BigText {
         }
 
         val (node, rowIndexStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
-        val rowOffset = if (rowIndex > 0) {
+        val rowOffset = if (rowIndex - 1 - rowIndexStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
+            node.value.bufferOffsetEndExclusive
+        } else if (rowIndex > 0) {
             node.value.rowBreakOffsets[rowIndex - 1 - rowIndexStart]
         } else {
             0
@@ -274,7 +278,12 @@ class BigTextImpl : BigText {
 //        return rowBreaksStart + rowBreakOffsetIndex + 1
 
         val rowStartPos = lineStartPos + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */
-        val actualNode = tree.findNodeByCharIndex(rowStartPos) ?: throw IndexOutOfBoundsException("pos $rowStartPos is out of bound. length = $length")
+        val actualNode = tree.findNodeByCharIndex(rowStartPos) ?: run {
+            if (rowStartPos == length && tree.rightmost(tree.getRoot()).value.isEndWithForceRowBreak) {
+                return lastRowIndex
+            }
+            throw IndexOutOfBoundsException("pos $rowStartPos is out of bound. length = $length")
+        }
         val actualNodeStartPos = findPositionStart(actualNode)
         val rowBreakOffsetIndex = actualNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart)
         val rowBreaksStart = findRowStart(actualNode)
