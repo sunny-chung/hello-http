@@ -55,7 +55,7 @@ class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val
     fun getRowHeight(): Float = charHeight
 
     fun measureExactWidthOf(targets: List<String>): List<Float> {
-        val result = measurer.measure(targets.joinToString("\n"), style, softWrap = false)
+        val result = measurer.measure(targets.joinToString("") { "$it\n"}, style, softWrap = false)
         return targets.mapIndexed { index, s ->
             result.getLineRight(index) - result.getLineLeft(index)
         }
