@@ -460,23 +460,6 @@ private fun CoreBigMonospaceText(
             .padding(padding)
             .scrollable(scrollableState, orientation = Orientation.Vertical)
             .focusRequester(focusRequester)
-            .semantics {
-                if (isEditable) {
-                    editableText = transformedText.text
-                    setText {
-                        text.replace(0, text.length, it.text)
-                        true
-                    }
-                    insertTextAtCursor {
-                        text.insertAt(viewState.cursorIndex, it.text)
-                        true
-                    }
-                } else {
-                    this.text = transformedText.text
-                    setText { false }
-                    insertTextAtCursor { false }
-                }
-            }
             .onDrag(
                 enabled = isSelectable,
                 onDragStart = {
@@ -667,8 +650,18 @@ private fun CoreBigMonospaceText(
                 log.d { "semantic lambda" }
                 if (isEditable) {
                     editableText = AnnotatedString(text.fullString(), transformedText.text.spanStyles)
+                    setText {
+                        text.replace(0, text.length, it.text)
+                        true
+                    }
+                    insertTextAtCursor {
+                        text.insertAt(viewState.cursorIndex, it.text)
+                        true
+                    }
                 } else {
                     this.text = AnnotatedString(text.fullString(), transformedText.text.spanStyles)
+                    setText { false }
+                    insertTextAtCursor { false }
                 }
             }
 
