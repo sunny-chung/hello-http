@@ -77,6 +77,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Envi
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -565,7 +566,7 @@ fun CodeEditorView(
 //                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
                     bigTextFieldState.valueChangesFlow
-                        .debounce(1.seconds().toMilliseconds())
+                        .debounce(100.milliseconds().toMilliseconds())
                         .onEach {
                             log.d { "bigTextFieldState change ${it.changeId}" }
                             onTextChange?.let { onTextChange ->
