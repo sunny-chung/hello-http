@@ -574,7 +574,7 @@ private fun CoreBigMonospaceText(
                         true
                     }
                     isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.V -> {
-                        // Hit Ctrl-C or Cmd-C to copy
+                        // Hit Ctrl-V or Cmd-V to paste
                         log.d { "BigMonospaceTextField hit paste" }
                         val textToPaste = clipboardManager.getText()?.text
                         if (!textToPaste.isNullOrEmpty()) {
@@ -584,6 +584,13 @@ private fun CoreBigMonospaceText(
                             false
                         }
                     }
+                    /* selection */
+                    it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.A -> {
+                        // Hit Ctrl-A or Cmd-A to select all
+                        viewState.selection = 0 .. text.lastIndex
+                        viewState.updateTransformedSelectionBySelection(transformedText)
+                        true
+                    }
                     it.type == KeyEventType.KeyDown && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
                         isHoldingShiftKey = true
                         false
@@ -592,6 +599,7 @@ private fun CoreBigMonospaceText(
                         isHoldingShiftKey = false
                         false
                     }
+                    /* text input */
                     isEditable && it.isTypedEvent -> {
                         log.v { "key type '${it.key}'" }
                         val textInput = it.toTextInput()
@@ -777,6 +785,11 @@ class BigTextViewState {
     internal fun updateSelectionByTransformedSelection(transformedText: TransformedText) {
         selection = transformedText.offsetMapping.transformedToOriginal(transformedSelection.first) ..
                 transformedText.offsetMapping.transformedToOriginal(transformedSelection.last)
+    }
+
+    internal fun updateTransformedSelectionBySelection(transformedText: TransformedText) {
+        transformedSelection = transformedText.offsetMapping.originalToTransformed(selection.first) ..
+                transformedText.offsetMapping.originalToTransformed(selection.last)
     }
 
     internal var transformedCursorIndex by mutableStateOf(0)
