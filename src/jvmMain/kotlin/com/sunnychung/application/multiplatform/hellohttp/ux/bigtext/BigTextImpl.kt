@@ -53,6 +53,8 @@ class BigTextImpl : BigText {
 
     private var contentWidth: Float? = null
 
+    var onLayoutCallback: (() -> Unit)? = null
+
     constructor() {
         chunkSize = 2 * 1024 * 1024 // 2 MB
     }
@@ -1034,6 +1036,8 @@ class BigTextImpl : BigText {
 //        tree.visitInPostOrder {
 //            recomputeAggregatedValues(it)
 //        }
+
+        onLayoutCallback?.invoke()
     }
 
     val hasLayouted: Boolean

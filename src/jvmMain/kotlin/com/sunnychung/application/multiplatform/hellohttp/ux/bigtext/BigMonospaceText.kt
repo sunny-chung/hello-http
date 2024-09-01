@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.isTypedEvent
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -100,7 +101,7 @@ fun BigMonospaceText(
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
-    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
+    onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
     text = BigText.createFromLargeString(text), //InefficientBigText(text),
@@ -127,7 +128,7 @@ fun BigMonospaceText(
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
-    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
+    onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
     text = text,
@@ -152,7 +153,7 @@ fun BigMonospaceTextField(
     color: Color = LocalColor.current.text,
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
-    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
+    onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) {
     BigMonospaceTextField(
         modifier = modifier,
@@ -181,7 +182,7 @@ fun BigMonospaceTextField(
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
-    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
+    onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
     text = text as BigTextImpl,
@@ -211,7 +212,7 @@ private fun CoreBigMonospaceText(
     visualTransformation: VisualTransformation,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
-    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
+    onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) {
     log.d { "CoreBigMonospaceText recompose" }
 
@@ -264,12 +265,29 @@ private fun CoreBigMonospaceText(
 //            0
 //        }
 //    }
+    fun fireOnLayout() {
+        lineHeight = (textLayouter.charMeasurer as ComposeUnicodeCharMeasurer).getRowHeight()
+        onTextLayout?.let { callback ->
+            callback(BigTextSimpleLayoutResult(
+                text = text,
+                rowHeight = lineHeight,
+            ))
+        }
+    }
+
     if (width > 0) {
         log.d { "CoreBigMonospaceText set contentWidth = $contentWidth" }
+        text.onLayoutCallback = {
+            fireOnLayout()
+        }
         text.setLayouter(textLayouter)
         text.setContentWidth(contentWidth)
-        lineHeight = (textLayouter.charMeasurer as ComposeUnicodeCharMeasurer).getRowHeight()
+
+        LaunchedEffect(Unit) {
+            fireOnLayout()
+        }
     }
+
     val visualTransformationToUse = visualTransformation
     val transformedText = rememberLast(text.length, text.hashCode(), visualTransformationToUse) {
         visualTransformationToUse.filter(AnnotatedString(text.fullString())).also {
@@ -671,7 +689,7 @@ private fun CoreBigMonospaceText(
                     } else {
                         text.findRowPositionStartIndexByRowIndex(i + 1)
                     }
-                    val nonVisualEndIndex = maxOf(endIndex, minOf(transformedText.text.length, startIndex + 1))
+                    val nonVisualEndIndex = minOf(transformedText.text.length, maxOf(endIndex, startIndex + 1))
                     val cursorDisplayRangeEndIndex = if (i + 1 > text.lastRowIndex) {
                         transformedText.text.length
                     } else {

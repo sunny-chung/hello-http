@@ -27,3 +27,8 @@ class BigTextLayoutResult(
 
     @Deprecated("Slow") fun findCharWidth(char: String) = charMeasurer.findCharWidth(char)
 }
+
+class BigTextSimpleLayoutResult(
+    val text: BigText,
+    val rowHeight: Float
+)

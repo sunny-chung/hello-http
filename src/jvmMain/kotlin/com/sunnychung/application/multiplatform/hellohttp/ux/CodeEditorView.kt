@@ -59,14 +59,13 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryAp
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
-import com.sunnychung.application.multiplatform.hellohttp.util.ComposeUnicodeCharMeasurer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.MonospaceTextLayouter
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
@@ -442,7 +441,7 @@ fun CodeEditorView(
                     collapsedChars -= collapsableChars[index]
                 }
 
-                var layoutResult by remember { mutableStateOf<BigTextLayoutResult?>(null) }
+                var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
 //                BigLineNumbersView(
 //                    scrollState = scrollState,
@@ -464,6 +463,7 @@ fun CodeEditorView(
                     bigTextViewState = bigTextFieldState.viewState,
                     bigTextValueId = bigTextValueId,
                     bigText = bigTextValue as BigTextImpl,
+                    layoutResult = layoutResult,
                     collapsableLines = collapsableLines,
                     collapsedLines = collapsedLines.values.toList(),
                     onCollapseLine = onCollapseLine,
@@ -824,6 +824,7 @@ fun BigTextLineNumbersView(
     bigTextViewState: BigTextViewState,
     bigTextValueId: Long,
     bigText: BigTextImpl,
+    layoutResult: BigTextSimpleLayoutResult?,
     scrollState: ScrollState,
     collapsableLines: List<IntRange>,
     collapsedLines: List<IntRange>,
@@ -847,8 +848,8 @@ fun BigTextLineNumbersView(
     val viewportTop = scrollState.value
     val firstLine = bigText.findLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
     val lastLine = (bigText.findLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
-    log.v { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${bigText.numOfLines}" }
-    val rowHeight = ((bigText.layouter as? MonospaceTextLayouter)?.charMeasurer as? ComposeUnicodeCharMeasurer)?.getRowHeight() ?: 0f
+    log.d { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${bigText.numOfLines}" }
+    val rowHeight = layoutResult?.rowHeight ?: 0f
     CoreLineNumbersView(
         firstLine = firstLine,
         lastLine = minOf(lastLine, bigText.numOfLines ?: 1),
