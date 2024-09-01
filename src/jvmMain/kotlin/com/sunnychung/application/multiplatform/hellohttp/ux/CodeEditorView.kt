@@ -120,7 +120,7 @@ fun CodeEditorView(
     var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
     var cursorDelta by remember { mutableStateOf(0) }
     val newText = text.filterForTextField().let {
-        if (it.length > MAX_TEXT_FIELD_LENGTH) {
+        if (isReadOnly && it.length > MAX_TEXT_FIELD_LENGTH) {
             it.substring(0 .. MAX_TEXT_FIELD_LENGTH - 1) + "\n... (trimmed. total ${it.length} bytes)"
         } else {
             it
