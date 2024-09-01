@@ -146,6 +146,33 @@ fun BigMonospaceText(
 @Composable
 fun BigMonospaceTextField(
     modifier: Modifier = Modifier,
+    textFieldState: BigTextFieldState,
+    padding: PaddingValues = PaddingValues(4.dp),
+    fontSize: TextUnit = LocalFont.current.bodyFontSize,
+    color: Color = LocalColor.current.text,
+    visualTransformation: VisualTransformation,
+    scrollState: ScrollState = rememberScrollState(),
+    onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
+) {
+    BigMonospaceTextField(
+        modifier = modifier,
+        text = textFieldState.text,
+        padding = padding,
+        fontSize = fontSize,
+        color = color,
+        onTextChange = {
+            textFieldState.emitValueChange(it.changeId)
+        },
+        visualTransformation = visualTransformation,
+        scrollState = scrollState,
+        viewState = textFieldState.viewState,
+        onTextLayout = onTextLayout
+    )
+}
+
+@Composable
+fun BigMonospaceTextField(
+    modifier: Modifier = Modifier,
     text: BigText,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
@@ -186,6 +213,8 @@ private fun CoreBigMonospaceText(
     viewState: BigTextViewState = remember { BigTextViewState() },
     onTextLayout: ((BigTextLayoutResult) -> Unit)? = null,
 ) {
+    log.d { "CoreBigMonospaceText recompose" }
+
     val density = LocalDensity.current
     val textSelectionColors = LocalTextSelectionColors.current
     val fontFamilyResolver = LocalFontFamilyResolver.current
@@ -236,6 +265,7 @@ private fun CoreBigMonospaceText(
 //        }
 //    }
     if (width > 0) {
+        log.d { "CoreBigMonospaceText set contentWidth = $contentWidth" }
         text.setLayouter(textLayouter)
         text.setContentWidth(contentWidth)
         lineHeight = (textLayouter.charMeasurer as ComposeUnicodeCharMeasurer).getRowHeight()

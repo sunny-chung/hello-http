@@ -776,6 +776,7 @@ private fun PreFlightEditorView(
             selectedExample
         }
         KotliteCodeEditorView(
+            cacheKey = "Request:${request.id}/Example:${example.id}/PreFlight/ExecuteCode",
             text = example.preFlight.executeCode,
             onTextChange = {
                 onRequestModified(
@@ -1121,6 +1122,7 @@ private fun RequestBodyEditor(
         when (selectedContentType) {
             ContentType.Json, ContentType.Raw -> {
                 RequestBodyTextEditor(
+                    cacheKey = "Request:${request.id}/Example:${selectedExample.id}/Body",
                     request = request,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
@@ -1233,6 +1235,7 @@ private fun RequestBodyEditor(
 
             ContentType.Graphql -> {
                 RequestBodyTextEditor(
+                    cacheKey = "Request:${request.id}/Example:${selectedExample.id}/Body",
                     request = request,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
@@ -1267,6 +1270,7 @@ private fun RequestBodyEditor(
                     }
                 }
                 RequestBodyTextEditor(
+                    cacheKey = "Request:${request.id}/Example:${selectedExample.id}/GraphQLVariables",
                     request = request,
                     onRequestModified = onRequestModified,
                     environmentVariableKeys = environmentVariableKeys,
@@ -1323,6 +1327,7 @@ private fun OverrideCheckboxWithLabel(
 @Composable
 private fun RequestBodyTextEditor(
     modifier: Modifier,
+    cacheKey: String,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     environmentVariableKeys: Set<String>,
@@ -1339,6 +1344,7 @@ private fun RequestBodyTextEditor(
     if (overridePredicate(selectedExample.overrides)) {
         CodeEditorView(
             modifier = modifier,
+            cacheKey = cacheKey,
             isReadOnly = false,
             isEnableVariables = true,
             knownVariables = environmentVariableKeys,
@@ -1358,6 +1364,7 @@ private fun RequestBodyTextEditor(
     } else {
         CodeEditorView(
             modifier = modifier,
+            cacheKey = cacheKey,
             isReadOnly = true,
             isEnableVariables = true,
             knownVariables = environmentVariableKeys,
@@ -1545,6 +1552,7 @@ fun StreamingPayloadEditorView(
 
         CodeEditorView(
             modifier = Modifier.weight(1f),
+            cacheKey = "Request:${request.id}/PayloadExample:${selectedExample?.id}/Body",
             isReadOnly = false,
             isEnableVariables = true,
             knownVariables = knownVariables,

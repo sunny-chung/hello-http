@@ -26,6 +26,11 @@ val logL = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Layout")
 
+val logV = Logger(object : MutableLoggerConfig {
+    override var logWriterList: List<LogWriter> = listOf(JvmLogger())
+    override var minSeverity: Severity = Severity.Debug
+}, tag = "BigText.View")
+
 internal var isD = false
 
 private const val EPS = 1e-4f

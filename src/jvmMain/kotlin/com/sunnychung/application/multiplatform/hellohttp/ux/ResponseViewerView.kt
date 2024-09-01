@@ -463,7 +463,7 @@ private val jsonEncoder = jacksonObjectMapper().disable(DeserializationFeature.F
 @Composable
 fun BodyViewerView(
     modifier: Modifier = Modifier,
-    key: Any? = Unit,
+    key: String,
     content: ByteArray,
     errorMessage: String?,
     prettifiers: List<PrettifierDropDownValue>,
@@ -541,6 +541,7 @@ fun BodyViewerView(
 
             CopyableContentContainer(textToCopy = prettifyResult.prettyString, modifier = modifier) {
                 CodeEditorView(
+                    cacheKey = key,
                     isReadOnly = true,
                     text = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
@@ -557,6 +558,7 @@ fun BodyViewerView(
             val text = errorMessage ?: content.decodeToString()
             CopyableContentContainer(textToCopy = text, modifier = modifier) {
                 CodeEditorView(
+                    cacheKey = key,
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
@@ -613,7 +615,7 @@ fun ResponseBodyView(response: UserResponse) {
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
-            key = response.id,
+            key = "Response:${response.id}/Body",
             content = response.body ?: byteArrayOf(),
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
@@ -629,6 +631,7 @@ fun ResponseBodyView(response: UserResponse) {
         if (response.postFlightErrorMessage?.isNotEmpty() == true) {
             AppText(text = "Post-flight Error", modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
             CodeEditorView(
+                cacheKey = "Response:${response.id}/PostFlightError",
                 isReadOnly = true,
                 text = response.postFlightErrorMessage ?: "",
                 textColor = LocalColor.current.warning,
@@ -707,6 +710,7 @@ fun ResponseStreamView(response: UserResponse) {
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
             modifier = Modifier.weight(0.6f),
+            key = "Response:${response.id}/Stream:${selectedMessage?.id}/Body",
             content = detailData ?: byteArrayOf(),
             prettifiers = prettifiers,
             selectedPrettifierState = remember(
