@@ -671,7 +671,7 @@ private fun CoreBigMonospaceText(
                     } else {
                         text.findRowPositionStartIndexByRowIndex(i + 1)
                     }
-                    val nonVisualEndIndex = maxOf(endIndex, startIndex + 1)
+                    val nonVisualEndIndex = maxOf(endIndex, minOf(transformedText.text.length, startIndex + 1))
                     val cursorDisplayRangeEndIndex = if (i + 1 > text.lastRowIndex) {
                         transformedText.text.length
                     } else {
