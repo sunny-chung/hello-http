@@ -504,7 +504,7 @@ class BigTextImpl : BigText {
     override fun substring(start: Int, endExclusive: Int): String { // O(lg L + (e - s))
         require(start <= endExclusive) { "start should be <= endExclusive" }
         require(0 <= start) { "Invalid start" }
-        require(endExclusive <= length) { "endExclusive is out of bound. length = $length" }
+        require(endExclusive <= length) { "endExclusive $endExclusive is out of bound. length = $length" }
 
         if (start == endExclusive) {
             return ""

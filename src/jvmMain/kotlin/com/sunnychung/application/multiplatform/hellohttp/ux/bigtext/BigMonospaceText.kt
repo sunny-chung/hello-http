@@ -345,9 +345,10 @@ private fun CoreBigMonospaceText(
 
     fun getTransformedCharIndex(x: Float, y: Float, mode: ResolveCharPositionMode): Int {
         val row = ((viewportTop + y) / lineHeight).toInt()
+        val maxIndex = maxOf(0, transformedText.text.length - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
 //        val col = (x / charWidth).toInt()
         if (row > text.lastRowIndex) {
-            return maxOf(0, transformedText.text.length - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
+            return maxIndex
         } else if (row < 0) {
             return 0
         }
@@ -375,7 +376,7 @@ private fun CoreBigMonospaceText(
         }.takeIf { it >= 0 }
             ?: rowString.length - if (rowString.endsWith('\n')) 1 else 0
 
-        return rowPositionStart + charIndex
+        return minOf(maxIndex, rowPositionStart + charIndex)
     }
 
     fun getTransformedStringWidth(start: Int, endExclusive: Int): Float {
@@ -508,7 +509,8 @@ private fun CoreBigMonospaceText(
                                 viewState.transformedCursorIndex = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Cursor)
                                 viewState.updateCursorIndexByTransformed(transformedText)
                                 if (!isHoldingShiftKey) {
-                                    viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                                    // for selection, max possible index is 1 less than that for cursor
+                                    viewState.transformedSelectionStart = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Selection)
                                 }
                                 log.v { "set cursor pos 1 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
 
