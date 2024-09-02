@@ -12,7 +12,7 @@ class BigTextAsCharSequence(internal val bigText: BigTextImpl) : CharSequence {
         return bigText.substring(startIndex, endIndex)
     }
 
-    override fun toString(): String = bigText.fullString()
+    override fun toString(): String = bigText.buildString()
 }
 
 fun BigText.Companion.wrap(charSequence: CharSequence): BigTextImpl {

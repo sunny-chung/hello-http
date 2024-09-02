@@ -78,7 +78,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Func
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
-import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.debounce
@@ -570,7 +569,7 @@ fun CodeEditorView(
                         .onEach {
                             log.d { "bigTextFieldState change ${it.changeId}" }
                             onTextChange?.let { onTextChange ->
-                                onTextChange(it.bigText.fullString())
+                                onTextChange(it.bigText.buildString())
                             }
                             bigTextValueId = it.changeId
                         }

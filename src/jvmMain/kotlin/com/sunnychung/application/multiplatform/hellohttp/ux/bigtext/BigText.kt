@@ -7,7 +7,7 @@ interface BigText {
 
     val length: Int
 
-    fun fullString(): String
+    fun buildString(): String
 
     fun substring(start: Int, endExclusive: Int): String
 

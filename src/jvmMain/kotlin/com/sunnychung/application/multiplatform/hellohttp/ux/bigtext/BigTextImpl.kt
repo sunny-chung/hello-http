@@ -495,7 +495,7 @@ class BigTextImpl : BigText {
     val lastIndex: Int
         get() = length - 1
 
-    override fun fullString(): String {
+    override fun buildString(): String {
         return tree.joinToString("") {
             buffers[it.bufferIndex].subSequence(it.bufferOffsetStart, it.bufferOffsetEndExclusive)
         }
@@ -756,7 +756,7 @@ class BigTextImpl : BigText {
         appendLine("[$label] Tree:\nflowchart TD\n${tree.debugTree()}")
         appendLine("[$label] String:\n${fullString()}")
         if (layouter != null && contentWidth != null) {
-            appendLine("[$label] Layouted String:\n${(0 until numOfRows).joinToString("") { 
+            appendLine("[$label] Layouted String:\n${(0 until numOfRows).joinToString("") {
                 try {
                     "{${findRowString(it)}}\n"
                 } catch (e: Throwable) {

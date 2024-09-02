@@ -133,7 +133,7 @@ class BigTextImplQueryTest {
             delete(pos3, pos3 + 45678)
             delete(pos1, pos1 + 19)
         }
-        val s = t.stringImpl.fullString()
+        val s = t.stringImpl.buildString()
         println("len = ${s.length}")
         val splitted = s.split("\n")
         splitted.forEachIndexed { i, line ->
@@ -149,7 +149,7 @@ class BigTextImplQueryTest {
             append(lines)
             delete(0, 18)
         }
-        val s = t.stringImpl.fullString()
+        val s = t.stringImpl.buildString()
         println("len = ${s.length}")
         val splitted = s.split("\n")
         splitted.forEachIndexed { i, line ->
@@ -179,7 +179,7 @@ class BigTextImplQueryTest {
             insertAt(0, generateString(29))
             delete(pos1, pos1 + 19)
         }
-        val s = t.stringImpl.fullString()
+        val s = t.stringImpl.buildString()
         println("len = ${s.length}")
         val splitted = s.split("\n")
         splitted.forEachIndexed { i, line ->
@@ -222,7 +222,7 @@ class BigTextImplQueryTest {
 }
 
 private fun BigTextVerifyImpl.verifyAllLines() {
-    val splitted = this.stringImpl.fullString().split("\n")
+    val splitted = this.stringImpl.buildString().split("\n")
     splitted.forEachIndexed { i, line ->
         val result = this.bigTextImpl.findLineString(i)
         assertEquals(if (i == splitted.lastIndex) line else "$line\n", result)

@@ -19,9 +19,9 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
             return l
         }
 
-    override fun fullString(): String {
-        val r = bigTextImpl.fullString()
-        val tr = stringImpl.fullString()
+    override fun buildString(): String {
+        val r = bigTextImpl.buildString()
+        val tr = stringImpl.buildString()
         assert(r == tr) { "fullString expected $tr, actual $r" }
         return r
     }
@@ -77,7 +77,7 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
     fun verify(label: String = "") {
         printDebugIfError(label) {
             length
-            fullString()
+            buildString()
         }
     }
 

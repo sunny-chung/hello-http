@@ -158,10 +158,10 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(5, add)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -174,10 +174,10 @@ class BigTextImplLayoutTest {
             bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(12, add)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -190,10 +190,10 @@ class BigTextImplLayoutTest {
             bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(39, add)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -206,16 +206,16 @@ class BigTextImplLayoutTest {
             bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(1677, randomString(1000, isAddNewLine = false) + "\n")
         t.printDebug("after relayout 1")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(4989, randomString(2000, isAddNewLine = false) + "\n")
         t.printDebug("after relayout 2")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(8912, randomString(1000, isAddNewLine = false) + "\n")
         t.printDebug("after relayout 3")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -228,19 +228,19 @@ class BigTextImplLayoutTest {
             bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(467, randomString(30, isAddNewLine = false) + "\n")
         t.printDebug("after relayout 1")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(491, randomString(35, isAddNewLine = false) + "\n")
         t.printDebug("after relayout 2")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(112, randomString(500, isAddNewLine = false) + "\n")
         t.printDebug("after relayout 3")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(480, randomString(399, isAddNewLine = false) + "\n")
         t.printDebug("after relayout 4")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -257,7 +257,7 @@ class BigTextImplLayoutTest {
             listOf(15, 4, 1, 1, 2, 8, 16, 19, 200, 1235, 2468, 10001, 257).forEachIndexed { i, it ->
                 t.insertAt(0, randomString(it, isAddNewLine = false) + "\n")
                 t.printDebug("after relayout $softWrapAt, $i")
-                verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+                verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
             }
         }
     }
@@ -293,7 +293,7 @@ class BigTextImplLayoutTest {
                     else -> random.nextInt(t.length + 1)
                 }
                 t.insertAt(pos, "\n".repeat(length))
-                verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+                verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
             }
         }
     }
@@ -341,7 +341,7 @@ class BigTextImplLayoutTest {
                         isD = true
                     }
                     verifyBigTextImplAgainstTestString(
-                        testString = t.stringImpl.fullString(),
+                        testString = t.stringImpl.buildString(),
                         bigTextImpl = t.bigTextImpl,
                         softWrapAt = softWrapAt
                     )
@@ -360,10 +360,10 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(18, 18 + 6)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -378,10 +378,10 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(5, 5 + s2.length)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -396,10 +396,10 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(3, 5 + s2.length + 14)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -414,10 +414,10 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(0, initial.length)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -430,22 +430,22 @@ class BigTextImplLayoutTest {
             bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(467, 467 + 30)
         t.printDebug("after relayout 1")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(491, 491 + 35)
         t.printDebug("after relayout 2")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(112, 112 + 500)
         t.printDebug("after relayout 3")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(480, 480 + 299)
         t.printDebug("after relayout 4")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.delete(90, 90 + 338)
         t.printDebug("after relayout 5")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -462,7 +462,7 @@ class BigTextImplLayoutTest {
             listOf(15, 4, 1, 1, 2, 8, 16, 19, 200, 1235, 2468, 10001, 257, 1, 0, 13).forEachIndexed { i, it ->
                 t.delete(0, 0 + it)
 //                t.printDebug("after relayout $softWrapAt, $i")
-                verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+                verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
             }
         }
     }
@@ -476,11 +476,11 @@ class BigTextImplLayoutTest {
             bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         listOf((25..32), (14 .. 16), (14 .. 15), (5 .. 7), (1 .. 1), (0 .. 0), (14 .. 16)).forEach {
             t.delete(it)
             t.printDebug("after delete $it")
-            verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+            verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         }
     }
 
@@ -527,7 +527,7 @@ class BigTextImplLayoutTest {
                 }
                 t.delete(pos, minOf(t.length, pos + length))
 //                t.printDebug("after relayout $softWrapAt, $i")
-                verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+                verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
             }
         }
     }
@@ -572,7 +572,7 @@ class BigTextImplLayoutTest {
                     logL.d { t.inspect("after relayout $repeatIt $softWrapAt, $i") }
                     println("Iterate $repeatIt, $softWrapAt, $i")
                     verifyBigTextImplAgainstTestString(
-                        testString = t.stringImpl.fullString(),
+                        testString = t.stringImpl.buildString(),
                         bigTextImpl = t.bigTextImpl,
                         softWrapAt = softWrapAt
                     )
@@ -593,11 +593,11 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         val pos = initial.indexOf(beingReplaced)
         t.replace(pos, pos + beingReplaced.length, replaceAs)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -612,16 +612,16 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         var pos = initial.indexOf(beingReplaced)
         t.replace(pos, pos + beingReplaced.length, replaceAs)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
 
         pos = initial.indexOf("H")
         t.replace(pos, pos + 9, "--\n-")
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -636,11 +636,11 @@ class BigTextImplLayoutTest {
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
             printDebug("after 1st layout")
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         var pos = initial.indexOf(beingReplaced)
         t.replace(pos, pos + beingReplaced.length, replaceAs)
         t.printDebug("after relayout")
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
     @ParameterizedTest
@@ -652,11 +652,11 @@ class BigTextImplLayoutTest {
             bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
             bigTextImpl.setContentWidth(16f * 10 + 1.23f)
         }
-        verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         listOf((25..32), (14 .. 16), (14 .. 15), (5 .. 7), (1 .. 1), (0 .. 0), (14 .. 16)).forEach {
             t.replace(it, "A\n\n")
             t.printDebug("after delete $it")
-            verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl)
+            verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         }
     }
 
@@ -675,7 +675,7 @@ class BigTextImplLayoutTest {
             lengths.forEachIndexed { i, it ->
                 t.replace(0 until lengths.random(random), randomString(it, isAddNewLine = false) + "\n")
 //                t.printDebug("after relayout $softWrapAt, $i")
-                verifyBigTextImplAgainstTestString(testString = t.stringImpl.fullString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+                verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
             }
         }
     }
@@ -724,7 +724,7 @@ class BigTextImplLayoutTest {
                     }
                     logL.d { t.inspect("after relayout $repeatIt $softWrapAt, $i") }
                     verifyBigTextImplAgainstTestString(
-                        testString = t.stringImpl.fullString(),
+                        testString = t.stringImpl.buildString(),
                         bigTextImpl = t.bigTextImpl,
                         softWrapAt = softWrapAt
                     )

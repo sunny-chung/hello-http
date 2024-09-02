@@ -121,7 +121,7 @@ class BigTextImplTest {
         val t = BigTextVerifyImpl(chunkSize = 64)
         t.printDebug()
         assertEquals(0, t.tree.size())
-        assertEquals(0, t.fullString().length)
+        assertEquals(0, t.buildString().length)
         assertEquals(0, t.length)
     }
 
@@ -136,7 +136,7 @@ class BigTextImplTest {
         t.insertAt(4, "")
         t.printDebug()
         assertEquals(1, t.tree.size())
-        assertEquals(4, t.fullString().length)
+        assertEquals(4, t.buildString().length)
         assertEquals(4, t.length)
     }
 
@@ -150,7 +150,7 @@ class BigTextImplTest {
         assertEquals(240 / 16, t.buffers.size)
         assertEquals((100 / 16 + 1) + 1 + (100 / 16 + 1) + (40 / 16 + 1), t.tree.size())
         assertEquals(240, t.length)
-        assertEquals(240, t.fullString().length)
+        assertEquals(240, t.buildString().length)
     }
 
     @Test
@@ -163,7 +163,7 @@ class BigTextImplTest {
         assertEquals(30000 / 64 + 1, t.buffers.size)
 //        assertEquals((30000 / 64 + 1) + 1 + (30000 / 64 + 1) + (30000 / 64 + 1), t.tree.size())
         assertEquals(30000, t.length)
-        assertEquals(30000, t.fullString().length)
+        assertEquals(30000, t.buildString().length)
     }
 
     @Test
@@ -176,7 +176,7 @@ class BigTextImplTest {
         assertEquals(5000000 / 64, t.buffers.size)
         assertEquals((1000000 / 64 + 1) + (1000000 / 64 + 1) + (3000000 / 64 + 1) - 2, t.tree.size())
         assertEquals(5000000, t.length)
-        assertEquals(5000000, t.fullString().length)
+        assertEquals(5000000, t.buildString().length)
     }
 
 //    @Test
@@ -202,7 +202,7 @@ class BigTextImplTest {
         val len = 339 + 46
         assertEquals(len / 64 + 1, t.buffers.size)
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @Test
@@ -220,7 +220,7 @@ class BigTextImplTest {
         val len = 150 + 13 + 62 + 58 + 7 + 90 + 64 + 129
         assertEquals(len / 64 + 1, t.buffers.size)
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @Test
@@ -235,7 +235,7 @@ class BigTextImplTest {
         val len = 339 + 46 * 4
         assertEquals(len / 64 + 1, t.buffers.size)
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @Test
@@ -248,7 +248,7 @@ class BigTextImplTest {
         val len = 654 + 80 + 26
         assertEquals(len / 64 + 1, t.buffers.size)
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     /**
@@ -306,7 +306,7 @@ class BigTextImplTest {
         t.delete(64 * 0 + 10, 64 * 0 + 30)
         val len = 64 * 3 - 20 * 3
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @Test
@@ -322,7 +322,7 @@ class BigTextImplTest {
         t.delete(d3range)
         val len = 64 * 10 - d1range.length - d2range.length - d3range.length
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @Test
@@ -336,7 +336,7 @@ class BigTextImplTest {
         t.delete(0 .. 29)
         val len = 654 - 20 * 4 - 30
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @ParameterizedTest
@@ -349,7 +349,7 @@ class BigTextImplTest {
         if (length == 640) isD = true
         t.delete(0 until t.length)
         assertEquals(0, t.length)
-        assertEquals(0, t.fullString().length)
+        assertEquals(0, t.buildString().length)
         assertEquals(0, t.tree.size())
     }
 
@@ -364,7 +364,7 @@ class BigTextImplTest {
         t.delete(13 .. 69)
         val len = 1024 - 20 - 501 - 280 - 57
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @Test
@@ -376,7 +376,7 @@ class BigTextImplTest {
         t.delete(343 .. 456)
         val len = 1024 - (457 - 343)
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @ParameterizedTest
@@ -393,7 +393,7 @@ class BigTextImplTest {
             }
         }
         assertEquals(len, t.length)
-        assertEquals(len, t.fullString().length)
+        assertEquals(len, t.buildString().length)
     }
 
     @ParameterizedTest

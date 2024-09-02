@@ -8,7 +8,7 @@ class InefficientBigText(text: String) : BigText {
     override val length: Int
         get() = string.length
 
-    override fun fullString(): String = string
+    override fun buildString(): String = string
 
     override fun substring(start: Int, endExclusive: Int): String =
         string.substring(start, endExclusive)
@@ -39,7 +39,7 @@ class InefficientBigText(text: String) : BigText {
             return false
         }
         return when(other) {
-            is InefficientBigText -> string == other.fullString()
+            is InefficientBigText -> string == other.buildString()
             else -> TODO()
         }
     }

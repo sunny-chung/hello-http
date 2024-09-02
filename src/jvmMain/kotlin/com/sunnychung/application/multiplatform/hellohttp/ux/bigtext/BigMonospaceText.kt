@@ -290,7 +290,7 @@ private fun CoreBigMonospaceText(
 
     val visualTransformationToUse = visualTransformation
     val transformedText = rememberLast(text.length, text.hashCode(), visualTransformationToUse) {
-        visualTransformationToUse.filter(AnnotatedString(text.fullString())).also {
+        visualTransformationToUse.filter(AnnotatedString(text.buildString())).also {
             log.v { "transformed text = `$it`" }
         }
     }
@@ -670,7 +670,7 @@ private fun CoreBigMonospaceText(
             .semantics {
                 log.d { "semantic lambda" }
                 if (isEditable) {
-                    editableText = AnnotatedString(text.fullString(), transformedText.text.spanStyles)
+                    editableText = AnnotatedString(text.buildString(), transformedText.text.spanStyles)
                     setText {
                         viewState.selection = 0 .. text.lastIndex
                         onType(it.text)
@@ -681,7 +681,7 @@ private fun CoreBigMonospaceText(
                         true
                     }
                 } else {
-                    this.text = AnnotatedString(text.fullString(), transformedText.text.spanStyles)
+                    this.text = AnnotatedString(text.buildString(), transformedText.text.spanStyles)
                     setText { false }
                     insertTextAtCursor { false }
                 }
