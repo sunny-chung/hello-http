@@ -409,7 +409,7 @@ private fun CoreBigMonospaceText(
     fun onType(textInput: String) {
         log.v { "key in '$textInput'" }
         if (viewState.hasSelection()) {
-            text.delete(viewState.selection.start, viewState.selection.endInclusive + 1)
+            text.delete(viewState.selection.start, minOf(text.length, viewState.selection.endInclusive + 1))
             viewState.cursorIndex = viewState.selection.start
             viewState.selection = IntRange.EMPTY
             viewState.transformedSelection = IntRange.EMPTY
@@ -672,11 +672,12 @@ private fun CoreBigMonospaceText(
                 if (isEditable) {
                     editableText = AnnotatedString(text.fullString(), transformedText.text.spanStyles)
                     setText {
-                        text.replace(0, text.length, it.text)
+                        viewState.selection = 0 .. text.lastIndex
+                        onType(it.text)
                         true
                     }
                     insertTextAtCursor {
-                        text.insertAt(viewState.cursorIndex, it.text)
+                        onType(it.text)
                         true
                     }
                 } else {
