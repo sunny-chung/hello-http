@@ -15,8 +15,20 @@ class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val
      */
     override fun measureFullText(text: String) {
         val charToMeasure = mutableSetOf<String>()
+        var surrogatePairFirst: Char? = null
         text.forEach {
-            val s = it.toString()
+            var s = it.toString()
+            if (surrogatePairFirst == null && s[0].isSurrogatePairFirst()) {
+                surrogatePairFirst = s[0]
+                return@forEach
+            } else if (surrogatePairFirst != null) {
+                if (s[0].isSurrogatePairSecond()) {
+                    s = "$surrogatePairFirst${s[0]}"
+                } else {
+                    s = s.substring(0, 1)
+                }
+                surrogatePairFirst = null
+            }
             if (!charWidth.containsKey(s) && shouldIndexChar(s)) {
                 charToMeasure += s
             }
@@ -27,8 +39,13 @@ class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val
 
     /**
      * Time complexity = O(lg C)
+     *
+     * TODO: handle surrogate pair correctly
      */
     override fun findCharWidth(char: String): Float {
+        if (char[0].isSurrogatePairFirst()) {
+            return 0f
+        }
         when (char.codePoints().findFirst().asInt) {
             in 0x4E00..0x9FFF,
                 in 0x3400..0x4DBF,
@@ -70,6 +87,14 @@ class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val
             in 0xAC00..0xD7AF -> false // Hangul Syllables
             else -> true
         }
+    }
+
+    fun Char.isSurrogatePairFirst(): Boolean {
+        return code in (0xD800 .. 0xDBFF)
+    }
+
+    fun Char.isSurrogatePairSecond(): Boolean {
+        return code in (0xDC00 .. 0xDFFF)
     }
 
     init {
