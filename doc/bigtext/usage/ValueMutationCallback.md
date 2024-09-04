@@ -45,6 +45,7 @@ BigMonospaceTextField(
 - Need to change the usage of String type in models and composables to CharSequence (or BigText).
 - The expensive `BigText#fullString` may be invoked (via `BigTextAsCharSequence#toString`) out of control.
 - Lots of code changes to an existing code base, hence a significant risk to existing projects.
+- Memory usage can be higher, as BigText uses more memory than String in linear to number of changes.
 
 ```kotlin
 val bigTextValue = BigText.wrap(newText)

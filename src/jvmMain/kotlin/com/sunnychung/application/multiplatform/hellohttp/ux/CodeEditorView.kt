@@ -62,6 +62,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
@@ -454,13 +455,13 @@ fun CodeEditorView(
 //                    modifier = Modifier.fillMaxHeight(),
 //                )
 
-                val bigTextFieldState = rememberBigTextFieldState(cacheKey, textValue.text)
-                val bigTextValue = bigTextFieldState.text
+                val (secondCacheKey, bigTextFieldState) = rememberBigTextFieldState(initialValue = textValue.text, cacheKey)
+                val bigTextValue = bigTextFieldState.value.text
                 var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
 
                 BigTextLineNumbersView(
                     scrollState = scrollState,
-                    bigTextViewState = bigTextFieldState.viewState,
+                    bigTextViewState = bigTextFieldState.value.viewState,
                     bigTextValueId = bigTextValueId,
                     bigText = bigTextValue as BigTextImpl,
                     layoutResult = layoutResult,
@@ -479,7 +480,7 @@ fun CodeEditorView(
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
                         isSelectable = true,
                         scrollState = scrollState,
-                        viewState = bigTextFieldState.viewState,
+                        viewState = bigTextFieldState.value.viewState,
                         onTextLayout = { layoutResult = it },
                         modifier = Modifier.fillMaxSize()
                             .run {
@@ -564,19 +565,21 @@ fun CodeEditorView(
 
 //                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
-                    bigTextFieldState.valueChangesFlow
+                    bigTextFieldState.value.valueChangesFlow
                         .debounce(100.milliseconds().toMilliseconds())
                         .onEach {
                             log.d { "bigTextFieldState change ${it.changeId}" }
                             onTextChange?.let { onTextChange ->
-                                onTextChange(it.bigText.buildString())
+                                val string = it.bigText.buildString()
+                                onTextChange(string)
+                                secondCacheKey.value = string
                             }
                             bigTextValueId = it.changeId
                         }
                         .launchIn(CoroutineScope(Dispatchers.Main))
 
                     BigMonospaceTextField(
-                        textFieldState = bigTextFieldState,
+                        textFieldState = bigTextFieldState.value,
                         visualTransformation = visualTransformationToUse,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
 //                        textStyle = LocalTextStyle.current.copy(

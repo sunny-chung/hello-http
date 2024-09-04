@@ -754,7 +754,7 @@ class BigTextImpl : BigText {
         appendLine("[$label] Buffer:\n${buffers.mapIndexed { i, it -> "    $i:\t$it\n" }.joinToString("")}")
         appendLine("[$label] Buffer Line Breaks:\n${buffers.mapIndexed { i, it -> "    $i:\t${it.lineOffsetStarts}\n" }.joinToString("")}")
         appendLine("[$label] Tree:\nflowchart TD\n${tree.debugTree()}")
-        appendLine("[$label] String:\n${fullString()}")
+        appendLine("[$label] String:\n${buildString()}")
         if (layouter != null && contentWidth != null) {
             appendLine("[$label] Layouted String:\n${(0 until numOfRows).joinToString("") {
                 try {
@@ -1127,5 +1127,6 @@ private enum class InsertDirection {
 }
 
 fun BigText.Companion.createFromLargeString(initialContent: String) = BigTextImpl().apply {
+    log.d { "createFromLargeString ${initialContent.length}" }
     append(initialContent)
 }

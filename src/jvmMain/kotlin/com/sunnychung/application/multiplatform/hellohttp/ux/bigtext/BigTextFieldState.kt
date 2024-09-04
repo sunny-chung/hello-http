@@ -1,25 +1,37 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.runBlocking
 
 @Composable
-fun rememberBigTextFieldState(cacheKey: String, bigText: BigTextImpl): BigTextFieldState {
-    return remember(cacheKey) {
-        BigTextFieldState(cacheKey, bigText, BigTextViewState())
+fun rememberBigTextFieldState(initialValue: String = "", vararg cacheKey: Any?): Pair<MutableState<String>, MutableState<BigTextFieldState>> {
+    val secondCacheKey = rememberSaveable(*cacheKey) { mutableStateOf(initialValue) }
+    val state = rememberSaveable(*cacheKey) {
+        log.d { "cache miss 1" }
+        mutableStateOf(BigTextFieldState(BigText.createFromLargeString(initialValue), BigTextViewState()))
+    }
+    if (initialValue !== secondCacheKey.value) {
+        log.d { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
+        secondCacheKey.value = initialValue
+        state.value = BigTextFieldState(BigText.createFromLargeString(initialValue), BigTextViewState())
+    }
+    return secondCacheKey to state
+}
+
+private fun String.abbr(): String {
+    return if (this.length > 20) {
+        substring(0 .. 19)
+    } else {
+        this
     }
 }
 
-@Composable
-fun rememberBigTextFieldState(cacheKey: String, initialValue: String = ""): BigTextFieldState {
-    return rememberBigTextFieldState(cacheKey, BigText.createFromLargeString(initialValue))
-}
-
-class BigTextFieldState(val cacheKey: String, val text: BigTextImpl, val viewState: BigTextViewState) {
+class BigTextFieldState(val text: BigTextImpl, val viewState: BigTextViewState) {
     private val valueChangesMutableFlow = MutableSharedFlow<BigTextChangeWithoutDetail>(
         replay = 0,
         extraBufferCapacity = 1,
