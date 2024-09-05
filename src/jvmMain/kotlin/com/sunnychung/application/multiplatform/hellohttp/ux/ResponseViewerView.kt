@@ -541,7 +541,6 @@ fun BodyViewerView(
 
             CopyableContentContainer(textToCopy = prettifyResult.prettyString, modifier = modifier) {
                 CodeEditorView(
-                    cacheKey = key,
                     isReadOnly = true,
                     text = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
@@ -558,7 +557,6 @@ fun BodyViewerView(
             val text = errorMessage ?: content.decodeToString()
             CopyableContentContainer(textToCopy = text, modifier = modifier) {
                 CodeEditorView(
-                    cacheKey = key,
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
@@ -631,7 +629,6 @@ fun ResponseBodyView(response: UserResponse) {
         if (response.postFlightErrorMessage?.isNotEmpty() == true) {
             AppText(text = "Post-flight Error", modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
             CodeEditorView(
-                cacheKey = "Response:${response.id}/PostFlightError",
                 isReadOnly = true,
                 text = response.postFlightErrorMessage ?: "",
                 textColor = LocalColor.current.warning,

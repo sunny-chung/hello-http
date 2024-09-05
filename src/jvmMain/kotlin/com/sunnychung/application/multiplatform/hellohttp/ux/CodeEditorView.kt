@@ -94,7 +94,6 @@ val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024 // 4 MB
 fun CodeEditorView(
     modifier: Modifier = Modifier,
     isReadOnly: Boolean = false,
-    cacheKey: String,
     text: String,
     onTextChange: ((String) -> Unit)? = null,
     collapsableLines: List<IntRange> = emptyList(),
@@ -455,7 +454,7 @@ fun CodeEditorView(
 //                    modifier = Modifier.fillMaxHeight(),
 //                )
 
-                val (secondCacheKey, bigTextFieldState) = rememberBigTextFieldState(initialValue = textValue.text, cacheKey)
+                val (secondCacheKey, bigTextFieldState) = rememberBigTextFieldState(initialValue = textValue.text)
                 val bigTextValue = bigTextFieldState.value.text
                 var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
 

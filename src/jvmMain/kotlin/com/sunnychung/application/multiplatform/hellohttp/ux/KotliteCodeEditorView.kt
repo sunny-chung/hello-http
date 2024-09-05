@@ -10,7 +10,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Kotl
 @Composable
 fun KotliteCodeEditorView(
     modifier: Modifier = Modifier,
-    cacheKey: String,
     isReadOnly: Boolean = false,
     isEnabled: Boolean = true,
     text: String,
@@ -25,7 +24,6 @@ fun KotliteCodeEditorView(
     }
     CodeEditorView(
         modifier = modifier,
-        cacheKey = cacheKey,
         isReadOnly = isReadOnly,
         text = text,
         onTextChange = onTextChange,

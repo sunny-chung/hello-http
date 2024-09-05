@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
-fun rememberBigTextFieldState(initialValue: String = "", vararg cacheKey: Any?): Pair<MutableState<String>, MutableState<BigTextFieldState>> {
-    val secondCacheKey = rememberSaveable(*cacheKey) { mutableStateOf(initialValue) }
-    val state = rememberSaveable(*cacheKey) {
+fun rememberBigTextFieldState(initialValue: String = ""): Pair<MutableState<String>, MutableState<BigTextFieldState>> {
+    val secondCacheKey = rememberSaveable { mutableStateOf(initialValue) }
+    val state = rememberSaveable {
         log.d { "cache miss 1" }
         mutableStateOf(BigTextFieldState(BigText.createFromLargeString(initialValue), BigTextViewState()))
     }
