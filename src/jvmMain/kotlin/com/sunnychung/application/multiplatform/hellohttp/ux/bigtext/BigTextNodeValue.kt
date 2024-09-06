@@ -21,6 +21,8 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
     var bufferOffsetStart: Int = -1
     var bufferOffsetEndExclusive: Int = -1
     var bufferNumLineBreaksInRange: Int = -1
+    lateinit var buffer: TextBuffer
+    var bufferOwnership: BufferOwnership = BufferOwnership.Owned
 
     val bufferLength: Int
         get() = bufferOffsetEndExclusive - bufferOffsetStart
@@ -80,4 +82,8 @@ class TextBuffer(val size: Int) {
     fun subSequence(start: Int, endExclusive: Int): CharSequence {
         return buffer.subSequence(start, endExclusive)
     }
+}
+
+enum class BufferOwnership {
+    Owned, Delegated
 }
