@@ -668,6 +668,10 @@ open class BigTextImpl : BigText {
         require(0 <= start) { "Invalid start" }
         require(endExclusive <= length) { "endExclusive is out of bound" }
 
+        return deleteUnchecked(start, endExclusive)
+    }
+
+    protected fun deleteUnchecked(start: Int, endExclusive: Int): Int {
         if (start == endExclusive) {
             return 0
         }
@@ -689,7 +693,8 @@ open class BigTextImpl : BigText {
                     bufferIndex = node!!.value.bufferIndex // FIXME transform
                     bufferOffsetStart = node!!.value.bufferOffsetStart + splitAtIndex
                     bufferOffsetEndExclusive = node!!.value.bufferOffsetEndExclusive
-                    buffer = buffers[bufferIndex]
+                    buffer = node!!.value.buffer
+                    bufferOwnership = node!!.value.bufferOwnership
 
                     leftStringLength = 0
                 }
@@ -702,7 +707,8 @@ open class BigTextImpl : BigText {
                     bufferIndex = node!!.value.bufferIndex
                     bufferOffsetStart = node!!.value.bufferOffsetStart
                     bufferOffsetEndExclusive = node!!.value.bufferOffsetStart + splitAtIndex
-                    buffer = buffers[bufferIndex]
+                    buffer = node!!.value.buffer
+                    bufferOwnership = node!!.value.bufferOwnership
 
                     leftStringLength = 0
                 }

@@ -122,6 +122,136 @@ class BigTextTransformerImplTest {
         assertAllSubstring("12345678901234567890", original)
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = [64, 16])
+    fun initialTransformDelete(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformDelete(14 .. 18)
+
+        transformed.printDebug()
+
+        "12345678901234012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals("1234567890123456789012345678901234567890", original.buildString())
+        assertAllSubstring("1234567890123456789012345678901234567890", original)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 16])
+    fun initialTransformDeleteAtSamePosition1(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("12345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformDelete(14 .. 16)
+        transformed.transformDelete(14 .. 15)
+
+        transformed.printDebug()
+
+        "12345678901234890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals("12345678901234567890", original.buildString())
+        assertAllSubstring("12345678901234567890", original)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 16])
+    fun initialTransformDeleteAtSamePosition2(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("12345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformDelete(14 .. 15)
+        transformed.transformDelete(14 .. 16)
+
+        transformed.printDebug()
+
+        "12345678901234890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals("12345678901234567890", original.buildString())
+        assertAllSubstring("12345678901234567890", original)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 16])
+    fun initialTransformDeleteMultiple(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("12345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformDelete(14 .. 18)
+        transformed.transformDelete(3 .. 6)
+        transformed.transformDelete(10 .. 11)
+
+        transformed.printDebug()
+
+        "123890340".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals("12345678901234567890", original.buildString())
+        assertAllSubstring("12345678901234567890", original)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 16])
+    fun initialTransformDeleteAtBeginning(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformDelete(0 .. 11)
+
+        transformed.printDebug()
+
+        "3456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals("1234567890123456789012345678901234567890", original.buildString())
+        assertAllSubstring("1234567890123456789012345678901234567890", original)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 16])
+    fun initialTransformDeleteAtEnd(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformDelete(36 .. 39)
+
+        transformed.printDebug()
+
+        "123456789012345678901234567890123456".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals("1234567890123456789012345678901234567890", original.buildString())
+        assertAllSubstring("1234567890123456789012345678901234567890", original)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [64, 16])
+    fun initialTransformDeleteWholeThing(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformDelete(0 .. 39)
+
+        transformed.printDebug()
+
+        "".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals("1234567890123456789012345678901234567890", original.buildString())
+        assertAllSubstring("1234567890123456789012345678901234567890", original)
+    }
+
     @BeforeEach
     fun beforeEach() {
         isD = false

@@ -98,6 +98,9 @@ class TextBuffer(val size: Int) {
     }
 
     fun subSequence(start: Int, endExclusive: Int): CharSequence {
+        if (start >= endExclusive) {
+            return ""
+        }
         return buffer.subSequence(start, endExclusive)
     }
 }

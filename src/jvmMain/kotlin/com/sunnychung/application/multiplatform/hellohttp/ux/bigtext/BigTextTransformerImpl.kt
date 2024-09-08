@@ -150,7 +150,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
 
         val startNode = tree.findNodeByCharIndex(originalRange.start)!!
         val buffer = startNode.value.buffer // the buffer is not used. just to prevent NPE
-        super.delete(originalRange)
+        super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1)
         insertChunkAtPosition(originalRange.start, originalRange.length, BufferOwnership.Owned, buffer, -2 .. -2) {
             this as BigTextTransformNodeValue
             bufferIndex = -1
