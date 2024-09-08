@@ -5,10 +5,10 @@ import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 import java.util.SortedSet
 import kotlin.random.Random
 
-class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNodeValue> {
+open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNodeValue>, LengthNodeValue {
     var leftNumOfLineBreaks: Int = -1
     var leftNumOfRowBreaks: Int = -1
-    var leftStringLength: Int = -1
+    override var leftStringLength: Int = -1
 //    var rowBreakOffsets: SortedSet<Int> = sortedSetOf()
     /**
      * Row break positions in the domain of character indices of the {bufferIndex}-th buffer.
@@ -24,8 +24,26 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
     lateinit var buffer: TextBuffer
     var bufferOwnership: BufferOwnership = BufferOwnership.Owned
 
-    val bufferLength: Int
+    override val bufferLength: Int
         get() = bufferOffsetEndExclusive - bufferOffsetStart
+
+    override val leftOverallLength: Int
+        get() = leftStringLength
+
+    override val currentOverallLength: Int
+        get() = bufferLength
+
+    override val leftRenderLength: Int
+        get() = leftStringLength
+
+    override val currentRenderLength: Int
+        get() = bufferLength
+
+    open val renderBufferStart: Int
+        get() = bufferOffsetStart
+
+    open val renderBufferEndExclusive: Int
+        get() = bufferOffsetEndExclusive
 
     internal var node: RedBlackTree<BigTextNodeValue>.Node? = null
 
@@ -40,7 +58,7 @@ class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTextNod
     }
 
     override fun compareTo(other: BigTextNodeValue): Int {
-        return compareValues(leftStringLength, other.leftStringLength)
+        return compareValues(leftOverallLength, other.leftOverallLength)
     }
 
     override fun debugKey(): String = "$key"

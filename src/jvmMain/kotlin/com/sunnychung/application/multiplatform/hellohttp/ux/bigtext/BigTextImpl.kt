@@ -35,8 +35,8 @@ internal var isD = false
 
 private const val EPS = 1e-4f
 
-class BigTextImpl : BigText {
-    val tree = RedBlackTree2<BigTextNodeValue>(
+open class BigTextImpl : BigText {
+    open val tree: LengthTree<BigTextNodeValue> = LengthTree<BigTextNodeValue>(
         object : RedBlackTreeComputations<BigTextNodeValue> {
             override fun recomputeFromLeaf(it: RedBlackTree<BigTextNodeValue>.Node) = recomputeAggregatedValues(it)
             override fun computeWhenLeftRotate(x: BigTextNodeValue, y: BigTextNodeValue) = computeWhenLeftRotate0(x, y)
@@ -46,12 +46,13 @@ class BigTextImpl : BigText {
     )
     val buffers = mutableListOf<TextBuffer>()
 
-    val chunkSize: Int // TODO change to a large number
+    val chunkSize: Int
 
     var layouter: TextLayouter? = null
-        private set
+        @JvmName("_setLayouter")
+        protected set
 
-    private var contentWidth: Float? = null
+    internal var contentWidth: Float? = null
 
     var onLayoutCallback: (() -> Unit)? = null
 
@@ -62,23 +63,6 @@ class BigTextImpl : BigText {
     constructor(chunkSize: Int) {
         require(chunkSize > 0) { "chunkSize must be positive" }
         this.chunkSize = chunkSize
-    }
-
-    fun RedBlackTree2<BigTextNodeValue>.findNodeByCharIndex(index: Int): RedBlackTree<BigTextNodeValue>.Node? {
-        var find = index
-        return findNode {
-            when (find) {
-                in Int.MIN_VALUE until it.value.leftStringLength -> -1
-                in it.value.leftStringLength until it.value.leftStringLength + it.value.bufferLength -> 0
-                in it.value.leftStringLength + it.value.bufferLength until Int.MAX_VALUE -> 1.also { compareResult ->
-                    val isTurnRight = compareResult > 0
-                    if (isTurnRight) {
-                        find -= it.value.leftStringLength + it.value.bufferLength
-                    }
-                }
-                else -> throw IllegalStateException("what is find? $find")
-            }
-        }
     }
 
     fun RedBlackTree2<BigTextNodeValue>.findNodeByLineBreaks(index: Int): Pair<RedBlackTree<BigTextNodeValue>.Node, Int>? {
@@ -309,6 +293,18 @@ class BigTextImpl : BigText {
         return start
     }
 
+    protected fun findRenderPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
+        var start = node.value.leftRenderLength
+        var node = node
+        while (node.parent.isNotNil()) {
+            if (node === node.parent.right) {
+                start += node.parent.value.leftRenderLength + node.parent.value.currentRenderLength
+            }
+            node = node.parent
+        }
+        return start
+    }
+
     protected fun findLineStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
         var start = node.value.leftNumOfLineBreaks
         var node = node
@@ -336,6 +332,10 @@ class BigTextImpl : BigText {
         return start
     }
 
+    protected open fun createNodeValue(): BigTextNodeValue {
+        return BigTextNodeValue()
+    }
+
     private fun insertChunkAtPosition(position: Int, chunkedString: String) {
         log.d { "insertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
@@ -351,30 +351,52 @@ class BigTextImpl : BigText {
         }
         require(buffer.length + chunkedString.length <= chunkSize)
         val range = buffer.append(chunkedString)
+        insertChunkAtPosition(position, chunkedString.length, BufferOwnership.Owned, buffer, range) {
+            bufferIndex = buffers.lastIndex
+            bufferOffsetStart = range.start
+            bufferOffsetEndExclusive = range.endInclusive + 1
+            this.buffer = buffers[bufferIndex]
+            this.bufferOwnership = BufferOwnership.Owned
+
+            leftStringLength = 0
+        }
+    }
+
+    protected fun insertChunkAtPosition(position: Int, chunkedStringLength: Int, ownership: BufferOwnership, buffer: TextBuffer, range: IntRange, newNodeConfigurer: BigTextNodeValue.() -> Unit) {
         var node = tree.findNodeByCharIndex(maxOf(0, position - 1)) // TODO optimize, don't do twice
         val nodeStart = node?.let { findPositionStart(it) } // TODO optimize, don't do twice
         if (node != null) {
             log.d { "> existing node (${node!!.value.debugKey()}) $nodeStart .. ${nodeStart!! + node!!.value.bufferLength - 1}" }
-            require(maxOf(0, position - 1) in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1) {
+            require(maxOf(0, position - 1) in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1 || node.value.bufferLength == 0) {
                 printDebug()
                 findPositionStart(node!!)
                 "Found node ${node!!.value.debugKey()} but it is not in searching range"
             }
+        } else if (!tree.isEmpty) {
+            throw IllegalStateException("Node not found for position ${maxOf(0, position - 1)}")
         }
         var insertDirection: InsertDirection = InsertDirection.Undefined
         val toBeRelayouted = mutableListOf<BigTextNodeValue>()
-        val newNodeValues = if (node != null && position in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1) {
+        val newNodeValues = if (node != null && position > 0 && position in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1) {
             val splitAtIndex = position - nodeStart
             log.d { "> split at $splitAtIndex" }
             val oldEnd = node.value.bufferOffsetEndExclusive
-            val secondPartNodeValue = BigTextNodeValue().apply { // the second part of the old string
+            val secondPartNodeValue = createNodeValue().apply { // the second part of the old string
                 bufferIndex = node!!.value.bufferIndex
                 bufferOffsetStart = node!!.value.bufferOffsetStart + splitAtIndex
                 bufferOffsetEndExclusive = oldEnd
-                this.buffer = buffers[bufferIndex]
+                this.buffer = node!!.value.buffer
+                this.bufferOwnership = node!!.value.bufferOwnership
 
                 leftStringLength = 0
             }
+            /**
+             * Existing node char index range is (A ..< B), where A <= position < B, position is the insert position.
+             * Modify nodes so that existing node is (A ..< position),
+             * new node 1 (position ..< position + length),
+             * new node 2 (position + length ..< B).
+             * If A == position, then existing node is empty and thus can be deleted.
+             */
             if (splitAtIndex > 0) {
                 node.value.bufferOffsetEndExclusive = node.value.bufferOffsetStart + splitAtIndex
             } else {
@@ -382,33 +404,23 @@ class BigTextImpl : BigText {
                 node = tree.findNodeByCharIndex(maxOf(0, position - 1))
                 insertDirection = InsertDirection.Left
             }
-            require(splitAtIndex + chunkedString.length <= chunkSize)
+            // require(splitAtIndex + chunkedStringLength <= chunkSize) // this check appears to be not guarding anything
             toBeRelayouted += secondPartNodeValue
             listOf(
-                BigTextNodeValue().apply { // new string
-                    bufferIndex = buffers.lastIndex
-                    bufferOffsetStart = range.start
-                    bufferOffsetEndExclusive = range.endInclusive + 1
-                    this.buffer = buffers[bufferIndex]
-
-                    leftStringLength = 0
+                createNodeValue().apply { // new string
+                    this.newNodeConfigurer()
                 },
                 secondPartNodeValue
             ).reversed() // IMPORTANT: the insertion order is reversed
-        } else if (node == null || node.value.bufferOwnership != BufferOwnership.Owned || node.value.bufferIndex != buffers.lastIndex || node.value.bufferOffsetEndExclusive != range.start) {
+        } else if (node == null || node.value.bufferOwnership != ownership || node.value.bufferIndex != buffers.lastIndex || node.value.bufferOffsetEndExclusive != range.start || position == 0) {
             log.d { "> create new node" }
-            listOf(BigTextNodeValue().apply {
-                bufferIndex = buffers.lastIndex
-                bufferOffsetStart = range.start
-                bufferOffsetEndExclusive = range.endInclusive + 1
-                this.buffer = buffers[bufferIndex]
-
-                leftStringLength = 0
+            listOf(createNodeValue().apply {
+                this.newNodeConfigurer()
             })
         } else {
             node.value.apply {
                 log.d { "> update existing node end from $bufferOffsetEndExclusive to ${bufferOffsetEndExclusive + range.length}" }
-                bufferOffsetEndExclusive += range.length
+                bufferOffsetEndExclusive += chunkedStringLength
             }
             recomputeAggregatedValues(node)
             emptyList()
@@ -443,7 +455,12 @@ class BigTextImpl : BigText {
         log.v { inspect("Finish I " + node?.value?.debugKey()) }
     }
 
-    fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue) = with (nodeValue) {
+    open fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue, left: RedBlackTree<BigTextNodeValue>.Node?) = with (nodeValue) {
+        // recompute leftStringLength
+        leftStringLength = left?.length() ?: 0
+        log.v { ">> ${node?.value?.debugKey()} -> $leftStringLength (${left?.value?.debugKey()}/ ${left?.length()})" }
+
+        // recompute leftNumOfLineBreaks
 //        bufferNumLineBreaksInRange = buffers[bufferIndex].lineOffsetStarts.subSet(bufferOffsetStart, bufferOffsetEndExclusive).size
         bufferNumLineBreaksInRange = buffer.lineOffsetStarts.run {
             binarySearchForMinIndexOfValueAtLeast(bufferOffsetEndExclusive) - maxOf(0, binarySearchForMinIndexOfValueAtLeast(bufferOffsetStart))
@@ -461,14 +478,7 @@ class BigTextImpl : BigText {
         while (node.isNotNil()) {
             val left = node.left.takeIf { it.isNotNil() }
             with (node.getValue()) {
-                // recompute leftStringLength
-                leftStringLength = left?.length() ?: 0
-                log.v { ">> ${node.value.debugKey()} -> $leftStringLength (${left?.value?.debugKey()}/ ${left?.length()})" }
-
-                // recompute leftNumOfLineBreaks
-                computeCurrentNodeProperties(this)
-
-                // TODO calc other metrics
+                computeCurrentNodeProperties(this, left)
             }
             log.v { ">> ${node.parent.value?.debugKey()} parent -> ${node.value?.debugKey()}" }
             node = node.parent
@@ -500,7 +510,7 @@ class BigTextImpl : BigText {
 
     override fun buildString(): String {
         return tree.joinToString("") {
-            it.buffer.subSequence(it.bufferOffsetStart, it.bufferOffsetEndExclusive)
+            it.buffer.subSequence(it.renderBufferStart, it.renderBufferEndExclusive)
         }
     }
 
@@ -514,24 +524,24 @@ class BigTextImpl : BigText {
         }
 
         val result = StringBuilder(endExclusive - start)
-        var node = tree.findNodeByCharIndex(start) ?: throw IllegalStateException("Cannot find string node for position $start")
-        var nodeStartPos = findPositionStart(node)
+        var node = tree.findNodeByRenderCharIndex(start) ?: throw IllegalStateException("Cannot find string node for position $start")
+        var nodeStartPos = findRenderPositionStart(node)
         var numRemainCharsToCopy = endExclusive - start
-        var copyFromBufferIndex = start - nodeStartPos + node.value.bufferOffsetStart
+        var copyFromBufferIndex = start - nodeStartPos + node.value.renderBufferStart
         while (numRemainCharsToCopy > 0) {
-            val numCharsToCopy = minOf(endExclusive, nodeStartPos + node.value.bufferLength) - maxOf(start, nodeStartPos)
+            val numCharsToCopy = minOf(endExclusive, nodeStartPos + node.value.currentRenderLength) - maxOf(start, nodeStartPos)
             val copyUntilBufferIndex = copyFromBufferIndex + numCharsToCopy
             if (numCharsToCopy > 0) {
                 val subsequence = node.value.buffer.subSequence(copyFromBufferIndex, copyUntilBufferIndex)
                 result.append(subsequence)
                 numRemainCharsToCopy -= numCharsToCopy
-            } else {
+            } /*else {
                 break
-            }
+            }*/
             if (numRemainCharsToCopy > 0) {
-                nodeStartPos += node.value.bufferLength
-                node = tree.nextNode(node) ?: throw IllegalStateException("Cannot find the next string node")
-                copyFromBufferIndex = node.value.bufferOffsetStart
+                nodeStartPos += node.value.currentRenderLength
+                node = tree.nextNode(node) ?: throw IllegalStateException("Cannot find the next string node. Requested = $start ..< $endExclusive. Remain = $numRemainCharsToCopy")
+                copyFromBufferIndex = node.value.renderBufferStart
             }
         }
 
@@ -551,13 +561,13 @@ class BigTextImpl : BigText {
             val lineEndIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value!!.bufferOffsetEndExclusive - 1)
             val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
             val charOffsetInBuffer = if (offsetedLineOffset > lineEndIndexInBuffer) {
-                node.value!!.bufferOffsetEndExclusive
+                node.value!!.renderBufferEndExclusive
             } else if (lineOffset - 1 >= 0) {
                 buffer.lineOffsetStarts[offsetedLineOffset] + 1
             } else {
-                node.value!!.bufferOffsetStart
+                node.value!!.renderBufferStart
             }
-            return findPositionStart(node) + (charOffsetInBuffer - node.value!!.bufferOffsetStart)
+            return findPositionStart(node) + (charOffsetInBuffer - node.value!!.renderBufferStart)
         }
 
         val (startNode, startNodeLineStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
@@ -581,14 +591,14 @@ class BigTextImpl : BigText {
          */
         fun findCharPosOfRowOffset(node: RedBlackTree<BigTextNodeValue>.Node, rowOffset: Int): Int {
             val charOffsetInBuffer = if (rowOffset - 1 > node.value!!.rowBreakOffsets.size - 1) {
-                node.value!!.bufferOffsetEndExclusive
+                node.value!!.renderBufferEndExclusive
             } else if (rowOffset - 1 >= 0) {
                 val offsetedRowOffset = rowOffset - 1
                 node.value!!.rowBreakOffsets[offsetedRowOffset]
             } else {
-                node.value!!.bufferOffsetStart
+                node.value!!.renderBufferStart
             }
-            return findPositionStart(node) + (charOffsetInBuffer - node.value!!.bufferOffsetStart)
+            return findPositionStart(node) + (charOffsetInBuffer - node.value!!.renderBufferStart)
         }
 
         val (startNode, startNodeRowStart) = tree.findNodeByRowBreaks(rowIndex - 1) ?:
@@ -675,8 +685,8 @@ class BigTextImpl : BigText {
                 // need to split
                 val splitAtIndex = endExclusive - nodeRange.start
                 log.d { "Split E at $splitAtIndex" }
-                newNodesInDescendingOrder += BigTextNodeValue().apply { // the second part of the existing string
-                    bufferIndex = node!!.value.bufferIndex
+                newNodesInDescendingOrder += createNodeValue().apply { // the second part of the existing string
+                    bufferIndex = node!!.value.bufferIndex // FIXME transform
                     bufferOffsetStart = node!!.value.bufferOffsetStart + splitAtIndex
                     bufferOffsetEndExclusive = node!!.value.bufferOffsetEndExclusive
                     buffer = buffers[bufferIndex]
@@ -688,7 +698,7 @@ class BigTextImpl : BigText {
                 // need to split
                 val splitAtIndex = start - nodeRange.start
                 log.d { "Split S at $splitAtIndex" }
-                newNodesInDescendingOrder += BigTextNodeValue().apply { // the first part of the existing string
+                newNodesInDescendingOrder += createNodeValue().apply { // the first part of the existing string
                     bufferIndex = node!!.value.bufferIndex
                     bufferOffsetStart = node!!.value.bufferOffsetStart
                     bufferOffsetEndExclusive = node!!.value.bufferOffsetStart + splitAtIndex
@@ -862,9 +872,9 @@ class BigTextImpl : BigText {
         val nodeValue = node.value
         val buffer = nodeValue.buffer
         var lineBreakIndexFrom = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(
-            (startPos - nodeStartPos) + nodeValue.bufferOffsetStart
+            (startPos - nodeStartPos) + nodeValue.renderBufferStart
         )
-        var charStartIndexInBuffer = nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost((startPos - nodeStartPos) + nodeValue.bufferOffsetStart).let {
+        var charStartIndexInBuffer = nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost((startPos - nodeStartPos) + nodeValue.renderBufferStart).let {
             if (it >= 0) {
                 nodeValue.rowBreakOffsets[it]
             } else {
@@ -874,7 +884,7 @@ class BigTextImpl : BigText {
                     logL.d { "carry over width $lastOccupiedWidth" }
                 }
 
-                nodeValue.bufferOffsetStart
+                nodeValue.renderBufferStart
             }
         }
         logL.d { "charStartIndexInBuffer = $charStartIndexInBuffer" }
@@ -896,12 +906,12 @@ class BigTextImpl : BigText {
             val nodeValue = node.value
             val buffer = nodeValue.buffer
             val lineBreakIndexTo =
-                buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(nodeValue.bufferOffsetEndExclusive - 1)
+                buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(nodeValue.renderBufferEndExclusive - 1)
                     .let {
-                        if (endPosExclusive in nodeStartPos..nodeStartPos + nodeValue.bufferLength) {
+                        if (endPosExclusive in nodeStartPos..nodeStartPos + nodeValue.currentRenderLength) {
                             minOf(
                                 it,
-                                buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(endPosExclusive - nodeStartPos + nodeValue.bufferOffsetStart)
+                                buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(endPosExclusive - nodeStartPos + nodeValue.renderBufferStart)
                             )
                         } else {
                             it
@@ -956,7 +966,7 @@ class BigTextImpl : BigText {
                 }
 
                 charStartIndexInBuffer = lineBreakCharIndex + 1
-                if (lineBreakCharIndex + 1 < nodeValue.bufferOffsetEndExclusive) {
+                if (lineBreakCharIndex + 1 < nodeValue.renderBufferEndExclusive) {
                     logL.d { "row break add ${lineBreakCharIndex + 1}" }
                     rowBreakOffsets.addToThisAscendingListWithoutDuplicate(lineBreakCharIndex + 1)
                     lastOccupiedWidth = 0f
@@ -972,11 +982,11 @@ class BigTextImpl : BigText {
             val nextBoundary = if (
                 lineBreakIndexTo + 1 <= buffer.lineOffsetStarts.lastIndex
 //                    && buffer.lineOffsetStarts[lineBreakIndexTo + 1] - node.value.bufferOffsetStart + nodeStartPos < endPosExclusive
-                    && buffer.lineOffsetStarts[lineBreakIndexTo + 1] < nodeValue.bufferOffsetEndExclusive
+                    && buffer.lineOffsetStarts[lineBreakIndexTo + 1] < nodeValue.renderBufferEndExclusive
             ) {
                 buffer.lineOffsetStarts[lineBreakIndexTo + 1]
             } else {
-                nodeValue.bufferOffsetEndExclusive
+                nodeValue.renderBufferEndExclusive
             }
 //            if (charStartIndexInBuffer < nodeValue.bufferOffsetEndExclusive) {
 //            if (charStartIndexInBuffer < nodeValue.bufferOffsetEndExclusive && nodeStartPos + charStartIndexInBuffer - nodeValue.bufferOffsetStart < endPosExclusive) {
@@ -998,16 +1008,16 @@ class BigTextImpl : BigText {
                 lastOccupiedWidth = lastRowOccupiedWidth
                 charStartIndexInBuffer = readRowUntilPos
             }
-            if (charStartIndexInBuffer < nodeValue.bufferOffsetEndExclusive) {
+            if (charStartIndexInBuffer < nodeValue.renderBufferEndExclusive) {
 //                val preserveIndexFrom = nodeValue.rowBreakOffsets.binarySearchForMinIndexOfValueAtLeast(endPosExclusive)
-                val searchForValue = minOf(nodeValue.bufferOffsetEndExclusive, maxOf((rowBreakOffsets.lastOrNull() ?: -1) + 1, charStartIndexInBuffer))
+                val searchForValue = minOf(nodeValue.renderBufferEndExclusive, maxOf((rowBreakOffsets.lastOrNull() ?: -1) + 1, charStartIndexInBuffer))
                 val preserveIndexFrom = nodeValue.rowBreakOffsets.binarySearchForMinIndexOfValueAtLeast(searchForValue)
                 val preserveIndexTo = if (nodeStartPos + nodeValue.bufferLength >= length) {
-                    nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(nodeValue.bufferOffsetEndExclusive) // keep the row after the last '\n'
+                    nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(nodeValue.renderBufferEndExclusive) // keep the row after the last '\n'
                 } else {
-                    nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(nodeValue.bufferOffsetEndExclusive - 1)
+                    nodeValue.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(nodeValue.renderBufferEndExclusive - 1)
                 }
-                logL.d { "reach the end, preserve RB from $preserveIndexFrom (at least $searchForValue) ~ $preserveIndexTo (${nodeValue.bufferOffsetEndExclusive}). RB = ${nodeValue.rowBreakOffsets}." }
+                logL.d { "reach the end, preserve RB from $preserveIndexFrom (at least $searchForValue) ~ $preserveIndexTo (${nodeValue.renderBufferEndExclusive}). RB = ${nodeValue.rowBreakOffsets}." }
                 val restoreRowBreaks = nodeValue.rowBreakOffsets.subList(preserveIndexFrom, minOf(nodeValue.rowBreakOffsets.size, preserveIndexTo + 1))
                 if (restoreRowBreaks.isNotEmpty() || nodeValue.isEndWithForceRowBreak) {
                     rowBreakOffsets.addToThisAscendingListWithoutDuplicate(restoreRowBreaks)
@@ -1030,11 +1040,11 @@ class BigTextImpl : BigText {
                 logL.d { "node ${node!!.value.debugKey()} b#${node!!.value.bufferIndex} next ${it.value.debugKey()} b#${it!!.value.bufferIndex}" }
             }
             if (node != null) {
-                nodeStartPos += nodeValue.bufferLength
+                nodeStartPos += nodeValue.currentRenderLength
                 val nodeValue = node.value
                 val buffer = nodeValue.buffer
-                lineBreakIndexFrom = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(nodeValue.bufferOffsetStart)
-                charStartIndexInBuffer = nodeValue.bufferOffsetStart
+                lineBreakIndexFrom = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(nodeValue.renderBufferStart)
+                charStartIndexInBuffer = nodeValue.renderBufferStart
             }
         }
 
@@ -1107,11 +1117,6 @@ class BigTextImpl : BigText {
 //    }
 
 }
-
-fun RedBlackTree<BigTextNodeValue>.Node.length(): Int =
-    (getValue()?.leftStringLength ?: 0) +
-        (getValue()?.bufferLength ?: 0) +
-        (getRight().takeIf { it.isNotNil() }?.length() ?: 0)
 
 fun RedBlackTree<BigTextNodeValue>.Node.numLineBreaks(): Int {
     val value = getValue()
