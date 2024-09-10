@@ -1,7 +1,17 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
+import co.touchlab.kermit.LogWriter
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.MutableLoggerConfig
+import co.touchlab.kermit.Severity
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
+import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
+
+val logT = Logger(object : MutableLoggerConfig {
+    override var logWriterList: List<LogWriter> = listOf(JvmLogger())
+    override var minSeverity: Severity = Severity.Debug
+}, tag = "BigText.Transform")
 
 class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(chunkSize = delegate.chunkSize) {
 
@@ -83,7 +93,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
     }
 
     private fun transformInsertChunkAtPosition(position: Int, chunkedString: String) {
-        log.d { "transformInsertChunkAtPosition($position, $chunkedString)" }
+        logT.d { "transformInsertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
         var buffer = if (buffers.isNotEmpty()) {
             buffers.last().takeIf { it.length + chunkedString.length <= chunkSize }
@@ -109,6 +119,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
     }
 
     fun transformInsert(pos: Int, text: String): Int {
+        logT.d { "transformInsert($pos, \"$text\")" }
         require(pos in 0 .. originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
         /**
@@ -140,6 +151,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
     }
 
     fun transformDelete(originalRange: IntRange): Int {
+        logT.d { "transformDelete($originalRange)" }
         require(originalRange.start <= originalRange.endInclusive + 1) { "start should be <= endExclusive" }
         require(0 <= originalRange.start) { "Invalid start" }
         require(originalRange.endInclusive + 1 <= originalLength) { "endExclusive is out of bound" }
@@ -164,6 +176,11 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
             leftStringLength = 0
         }
         return - originalRange.length
+    }
+
+    fun transformReplace(originalRange: IntRange, newText: String) {
+        transformDelete(originalRange)
+        transformInsert(originalRange.start, newText)
     }
 
     override fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue, left: RedBlackTree<BigTextNodeValue>.Node?) = with (nodeValue) {

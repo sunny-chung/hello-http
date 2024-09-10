@@ -50,9 +50,12 @@ class BigTextTransformNodeValue : BigTextNodeValue() {
     override fun debugLabel(node: RedBlackTree<BigTextNodeValue>.Node): String = buildString {
         node as RedBlackTree<BigTextTransformNodeValue>.Node
 
-        append("$leftStringLength ${bufferOwnership.name.first()} [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.renderLength()}")
+        append("$leftStringLength ${bufferOwnership.name.first()} blen=$bufferLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.renderLength()}")
         append(" Tr [$transformedBufferStart ..< $transformedBufferEndExclusive]")
-        append(" Ren left=$leftRenderLength [$renderBufferStart ..< $renderBufferEndExclusive]")
+        append(" Ren left=$leftRenderLength curr=$currentRenderLength [$renderBufferStart ..< $renderBufferEndExclusive]")
+        if (renderBufferStart in 0 until renderBufferEndExclusive) {
+            append(" '${buffer.subSequence(renderBufferStart, renderBufferEndExclusive)}'")
+        }
         append(" row $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth")
     }
 

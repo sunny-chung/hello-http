@@ -525,7 +525,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
             }
             node.left.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--L-->${visit(it)}") }
             node.right.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--R-->${visit(it)}") }
-            node.parent.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--P-->${node.parent.value.debugKey()}") }
+//            node.parent.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--P-->${node.parent.value.debugKey()}") }
             return key
         }
         visit(root)

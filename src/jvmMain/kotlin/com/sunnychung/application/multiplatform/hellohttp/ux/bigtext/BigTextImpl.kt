@@ -282,15 +282,7 @@ open class BigTextImpl : BigText {
     }
 
     protected fun findPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
-        var start = node.value.leftStringLength
-        var node = node
-        while (node.parent.isNotNil()) {
-            if (node === node.parent.right) {
-                start += node.parent.value.leftStringLength + node.parent.value.bufferLength
-            }
-            node = node.parent
-        }
-        return start
+        return tree.findPositionStart(node)
     }
 
     protected fun findRenderPositionStart(node: RedBlackTree<BigTextNodeValue>.Node): Int {
@@ -363,8 +355,13 @@ open class BigTextImpl : BigText {
     }
 
     protected fun insertChunkAtPosition(position: Int, chunkedStringLength: Int, ownership: BufferOwnership, buffer: TextBuffer, range: IntRange, newNodeConfigurer: BigTextNodeValue.() -> Unit) {
-        var node = tree.findNodeByCharIndex(maxOf(0, position - 1)) // TODO optimize, don't do twice
-        val nodeStart = node?.let { findPositionStart(it) } // TODO optimize, don't do twice
+        var node = tree.findNodeByCharIndex(position) // TODO optimize, don't do twice
+        var nodeStart = node?.let { findPositionStart(it) } // TODO optimize, don't do twice
+        val findPosition = maxOf(0, position - 1)
+        if (node != null && findPosition < nodeStart!!) {
+            node = tree.prevNode(node)
+            nodeStart = node?.let { findPositionStart(it) }
+        }
         if (node != null) {
             log.d { "> existing node (${node!!.value.debugKey()}) $nodeStart .. ${nodeStart!! + node!!.value.bufferLength - 1}" }
             require(maxOf(0, position - 1) in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1 || node.value.bufferLength == 0) {
@@ -678,7 +675,7 @@ open class BigTextImpl : BigText {
 
         log.d { "delete $start ..< $endExclusive" }
 
-        var node: RedBlackTree<BigTextNodeValue>.Node? = tree.findNodeByCharIndex(endExclusive - 1)
+        var node: RedBlackTree<BigTextNodeValue>.Node? = tree.findNodeByCharIndex(endExclusive - 1, isIncludeMarkerNodes = false)
         var nodeRange = charIndexRangeOfNode(node!!)
         val newNodesInDescendingOrder = mutableListOf<BigTextNodeValue>()
         while (node?.isNotNil() == true && start <= nodeRange.endInclusive) {

@@ -5,19 +5,27 @@ import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBlackTree2<@UnsafeVariance V>(computations)
         where V : LengthNodeValue, V : Comparable<@UnsafeVariance V>, V : DebuggableNode<in @UnsafeVariance V> {
 
-    fun findNodeByCharIndex(index: Int): RedBlackTree<V>.Node? {
+    fun findNodeByCharIndex(index: Int, isIncludeMarkerNodes: Boolean = true): RedBlackTree<V>.Node? {
         var find = index
+        var lastMatch: RedBlackTree<V>.Node? = null
         return findNode {
             when (find) {
                 in Int.MIN_VALUE until it.value.leftStringLength -> -1
                 it.value.leftStringLength, in it.value.leftStringLength until it.value.leftStringLength + it.value.bufferLength -> {
-                    if (it.left.isNotNil() && find == it.value.leftStringLength && it.left.value.bufferLength == 0) {
+                    lastMatch = it
+                    if (isIncludeMarkerNodes && it.left.isNotNil()) {
                         -1
                     } else {
                         0
                     }
                 }
-                in it.value.leftStringLength + it.value.bufferLength until Int.MAX_VALUE -> 1.also { compareResult ->
+                in it.value.leftStringLength + it.value.bufferLength until Int.MAX_VALUE -> (
+                    if (it.right.isNotNil()) {
+                        1
+                    } else {
+                        0
+                    }
+                ).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
                         find -= it.value.leftStringLength + it.value.bufferLength
@@ -25,7 +33,18 @@ open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBla
                 }
                 else -> throw IllegalStateException("what is find? $find")
             }
+        }?.takeIf {
+            if (!isIncludeMarkerNodes) {
+                return@takeIf true
+            }
+            val nodePosStart = findPositionStart(it)
+            nodePosStart <= index && (
+                index < nodePosStart + it.value.bufferLength
+                    || it.value.bufferLength == 0
+                    || (index == getRoot().length() && it === rightmost(getRoot()))
+            )
         }
+            ?: lastMatch
     }
 
     fun findNodeByRenderCharIndex(index: Int): RedBlackTree<V>.Node? {
@@ -43,6 +62,18 @@ open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBla
                 else -> throw IllegalStateException("what is find? $find")
             }
         }
+    }
+
+    fun findPositionStart(node: RedBlackTree<V>.Node): Int {
+        var start = node.value.leftStringLength
+        var node = node
+        while (node.parent.isNotNil()) {
+            if (node === node.parent.right) {
+                start += node.parent.value.leftStringLength + node.parent.value.bufferLength
+            }
+            node = node.parent
+        }
+        return start
     }
 }
 
