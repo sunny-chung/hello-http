@@ -203,6 +203,14 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         leftRenderLength = left?.renderLength() ?: 0
         leftOverallLength = left?.overallLength() ?: 0
     }
+
+    override fun insertAt(pos: Int, text: String): Int = transformInsert(pos, text)
+
+    override fun append(text: String): Int = transformInsertAtOriginalEnd(text)
+
+    override fun delete(start: Int, endExclusive: Int): Int = transformDelete(start until endExclusive)
+
+    override fun replace(range: IntRange, text: String) = transformReplace(range, text)
 }
 
 fun RedBlackTree<BigTextTransformNodeValue>.Node.transformedOffset(): Int =
