@@ -13,7 +13,7 @@ open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBla
                 in Int.MIN_VALUE until it.value.leftStringLength -> -1
                 it.value.leftStringLength, in it.value.leftStringLength until it.value.leftStringLength + it.value.bufferLength -> {
                     lastMatch = it
-                    if (isIncludeMarkerNodes && it.left.isNotNil()) {
+                    if (isIncludeMarkerNodes && find == it.value.leftStringLength && it.left.isNotNil()) {
                         -1
                     } else {
                         0

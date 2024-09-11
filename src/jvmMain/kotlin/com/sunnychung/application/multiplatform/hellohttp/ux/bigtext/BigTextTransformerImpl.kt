@@ -60,6 +60,14 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         (tree as LengthTree<BigTextTransformNodeValue>).setRoot(delegate.tree.getRoot().toBigTextTransformNode(tree.NIL))
         layouter = delegate.layouter
         contentWidth = delegate.contentWidth
+        delegate.changeHook = object : BigTextChangeHook {
+            override fun afterInsertChunk(modifiedText: BigText, position: Int, newValue: BigTextNodeValue) {
+                insertOriginal(position, newValue)
+            }
+            override fun afterDelete(modifiedText: BigText, position: IntRange) {
+                deleteOriginal(position)
+            }
+        }
     }
 
     override val length: Int
@@ -144,6 +152,8 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         layout(maxOf(0, pos - 1), minOf(length, pos + text.length + 1))
         return text.length
     }
+
+    fun transformInsertAtOriginalEnd(text: String): Int = transformInsert(originalLength, text)
 
     fun deleteOriginal(originalRange: IntRange) { // FIXME call me
         require((originalRange.endInclusive + 1) in 0 .. originalLength) { "Out of bound. endExclusive = ${originalRange.endInclusive + 1}, originalLength = $originalLength" }

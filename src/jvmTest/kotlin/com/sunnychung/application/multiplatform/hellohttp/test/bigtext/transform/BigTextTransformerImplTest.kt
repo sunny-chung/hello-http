@@ -385,6 +385,186 @@ class BigTextTransformerImplTest {
         assertAllSubstring("1234567890123456789012345678901234567890", original)
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun insertToOriginalThenTransformInsert(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        original.insertAt(15, "ABCDEFGHIJabcdefghij!@#$%")
+        assertEquals(40 + 25, original.length)
+        transformed.transformInsert(8, "abcd")
+        transformed.transformInsert(63, "qwertyuiop".repeat(2))
+        transformed.transformInsert(15, "XX")
+        isD = true
+        transformed.transformInsert(16, "OO")
+        isD = false
+
+        transformed.printDebug()
+
+        "12345678abcd9012345XXAOOBCDEFGHIJabcdefghij!@#\$%67890123456789012345678${"qwertyuiop".repeat(2)}90".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123456789012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun insertToOriginalThenTransformDelete(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        original.insertAt(15, "ABCDEFGHIJabcdefghij!@#\$%")
+        assertEquals(40 + 25, original.length)
+        transformed.transformDelete(24 .. 30)
+        transformed.transformDelete(6 .. 9)
+        transformed.transformDelete(58 .. 61)
+
+        transformed.printDebug()
+
+        "12345612345ABCDEFGHIghij!@#\$%678901234567890123890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123456789012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun insertToOriginalThenTransformReplace(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        original.insertAt(15, "ABCDEFGHIJabcdefghij!@#\$%")
+        assertEquals(40 + 25, original.length)
+        transformed.transformReplace(24 .. 30, "")
+        transformed.transformReplace(6 .. 9, "----")
+        transformed.transformReplace(31 .. 31, "XYZXYZxyz")
+        transformed.transformReplace(39 .. 41, "??")
+        transformed.transformReplace(32 .. 38, ".")
+        transformed.transformReplace(58 .. 61, " something longer")
+
+        transformed.printDebug()
+
+        "123456----12345ABCDEFGHIXYZXYZxyz.??8901234567890123 something longer890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123456789012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun insertMultipleBetweenOriginalAndTransform(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformInsert(8, "abcd")
+        original.insertAt(15, "ABCDEFGHIJabcdefghij!@#\$%")
+        assertEquals(40 + 25, original.length)
+        "12345678abcd9012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123456789012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformInsert(63, "qwertyuiop")
+        original.insertAt(62, "aa")
+        "12345678abcd9012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567aa8qwertyuiop90".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123456789012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567aa890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformInsert(67, "(end)")
+        transformed.transformInsert(64, "!")
+        "12345678abcd9012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567aa!8qwertyuiop90(end)".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123456789012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567aa890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        original.insertAt(0, "prepend")
+        original.insertAt(3, "PRE")
+        transformed.transformInsert(6, "XOXO")
+        transformed.transformInsert(12, "...")
+        original.insertAt(14, "/")
+        "prePREXOXOpend12...34/5678abcd9012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567aa!8qwertyuiop90(end)".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "prePREpend1234/56789012345ABCDEFGHIJabcdefghij!@#\$%6789012345678901234567aa890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun insertOriginalAtEndMultipleBetweenOriginalAndTransform(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.transformInsert(8, "abcd")
+        original.append("ABCDEFGHIJabcdefghij!@#\$%")
+        assertEquals(40 + 25, original.length)
+        "12345678abcd90123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "1234567890123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformInsertAtOriginalEnd("qwertyuiop")
+        original.append("a")
+        original.append("a")
+        original.append("bb")
+        "12345678abcd90123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%aabbqwertyuiop".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "1234567890123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%aabb".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformInsertAtOriginalEnd("(end)")
+        transformed.transformInsert(69, "!")
+        "12345678abcd90123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%aabb!(end)qwertyuiop".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "1234567890123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%aabb".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.printDebug()
+    }
+
     @BeforeEach
     fun beforeEach() {
         isD = false

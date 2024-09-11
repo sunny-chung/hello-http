@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearch
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
+import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 
 val log = Logger(object : MutableLoggerConfig {
@@ -55,6 +56,8 @@ open class BigTextImpl : BigText {
     internal var contentWidth: Float? = null
 
     var onLayoutCallback: (() -> Unit)? = null
+
+    internal var changeHook: BigTextChangeHook? = null
 
     constructor() {
         chunkSize = 2 * 1024 * 1024 // 2 MB
@@ -363,7 +366,7 @@ open class BigTextImpl : BigText {
             nodeStart = node?.let { findPositionStart(it) }
         }
         if (node != null) {
-            log.d { "> existing node (${node!!.value.debugKey()}) $nodeStart .. ${nodeStart!! + node!!.value.bufferLength - 1}" }
+            log.d { "> existing node (${node!!.value.debugKey()}) ${node!!.value.bufferOwnership.name.first()} $nodeStart .. ${nodeStart!! + node!!.value.bufferLength - 1}" }
             require(maxOf(0, position - 1) in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1 || node.value.bufferLength == 0) {
                 printDebug()
                 findPositionStart(node!!)
@@ -374,6 +377,7 @@ open class BigTextImpl : BigText {
         }
         var insertDirection: InsertDirection = InsertDirection.Undefined
         val toBeRelayouted = mutableListOf<BigTextNodeValue>()
+        var newContentNode: BigTextNodeValue? = null
         val newNodeValues = if (node != null && position > 0 && position in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1) {
             val splitAtIndex = position - nodeStart
             log.d { "> split at $splitAtIndex" }
@@ -406,18 +410,24 @@ open class BigTextImpl : BigText {
             listOf(
                 createNodeValue().apply { // new string
                     this.newNodeConfigurer()
+                    newContentNode = this
                 },
                 secondPartNodeValue
             ).reversed() // IMPORTANT: the insertion order is reversed
-        } else if (node == null || node.value.bufferOwnership != ownership || node.value.bufferIndex != buffers.lastIndex || node.value.bufferOffsetEndExclusive != range.start || position == 0) {
+        } else if (node == null || node.value.bufferOwnership != ownership || (node.value.bufferOwnership == BufferOwnership.Owned && node.value.bufferIndex != buffers.lastIndex) || node.value.bufferOffsetEndExclusive != range.start || position == 0) {
             log.d { "> create new node" }
             listOf(createNodeValue().apply {
                 this.newNodeConfigurer()
+                newContentNode = this
             })
         } else {
             node.value.apply {
                 log.d { "> update existing node end from $bufferOffsetEndExclusive to ${bufferOffsetEndExclusive + range.length}" }
                 bufferOffsetEndExclusive += chunkedStringLength
+                newContentNode = createNodeValue().apply {
+                    this.newNodeConfigurer()
+                    newContentNode = this
+                }
             }
             recomputeAggregatedValues(node)
             emptyList()
@@ -447,6 +457,10 @@ open class BigTextImpl : BigText {
             val startPos = findPositionStart(it.node!!)
             val endPos = startPos + it.bufferLength
             layout(startPos, endPos)
+        }
+
+        let(changeHook, newContentNode) { hook, nodeValue ->
+            hook.afterInsertChunk(this, position, nodeValue)
         }
 
         log.v { inspect("Finish I " + node?.value?.debugKey()) }
@@ -665,7 +679,9 @@ open class BigTextImpl : BigText {
         require(0 <= start) { "Invalid start" }
         require(endExclusive <= length) { "endExclusive is out of bound" }
 
-        return deleteUnchecked(start, endExclusive)
+        return deleteUnchecked(start, endExclusive).also {
+            changeHook?.afterDelete(this, start until endExclusive)
+        }
     }
 
     protected fun deleteUnchecked(start: Int, endExclusive: Int): Int {
