@@ -80,7 +80,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         return BigTextTransformNodeValue()
     }
 
-    fun insertOriginal(pos: Int, nodeValue: BigTextNodeValue) { // FIXME call me
+    fun insertOriginal(pos: Int, nodeValue: BigTextNodeValue) {
         require(pos in 0 .. originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
         insertChunkAtPosition(
@@ -155,9 +155,10 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
 
     fun transformInsertAtOriginalEnd(text: String): Int = transformInsert(originalLength, text)
 
-    fun deleteOriginal(originalRange: IntRange) { // FIXME call me
+    fun deleteOriginal(originalRange: IntRange) {
+        require(0 <= originalRange.start) { "Invalid start" }
         require((originalRange.endInclusive + 1) in 0 .. originalLength) { "Out of bound. endExclusive = ${originalRange.endInclusive + 1}, originalLength = $originalLength" }
-        super.delete(originalRange)
+        super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1)
     }
 
     fun transformDelete(originalRange: IntRange): Int {

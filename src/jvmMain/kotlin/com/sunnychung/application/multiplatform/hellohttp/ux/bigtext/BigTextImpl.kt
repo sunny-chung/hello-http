@@ -414,7 +414,7 @@ open class BigTextImpl : BigText {
                 },
                 secondPartNodeValue
             ).reversed() // IMPORTANT: the insertion order is reversed
-        } else if (node == null || node.value.bufferOwnership != ownership || (node.value.bufferOwnership == BufferOwnership.Owned && node.value.bufferIndex != buffers.lastIndex) || node.value.bufferOffsetEndExclusive != range.start || position == 0) {
+        } else if (node == null || node.value.bufferOwnership != ownership || node.value.buffer !== buffer || (node.value.bufferOwnership == BufferOwnership.Owned && node.value.bufferIndex != buffers.lastIndex) || node.value.bufferOffsetEndExclusive != range.start || position == 0) {
             log.d { "> create new node" }
             listOf(createNodeValue().apply {
                 this.newNodeConfigurer()

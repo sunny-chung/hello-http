@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.test.bigtext.transform
 
+import com.sunnychung.application.multiplatform.hellohttp.test.bigtext.randomString
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
@@ -558,6 +559,237 @@ class BigTextTransformerImplTest {
             assertAllSubstring(expected, transformed)
         }
         "1234567890123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%aabb".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun deleteMultipleBetweenOriginalAndTransform(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        original.delete(31, 33)
+        original.delete(35, 37)
+        transformed.transformInsert(8, "abcd")
+        original.delete(15, 18)
+        assertEquals(40 - 2 - 2 - 3, original.length)
+        "12345678abcd9012345901234567890145670".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123456789012345901234567890145670".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformDelete(22 .. 26)
+        transformed.transformInsert(29, "qwertyuiop")
+        original.delete(4 .. 7)
+        "1234abcd9012345901234514qwertyuiop5670".let { expected ->
+            assertEquals(expected, transformed.buildString()) //
+            assertAllSubstring(expected, transformed)
+        }
+        "12349012345901234567890145670".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformDelete(5 .. 8)
+        transformed.transformDelete(26 .. 28)
+        "1234abcd945901234514qwertyuiop5".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "12349012345901234567890145670".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        original.delete(10 .. 15)
+        "1234abcd944514qwertyuiop5".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "12349012344567890145670".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        original.insertAt(10, "_")
+        original.insertAt(9, "ABC")
+        "1234abcd9ABC4_4514qwertyuiop5".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123490123ABC4_4567890145670".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        original.delete(3 .. 26)
+        "123".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformDelete(0 .. 2)
+        "".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "123".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        original.delete(0 .. 1)
+        "".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "3".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        original.delete(0 .. 0)
+        "".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformInsert(0, "Zz")
+        "Zz".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun replaceMultipleBetweenOriginalAndTransform(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("1234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        original.replace(31 .. 33, "zxcvb")
+        original.replace(5 .. 7, "ZXCV")
+        "12345ZXCV90123456789012345678901zxcvb567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+        transformed.transformReplace(8 .. 11, "ab")
+        original.delete(15, 18)
+        "12345ZXCab23489012345678901zxcvb567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "12345ZXCV90123489012345678901zxcvb567890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformReplace(13 .. 33, "qwerty")
+        "12345ZXCab2qwerty567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "12345ZXCV90123489012345678901zxcvb567890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        original.replace(1 .. 35, "#######")
+        "1#######7890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "1#######7890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformReplace(5 .. 9, "-")
+        "1####-90".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "1#######7890".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformInsert(12, "*")
+        original.replace(0 .. 10, "x")
+        "x0*".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "x0".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.transformReplace(0 .. 1, "@")
+        original.replace(0 .. 1, "")
+        "@*".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "".let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        transformed.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1024, 64, 16])
+    fun replaceLongString(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        val initial = "1234567890223456789032345678904234567890_234567890223456789032345678904234567890"
+        original.append(initial)
+        assertEquals(80, original.length)
+        val transformed = BigTextTransformerImpl(original)
+        val s1 = randomString(72 - 6 + 1, false)
+        transformed.transformReplace(6 .. 72, s1)
+        "123456${s1}4567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        initial.let { expected ->
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, original)
+        }
+
+        val s2 = randomString(77 - 4 + 1, false)
+        transformed.transformReplace(1 .. 2, "!")
+        original.replace(4 .. 77, s2)
+        "1!4${s2}90".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        "1234${s2}90".let { expected ->
             assertEquals(expected, original.buildString())
             assertAllSubstring(expected, original)
         }
