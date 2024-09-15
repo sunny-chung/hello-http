@@ -409,4 +409,123 @@ class BigTextTransformerLayoutTest {
             verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun replaces(chunkSize: Int) {
+        val testString = "1234567890<234567890<bcdefg\nhij<BC\nDEFGHIJ<row break< shou\nld h<appen her<e\n."
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        val originalLength = testString.length
+
+        v.replace(44 .. 69, "[Replace0]")
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.replace(16 .. 18, "[Replace\n1]")
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.replace(24 .. 33, "[Replace2]")
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.replace(34 .. 43, "[Replace3]")
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.replace(0 .. 8, "[Replace4]")
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.replace(originalLength - 1 until originalLength, "[Replace5]")
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun replaceWholeText(chunkSize: Int) {
+        val testString = "1234567890<234567890<bcdefg\nhij<BC\nDEFGHIJ<row break< shou\nld h<appen her<e\n.\n"
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        val originalLength = testString.length
+
+        v.replace(0 until originalLength, "[Replace All!]")
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    @Order(Integer.MAX_VALUE - 100)
+    fun manyReplaces(chunkSize: Int) {
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(randomString(200000, isAddNewLine = true))
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        random = Random(1123456)
+
+        val replacedIntervals = TreeMap<Int, Int>()
+
+        repeat(1000) {
+            // create a random interval that does not overlap with previous ones
+            val pos = run {
+                var p: Int
+                do {
+                    var isPositionUsed = false
+                    p = random.nextInt(0, v.originalLength)
+                    val deleted = replacedIntervals.subMap(-1, true, p, true).lastEntry()
+                    if (deleted != null && deleted.key + deleted.value >= p) {
+                        isPositionUsed = true
+                    }
+                } while (isPositionUsed)
+                p
+            }
+            val length = run {
+                var len = when (random.nextInt(10)) {
+                    in 0 .. 2 -> 1 + random.nextInt(3)
+                    in 3 .. 4 -> random.nextInt(4, 11)
+                    in 5 .. 6 -> random.nextInt(11, 100)
+                    7 -> random.nextInt(100, 1000)
+                    8 -> random.nextInt(1000, 10000)
+                    9 -> random.nextInt(10000, 100000)
+                    else -> throw IllegalStateException()
+                }
+                len = minOf(v.originalLength - pos, len)
+                val deleted = replacedIntervals.subMap(pos, true, pos + len, false).firstEntry()
+                // for example, deleted interval: 3 ..< 10
+                // pos = 1, len = 9 (1 ..< 10)
+                // -> new range = 1 ..< 3, len = 2
+                if (deleted != null && !((deleted.key until deleted.key + deleted.value) intersect (pos until pos + len)).isEmpty()) {
+                    len = deleted.key - pos
+                }
+                assert(len >= 0)
+                len
+            }
+            val newLen = when (random.nextInt(10)) {
+                in 0 .. 2 -> random.nextInt(4)
+                in 3 .. 4 -> random.nextInt(4, 11)
+                in 5 .. 6 -> random.nextInt(11, 100)
+                7 -> random.nextInt(100, 1000)
+                8 -> random.nextInt(1000, 7000)
+                9 -> random.nextInt(7000, 30000)
+                else -> throw IllegalStateException()
+            }
+            replacedIntervals[pos] = length
+            v.replace(pos until pos + length, randomString(newLen, isAddNewLine = true))
+            verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+        }
+    }
 }
