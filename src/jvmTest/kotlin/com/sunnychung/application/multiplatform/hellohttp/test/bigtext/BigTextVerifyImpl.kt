@@ -2,14 +2,32 @@ package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextNodeValue
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.InefficientBigText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.LengthTree
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.TextBuffer
+import java.util.TreeMap
 
-internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : BigText {
-    val bigTextImpl = if (chunkSize > 0) BigTextImpl(chunkSize) else BigTextImpl()
+internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
+    val bigTextImpl: BigTextImpl = bigTextImpl
     val stringImpl = InefficientBigText("")
 
-    val tree = bigTextImpl.tree
-    val buffers = bigTextImpl.buffers
+    init {
+        this.stringImpl.append(bigTextImpl.buildString())
+    }
+
+    internal constructor(chunkSize: Int = -1) : this(
+        if (chunkSize > 0) BigTextImpl(chunkSize) else BigTextImpl()
+    )
+
+    val tree: LengthTree<BigTextNodeValue>
+        get() = bigTextImpl.tree
+    val buffers: MutableList<TextBuffer>
+        get() = bigTextImpl.buffers
+
+    val isTransform = bigTextImpl is BigTextTransformerImpl
+    val transformOffsetsByPosition = TreeMap<Int, Int>()
 
     override val length: Int
         get() {
@@ -18,6 +36,9 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
             assert(l == tl) { "length expected $tl, actual $l" }
             return l
         }
+
+    val originalLength: Int
+        get() = length - transformOffsetsByPosition.values.sum()
 
     override fun buildString(): String {
         val r = bigTextImpl.buildString()
@@ -36,6 +57,10 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
     override fun append(text: String): Int {
         println("append ${text.length}")
         val r = bigTextImpl.append(text)
+        if (isTransform) {
+            val pos = stringImpl.length
+            transformOffsetsByPosition[pos] = (transformOffsetsByPosition[pos] ?: 0) + text.length
+        }
         stringImpl.append(text)
         verify()
         return r
@@ -44,6 +69,12 @@ internal class BigTextVerifyImpl internal constructor(chunkSize: Int = -1) : Big
     override fun insertAt(pos: Int, text: String): Int {
         println("insert $pos, ${text.length}")
         val r = bigTextImpl.insertAt(pos, text)
+        if (isTransform) {
+            transformOffsetsByPosition[pos] = (transformOffsetsByPosition[pos] ?: 0) + text.length
+        }
+        val pos = pos + transformOffsetsByPosition.subMap(0, pos).values.sum().also {
+            println("VerifyImpl pos $pos offset $it")
+        }
         stringImpl.insertAt(pos, text)
         verify()
         return r

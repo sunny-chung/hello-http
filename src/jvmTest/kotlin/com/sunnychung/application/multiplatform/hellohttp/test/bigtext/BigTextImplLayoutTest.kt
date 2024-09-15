@@ -16,7 +16,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-private var random: Random = Random
+internal var random: Random = Random
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class BigTextImplLayoutTest {
@@ -50,38 +50,6 @@ class BigTextImplLayoutTest {
         assertEquals(testString.count { it == '<' } + 1, t.numOfRows)
         testString.chunked(10).forEachIndexed { index, s ->
             assertEquals(s, t.findRowString(index))
-        }
-    }
-
-    fun verifyBigTextImplAgainstTestString(testString: String, bigTextImpl: BigTextImpl, softWrapAt: Int = 10) {
-        val splitted = testString.split("\n")
-        val expectedRows = splitted.flatMapIndexed { index: Int, str: String ->
-//            val str = if (index < splitted.lastIndex) "$s\n" else s
-            str.chunked(softWrapAt).let { ss ->
-                val ss = if (ss.isEmpty()) listOf(str) else ss
-                if (index < splitted.lastIndex) {
-                    ss.mapIndexed { i, s ->
-                        if (i == ss.lastIndex) {
-                            "$s\n"
-                        } else {
-                            s
-                        }
-                    }
-                } else {
-                    ss
-                }
-            }
-        }
-//        println("exp $expectedRows")
-        try {
-            assertEquals(expectedRows.size, bigTextImpl.numOfRows)
-            expectedRows.forEachIndexed { index, s ->
-                assertEquals(s, bigTextImpl.findRowString(index))
-            }
-        } catch (e: Throwable) {
-            bigTextImpl.printDebug("ERROR")
-            println("exp $expectedRows")
-            throw e
         }
     }
 
@@ -193,6 +161,61 @@ class BigTextImplLayoutTest {
         verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
         t.insertAt(39, add)
         t.printDebug("after relayout")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun insertTriggersRelayout4(chunkSize: Int) {
+        val initial = "1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e."
+        val add = "[INSERT0]"
+        val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+            append(initial)
+            bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            bigTextImpl.setContentWidth(16f * 10)
+            printDebug("after 1st layout")
+        }
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+        t.insertAt(58, add)
+        t.printDebug("after relayout")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun insertBeforeLineBreak1(chunkSize: Int) {
+        val initial = "1234567890\n2234567890abcdefghijBBCD\nEFGHIJ-row break- should h-appen her-e."
+        val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+            append(initial)
+            bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            bigTextImpl.setContentWidth(16f * 10)
+            printDebug("after 1st layout")
+        }
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+
+        t.insertAt(16, "ABCDEFGH\nIJ\nKLMNOPQRSTUV")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+
+        t.insertAt(12, "abcd")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+
+        t.printDebug("after relayout")
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun insertBeforeLineBreak2(chunkSize: Int) {
+        val initial = "1234567890\n2234\nabcdefghijBBCD\nEFGHIJ-row break- should h-appen her-e."
+        val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+            append(initial)
+            bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            bigTextImpl.setContentWidth(16f * 10)
+            printDebug("after 1st layout")
+        }
+        verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
+
+        t.insertAt(15, "567890")
         verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl)
     }
 
@@ -736,6 +759,38 @@ class BigTextImplLayoutTest {
     @BeforeTest
     fun beforeEach() {
         random = Random
+    }
+}
+
+fun verifyBigTextImplAgainstTestString(testString: String, bigTextImpl: BigTextImpl, softWrapAt: Int = 10) {
+    val splitted = testString.split("\n")
+    val expectedRows = splitted.flatMapIndexed { index: Int, str: String ->
+//            val str = if (index < splitted.lastIndex) "$s\n" else s
+        str.chunked(softWrapAt).let { ss ->
+            val ss = if (ss.isEmpty()) listOf(str) else ss
+            if (index < splitted.lastIndex) {
+                ss.mapIndexed { i, s ->
+                    if (i == ss.lastIndex) {
+                        "$s\n"
+                    } else {
+                        s
+                    }
+                }
+            } else {
+                ss
+            }
+        }
+    }
+//        println("exp $expectedRows")
+    try {
+        assertEquals(expectedRows.size, bigTextImpl.numOfRows)
+        expectedRows.forEachIndexed { index, s ->
+            assertEquals(s, bigTextImpl.findRowString(index))
+        }
+    } catch (e: Throwable) {
+        bigTextImpl.printDebug("ERROR")
+        println("exp $expectedRows")
+        throw e
     }
 }
 

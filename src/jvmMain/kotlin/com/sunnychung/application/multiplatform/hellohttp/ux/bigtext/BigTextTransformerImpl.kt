@@ -36,6 +36,9 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
             it.bufferNumLineBreaksInRange = bufferNumLineBreaksInRange
             it.buffer = buffer // copy by ref
             it.bufferOwnership = BufferOwnership.Delegated
+
+            it.leftRenderLength = leftStringLength
+            it.leftOverallLength = leftStringLength
         }
     }
 
@@ -51,15 +54,20 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
             tree.NIL,
             tree.NIL,
         ).also {
-            it.left = left.toBigTextTransformNode(it)
-            it.right = right.toBigTextTransformNode(it)
+            it.value.attach(it as RedBlackTree<BigTextNodeValue>.Node)
+            val n = it as RedBlackTree<BigTextTransformNodeValue>.Node
+            n.left = left.toBigTextTransformNode(n)
+            n.right = right.toBigTextTransformNode(n)
         }
     }
 
     init {
         (tree as LengthTree<BigTextTransformNodeValue>).setRoot(delegate.tree.getRoot().toBigTextTransformNode(tree.NIL))
-        layouter = delegate.layouter
-        contentWidth = delegate.contentWidth
+//        tree.visitInPostOrder {
+//            recomputeAggregatedValues(it as RedBlackTree<BigTextNodeValue>.Node)
+//        }
+        delegate.layouter?.let { setLayouter(it) }
+        delegate.contentWidth?.let { setContentWidth(it) }
         delegate.changeHook = object : BigTextChangeHook {
             override fun afterInsertChunk(modifiedText: BigText, position: Int, newValue: BigTextNodeValue) {
                 insertOriginal(position, newValue)
@@ -149,7 +157,9 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
             transformInsertChunkAtPosition(pos, text.substring(start until start + append))
             last = buffers.last().length
         }
-        layout(maxOf(0, pos - 1), minOf(length, pos + text.length + 1))
+        val renderPositionStart = findRenderPositionStart(tree.findNodeByCharIndex(pos)!!)
+        layout(maxOf(0, renderPositionStart - 1), minOf(length, renderPositionStart + text.length + 1))
+//        layout()
         return text.length
     }
 
