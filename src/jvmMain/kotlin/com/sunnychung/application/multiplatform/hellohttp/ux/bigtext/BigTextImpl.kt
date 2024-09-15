@@ -454,8 +454,8 @@ open class BigTextImpl : BigText {
         }
 
         toBeRelayouted.forEach {
-            val startPos = findPositionStart(it.node!!)
-            val endPos = startPos + it.bufferLength
+            val startPos = findRenderPositionStart(it.node!!)
+            val endPos = startPos + it.currentRenderLength
             layout(startPos, endPos)
         }
 
@@ -488,6 +488,7 @@ open class BigTextImpl : BigText {
         var node = node
         while (node.isNotNil()) {
             val left = node.left.takeIf { it.isNotNil() }
+//            assert(node === node.getValue().node)
             with (node.getValue()) {
                 computeCurrentNodeProperties(this, left)
             }
@@ -728,11 +729,11 @@ open class BigTextImpl : BigText {
             }
             val prev = tree.prevNode(node)
             log.d { "Delete node ${node!!.value.debugKey()} at ${nodeRange.start} .. ${nodeRange.last}" }
-            if (isD && nodeRange.start == 384) {
+            if (nodeRange.start == 2083112) {
                 isD = true
             }
             tree.delete(node)
-            log.d { inspect("After delete " + node?.value?.debugKey()) }
+            log.v { inspect("After delete " + node?.value?.debugKey()) }
             node = prev
 //            nodeRange = nodeRange.start - chunkSize .. nodeRange.last - chunkSize
             if (node != null) {
@@ -753,7 +754,8 @@ open class BigTextImpl : BigText {
 
 //        // FIXME remove
 //        tree.visitInPostOrder {
-//            computeCurrentNodeProperties(it.value)
+////            computeCurrentNodeProperties(it.value)
+//            recomputeAggregatedValues(it)
 //        }
 
         // layout the new nodes explicitly, as
@@ -766,7 +768,7 @@ open class BigTextImpl : BigText {
 
         layout(maxOf(0, start - 1), minOf(length, start + 1))
 
-        log.d { inspect("Finish D " + node?.value?.debugKey()) }
+        log.v { inspect("Finish D " + node?.value?.debugKey()) }
 
         return -(endExclusive - start)
     }
@@ -1171,6 +1173,20 @@ fun RedBlackTree<BigTextNodeValue>.Node.numRowBreaks(): Int {
     return (value?.leftNumOfRowBreaks ?: 0) +
         (value?.rowBreakOffsets?.size ?: 0) +
         (getRight().takeIf { it.isNotNil() }?.numRowBreaks() ?: 0)
+}
+
+fun RedBlackTree<BigTextNodeValue>.Node.computeLength(): Int {
+    val value = getValue()
+    return (value?.bufferLength ?: 0) +
+        (getLeft().takeIf { it.isNotNil() }?.computeLength() ?: 0) +
+        (getRight().takeIf { it.isNotNil() }?.computeLength() ?: 0)
+}
+
+fun RedBlackTree<BigTextNodeValue>.Node.computeRenderLength(): Int {
+    val value = getValue()
+    return (value?.currentRenderLength ?: 0) +
+        (getLeft().takeIf { it.isNotNil() }?.computeRenderLength() ?: 0) +
+        (getRight().takeIf { it.isNotNil() }?.computeRenderLength() ?: 0)
 }
 
 private enum class InsertDirection {

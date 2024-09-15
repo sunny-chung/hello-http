@@ -91,6 +91,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
             val offset = transformOffsetsByPosition.subMap(0, start).values.sum()
             stringImpl.delete(offset + start, offset + endExclusive)
         }
+        println("new len = ${bigTextImpl.length}")
         verify()
         return r
     }
@@ -110,7 +111,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
     }
 
     fun verify(label: String = "") {
-        printDebugIfError(label) {
+        printDebugIfError(label.ifEmpty { "ERROR" }) {
             length
             buildString()
         }

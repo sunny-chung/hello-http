@@ -10,7 +10,7 @@ import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 
 val logT = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
-    override var minSeverity: Severity = Severity.Debug
+    override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Transform")
 
 class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(chunkSize = delegate.chunkSize) {
@@ -198,6 +198,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
             leftStringLength = 0
         }
         layout(maxOf(0, renderStartPos - 1), minOf(length, renderStartPos + 1))
+//        tree.visitInPostOrder { recomputeAggregatedValues(it) } //
         logT.d { inspect("after transformDelete $originalRange") }
         return - originalRange.length
     }

@@ -47,7 +47,7 @@ open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTe
 
     internal var node: RedBlackTree<BigTextNodeValue>.Node? = null
 
-    private val key = Random.nextInt()
+    private val key = RANDOM.nextInt()
 
     override fun attach(node: RedBlackTree<BigTextNodeValue>.Node) {
         this.node = node
@@ -63,7 +63,12 @@ open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTe
 
     override fun debugKey(): String = "$key"
     override fun debugLabel(node: RedBlackTree<BigTextNodeValue>.Node): String =
-        "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()} r $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth $isEndWithForceRowBreak '${buffer.subSequence(renderBufferStart, renderBufferEndExclusive).toString().replace("\n", "\\n")}'"
+//        "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()} r $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth $isEndWithForceRowBreak '${buffer.subSequence(renderBufferStart, renderBufferEndExclusive).toString().replace("\n", "\\n")}'"
+        "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()} r $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth $isEndWithForceRowBreak"
+
+    companion object {
+        private val RANDOM = Random(1000000)
+    }
 }
 
 class TextBuffer(val size: Int) {
