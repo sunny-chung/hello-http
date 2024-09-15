@@ -756,9 +756,11 @@ open class BigTextImpl : BigText {
 //            computeCurrentNodeProperties(it.value)
 //        }
 
+        // layout the new nodes explicitly, as
+        // the layout outside the loop may not be able to touch the new nodes
         newNodesInDescendingOrder.forEach {
-            val startPos = findPositionStart(it.node!!)
-            val endPos = startPos + it.bufferLength
+            val startPos = findRenderPositionStart(it.node!!)
+            val endPos = startPos + it.currentRenderLength
             layout(startPos, endPos)
         }
 
@@ -1103,15 +1105,15 @@ open class BigTextImpl : BigText {
                 val lastNode = tree.rightmost(tree.getRoot()).takeIf { it.isNotNil() }
                 val lastValue = lastNode?.value ?: return@run 0
                 val lastLineOffset = lastValue.buffer.lineOffsetStarts.let {
-                    val lastIndex = it.binarySearchForMaxIndexOfValueAtMost(lastValue.bufferOffsetEndExclusive - 1)
+                    val lastIndex = it.binarySearchForMaxIndexOfValueAtMost(lastValue.renderBufferEndExclusive - 1)
                     if (lastIndex in 0 .. it.lastIndex) {
                         it[lastIndex]
                     } else {
                         null
                     }
                 } ?: return@run 0
-                val lastNodePos = findPositionStart(lastNode)
-                if (lastNodePos + (lastLineOffset - lastValue.bufferOffsetStart) == lastIndex) {
+                val lastNodePos = findRenderPositionStart(lastNode)
+                if (lastNodePos + (lastLineOffset - lastValue.renderBufferStart) == lastIndex) {
                     1 // one extra row if the string ends with '\n'
                 } else {
                     0

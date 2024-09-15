@@ -182,6 +182,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         }
 
         val startNode = tree.findNodeByCharIndex(originalRange.start)!!
+        val renderStartPos = findRenderPositionStart(startNode)
         val buffer = startNode.value.buffer // the buffer is not used. just to prevent NPE
         super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1)
         insertChunkAtPosition(originalRange.start, originalRange.length, BufferOwnership.Owned, buffer, -2 .. -2) {
@@ -196,6 +197,8 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
 
             leftStringLength = 0
         }
+        layout(maxOf(0, renderStartPos - 1), minOf(length, renderStartPos + 1))
+        logT.d { inspect("after transformDelete $originalRange") }
         return - originalRange.length
     }
 

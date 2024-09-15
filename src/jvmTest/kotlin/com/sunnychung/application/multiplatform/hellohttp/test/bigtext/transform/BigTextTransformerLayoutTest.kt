@@ -130,4 +130,143 @@ class BigTextTransformerLayoutTest {
             verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun deletes(chunkSize: Int) {
+        val testString = "1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e."
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+
+        v.delete(46 .. 68)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(10 .. 19)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(30 .. 43)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.bigTextImpl.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun deletesLines1(chunkSize: Int) {
+        val testString = "1234567890<234567890\n<bcdefghij<B\nCD\nE\nFGH\n\n\n\nIJ<row break< should h<appe\nn he\nr<e."
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+
+        v.delete(v.length - 12 until v.length)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(20 .. 21)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(41 .. 46)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.bigTextImpl.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun deletesLines2(chunkSize: Int) {
+        val testString = "1234567890<234567890\n<bcdefghij<B\nCD\nE\nFGH\n\n\n\nIJ<row break< should h<appe\nn he\nr<e."
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+
+        v.delete(42 .. 43)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(44 .. 45)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(21 .. 21)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.bigTextImpl.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun deletesAtTheEnd(chunkSize: Int) {
+        val testString = "1234567890<234567890\n<bcdefghij<B\nCD\nE\nFGH\n\n\n\nIJ<row break< should h<appe\nn he\nr<e."
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+
+        val originalLength = testString.length
+        v.delete(originalLength - 3 until originalLength)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(originalLength - 5 until originalLength - 3)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(originalLength - 9 until originalLength - 5)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(originalLength - 10 until originalLength - 9)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(23 until originalLength - 10)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.bigTextImpl.printDebug()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [65536, 64, 16])
+    fun deletesAtTheBeginning(chunkSize: Int) {
+        val testString = "1234567890<234567890\n<bcdefghij<B\nCD\nE\nFGH\n\n\n\nIJ<row break< should h<appe\nn he\nr<e."
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+
+        val originalLength = testString.length
+        v.delete(0 .. 1)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(2 .. 18)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(19 .. 22)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(23 .. 41)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(42 until originalLength - 7)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.bigTextImpl.printDebug()
+    }
 }

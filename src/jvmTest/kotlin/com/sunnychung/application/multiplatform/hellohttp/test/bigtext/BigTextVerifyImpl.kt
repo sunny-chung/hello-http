@@ -85,7 +85,11 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         var r: Int = 0
         printDebugIfError {
             r = bigTextImpl.delete(start, endExclusive)
-            stringImpl.delete(start, endExclusive)
+            if (isTransform) {
+                transformOffsetsByPosition[start] = (transformOffsetsByPosition[start] ?: 0) - (endExclusive - start)
+            }
+            val offset = transformOffsetsByPosition.subMap(0, start).values.sum()
+            stringImpl.delete(offset + start, offset + endExclusive)
         }
         verify()
         return r
