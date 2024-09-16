@@ -22,7 +22,7 @@ class BigTextTransformerLayoutTest {
 
     @ParameterizedTest
     @ValueSource(ints = [65536, 64, 16])
-    fun noTransformation(chunkSize: Int) { if (chunkSize != 16) return
+    fun noTransformation(chunkSize: Int) {
         val testString = "1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e."
         val t = BigTextImpl(chunkSize = chunkSize).apply {
             append(testString)
