@@ -797,6 +797,104 @@ class BigTextTransformerImplTest {
         transformed.printDebug()
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun deleteOverlap(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("12345678901234567890123456789012345678901234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.delete(15 .. 33)
+        transformed.delete(12 .. 37)
+        "123456789012901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.delete(12 .. 52)
+        "123456789012456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.delete(9 .. 52)
+        "123456789456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.delete(4 .. 78)
+        "12340".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.delete(14 .. 66) // no effect
+        "12340".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.delete(50 .. 68) // no effect
+        "12340".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.delete(0 .. 79)
+        "".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun replaceOverlap(chunkSize: Int) {
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append("12345678901234567890123456789012345678901234567890123456789012345678901234567890")
+        val transformed = BigTextTransformerImpl(original)
+        transformed.replace(15 .. 33, "AAA")
+        transformed.replace(12 .. 37, "BB")
+        "123456789012BB901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+//        transformed.replace(21 .. 34, "CCCCCC") // TODO prevent this operation to succeed
+//        "123456789012BB901234567890123456789012345678901234567890".let { expected ->
+//            assertEquals(expected, transformed.buildString())
+//            assertAllSubstring(expected, transformed)
+//        }
+        transformed.replace(11 .. 11, "www")
+        "12345678901wwwBB901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.replace(12 .. 52, "DDDD")
+        "12345678901wwwDDDD456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.replace(9 .. 52, "eeeee")
+        "123456789eeeee456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.replace(4 .. 78, ".")
+        "1234.0".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.replace(0 .. 79, "GG")
+        "GG".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.replace(0 .. 79, "hihi")
+        "hihi".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        transformed.replace(0 .. 79, "")
+        "".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+    }
+
     @BeforeEach
     fun beforeEach() {
         isD = false

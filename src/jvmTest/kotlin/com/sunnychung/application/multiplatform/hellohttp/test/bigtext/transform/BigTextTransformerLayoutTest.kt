@@ -528,4 +528,49 @@ class BigTextTransformerLayoutTest {
             verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun deleteAndReplaceOverlapped(chunkSize: Int) {
+        val initial = "1234567890223456789032345678904234567890_234567890623456789072345678908234567890\n"
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(initial)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        verifyBigTextImplAgainstTestString(testString = initial, bigTextImpl = tt)
+        tt.delete(29 .. 33)
+        verifyBigTextImplAgainstTestString(testString = initial.replaceRange(29 .. 33, ""), bigTextImpl = tt)
+        tt.delete(32 .. 38)
+        verifyBigTextImplAgainstTestString(testString = initial.replaceRange(29 .. 38, ""), bigTextImpl = tt)
+        tt.replace(55 .. 72, "ab\nc\n")
+        verifyBigTextImplAgainstTestString(
+            testString = initial
+                .replaceRange(55 .. 72, "ab\nc\n")
+                .replaceRange(29 .. 38, "")
+            , bigTextImpl = tt
+        )
+        tt.replace(43 .. 60, "def")
+        verifyBigTextImplAgainstTestString(
+            testString = initial
+                .replaceRange(43 .. 72, "def")
+                .replaceRange(29 .. 38, "")
+            , bigTextImpl = tt
+        )
+        tt.delete(42 .. 43)
+        verifyBigTextImplAgainstTestString(
+            testString = initial
+                .replaceRange(42 .. 72, "")
+                .replaceRange(29 .. 38, "")
+            , bigTextImpl = tt
+        )
+        tt.delete(38 .. 43)
+        verifyBigTextImplAgainstTestString(
+            testString = initial
+                .replaceRange(29 .. 72, "")
+            , bigTextImpl = tt
+        )
+    }
 }

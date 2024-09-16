@@ -4,7 +4,9 @@ import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.MutableLoggerConfig
 import co.touchlab.kermit.Severity
+import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
+import com.sunnychung.application.multiplatform.hellohttp.extension.toNonEmptyRange
 import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 
@@ -203,7 +205,109 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         return - originalRange.length
     }
 
+    /**
+     * Use cases:
+     * 1. Delete all transform operations within a range
+     * 2. Delete some transform operations that fulfills the filter within a range
+     * 3. Replace all transformed inserts within a range with a new insert
+     */
+    fun deleteTransformIf(originalRange: IntRange, filter: (BigTextTransformNodeValue) -> Boolean = { it.currentTransformedLength > 0 }): Int {
+        logT.d { "deleteTransformIf($originalRange)" }
+        require(originalRange.start <= originalRange.endInclusive + 1) { "start should be <= endExclusive" }
+        require(0 <= originalRange.start) { "Invalid start" }
+        require(originalRange.endInclusive + 1 <= originalLength) { "endExclusive is out of bound" }
+
+        if (originalRange.start == originalRange.endInclusive + 1) {
+            return 0
+        }
+
+        val startNode = tree.findNodeByCharIndex(originalRange.start)!!
+        val endNode = tree.findNodeByCharIndex(originalRange.endInclusive + 1)!!
+        val renderStartPos = findRenderPositionStart(startNode)
+        val renderEndPos = findRenderPositionStart(endNode) + endNode.value.currentRenderLength
+
+        var node: RedBlackTree<BigTextNodeValue>.Node? = endNode
+        var nodeRange = charIndexRangeOfNode(node!!)
+        val newNodesInDescendingOrder = mutableListOf<BigTextNodeValue>()
+        while (node?.isNotNil() == true && (originalRange.start <= nodeRange.endInclusive || originalRange.start <= nodeRange.start)) {
+            val prev = tree.prevNode(node)
+            logT.d { "DTI nodeRange=$nodeRange, o=${node!!.value.bufferOwnership.name.first()}, int=${!(originalRange.toNonEmptyRange() intersect nodeRange.toNonEmptyRange()).isEmpty()}, f=${filter(node!!.value as BigTextTransformNodeValue)}" }
+            if (!(originalRange.toNonEmptyRange() intersect nodeRange.toNonEmptyRange()).isEmpty()
+                && node.value.bufferOwnership == BufferOwnership.Owned
+                && filter(node.value as BigTextTransformNodeValue)
+            ) {
+                if (originalRange.endInclusive in nodeRange.start..nodeRange.last - 1) {
+                    // need to split
+                    val splitAtIndex = originalRange.endInclusive + 1 - nodeRange.start
+                    logT.d { "T Split E at $splitAtIndex" }
+                    newNodesInDescendingOrder += createNodeValue().apply { // the second part of the existing string
+                        bufferIndex = node!!.value.bufferIndex
+                        bufferOffsetStart = node!!.value.bufferOffsetStart + splitAtIndex
+                        bufferOffsetEndExclusive = node!!.value.bufferOffsetEndExclusive
+                        buffer = node!!.value.buffer
+                        bufferOwnership = node!!.value.bufferOwnership
+
+                        leftStringLength = 0
+
+                        this as BigTextTransformNodeValue
+                        val nv = node!!.value as BigTextTransformNodeValue
+                        transformedBufferStart = nv.transformedBufferStart
+                        transformedBufferEndExclusive = nv.transformedBufferEndExclusive
+                    }
+                }
+                if (originalRange.start in nodeRange.start + 1..nodeRange.last) {
+                    // need to split
+                    val splitAtIndex = originalRange.start - nodeRange.start
+                    logT.d { "T Split S at $splitAtIndex" }
+                    newNodesInDescendingOrder += createNodeValue().apply { // the first part of the existing string
+                        bufferIndex = node!!.value.bufferIndex
+                        bufferOffsetStart = node!!.value.bufferOffsetStart
+                        bufferOffsetEndExclusive = node!!.value.bufferOffsetStart + splitAtIndex
+                        buffer = node!!.value.buffer
+                        bufferOwnership = node!!.value.bufferOwnership
+
+                        leftStringLength = 0
+
+                        this as BigTextTransformNodeValue
+                        val nv = node!!.value as BigTextTransformNodeValue
+                        transformedBufferStart = nv.transformedBufferStart
+                        transformedBufferEndExclusive = nv.transformedBufferEndExclusive
+                    }
+                }
+                logT.d { "T Delete node ${node!!.value.debugKey()} at ${nodeRange.start} .. ${nodeRange.last}" }
+                if (nodeRange.start == 2083112) {
+                    isD = true
+                }
+                tree.delete(node)
+                logT.v { inspect("T After delete " + node?.value?.debugKey()) }
+            }
+            node = prev
+//            nodeRange = nodeRange.start - chunkSize .. nodeRange.last - chunkSize
+            if (node != null) {
+                nodeRange = charIndexRangeOfNode(node) // TODO optimize by calculation instead of querying
+                logT.d { "new range = $nodeRange" }
+            }
+        }
+
+        newNodesInDescendingOrder.asReversed().forEach {
+            if (node != null) {
+                node = tree.insertRight(node!!, it)
+            } else if (!tree.isEmpty) { // no previous node, so insert at leftmost of the tree
+                val leftmost = tree.leftmost(tree.getRoot())
+                node = tree.insertLeft(leftmost, it)
+            } else {
+                node = tree.insertValue(it)
+            }
+        }
+
+        layout(maxOf(0, renderStartPos - 1), minOf(length, renderEndPos))
+//        tree.visitInPostOrder { recomputeAggregatedValues(it) } //
+        logT.d { inspect("after deleteTransformIf $originalRange") }
+        return - originalRange.length
+    }
+
     fun transformReplace(originalRange: IntRange, newText: String) {
+        deleteTransformIf(originalRange)
         transformDelete(originalRange)
         transformInsert(originalRange.start, newText)
     }

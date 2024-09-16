@@ -13,5 +13,12 @@ infix fun IntRange.intersect(other: IntRange): IntRange {
     return from .. to
 }
 
+fun IntRange.toNonEmptyRange(): IntRange {
+    if (length <= 0) {
+        return start .. start
+    }
+    return this
+}
+
 val IntRange.length: Int
     get() = this.endInclusive - this.start + 1
