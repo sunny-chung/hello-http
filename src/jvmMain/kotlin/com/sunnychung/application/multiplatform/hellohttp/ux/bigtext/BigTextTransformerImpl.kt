@@ -15,7 +15,9 @@ val logT = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Transform")
 
-class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(chunkSize = delegate.chunkSize) {
+class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(chunkSize = delegate.chunkSize) {
+
+    private var hasReachedExtensiveSearch: Boolean = false
 
     override val tree: LengthTree<BigTextNodeValue> = LengthTree<BigTextTransformNodeValue>(
         object : RedBlackTreeComputations<BigTextTransformNodeValue> {
@@ -110,7 +112,7 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         }
     }
 
-    private fun transformInsertChunkAtPosition(position: Int, chunkedString: String) {
+    private fun transformInsertChunkAtPosition(position: Int, chunkedString: String, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int) {
         logT.d { "transformInsertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
         var buffer = if (buffers.isNotEmpty()) {
@@ -129,6 +131,8 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
             bufferOffsetEndExclusive = -1
             transformedBufferStart = range.start
             transformedBufferEndExclusive = range.endInclusive + 1
+            transformOffsetMapping = offsetMapping
+            this.incrementalTransformOffsetMappingLength = incrementalTransformOffsetMappingLength
             this.buffer = buffer
             this.bufferOwnership = BufferOwnership.Owned
 
@@ -137,6 +141,10 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
     }
 
     fun transformInsert(pos: Int, text: String): Int {
+        return transformInsert(pos, text, BigTextTransformOffsetMapping.WholeBlock, 0)
+    }
+
+    private fun transformInsert(pos: Int, text: String, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int): Int {
         logT.d { "transformInsert($pos, \"$text\")" }
         require(pos in 0 .. originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
@@ -156,7 +164,8 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
             val available = chunkSize - last
             val append = minOf(available, start)
             start -= append
-            transformInsertChunkAtPosition(pos, text.substring(start until start + append))
+            val incrementalOffsetLength = maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start))
+            transformInsertChunkAtPosition(pos, text.substring(start until start + append), offsetMapping, incrementalOffsetLength)
             last = buffers.last().length
         }
         val renderPositionStart = findRenderPositionStart(tree.findNodeByCharIndex(pos)!!)
@@ -306,10 +315,15 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         return - originalRange.length
     }
 
-    fun transformReplace(originalRange: IntRange, newText: String) {
+    fun transformReplace(originalRange: IntRange, newText: String, offsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.Incremental) {
         deleteTransformIf(originalRange)
         transformDelete(originalRange)
-        transformInsert(originalRange.start, newText)
+        val incrementalTransformOffsetMappingLength = if (offsetMapping == BigTextTransformOffsetMapping.Incremental) {
+            minOf(originalRange.length, newText.length)
+        } else {
+            0
+        }
+        transformInsert(originalRange.start, newText, offsetMapping, incrementalTransformOffsetMappingLength)
     }
 
     override fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue, left: RedBlackTree<BigTextNodeValue>.Node?) = with (nodeValue) {
@@ -322,6 +336,178 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
         leftOverallLength = left?.overallLength() ?: 0
     }
 
+    internal fun resetDebugFlags() {
+        hasReachedExtensiveSearch = false
+    }
+
+    internal fun hasReachedExtensiveSearch() = hasReachedExtensiveSearch
+
+    fun findTransformedPositionByOriginalPosition(originalPosition: Int): Int {
+        // TODO this function can be further optimized
+        if (originalPosition == originalLength) { // the retrieved 'node' is incorrect for the last position
+            return length
+        }
+        val node = tree.findNodeByCharIndex(originalPosition, isIncludeMarkerNodes = false)
+            ?: throw IndexOutOfBoundsException("Node at original position $originalPosition not found")
+        val nodeStart = findPositionStart(node)
+        val indexFromNodeStart = originalPosition - nodeStart
+        val firstMarkerNode = tree.findNodeByCharIndex(nodeStart, isIncludeMarkerNodes = true)
+            ?: throw IndexOutOfBoundsException("Node at original position $nodeStart not found")
+        val transformedStart = findRenderPositionStart(node)
+        if (firstMarkerNode === node) {
+            return transformedStart + if (node.value.bufferOwnership == BufferOwnership.Delegated) {
+                indexFromNodeStart
+            } else if ((node.value as? BigTextTransformNodeValue)?.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental) {
+                indexFromNodeStart - (node.value as BigTextTransformNodeValue).incrementalTransformOffsetMappingLength
+            } else {
+                node.value.currentRenderLength
+            }
+        }
+
+//        val nodeStartBeforeMarkers = findPositionStart(node)
+        hasReachedExtensiveSearch = true
+        logT.d { "hasReachedExtensiveSearch" }
+
+//        val transformedStartBeforeMarkers = findRenderPositionStart(firstMarkerNode)
+
+//        var itOffset = 0
+//        var compulsoryOffset = 0
+//        var isNotYetFulfillIncrementalOffset = true
+//        var n = firstMarkerNode as RedBlackTree<BigTextTransformNodeValue>.Node
+//        while (true) {
+//            if (/*isNotYetFulfillIncrementalOffset &&*/ n.value.currentTransformedLength > 0 && n !== node) {
+//                when (n.value.transformOffsetMapping) {
+//                    BigTextTransformOffsetMapping.WholeBlock -> {
+//                        compulsoryOffset += n.value.currentTransformedLength
+//                    }
+//                    BigTextTransformOffsetMapping.Incremental -> {
+////                        if (indexFromNodeStart in itOffset until itOffset + n.value.currentTransformedLength) {
+////                            itOffset = indexFromNodeStart
+////                            isNotYetFulfillIncrementalOffset = false
+////                        }
+////                        itOffset += n.value.currentTransformedLength
+//                    }
+//                }
+//            } else if (n.value.bufferOwnership == BufferOwnership.Owned && n.value.currentTransformedLength < 0) {
+//                compulsoryOffset += n.value.currentTransformedLength
+//            }
+//
+//            if (n === node) {
+//                break
+//            }
+//
+//            n = tree.nextNode(n as RedBlackTree<BigTextNodeValue>.Node) as RedBlackTree<BigTextTransformNodeValue>.Node
+//        }
+
+//        return transformedStartBeforeMarkers + indexFromNodeStart + compulsoryOffset
+//        return transformedStart + indexFromNodeStart + compulsoryOffset
+
+        var incrementalTransformLength = 0
+        var incrementalTransformLimit = 0
+        var n = firstMarkerNode as RedBlackTree<BigTextTransformNodeValue>.Node
+        while (true) {
+            if (n.value.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental && n.value.currentTransformedLength > 0) {
+                incrementalTransformLength += n.value.currentTransformedLength
+                incrementalTransformLimit += n.value.incrementalTransformOffsetMappingLength
+            }
+            if (n === node) {
+                break
+            }
+            n = tree.nextNode(n as RedBlackTree<BigTextNodeValue>.Node) as RedBlackTree<BigTextTransformNodeValue>.Node
+        }
+        if (incrementalTransformLimit > 0) { // incremental replacement
+            return transformedStart - maxOf(0, incrementalTransformLength - minOf(incrementalTransformLimit, indexFromNodeStart))
+        }
+//        return transformedStart + indexFromNodeStart
+        return transformedStart + if (node.value.bufferOwnership == BufferOwnership.Delegated) {
+            indexFromNodeStart
+        } else {
+            node.value.currentRenderLength
+        }
+    }
+
+    fun findOriginalPositionByTransformedPosition(transformedPosition: Int): Int {
+        // TODO this function can be further optimized
+        if (transformedPosition == length) {
+            return originalLength
+        }
+        val node = tree.findNodeByRenderCharIndex(transformedPosition)
+            ?: throw IndexOutOfBoundsException("Node at transformed position $transformedPosition not found")
+        val transformedStart = findRenderPositionStart(node)
+        val indexFromNodeStart = transformedPosition - transformedStart
+        val nodeStart = findPositionStart(node)
+        val nv = node.value as BigTextTransformNodeValue
+
+        val firstMarkerNode = tree.findNodeByCharIndex(nodeStart, isIncludeMarkerNodes = true)
+            ?: throw IndexOutOfBoundsException("Node at original position $nodeStart not found")
+
+        if (firstMarkerNode === node) {
+            return nodeStart + if (nv.bufferOwnership == BufferOwnership.Delegated) {
+                indexFromNodeStart
+            } else if (nv.currentTransformedLength < 0) { // deletion
+                -nv.currentTransformedLength
+            } else if (nv.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental) {
+//                val incrementalLength = minOf(nv.currentTransformedLength, indexFromNodeStart)
+                val incrementalLength = minOf(nv.incrementalTransformOffsetMappingLength, indexFromNodeStart)
+                incrementalLength
+            } else {
+                0
+            }
+        }
+
+        hasReachedExtensiveSearch = true
+        logT.d { "hasReachedExtensiveSearch" }
+
+//        val nodeStartBeforeMarkers = findRenderPositionStart(firstMarkerNode)
+//
+//        var itOffset = 0
+//        var n = firstMarkerNode as RedBlackTree<BigTextTransformNodeValue>.Node
+//        while (n !== node) {
+//            if (n.value.currentTransformedLength > 0) {
+//                when (n.value.transformOffsetMapping) {
+//                    BigTextTransformOffsetMapping.WholeBlock -> {
+//                    }
+//                    BigTextTransformOffsetMapping.Incremental -> {
+//                        if (indexFromNodeStart in itOffset until itOffset + n.value.currentTransformedLength) {
+//                            itOffset = indexFromNodeStart
+//                            break
+//                        }
+//                    }
+//                }
+//                itOffset += n.value.currentTransformedLength
+//            }
+//
+//            n = tree.nextNode(n as RedBlackTree<BigTextNodeValue>.Node) as RedBlackTree<BigTextTransformNodeValue>.Node
+//        }
+//
+//        return nodeStartBeforeMarkers + itOffset
+
+        var n = firstMarkerNode as RedBlackTree<BigTextTransformNodeValue>.Node
+        var incrementalTransformLength = 0
+        var incrementalTransformLimit = 0
+        while (true) {
+            if (n.value.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental && n.value.currentTransformedLength > 0) {
+                if (n !== node) {
+                    incrementalTransformLength += n.value.currentTransformedLength
+                }
+                incrementalTransformLimit += n.value.incrementalTransformOffsetMappingLength
+            }
+            if (n === node) {
+                break
+            }
+            n = tree.nextNode(n as RedBlackTree<BigTextNodeValue>.Node) as RedBlackTree<BigTextTransformNodeValue>.Node
+        }
+        if (incrementalTransformLimit > 0) { // incremental replacement
+//            return nodeStart - maxOf(0, incrementalTransformLength - indexFromNodeStart)
+//            return nodeStart - incrementalTransformLength + minOf(incrementalTransformLimit, indexFromNodeStart)
+
+            val transformedStartBeforeMarkers = findRenderPositionStart(firstMarkerNode)
+            val indexFromNodeStart2 = transformedPosition - transformedStartBeforeMarkers
+            return nodeStart + minOf(incrementalTransformLimit, indexFromNodeStart2)
+        }
+        return nodeStart + minOf(node.value.bufferLength, indexFromNodeStart)
+    }
+
     override fun insertAt(pos: Int, text: String): Int = transformInsert(pos, text)
 
     override fun append(text: String): Int = transformInsertAtOriginalEnd(text)
@@ -329,6 +515,8 @@ class BigTextTransformerImpl(private val delegate: BigTextImpl) : BigTextImpl(ch
     override fun delete(start: Int, endExclusive: Int): Int = transformDelete(start until endExclusive)
 
     override fun replace(range: IntRange, text: String) = transformReplace(range, text)
+
+    fun replace(range: IntRange, text: String, offsetMapping: BigTextTransformOffsetMapping) = transformReplace(range, text, offsetMapping)
 }
 
 fun RedBlackTree<BigTextTransformNodeValue>.Node.transformedOffset(): Int =

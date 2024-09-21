@@ -5,7 +5,7 @@ import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBlackTree2<@UnsafeVariance V>(computations)
         where V : LengthNodeValue, V : Comparable<@UnsafeVariance V>, V : DebuggableNode<in @UnsafeVariance V> {
 
-    fun findNodeByCharIndex(index: Int, isIncludeMarkerNodes: Boolean = true): RedBlackTree<V>.Node? {
+    fun findNodeByCharIndex(index: Int, isIncludeMarkerNodes: Boolean = true, isExact: Boolean = false): RedBlackTree<V>.Node? {
         var find = index
         var lastMatch: RedBlackTree<V>.Node? = null
         return findNode {
@@ -13,8 +13,10 @@ open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBla
                 in Int.MIN_VALUE until it.value.leftStringLength -> -1
                 it.value.leftStringLength, in it.value.leftStringLength until it.value.leftStringLength + it.value.bufferLength -> {
                     lastMatch = it
-                    if (isIncludeMarkerNodes && find == it.value.leftStringLength && it.left.isNotNil()) {
+                    if (!isExact && isIncludeMarkerNodes && find == it.value.leftStringLength && it.left.isNotNil()) {
                         -1
+                    } else if (!isExact && !isIncludeMarkerNodes && find == it.value.leftStringLength + it.value.bufferLength && it.right.isNotNil()) {
+                        1
                     } else {
                         0
                     }
@@ -25,18 +27,15 @@ open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBla
                     } else {
                         0
                     }
-                ).also { compareResult ->
-                    val isTurnRight = compareResult > 0
-                    if (isTurnRight) {
-                        find -= it.value.leftStringLength + it.value.bufferLength
-                    }
-                }
+                )
                 else -> throw IllegalStateException("what is find? $find")
+            }.also { compareResult ->
+                val isTurnRight = compareResult > 0
+                if (isTurnRight) {
+                    find -= it.value.leftStringLength + it.value.bufferLength
+                }
             }
         }?.takeIf {
-            if (!isIncludeMarkerNodes) {
-                return@takeIf true
-            }
             val nodePosStart = findPositionStart(it)
             nodePosStart <= index && (
                 index < nodePosStart + it.value.bufferLength
@@ -53,7 +52,13 @@ open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBla
             when (find) {
                 in Int.MIN_VALUE until it.value.leftRenderLength -> -1
                 in it.value.leftRenderLength until it.value.leftRenderLength + it.value.currentRenderLength -> 0
-                in it.value.leftRenderLength + it.value.currentRenderLength until Int.MAX_VALUE -> 1.also { compareResult ->
+                in it.value.leftRenderLength + it.value.currentRenderLength until Int.MAX_VALUE -> (
+                    if (it.right.isNotNil()) {
+                        1
+                    } else {
+                        0
+                    }
+                ).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
                         find -= it.value.leftRenderLength + it.value.currentRenderLength

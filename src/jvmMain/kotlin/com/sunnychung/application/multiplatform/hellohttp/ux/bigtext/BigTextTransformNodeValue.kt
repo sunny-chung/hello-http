@@ -17,6 +17,9 @@ class BigTextTransformNodeValue : BigTextNodeValue() {
     var transformedBufferStart: Int = -1
     var transformedBufferEndExclusive: Int = -1
 
+    var transformOffsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.WholeBlock
+    var incrementalTransformOffsetMappingLength = 0
+
     override val renderBufferStart: Int
         get() = if (bufferOwnership == BufferOwnership.Delegated) {
             bufferOffsetStart
@@ -56,6 +59,7 @@ class BigTextTransformNodeValue : BigTextNodeValue() {
         if (renderBufferStart in 0 until renderBufferEndExclusive) {
             append(" '${buffer.subSequence(renderBufferStart, renderBufferEndExclusive)}'")
         }
+        append(" M $incrementalTransformOffsetMappingLength")
         append(" row $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth")
     }
 
