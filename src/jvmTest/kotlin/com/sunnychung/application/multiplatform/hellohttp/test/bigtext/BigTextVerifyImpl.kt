@@ -46,7 +46,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
     val originalLength: Int
         get() = length - transformOffsetsByPosition.values.sum()
 
-    private data class TransformOp(val originalRange: IntRange, val replaceMapping: BigTextTransformOffsetMapping)
+    private data class TransformOp(val originalRange: IntRange, val offsetMapping: BigTextTransformOffsetMapping)
 
     override fun buildString(): String {
         val r = bigTextImpl.buildString()
@@ -86,6 +86,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
             println("VerifyImpl pos $pos offset $it")
         }
         stringImpl.insertAt(pos, text)
+//        transformOps += TransformOp(pos until pos + text.length, BigTextTransformOffsetMapping.WholeBlock)
         verify()
         return r
     }
@@ -104,6 +105,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
             val offset = transformOffsetsByPosition.subMap(0, start).values.sum()
             stringImpl.delete(offset + start, offset + endExclusive)
         }
+        transformOps += TransformOp(start until endExclusive, BigTextTransformOffsetMapping.WholeBlock)
         println("new len = ${bigTextImpl.length}")
         verify()
         return r
@@ -219,10 +221,10 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
             val mapped = i + offsetSum
             if (mapped > transformedPosition) {
                 if (result != null) {
-                    return transformOps.firstOrNull { it.replaceMapping == BigTextTransformOffsetMapping.WholeBlock && it.originalRange.first == start }
+                    return transformOps.firstOrNull { it.offsetMapping == BigTextTransformOffsetMapping.WholeBlock && it.originalRange.first == start }
                         ?.originalRange
                         ?.endInclusive
-                        ?.let { it + 1 }
+                        ?.let { maxOf(it + 1, result!!) }
                         ?: result
                 }
                 return i

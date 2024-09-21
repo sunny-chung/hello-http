@@ -92,6 +92,22 @@ class BigTextTransformPositionCalculatorTest {
 
     @ParameterizedTest
     @ValueSource(ints = [1048576, 64, 16])
+    fun transformDeleteWholeText(chunkSize: Int) {
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append("1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.")
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        val originalLength = v.originalLength
+        v.delete(0 until originalLength)
+        v.verifyPositionCalculation()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
     fun simpleIncrementalTransformReplaces(chunkSize: Int) {
         val t = BigTextImpl(chunkSize = chunkSize).apply {
             append("1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.")
@@ -260,5 +276,111 @@ class BigTextTransformPositionCalculatorTest {
             chunkSize = chunkSize,
             replaceMapping = BigTextTransformOffsetMapping.WholeBlock
         )
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun mixedTransformReplaces(chunkSize: Int) {
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append("1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.")
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        val originalLength = v.originalLength
+
+        v.replace(32 .. 36, "long replacement", BigTextTransformOffsetMapping.Incremental)
+        v.verifyPositionCalculation()
+
+        v.replace(15 .. 23, "!?", BigTextTransformOffsetMapping.WholeBlock)
+        v.verifyPositionCalculation()
+
+        v.replace(0 .. 2, "-+-+-", BigTextTransformOffsetMapping.WholeBlock)
+        v.verifyPositionCalculation()
+
+        v.replace(originalLength - 12 until originalLength, "*-*-*", BigTextTransformOffsetMapping.Incremental)
+        v.verifyPositionCalculation()
+
+        v.replace(3 .. 3, "some relatively long string that is longer than a chunk", BigTextTransformOffsetMapping.Incremental)
+        v.verifyPositionCalculation()
+
+        v.replace(4 .. 5, "=", BigTextTransformOffsetMapping.WholeBlock)
+        v.verifyPositionCalculation()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun mixedTransforms(chunkSize: Int) {
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append("1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.")
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        val originalLength = v.originalLength // 73
+
+        v.insertAt(8, "inserted text 8")
+        v.verifyPositionCalculation()
+
+        v.delete(40 .. 52)
+//        isD = true
+        v.verifyPositionCalculation()
+
+        v.replace(32 .. 36, "long replacement", BigTextTransformOffsetMapping.Incremental)
+        v.verifyPositionCalculation()
+
+        v.delete(26 .. 28)
+        v.verifyPositionCalculation()
+
+        v.insertAt(29, "XYZ")
+//        isD = true
+        v.verifyPositionCalculation()
+
+        v.delete(24 .. 24)
+        v.verifyPositionCalculation()
+
+        v.replace(15 .. 23, "!?", BigTextTransformOffsetMapping.WholeBlock)
+        isD = true
+        v.verifyPositionCalculation()
+
+        v.replace(0 .. 2, "-+-+-", BigTextTransformOffsetMapping.WholeBlock)
+        v.verifyPositionCalculation()
+
+        v.insertAt(0, "inserted text at the beginning")
+        v.verifyPositionCalculation()
+
+        v.replace(originalLength - 12 until originalLength - 8, "*-*-*", BigTextTransformOffsetMapping.WholeBlock)
+        v.verifyPositionCalculation()
+
+        v.delete(originalLength - 8 until originalLength)
+        v.verifyPositionCalculation()
+
+        v.replace(3 .. 3, "some relatively long string that is longer than a chunk", BigTextTransformOffsetMapping.Incremental)
+        v.verifyPositionCalculation()
+
+        v.insertAt(3, "inserted text 3")
+        v.verifyPositionCalculation()
+
+        v.replace(4 .. 5, "=", BigTextTransformOffsetMapping.WholeBlock)
+        v.verifyPositionCalculation()
+
+        v.insertAt(53, "^")
+        v.verifyPositionCalculation()
+
+        v.delete(54 .. 54)
+        v.verifyPositionCalculation()
+
+        v.replace(55 .. 55, "_")
+        v.verifyPositionCalculation()
+
+        v.delete(56 .. 59)
+        v.verifyPositionCalculation()
+
+        v.insertAt(56, "qwerty")
+        v.verifyPositionCalculation()
     }
 }
