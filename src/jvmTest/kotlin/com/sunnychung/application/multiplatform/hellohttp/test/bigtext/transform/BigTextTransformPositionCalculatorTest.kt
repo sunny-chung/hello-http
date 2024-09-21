@@ -197,4 +197,68 @@ class BigTextTransformPositionCalculatorTest {
         v.replace(4 .. 5, "=", BigTextTransformOffsetMapping.WholeBlock)
         v.verifyPositionCalculation()
     }
+
+    private fun testInsertAfterTransformReplaceAtSamePosition(chunkSize: Int, replaceMapping: BigTextTransformOffsetMapping) {
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append("1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.")
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        val originalLength = v.originalLength
+
+        v.replace(32 .. 36, "long replacement", replaceMapping)
+        v.verifyPositionCalculation()
+        v.insertAt(32, "inserted text 32")
+//        isD = true
+        v.verifyPositionCalculation()
+
+        v.replace(15 .. 23, "!?", replaceMapping)
+        v.verifyPositionCalculation()
+        v.insertAt(15, "inserted text 15")
+        v.verifyPositionCalculation()
+
+        v.replace(0 .. 2, "-+-+-", replaceMapping)
+        v.verifyPositionCalculation()
+        v.insertAt(0, "inserted text 0")
+        v.verifyPositionCalculation()
+
+        v.replace(originalLength - 12 until originalLength, "*-*-*", replaceMapping)
+        v.verifyPositionCalculation()
+        v.insertAt(originalLength - 12, "inserted text ${originalLength - 12}")
+        v.verifyPositionCalculation()
+
+        v.replace(3 .. 3, "some relatively long string that is longer than a chunk", replaceMapping)
+        if (chunkSize == 64) {
+            isD = true
+        }
+        v.verifyPositionCalculation()
+        v.insertAt(3, "inserted text 3")
+        v.verifyPositionCalculation()
+
+        v.replace(4 .. 5, "=", replaceMapping)
+        v.verifyPositionCalculation()
+        v.insertAt(4, "inserted text 4")
+        v.verifyPositionCalculation()
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun insertAfterIncrementalTransformReplaceAtSamePosition(chunkSize: Int) {
+        testInsertAfterTransformReplaceAtSamePosition(
+            chunkSize = chunkSize,
+            replaceMapping = BigTextTransformOffsetMapping.Incremental
+        )
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun insertAfterBlockTransformReplaceAtSamePosition(chunkSize: Int) {
+        testInsertAfterTransformReplaceAtSamePosition(
+            chunkSize = chunkSize,
+            replaceMapping = BigTextTransformOffsetMapping.WholeBlock
+        )
+    }
 }

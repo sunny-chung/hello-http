@@ -485,6 +485,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         var n = firstMarkerNode as RedBlackTree<BigTextTransformNodeValue>.Node
         var incrementalTransformLength = 0
         var incrementalTransformLimit = 0
+        var nonIncrementalTransformLength = 0
         while (true) {
             if (n.value.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental && n.value.currentTransformedLength > 0) {
                 if (n !== node) {
@@ -495,6 +496,9 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
             if (n === node) {
                 break
             }
+            if (n.value.transformOffsetMapping != BigTextTransformOffsetMapping.Incremental && n.value.currentTransformedLength > 0) {
+                nonIncrementalTransformLength += n.value.currentTransformedLength
+            }
             n = tree.nextNode(n as RedBlackTree<BigTextNodeValue>.Node) as RedBlackTree<BigTextTransformNodeValue>.Node
         }
         if (incrementalTransformLimit > 0) { // incremental replacement
@@ -503,7 +507,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
 
             val transformedStartBeforeMarkers = findRenderPositionStart(firstMarkerNode)
             val indexFromNodeStart2 = transformedPosition - transformedStartBeforeMarkers
-            return nodeStart + minOf(incrementalTransformLimit, indexFromNodeStart2)
+            return nodeStart + minOf(incrementalTransformLimit, indexFromNodeStart2 - nonIncrementalTransformLength)
         }
         return nodeStart + minOf(node.value.bufferLength, indexFromNodeStart)
     }
