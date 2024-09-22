@@ -13,6 +13,10 @@ infix fun IntRange.intersect(other: IntRange): IntRange {
     return from .. to
 }
 
+infix fun IntRange.hasIntersectWith(other: IntRange): Boolean {
+    return !intersect(other).isEmpty()
+}
+
 fun IntRange.toNonEmptyRange(): IntRange {
     if (length <= 0) {
         return start .. start

@@ -430,18 +430,42 @@ private fun CoreBigMonospaceText(
             .sum()
     }
 
-    fun onValueChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
-        viewState.lastVisibleRow = minOf(viewState.lastVisibleRow, transformedText.lastRowIndex)
-
-        viewState.version = Random.nextLong()
-        val event = BigTextChangeEvent(
+    fun generateChangeEvent(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) : BigTextChangeEvent {
+        return BigTextChangeEvent(
             changeId = viewState.version,
             bigText = text,
             eventType = eventType,
             changeStartIndex = changeStartIndex,
             changeEndExclusiveIndex = changeEndExclusiveIndex,
         )
-        (textTransformation as? IncrementalTextTransformation<Any?>)?.onTextChange(event, transformedText, transformedState)
+    }
+
+    fun onValuePreChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
+        if (eventType == BigTextChangeEventType.Delete) {
+            viewState.version = Random.nextLong()
+            val event = generateChangeEvent(eventType, changeStartIndex, changeEndExclusiveIndex)
+
+            // invoke textTransformation listener before deletion, so that it knows what will be deleted and transform accordingly
+            (textTransformation as? IncrementalTextTransformation<Any?>)?.onTextChange(
+                event,
+                transformedText,
+                transformedState
+            )
+        }
+    }
+
+    fun onValuePostChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
+        viewState.lastVisibleRow = minOf(viewState.lastVisibleRow, transformedText.lastRowIndex)
+
+        viewState.version = Random.nextLong()
+        val event = generateChangeEvent(eventType, changeStartIndex, changeEndExclusiveIndex)
+        if (eventType != BigTextChangeEventType.Delete) {
+            (textTransformation as? IncrementalTextTransformation<Any?>)?.onTextChange(
+                event,
+                transformedText,
+                transformedState
+            )
+        }
         onTextChange(event)
     }
 
@@ -454,8 +478,10 @@ private fun CoreBigMonospaceText(
             viewState.transformedSelection = IntRange.EMPTY
         }
         val insertPos = viewState.cursorIndex
+        onValuePreChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
         text.insertAt(insertPos, textInput)
-        onValueChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
+        onValuePostChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
+        // update cursor after invoking listeners, because a transformation or change may take place
         viewState.cursorIndex = minOf(text.length, insertPos + textInput.length)
         viewState.updateTransformedCursorIndexByOriginal(transformedText)
         viewState.transformedSelectionStart = viewState.transformedCursorIndex
@@ -467,15 +493,18 @@ private fun CoreBigMonospaceText(
         when (direction) {
             TextFBDirection.Forward -> {
                 if (cursor + 1 <= text.length) {
+                    onValuePreChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
                     text.delete(cursor, cursor + 1)
-                    onValueChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
+                    onValuePostChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
                     return true
                 }
             }
             TextFBDirection.Backward -> {
                 if (cursor - 1 >= 0) {
+                    onValuePreChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
                     text.delete(cursor - 1, cursor)
-                    onValueChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
+                    onValuePostChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
+                    // update cursor after invoking listeners, because a transformation or change may take place
                     viewState.cursorIndex = maxOf(0, cursor - 1)
                     viewState.updateTransformedCursorIndexByOriginal(transformedText)
                     viewState.transformedSelectionStart = viewState.transformedCursorIndex
