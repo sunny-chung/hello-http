@@ -16,5 +16,5 @@ interface BigTextTransformer {
 
     fun replace(range: IntRange, text: String, offsetMapping: BigTextTransformOffsetMapping)
 
-//    fun restoreToOriginal(range: IntRange)
+    fun restoreToOriginal(range: IntRange)
 }

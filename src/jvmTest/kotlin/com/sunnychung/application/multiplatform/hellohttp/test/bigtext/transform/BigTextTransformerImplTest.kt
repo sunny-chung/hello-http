@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.test.bigtext.transfor
 import com.sunnychung.application.multiplatform.hellohttp.test.bigtext.randomString
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.isD
 import org.junit.jupiter.api.BeforeEach
@@ -890,6 +891,67 @@ class BigTextTransformerImplTest {
         }
         transformed.replace(0 .. 79, "")
         "".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun restoreToOriginal(chunkSize: Int) {
+        val initialText = "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append(initialText)
+        val transformed = BigTextTransformerImpl(original)
+
+        transformed.replace(11 .. 18, "ABCD", BigTextTransformOffsetMapping.Incremental)
+        "12345678901ABCD0123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(initialText, original.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+
+        transformed.insertAt(61, "EFGHIJ")
+        "12345678901ABCD012345678901234567890123456789012345678901EFGHIJ2345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(initialText, original.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+
+        transformed.restoreToOriginal(0 .. initialText.length - 1)
+        initialText.let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun restoreToOriginalThenOriginalDelete(chunkSize: Int) {
+        val initialText = "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append(initialText)
+        val transformed = BigTextTransformerImpl(original)
+
+        transformed.replace(11 .. 18, "ABCD", BigTextTransformOffsetMapping.WholeBlock)
+        "12345678901ABCD0123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(initialText, original.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+
+        transformed.restoreToOriginal(11 .. 18)
+        initialText.let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(expected, original.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+
+        original.delete(18 .. 18)
+
+        "1234567890123456780123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, original.buildString())
             assertEquals(expected, transformed.buildString())
             assertAllSubstring(expected, transformed)
         }

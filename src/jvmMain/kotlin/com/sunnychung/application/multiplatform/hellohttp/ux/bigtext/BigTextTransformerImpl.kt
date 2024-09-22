@@ -92,19 +92,24 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         return BigTextTransformNodeValue()
     }
 
-    fun insertOriginal(pos: Int, nodeValue: BigTextNodeValue) {
-        require(pos in 0 .. originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
+    fun insertOriginal(
+        pos: Int,
+        nodeValue: BigTextNodeValue,
+        bufferOffsetStart: Int = nodeValue.bufferOffsetStart,
+        bufferOffsetEndExclusive: Int = nodeValue.bufferOffsetEndExclusive,
+    ) {
+        require(pos in 0..originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
         insertChunkAtPosition(
             position = pos,
-            chunkedStringLength = nodeValue.bufferLength,
+            chunkedStringLength = bufferOffsetEndExclusive - bufferOffsetStart,
             ownership = BufferOwnership.Delegated,
             buffer = nodeValue.buffer,
-            range = nodeValue.bufferOffsetStart until nodeValue.bufferOffsetEndExclusive
+            range = bufferOffsetStart until bufferOffsetEndExclusive
         ) {
             bufferIndex = -1
-            bufferOffsetStart = nodeValue.bufferOffsetStart
-            bufferOffsetEndExclusive = nodeValue.bufferOffsetEndExclusive
+            this.bufferOffsetStart = bufferOffsetStart
+            this.bufferOffsetEndExclusive = bufferOffsetEndExclusive
             this.buffer = nodeValue.buffer
             this.bufferOwnership = BufferOwnership.Delegated
 
@@ -521,6 +526,41 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
     override fun replace(range: IntRange, text: String) = transformReplace(range, text)
 
     override fun replace(range: IntRange, text: String, offsetMapping: BigTextTransformOffsetMapping) = transformReplace(range, text, offsetMapping)
+
+    override fun restoreToOriginal(range: IntRange) {
+        val renderPositionAtOriginalStart = findTransformedPositionByOriginalPosition(range.start)
+        val renderPositionAtOriginalEnd = findTransformedPositionByOriginalPosition(range.endInclusive)
+
+        deleteTransformIf(range)
+        deleteOriginal(range)
+
+        // insert the original text from `delegate`
+        val originalNodeStart = delegate.tree.findNodeByCharIndex(range.start)
+            ?: throw IndexOutOfBoundsException("Original node at position ${range.start} not found")
+        var nodePositionStart = delegate.tree.findPositionStart(originalNodeStart)
+        var insertPoint = range.start
+        var node = originalNodeStart
+        var insertOffsetStart = node.value.bufferOffsetStart + (range.start - nodePositionStart)
+        do {
+            val insertOffsetEndExclusive = if ((nodePositionStart + node.value.bufferLength) > (range.endInclusive + 1)) {
+                node.value.bufferOffsetStart + (range.endInclusive + 1 - nodePositionStart)
+            } else {
+                node.value.bufferOffsetEndExclusive
+            }
+            insertOriginal(insertPoint, node.value, insertOffsetStart, insertOffsetEndExclusive)
+
+            if (insertPoint + (insertOffsetEndExclusive - insertOffsetStart) > range.endInclusive) {
+                break
+            }
+
+            node = delegate.tree.nextNode(node)!!
+            nodePositionStart = delegate.tree.findPositionStart(node)
+            insertPoint += insertOffsetEndExclusive - insertOffsetStart
+            insertOffsetStart = node.value.bufferOffsetStart
+        } while (nodePositionStart <= range.endInclusive)
+
+        layout(maxOf(0, renderPositionAtOriginalStart - 1), minOf(length, renderPositionAtOriginalEnd + 1))
+    }
 }
 
 fun RedBlackTree<BigTextTransformNodeValue>.Node.transformedOffset(): Int =
