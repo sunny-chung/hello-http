@@ -756,6 +756,20 @@ class BigTextImplLayoutTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun findFirstRowIndexOfLine(chunkSize: Int) {
+        listOf(100, 10, 37, 1000, 10000).forEach { softWrapAt ->
+            val t = BigTextImpl(chunkSize = chunkSize).apply {
+                append("12345678901234567890123456789012345678901234567890123456789012345678901234567890\n")
+                setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            assertEquals(0, t.findFirstRowIndexOfLine(0))
+            assertEquals(Math.ceil(79.0 / softWrapAt).toInt(), t.findFirstRowIndexOfLine(1))
+        }
+    }
+
     @BeforeTest
     fun beforeEach() {
         random = Random

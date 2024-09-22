@@ -279,8 +279,11 @@ open class BigTextImpl : BigText {
             throw IndexOutOfBoundsException("pos $rowStartPos is out of bound. length = $length")
         }
         val actualNodeStartPos = findRenderPositionStart(actualNode)
-        val rowBreakOffsetIndex = actualNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart)
         val rowBreaksStart = findRowStart(actualNode)
+        if (actualNode.value.isEndWithForceRowBreak && rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart >= actualNode.value.bufferOffsetEndExclusive) {
+            return rowBreaksStart + actualNode.value.rowBreakOffsets.size + 1
+        }
+        val rowBreakOffsetIndex = actualNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart)
         return rowBreaksStart + rowBreakOffsetIndex + 1
     }
 
