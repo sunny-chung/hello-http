@@ -78,6 +78,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Envi
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -580,6 +581,7 @@ fun CodeEditorView(
                     BigMonospaceTextField(
                         textFieldState = bigTextFieldState.value,
                         visualTransformation = visualTransformationToUse,
+                        textTransformation = remember { EnvironmentVariableIncrementalTransformation() }, // TODO replace this testing transformation
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
 //                        textStyle = LocalTextStyle.current.copy(
 //                            fontFamily = FontFamily.Monospace,
@@ -843,22 +845,25 @@ fun BigTextLineNumbersView(
     )
     val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
 
+    // Note that layoutResult.text != bigText
+    val layoutText = layoutResult?.text as? BigTextImpl
+
     var prevHasLayouted by remember { mutableStateOf(false) }
-    prevHasLayouted = bigText.hasLayouted
+    prevHasLayouted = layoutText?.hasLayouted ?: false
     prevHasLayouted
 
     val viewportTop = scrollState.value
-    val firstLine = bigText.findLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
-    val lastLine = (bigText.findLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
-    log.d { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${bigText.numOfLines}" }
+    val firstLine = layoutText?.findLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
+    val lastLine = (layoutText?.findLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
+    log.d { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${layoutText?.numOfLines}" }
     val rowHeight = layoutResult?.rowHeight ?: 0f
     CoreLineNumbersView(
         firstLine = firstLine,
-        lastLine = minOf(lastLine, bigText.numOfLines ?: 1),
-        totalLines = bigText.numOfLines ?: 1,
+        lastLine = minOf(lastLine, layoutText?.numOfLines ?: 1),
+        totalLines = layoutText?.numOfLines ?: 1,
         lineHeight = (rowHeight).toDp(),
 //        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
-        getLineOffset = { ( bigText.findFirstRowIndexOfLine(it) * rowHeight - viewportTop).toDp() },
+        getLineOffset = { ( (layoutText?.findFirstRowIndexOfLine(it) ?: 0) * rowHeight - viewportTop).toDp() },
         textStyle = textStyle,
         collapsedLinesState = collapsedLinesState,
         onCollapseLine = onCollapseLine,
@@ -871,7 +876,7 @@ fun BigTextLineNumbersView(
 private fun CoreLineNumbersView(
     modifier: Modifier = Modifier,
     firstLine: Int,
-    lastLine: Int,
+    /* exclusive */ lastLine: Int,
     totalLines: Int,
     lineHeight: Dp,
     getLineOffset: (Int) -> Dp,

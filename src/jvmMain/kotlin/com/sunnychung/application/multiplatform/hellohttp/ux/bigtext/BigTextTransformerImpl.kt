@@ -15,7 +15,7 @@ val logT = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Transform")
 
-class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(chunkSize = delegate.chunkSize) {
+class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(chunkSize = delegate.chunkSize), BigTextTransformed {
 
     private var hasReachedExtensiveSearch: Boolean = false
 
@@ -342,7 +342,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
 
     internal fun hasReachedExtensiveSearch() = hasReachedExtensiveSearch
 
-    fun findTransformedPositionByOriginalPosition(originalPosition: Int): Int {
+    override fun findTransformedPositionByOriginalPosition(originalPosition: Int): Int {
         // TODO this function can be further optimized
         if (originalPosition == originalLength) { // the retrieved 'node' is incorrect for the last position
             return length
@@ -426,7 +426,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         }
     }
 
-    fun findOriginalPositionByTransformedPosition(transformedPosition: Int): Int {
+    override fun findOriginalPositionByTransformedPosition(transformedPosition: Int): Int {
         // TODO this function can be further optimized
         if (transformedPosition == length) {
             return originalLength
@@ -520,7 +520,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
 
     override fun replace(range: IntRange, text: String) = transformReplace(range, text)
 
-    fun replace(range: IntRange, text: String, offsetMapping: BigTextTransformOffsetMapping) = transformReplace(range, text, offsetMapping)
+    override fun replace(range: IntRange, text: String, offsetMapping: BigTextTransformOffsetMapping) = transformReplace(range, text, offsetMapping)
 }
 
 fun RedBlackTree<BigTextTransformNodeValue>.Node.transformedOffset(): Int =

@@ -29,6 +29,6 @@ class BigTextLayoutResult(
 }
 
 class BigTextSimpleLayoutResult(
-    val text: BigText,
+    val text: BigTextLayoutable,
     val rowHeight: Float
 )

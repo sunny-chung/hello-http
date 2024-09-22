@@ -36,7 +36,7 @@ internal var isD = false
 
 private const val EPS = 1e-4f
 
-open class BigTextImpl : BigText {
+open class BigTextImpl : BigText, BigTextLayoutable {
     open val tree: LengthTree<BigTextNodeValue> = LengthTree<BigTextNodeValue>(
         object : RedBlackTreeComputations<BigTextNodeValue> {
             override fun recomputeFromLeaf(it: RedBlackTree<BigTextNodeValue>.Node) = recomputeAggregatedValues(it)
@@ -55,7 +55,7 @@ open class BigTextImpl : BigText {
 
     internal var contentWidth: Float? = null
 
-    var onLayoutCallback: (() -> Unit)? = null
+    override var onLayoutCallback: (() -> Unit)? = null
 
     internal var changeHook: BigTextChangeHook? = null
 
@@ -109,7 +109,7 @@ open class BigTextImpl : BigText {
         }?.let { it to rowStart + it.value.leftNumOfRowBreaks /*findLineStart(it)*/ }
     }
 
-    fun findPositionByRowIndex(index: Int): Int {
+    override fun findPositionByRowIndex(index: Int): Int {
         if (!hasLayouted) {
             return 0
         }
@@ -117,7 +117,7 @@ open class BigTextImpl : BigText {
         return tree.findNodeByRowBreaks(index - 1)!!.second
     }
 
-    fun findRowIndexByPosition(position: Int): Int {
+    override fun findRowIndexByPosition(position: Int): Int {
         if (!hasLayouted) {
             return 0
         }
@@ -129,7 +129,7 @@ open class BigTextImpl : BigText {
                 throw IndexOutOfBoundsException("position = $position but length = $length")
             }
         }
-        val node = tree.findNodeByCharIndex(position)!!
+        val node = tree.findNodeByRenderCharIndex(position)!!
         val startPos = findRenderPositionStart(node)
         val nv = node.value
         val rowIndexInThisPartition = nv.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(position - startPos + nv.bufferOffsetStart) + 1
@@ -137,7 +137,7 @@ open class BigTextImpl : BigText {
         return startRowIndex + rowIndexInThisPartition
     }
 
-    fun findRowPositionStartIndexByRowIndex(index: Int): Int {
+    override fun findRowPositionStartIndexByRowIndex(index: Int): Int {
         if (!hasLayouted) {
             return 0
         }
@@ -165,7 +165,7 @@ open class BigTextImpl : BigText {
      * @param rowIndex 0-based
      * @return 0-based
      */
-    fun findLineIndexByRowIndex(rowIndex: Int): Int {
+    override fun findLineIndexByRowIndex(rowIndex: Int): Int {
         if (!hasLayouted) {
             return 0
         }
@@ -177,20 +177,21 @@ open class BigTextImpl : BigText {
 
         val (node, rowIndexStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
         val rowOffset = if (rowIndex - 1 - rowIndexStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
-            node.value.bufferOffsetEndExclusive
+            node.value.renderBufferEndExclusive
         } else if (rowIndex > 0) {
             node.value.rowBreakOffsets[rowIndex - 1 - rowIndexStart]
         } else {
             0
         }
         val positionStart = findRenderPositionStart(node)
-        val rowPositionStart = positionStart + rowOffset - node.value.bufferOffsetStart
+        val rowPositionStart = positionStart + rowOffset - node.value.renderBufferStart
         val lineBreakPosition = rowPositionStart - 1
 
-        val lineBreakAtNode = tree.findNodeByCharIndex(lineBreakPosition)!!
+        val lineBreakAtNode = tree.findNodeByRenderCharIndex(lineBreakPosition)!!
         val lineStart = findLineStart(lineBreakAtNode)
         val positionStartOfLineBreakNode = findRenderPositionStart(lineBreakAtNode)
         val lineBreakOffsetStarts = lineBreakAtNode.value.buffer.lineOffsetStarts
+        // FIXME render pos domain should be converted to buffer pos domain before searching
         val lineBreakMinIndex = lineBreakOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineBreakAtNode.value.bufferOffsetStart)
         val lineBreakIndex = lineBreakOffsetStarts.binarySearchForMaxIndexOfValueAtMost(lineBreakPosition - positionStartOfLineBreakNode + lineBreakAtNode.value.bufferOffsetStart)
         return (lineStart + if (lineBreakIndex < lineBreakMinIndex) {
@@ -272,7 +273,7 @@ open class BigTextImpl : BigText {
 //        return rowBreaksStart + rowBreakOffsetIndex + 1
 
         val rowStartPos = lineStartPos + 1 /* rowBreak is 1 char after '\n' while lineBreak is right at '\n' */
-        val actualNode = tree.findNodeByCharIndex(rowStartPos) ?: run {
+        val actualNode = tree.findNodeByRenderCharIndex(rowStartPos) ?: run {
             if (rowStartPos == length && tree.rightmost(tree.getRoot()).value.isEndWithForceRowBreak) {
                 return lastRowIndex
             }
@@ -600,7 +601,7 @@ open class BigTextImpl : BigText {
         return substring(startCharIndex, endCharIndex) // includes the last '\n' char
     }
 
-    fun findRowString(rowIndex: Int): String {
+    override fun findRowString(rowIndex: Int): String {
         /**
          * @param rowOffset 0 = start of buffer; 1 = char index of the first row break
          */
@@ -811,7 +812,7 @@ open class BigTextImpl : BigText {
         println(inspect(label))
     }
 
-    fun setLayouter(layouter: TextLayouter) {
+    override fun setLayouter(layouter: TextLayouter) {
         if (this.layouter == layouter) {
             return
         }
@@ -827,7 +828,7 @@ open class BigTextImpl : BigText {
         layout()
     }
 
-    fun setContentWidth(contentWidth: Float) {
+    override fun setContentWidth(contentWidth: Float) {
         require(contentWidth > EPS) { "contentWidth must be positive" }
 
         if (this.contentWidth == contentWidth) {
@@ -1101,10 +1102,10 @@ open class BigTextImpl : BigText {
         onLayoutCallback?.invoke()
     }
 
-    val hasLayouted: Boolean
+    override val hasLayouted: Boolean
         get() = layouter != null && contentWidth != null
 
-    val numOfRows: Int
+    override val numOfRows: Int
         get() = tree.getRoot().numRowBreaks() + 1 + // TODO cache the result
             run {
                 val lastNode = tree.rightmost(tree.getRoot()).takeIf { it.isNotNil() }
@@ -1125,10 +1126,10 @@ open class BigTextImpl : BigText {
                 }
             }
 
-    val numOfLines: Int
+    override val numOfLines: Int
         get() = tree.getRoot().numLineBreaks() + 1
 
-    val lastRowIndex: Int
+    override val lastRowIndex: Int
         get() = numOfRows - 1
 
     /**

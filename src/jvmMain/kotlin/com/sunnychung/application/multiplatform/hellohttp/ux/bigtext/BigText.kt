@@ -13,6 +13,8 @@ interface BigText {
 
     fun substring(range: IntRange): String = substring(range.start, range.endInclusive + 1)
 
+    fun subSequence(startIndex: Int, endIndex: Int) = substring(startIndex, endIndex)
+
     fun append(text: String): Int
 
     fun insertAt(pos: Int, text: String): Int
