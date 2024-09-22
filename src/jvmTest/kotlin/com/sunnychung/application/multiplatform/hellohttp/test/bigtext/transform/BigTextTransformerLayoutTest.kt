@@ -16,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import java.util.TreeMap
 import kotlin.random.Random
+import kotlin.test.assertEquals
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class BigTextTransformerLayoutTest {
@@ -572,5 +573,24 @@ class BigTextTransformerLayoutTest {
                 .replaceRange(29 .. 72, "")
             , bigTextImpl = tt
         )
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun findRowPositionStartIndexByRowIndex(chunkSize: Int) {
+        val initial = "1234567890223456789032345678904234567890_234567890623456789072345678908234567890\n"
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(initial)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(160f * 10)
+        }
+        assertEquals(0, tt.findRowPositionStartIndexByRowIndex(0))
+        assertEquals(81, tt.findRowPositionStartIndexByRowIndex(1))
+
+        tt.delete(29 .. 70)
+        assertEquals(0, tt.findRowPositionStartIndexByRowIndex(0))
+        assertEquals(81 - 42, tt.findRowPositionStartIndexByRowIndex(1))
     }
 }

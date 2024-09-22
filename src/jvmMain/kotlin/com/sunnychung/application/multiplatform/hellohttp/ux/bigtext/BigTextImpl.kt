@@ -130,7 +130,7 @@ open class BigTextImpl : BigText {
             }
         }
         val node = tree.findNodeByCharIndex(position)!!
-        val startPos = findPositionStart(node)
+        val startPos = findRenderPositionStart(node)
         val nv = node.value
         val rowIndexInThisPartition = nv.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(position - startPos + nv.bufferOffsetStart) + 1
         val startRowIndex = findRowStart(node)
@@ -151,7 +151,7 @@ open class BigTextImpl : BigText {
             ?: throw IllegalStateException("Cannot find the node right after ${index - 1} row breaks")
         ).first
         val rowStart = findRowStart(node)
-        val startPos = findPositionStart(node)
+        val startPos = findRenderPositionStart(node)
         return startPos + if (index - 1 - rowStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
             node.value.bufferLength
         } else if (index > 0) {
@@ -183,13 +183,13 @@ open class BigTextImpl : BigText {
         } else {
             0
         }
-        val positionStart = findPositionStart(node)
+        val positionStart = findRenderPositionStart(node)
         val rowPositionStart = positionStart + rowOffset - node.value.bufferOffsetStart
         val lineBreakPosition = rowPositionStart - 1
 
         val lineBreakAtNode = tree.findNodeByCharIndex(lineBreakPosition)!!
         val lineStart = findLineStart(lineBreakAtNode)
-        val positionStartOfLineBreakNode = findPositionStart(lineBreakAtNode)
+        val positionStartOfLineBreakNode = findRenderPositionStart(lineBreakAtNode)
         val lineBreakOffsetStarts = lineBreakAtNode.value.buffer.lineOffsetStarts
         val lineBreakMinIndex = lineBreakOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineBreakAtNode.value.bufferOffsetStart)
         val lineBreakIndex = lineBreakOffsetStarts.binarySearchForMaxIndexOfValueAtMost(lineBreakPosition - positionStartOfLineBreakNode + lineBreakAtNode.value.bufferOffsetStart)
@@ -265,7 +265,7 @@ open class BigTextImpl : BigText {
         } else {
             0
         }
-        val lineStartPos = findPositionStart(lineStartNode) + lineOffset
+        val lineStartPos = findRenderPositionStart(lineStartNode) + lineOffset
 
 //        val rowBreakOffsetIndex = lineStartNode.findRowBreakIndexOfLineOffset(lineOffset)
 //        val rowBreaksStart = findRowStart(lineStartNode)
@@ -278,7 +278,7 @@ open class BigTextImpl : BigText {
             }
             throw IndexOutOfBoundsException("pos $rowStartPos is out of bound. length = $length")
         }
-        val actualNodeStartPos = findPositionStart(actualNode)
+        val actualNodeStartPos = findRenderPositionStart(actualNode)
         val rowBreakOffsetIndex = actualNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart)
         val rowBreaksStart = findRowStart(actualNode)
         return rowBreaksStart + rowBreakOffsetIndex + 1
