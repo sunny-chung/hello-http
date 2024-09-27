@@ -76,12 +76,12 @@ open class BigTextImpl : BigText, BigTextLayoutable {
             when (find) {
                 in Int.MIN_VALUE until it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
 //                it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
-                in it.value.leftNumOfLineBreaks until it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange -> 0
-                in it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
+                in it.value.leftNumOfLineBreaks until it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange -> 0
+                in it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
-                        find -= it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange
-                        lineStart += it.value.leftNumOfLineBreaks + it.value.bufferNumLineBreaksInRange
+                        find -= it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange
+                        lineStart += it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange
                     }
                 }
                 else -> throw IllegalStateException("what is find? $find")
@@ -155,7 +155,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         return startPos + if (index - 1 - rowStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
             node.value.bufferLength
         } else if (index > 0) {
-            node.value.rowBreakOffsets[index - 1 - rowStart] - node.value.bufferOffsetStart
+            node.value.rowBreakOffsets[index - 1 - rowStart] - node.value.renderBufferStart
         } else {
             0
         }
@@ -179,7 +179,11 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         val rowOffset = if (rowIndex - 1 - rowIndexStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
             node.value.renderBufferEndExclusive
         } else if (rowIndex > 0) {
-            node.value.rowBreakOffsets[rowIndex - 1 - rowIndexStart]
+            val i = rowIndex - 1 - rowIndexStart
+            if (i > node.value.rowBreakOffsets.lastIndex) {
+                throw IndexOutOfBoundsException("findLineIndexByRowIndex($rowIndex) rowBreakOffsets[$i] length ${node.value.rowBreakOffsets.size}")
+            }
+            node.value.rowBreakOffsets[i]
         } else {
             0
         }
@@ -260,9 +264,9 @@ open class BigTextImpl : BigText, BigTextLayoutable {
             ?: throw IllegalStateException("Cannot find the node right after ${lineIndex - 1} line breaks")
 //        val positionOfLineStartNode = findPositionStart(lineStartNode)
         val lineOffsetStarts = lineStartNode.value.buffer.lineOffsetStarts
-        val inRangeLineStartIndex = lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineStartNode.value.bufferOffsetStart)
+        val inRangeLineStartIndex = lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineStartNode.value.renderBufferStart)
         val lineOffset = if (lineIndex - 1 >= 0) {
-            lineOffsetStarts[inRangeLineStartIndex + lineIndex - 1 - lineIndexStart] - lineStartNode.value.bufferOffsetStart
+            lineOffsetStarts[inRangeLineStartIndex + lineIndex - 1 - lineIndexStart] - lineStartNode.value.renderBufferStart
         } else {
             0
         }
@@ -281,10 +285,10 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         }
         val actualNodeStartPos = findRenderPositionStart(actualNode)
         val rowBreaksStart = findRowStart(actualNode)
-        if (actualNode.value.isEndWithForceRowBreak && rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart >= actualNode.value.bufferOffsetEndExclusive) {
+        if (actualNode.value.isEndWithForceRowBreak && rowStartPos - actualNodeStartPos + actualNode.value.renderBufferStart >= actualNode.value.renderBufferEndExclusive) {
             return rowBreaksStart + actualNode.value.rowBreakOffsets.size + 1
         }
-        val rowBreakOffsetIndex = actualNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(rowStartPos - actualNodeStartPos + actualNode.value.bufferOffsetStart)
+        val rowBreakOffsetIndex = actualNode.value.rowBreakOffsets.binarySearchForMaxIndexOfValueAtMost(rowStartPos - actualNodeStartPos + actualNode.value.renderBufferStart)
         return rowBreaksStart + rowBreakOffsetIndex + 1
     }
 
@@ -309,7 +313,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         var node = node
         while (node.parent.isNotNil()) {
             if (node === node.parent.right) {
-                start += node.parent.value.leftNumOfLineBreaks + node.parent.value.bufferNumLineBreaksInRange
+                start += node.parent.value.leftNumOfLineBreaks + node.parent.value.renderNumLineBreaksInRange
             }
             node = node.parent
         }
@@ -479,6 +483,13 @@ open class BigTextImpl : BigText, BigTextLayoutable {
 //        bufferNumLineBreaksInRange = buffers[bufferIndex].lineOffsetStarts.subSet(bufferOffsetStart, bufferOffsetEndExclusive).size
         bufferNumLineBreaksInRange = buffer.lineOffsetStarts.run {
             binarySearchForMinIndexOfValueAtLeast(bufferOffsetEndExclusive) - maxOf(0, binarySearchForMinIndexOfValueAtLeast(bufferOffsetStart))
+        }
+        renderNumLineBreaksInRange = if (currentRenderLength > 0) {
+            buffer.lineOffsetStarts.run {
+                binarySearchForMinIndexOfValueAtLeast(renderBufferEndExclusive) - maxOf(0, binarySearchForMinIndexOfValueAtLeast(renderBufferStart))
+            }
+        } else {
+            0
         }
         leftNumOfLineBreaks = node?.left?.numLineBreaks() ?: 0
         log.v { ">> leftNumOfLineBreaks ${node?.value?.debugKey()} -> $leftNumOfLineBreaks" }
@@ -1168,7 +1179,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
 fun RedBlackTree<BigTextNodeValue>.Node.numLineBreaks(): Int {
     val value = getValue()
     return (value?.leftNumOfLineBreaks ?: 0) +
-        (value?.bufferNumLineBreaksInRange ?: 0) +
+        (value?.renderNumLineBreaksInRange ?: 0) +
         (getRight().takeIf { it.isNotNil() }?.numLineBreaks() ?: 0)
 }
 

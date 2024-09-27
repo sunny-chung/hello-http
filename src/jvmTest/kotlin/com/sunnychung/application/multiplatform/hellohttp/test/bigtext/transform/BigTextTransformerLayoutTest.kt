@@ -577,7 +577,7 @@ class BigTextTransformerLayoutTest {
 
     @ParameterizedTest
     @ValueSource(ints = [1048576, 64, 16])
-    fun findRowPositionStartIndexByRowIndex(chunkSize: Int) {
+    fun findRowPositionStartIndexByRowIndex1(chunkSize: Int) {
         val initial = "1234567890223456789032345678904234567890_234567890623456789072345678908234567890\n"
         val t = BigTextImpl(chunkSize = chunkSize).apply {
             append(initial)
@@ -593,4 +593,51 @@ class BigTextTransformerLayoutTest {
         assertEquals(0, tt.findRowPositionStartIndexByRowIndex(0))
         assertEquals(81 - 42, tt.findRowPositionStartIndexByRowIndex(1))
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun findRowPositionStartIndexByRowIndex2(chunkSize: Int) {
+        listOf(100, 10, 37, 1000, 10000).forEach { softWrapAt ->
+            val t = BigTextImpl(chunkSize = chunkSize).apply {
+                append("{\"a\":\"bcd\${{abc}}ef}\"}\n\n\${{asd}}\n\n")
+            }
+            val tt = BigTextTransformerImpl(t).apply {
+                setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            tt.replace(9 .. 16, "<abc>")
+            tt.replace(24 .. 31, "<asd>")
+            val expectedRowPosStarts = when (softWrapAt) {
+                10 -> listOf(0, 10, 20, 21, 27, 28)
+                else -> listOf(0, 20, 21, 27, 28)
+            }
+            expectedRowPosStarts.forEachIndexed { i, expected ->
+                assertEquals(expected, tt.findRowPositionStartIndexByRowIndex(i))
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun findFirstRowIndexOfLine(chunkSize: Int) {
+        listOf(100, 10, 37, 1000, 10000).forEach { softWrapAt ->
+            val t = BigTextImpl(chunkSize = chunkSize).apply {
+                append("{\"a\":\"bcd\${{abc}}ef}\"}\n\n\${{asd}}\n\n")
+            }
+            val tt = BigTextTransformerImpl(t).apply {
+                setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            tt.replace(9 .. 16, "<abc>")
+            tt.replace(24 .. 31, "<asd>")
+            val expectedRowPosStarts = when (softWrapAt) {
+                10 -> listOf(0, 2, 3, 4, 5)
+                else -> listOf(0, 1, 2, 3, 4)
+            }
+            expectedRowPosStarts.forEachIndexed { i, expected ->
+                assertEquals(expected, tt.findFirstRowIndexOfLine(i))
+            }
+        }
+    }
+
 }

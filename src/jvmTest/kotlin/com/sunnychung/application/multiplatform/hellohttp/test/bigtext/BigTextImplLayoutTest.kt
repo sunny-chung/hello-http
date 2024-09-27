@@ -770,6 +770,39 @@ class BigTextImplLayoutTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun findRowPositionStartIndexByRowIndex(chunkSize: Int) {
+        listOf(100, 10, 37, 1000, 10000).forEach { softWrapAt ->
+            val t = BigTextImpl(chunkSize = chunkSize).apply {
+                append("12345678901234567890123\n\n456789\n")
+                setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            val expectedRowPosStarts = when (softWrapAt) {
+                10 -> listOf(0, 10, 20, 24, 25, 32)
+                else -> listOf(0, 24, 25, 32)
+            }
+            expectedRowPosStarts.forEachIndexed { i, expected ->
+                assertEquals(expected, t.findRowPositionStartIndexByRowIndex(i))
+            }
+        }
+        listOf(100, 10, 37, 1000, 10000).forEach { softWrapAt ->
+            val t = BigTextImpl(chunkSize = chunkSize).apply {
+                append("{\"a\":\"bcd<abc>ef}\"}\n\n<asd>\n\n")
+                setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            val expectedRowPosStarts = when (softWrapAt) {
+                10 -> listOf(0, 10, 20, 21, 27, 28)
+                else -> listOf(0, 20, 21, 27, 28)
+            }
+            expectedRowPosStarts.forEachIndexed { i, expected ->
+                assertEquals(expected, t.findRowPositionStartIndexByRowIndex(i))
+            }
+        }
+    }
+
     @BeforeTest
     fun beforeEach() {
         random = Random

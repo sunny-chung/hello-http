@@ -863,7 +863,12 @@ fun BigTextLineNumbersView(
         totalLines = layoutText?.numOfLines ?: 1,
         lineHeight = (rowHeight).toDp(),
 //        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
-        getLineOffset = { ( (layoutText?.findFirstRowIndexOfLine(it) ?: 0) * rowHeight - viewportTop).toDp() },
+        getLineOffset = {
+            ((layoutText?.findFirstRowIndexOfLine(it).also { r ->
+                log.v { "layoutText.findFirstRowIndexOfLine($it) = $r" }
+            }
+                ?: 0) * rowHeight - viewportTop).toDp()
+        },
         textStyle = textStyle,
         collapsedLinesState = collapsedLinesState,
         onCollapseLine = onCollapseLine,

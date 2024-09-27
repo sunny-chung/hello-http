@@ -20,7 +20,8 @@ open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTe
     var bufferIndex: Int = -1
     var bufferOffsetStart: Int = -1
     var bufferOffsetEndExclusive: Int = -1
-    var bufferNumLineBreaksInRange: Int = -1
+    @Deprecated("use renderNumLineBreaksInRange") var bufferNumLineBreaksInRange: Int = -1
+    var renderNumLineBreaksInRange: Int = -1
     lateinit var buffer: TextBuffer
     var bufferOwnership: BufferOwnership = BufferOwnership.Owned
 
@@ -65,6 +66,10 @@ open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTe
     override fun debugLabel(node: RedBlackTree<BigTextNodeValue>.Node): String =
 //        "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()} r $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth $isEndWithForceRowBreak '${buffer.subSequence(renderBufferStart, renderBufferEndExclusive).toString().replace("\n", "\\n")}'"
         "$leftStringLength [$bufferIndex: $bufferOffsetStart ..< $bufferOffsetEndExclusive] L ${node.length()} r $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth $isEndWithForceRowBreak"
+
+    protected fun CharSequence.quoteForMermaid(): String {
+        return toString().replace("\n", "\\n").replace("\"", "&quot;")
+    }
 
     companion object {
         private val RANDOM = Random(1000000)

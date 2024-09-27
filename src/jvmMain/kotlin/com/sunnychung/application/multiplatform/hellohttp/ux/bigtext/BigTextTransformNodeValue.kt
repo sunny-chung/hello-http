@@ -57,10 +57,10 @@ class BigTextTransformNodeValue : BigTextNodeValue() {
         append(" Tr [$transformedBufferStart ..< $transformedBufferEndExclusive]")
         append(" Ren left=$leftRenderLength curr=$currentRenderLength [$renderBufferStart ..< $renderBufferEndExclusive]")
         if (renderBufferStart in 0 until renderBufferEndExclusive) {
-            append(" '${buffer.subSequence(renderBufferStart, renderBufferEndExclusive)}'")
+            append(" '${buffer.subSequence(renderBufferStart, renderBufferEndExclusive).quoteForMermaid()}'")
         }
         append(" M $incrementalTransformOffsetMappingLength")
-        append(" row $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth")
+        append(" row $leftNumOfRowBreaks/$rowBreakOffsets lw $lastRowWidth $isEndWithForceRowBreak")
     }
 
 }

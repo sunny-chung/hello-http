@@ -38,6 +38,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
             it.bufferOffsetStart = bufferOffsetStart
             it.bufferOffsetEndExclusive = bufferOffsetEndExclusive
             it.bufferNumLineBreaksInRange = bufferNumLineBreaksInRange
+            it.renderNumLineBreaksInRange = renderNumLineBreaksInRange
             it.buffer = buffer // copy by ref
             it.bufferOwnership = BufferOwnership.Delegated
 
