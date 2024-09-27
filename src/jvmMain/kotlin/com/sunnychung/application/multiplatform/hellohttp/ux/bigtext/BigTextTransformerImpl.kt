@@ -322,6 +322,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
     }
 
     fun transformReplace(originalRange: IntRange, newText: String, offsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.Incremental) {
+        logT.d { "transformReplace($originalRange, $newText, $offsetMapping)" }
         deleteTransformIf(originalRange)
         transformDelete(originalRange)
         val incrementalTransformOffsetMappingLength = if (offsetMapping == BigTextTransformOffsetMapping.Incremental) {

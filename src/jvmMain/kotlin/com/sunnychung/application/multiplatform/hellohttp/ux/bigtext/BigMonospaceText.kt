@@ -75,6 +75,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import co.touchlab.kermit.Severity
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.extension.toTextInput
@@ -277,7 +278,12 @@ private fun CoreBigMonospaceText(
 
     val transformedText: BigTextTransformed = remember(text, textTransformation) {
         log.d { "CoreBigMonospaceText recreate BigTextTransformed" }
-        BigTextTransformerImpl(text)
+        BigTextTransformerImpl(text).also {
+//            log.d { "transformedText = |${it.buildString()}|" }
+            if (log.config.minSeverity <= Severity.Debug) {
+                it.printDebug("transformedText")
+            }
+        }
     }
 
     fun fireOnLayout() {
@@ -304,6 +310,10 @@ private fun CoreBigMonospaceText(
         }
         transformedText.setLayouter(textLayouter)
         transformedText.setContentWidth(contentWidth)
+
+        if (log.config.minSeverity <= Severity.Verbose) {
+            (transformedText as BigTextImpl).printDebug("after init layout")
+        }
 
         LaunchedEffect(Unit) {
             fireOnLayout()
@@ -356,6 +366,10 @@ private fun CoreBigMonospaceText(
         if (textTransformation != null) {
             textTransformation.initialize(text, transformedText).also {
                 log.d { "CoreBigMonospaceText init transformedState ${it.hashCode()}" }
+//                (transformedText as BigTextImpl).layout() // FIXME remove
+                if (log.config.minSeverity <= Severity.Verbose) {
+                    (transformedText as BigTextImpl).printDebug("init transformedState")
+                }
             }
         } else {
             null
@@ -440,6 +454,11 @@ private fun CoreBigMonospaceText(
         )
     }
 
+    fun updateViewState() {
+        viewState.lastVisibleRow = minOf(viewState.lastVisibleRow, transformedText.lastRowIndex)
+        log.d { "lastVisibleRow = ${viewState.lastVisibleRow}, lastRowIndex = ${transformedText.lastRowIndex}" }
+    }
+
     fun onValuePreChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
         if (eventType == BigTextChangeEventType.Delete) {
             viewState.version = Random.nextLong()
@@ -455,7 +474,7 @@ private fun CoreBigMonospaceText(
     }
 
     fun onValuePostChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
-        viewState.lastVisibleRow = minOf(viewState.lastVisibleRow, transformedText.lastRowIndex)
+        updateViewState()
 
         viewState.version = Random.nextLong()
         val event = generateChangeEvent(eventType, changeStartIndex, changeEndExclusiveIndex)
@@ -481,6 +500,11 @@ private fun CoreBigMonospaceText(
         onValuePreChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
         text.insertAt(insertPos, textInput)
         onValuePostChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
+//        (transformedText as BigTextImpl).layout() // FIXME remove
+        updateViewState()
+        if (log.config.minSeverity <= Severity.Debug) {
+            (transformedText as BigTextImpl).printDebug("transformedText onType '${textInput.replace("\n", "\\n")}'")
+        }
         // update cursor after invoking listeners, because a transformation or change may take place
         viewState.cursorIndex = minOf(text.length, insertPos + textInput.length)
         viewState.updateTransformedCursorIndexByOriginal(transformedText)
@@ -496,6 +520,11 @@ private fun CoreBigMonospaceText(
                     onValuePreChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
                     text.delete(cursor, cursor + 1)
                     onValuePostChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
+//                    (transformedText as BigTextImpl).layout() // FIXME remove
+                    updateViewState()
+                    if (log.config.minSeverity <= Severity.Debug) {
+                        (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
+                    }
                     return true
                 }
             }
@@ -504,6 +533,11 @@ private fun CoreBigMonospaceText(
                     onValuePreChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
                     text.delete(cursor - 1, cursor)
                     onValuePostChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
+//                    (transformedText as BigTextImpl).layout() // FIXME remove
+                    updateViewState()
+                    if (log.config.minSeverity <= Severity.Debug) {
+                        (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
+                    }
                     // update cursor after invoking listeners, because a transformation or change may take place
                     viewState.cursorIndex = maxOf(0, cursor - 1)
                     viewState.updateTransformedCursorIndexByOriginal(transformedText)
@@ -517,6 +551,18 @@ private fun CoreBigMonospaceText(
     }
 
     val tv = remember { TextFieldValue() } // this value is not used
+
+    LaunchedEffect(transformedText) {
+        if (log.config.minSeverity <= Severity.Debug) {
+            (0..text.length).forEach {
+                log.d { "findTransformedPositionByOriginalPosition($it) = ${transformedText.findTransformedPositionByOriginalPosition(it)}" }
+            }
+
+            (0..transformedText.length).forEach {
+                log.d { "findOriginalPositionByTransformedPosition($it) = ${transformedText.findOriginalPositionByTransformedPosition(it)}" }
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -536,6 +582,10 @@ private fun CoreBigMonospaceText(
                     draggedPoint = it
                     if (!isHoldingShiftKey) {
                         val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y, mode = ResolveCharPositionMode.Selection)
+                            .let {
+                                viewState.roundedTransformedCursorIndex(it, CursorAdjustDirection.Bidirectional, transformedText, it, true)
+                            }
+                            .also { log.d { "onDragStart selected=$it" } }
                         viewState.transformedSelection = selectedCharIndex..selectedCharIndex
                         viewState.updateSelectionByTransformedSelection(transformedText)
                         viewState.transformedSelectionStart = selectedCharIndex
@@ -546,8 +596,15 @@ private fun CoreBigMonospaceText(
                 onDrag = { // onDragStart happens before onDrag
                     log.v { "onDrag ${it.x} ${it.y}" }
                     draggedPoint += it
-                    val selectedCharIndex = getTransformedCharIndex(x = draggedPoint.x, y = draggedPoint.y, mode = ResolveCharPositionMode.Selection)
                     val selectionStart = viewState.transformedSelectionStart
+                    val selectedCharIndex = getTransformedCharIndex(x = draggedPoint.x, y = draggedPoint.y, mode = ResolveCharPositionMode.Selection)
+                        .let {
+                            if (it >= selectionStart) {
+                                viewState.roundedTransformedCursorIndex(it, CursorAdjustDirection.Forward, transformedText, it, true)
+                            } else {
+                                viewState.roundedTransformedCursorIndex(it, CursorAdjustDirection.Backward, transformedText, it, true)
+                            }
+                        }
                     selectionEnd = selectedCharIndex
                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
                     viewState.updateSelectionByTransformedSelection(transformedText)
@@ -566,6 +623,9 @@ private fun CoreBigMonospaceText(
                                 if (isHoldingShiftKey) {
                                     val selectionStart = viewState.transformedSelectionStart
                                     selectionEnd = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Selection)
+                                        .let {
+                                            viewState.roundedTransformedCursorIndex(it, CursorAdjustDirection.Bidirectional, transformedText, it, true)
+                                        }
                                     log.v { "selectionEnd => $selectionEnd" }
                                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
                                     viewState.updateSelectionByTransformedSelection(transformedText)
@@ -575,6 +635,7 @@ private fun CoreBigMonospaceText(
                                 }
 
                                 viewState.transformedCursorIndex = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Cursor)
+                                viewState.roundTransformedCursorIndex(CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
                                 viewState.updateCursorIndexByTransformed(transformedText)
                                 if (!isHoldingShiftKey) {
                                     // for selection, max possible index is 1 less than that for cursor
@@ -694,6 +755,11 @@ private fun CoreBigMonospaceText(
                             viewState.transformedSelection = IntRange.EMPTY // TODO handle Shift key
                             if (viewState.transformedCursorIndex + delta in 0 .. transformedText.length) {
                                 viewState.transformedCursorIndex += delta
+                                if (delta > 0) {
+                                    viewState.roundTransformedCursorIndex(CursorAdjustDirection.Forward, transformedText, viewState.transformedCursorIndex - delta, false)
+                                } else {
+                                    viewState.roundTransformedCursorIndex(CursorAdjustDirection.Backward, transformedText, viewState.transformedCursorIndex, true)
+                                }
                                 viewState.updateCursorIndexByTransformed(transformedText)
                                 viewState.transformedSelectionStart = viewState.transformedCursorIndex
                                 log.v { "set cursor pos LR => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
@@ -724,6 +790,7 @@ private fun CoreBigMonospaceText(
                                     }
                                 }
                             }
+                            viewState.roundTransformedCursorIndex(CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
                             viewState.updateCursorIndexByTransformed(transformedText)
                             viewState.transformedSelectionStart = viewState.transformedCursorIndex
                             true
@@ -895,6 +962,51 @@ class BigTextViewState {
             log.d { "updateTransformedCursorIndexByOriginal = $it" }
         }
     }
+
+    fun roundTransformedCursorIndex(direction: CursorAdjustDirection, transformedText: BigTextTransformed, compareWithPosition: Int, isOnlyWithinBlock: Boolean) {
+        transformedCursorIndex = roundedTransformedCursorIndex(transformedCursorIndex, direction, transformedText, compareWithPosition, isOnlyWithinBlock).also {
+            log.d { "roundedTransformedCursorIndex($transformedCursorIndex, $direction, ..., $compareWithPosition) = $it" }
+        }
+    }
+
+    fun roundedTransformedCursorIndex(transformedCursorIndex: Int, direction: CursorAdjustDirection, transformedText: BigTextTransformed, compareWithPosition: Int, isOnlyWithinBlock: Boolean): Int {
+        val possibleRange = 0 .. transformedText.length
+        val previousMappedPosition = transformedText.findOriginalPositionByTransformedPosition(compareWithPosition)
+        when (direction) {
+            CursorAdjustDirection.Forward, CursorAdjustDirection.Backward -> {
+                val step = if (direction == CursorAdjustDirection.Forward) 1 else -1
+                var delta = 0
+                while (transformedCursorIndex + delta in possibleRange) {
+                    if (transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex + delta) != previousMappedPosition) {
+                        return transformedCursorIndex + delta + if (isOnlyWithinBlock) {
+                            // for backward, we find the last index that is same as `previousMappedPosition`
+                            - step
+                        } else {
+                            // for forward, we find the first index that is different from `previousMappedPosition`
+                            0
+                        }
+                    }
+                    delta += step
+                }
+                // (transformedCursorIndex + delta) is out of range
+                return transformedCursorIndex + delta - step
+            }
+            CursorAdjustDirection.Bidirectional -> {
+                var delta = 0
+                while ((transformedCursorIndex + delta in possibleRange || transformedCursorIndex - delta in possibleRange)) {
+                    if (transformedCursorIndex + delta in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex + delta) != previousMappedPosition) {
+                        return transformedCursorIndex + delta
+                    }
+                    if (transformedCursorIndex - delta in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex - delta) != previousMappedPosition) {
+                        // for backward, we find the last index that is same as `previousMappedPosition`
+                        return transformedCursorIndex - delta + 1
+                    }
+                    ++delta
+                }
+                return transformedCursorIndex + delta - 1
+            }
+        }
+    }
 }
 
 private enum class ResolveCharPositionMode {
@@ -903,4 +1015,8 @@ private enum class ResolveCharPositionMode {
 
 enum class TextFBDirection {
     Forward, Backward
+}
+
+enum class CursorAdjustDirection {
+    Forward, Backward, Bidirectional
 }
