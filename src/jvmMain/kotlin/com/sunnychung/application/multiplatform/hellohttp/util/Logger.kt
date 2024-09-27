@@ -13,6 +13,11 @@ val log = Logger(object : MutableLoggerConfig {
 }, tag = "Hello")
 val llog = log
 
+val logR = Logger(object : MutableLoggerConfig {
+    override var logWriterList: List<LogWriter> = listOf(JvmLogger())
+    override var minSeverity: Severity = Severity.Info
+}, tag = "Hello.Repository")
+
 class JvmLogger : LogWriter() {
     override fun log(severity: Severity, message: String, tag: String, throwable: Throwable?) {
         val str = "[${KDateTimeFormat.FULL.format(KZonedInstant.nowAtLocalZoneOffset())}] ${severity.name.uppercase()} [${Thread.currentThread().name}] ($tag) -- $message"

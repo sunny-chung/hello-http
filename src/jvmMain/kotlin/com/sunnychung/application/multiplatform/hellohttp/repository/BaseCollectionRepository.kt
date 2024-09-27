@@ -5,7 +5,7 @@ import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.Document
 import com.sunnychung.application.multiplatform.hellohttp.document.DocumentIdentifier
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
-import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.logR
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kotlite.extension.fullClassName
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +43,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.absoluteValue
 import kotlin.random.Random
+
+private val log = logR
 
 sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>(private val serializer: KSerializer<T>) {
 
