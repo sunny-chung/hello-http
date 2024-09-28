@@ -994,12 +994,19 @@ class BigTextViewState {
             CursorAdjustDirection.Bidirectional -> {
                 var delta = 0
                 while ((transformedCursorIndex + delta in possibleRange || transformedCursorIndex - delta in possibleRange)) {
-                    if (transformedCursorIndex + delta in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex + delta) != previousMappedPosition) {
-                        return transformedCursorIndex + delta
+                    if (transformedCursorIndex + delta + 1 in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex + delta + 1) != previousMappedPosition) {
+                        return transformedCursorIndex + delta + if (transformedCursorIndex + delta - 1 in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex + delta - 1) == previousMappedPosition) {
+                            // position (transformedCursorIndex + delta) is a block,
+                            // while position (transformedCursorIndex + delta + 1) is not a block.
+                            // so return (transformedCursorIndex + delta + 1)
+                            1
+                        } else {
+                            0
+                        }
                     }
-                    if (transformedCursorIndex - delta in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex - delta) != previousMappedPosition) {
+                    if (transformedCursorIndex - delta - 1 in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex - delta - 1) != previousMappedPosition) {
                         // for backward, we find the last index that is same as `previousMappedPosition`
-                        return transformedCursorIndex - delta + 1
+                        return transformedCursorIndex - delta //+ 1
                     }
                     ++delta
                 }
