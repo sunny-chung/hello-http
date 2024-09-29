@@ -15,7 +15,12 @@ val logT = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Transform")
 
-class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(chunkSize = delegate.chunkSize), BigTextTransformed {
+class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
+    chunkSize = delegate.chunkSize,
+    textBufferFactory = delegate.textBufferFactory,
+    charSequenceBuilderFactory = delegate.charSequenceBuilderFactory,
+    charSequenceFactory = delegate.charSequenceFactory,
+), BigTextTransformed {
 
     private var hasReachedExtensiveSearch: Boolean = false
 
@@ -118,14 +123,14 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         }
     }
 
-    private fun transformInsertChunkAtPosition(position: Int, chunkedString: String, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int) {
+    private fun transformInsertChunkAtPosition(position: Int, chunkedString: CharSequence, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int) {
         logT.d { "transformInsertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
         var buffer = if (buffers.isNotEmpty()) {
             buffers.last().takeIf { it.length + chunkedString.length <= chunkSize }
         } else null
         if (buffer == null) {
-            buffer = TextBuffer(chunkSize)
+            buffer = textBufferFactory(chunkSize)
             buffers += buffer
         }
         require(buffer.length + chunkedString.length <= chunkSize)
@@ -146,11 +151,11 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         }
     }
 
-    fun transformInsert(pos: Int, text: String): Int {
+    fun transformInsert(pos: Int, text: CharSequence): Int {
         return transformInsert(pos, text, BigTextTransformOffsetMapping.WholeBlock, 0)
     }
 
-    private fun transformInsert(pos: Int, text: String, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int): Int {
+    private fun transformInsert(pos: Int, text: CharSequence, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int): Int {
         logT.d { "transformInsert($pos, \"$text\")" }
         require(pos in 0 .. originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
@@ -171,7 +176,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
             val append = minOf(available, start)
             start -= append
             val incrementalOffsetLength = maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start))
-            transformInsertChunkAtPosition(pos, text.substring(start until start + append), offsetMapping, incrementalOffsetLength)
+            transformInsertChunkAtPosition(pos, text.subSequence(start until start + append), offsetMapping, incrementalOffsetLength)
             last = buffers.last().length
         }
         val renderPositionStart = findRenderPositionStart(tree.findNodeByCharIndex(pos)!!)
@@ -180,7 +185,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         return text.length
     }
 
-    fun transformInsertAtOriginalEnd(text: String): Int = transformInsert(originalLength, text)
+    fun transformInsertAtOriginalEnd(text: CharSequence): Int = transformInsert(originalLength, text)
 
     fun deleteOriginal(originalRange: IntRange) {
         require(0 <= originalRange.start) { "Invalid start" }
@@ -321,7 +326,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         return - originalRange.length
     }
 
-    fun transformReplace(originalRange: IntRange, newText: String, offsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.Incremental) {
+    fun transformReplace(originalRange: IntRange, newText: CharSequence, offsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.Incremental) {
         logT.d { "transformReplace($originalRange, $newText, $offsetMapping)" }
         deleteTransformIf(originalRange)
         transformDelete(originalRange)
@@ -519,15 +524,15 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(c
         return nodeStart + minOf(node.value.bufferLength, indexFromNodeStart)
     }
 
-    override fun insertAt(pos: Int, text: String): Int = transformInsert(pos, text)
+    override fun insertAt(pos: Int, text: CharSequence): Int = transformInsert(pos, text)
 
-    override fun append(text: String): Int = transformInsertAtOriginalEnd(text)
+    override fun append(text: CharSequence): Int = transformInsertAtOriginalEnd(text)
 
     override fun delete(start: Int, endExclusive: Int): Int = transformDelete(start until endExclusive)
 
-    override fun replace(range: IntRange, text: String) = transformReplace(range, text)
+    override fun replace(range: IntRange, text: CharSequence) = transformReplace(range, text)
 
-    override fun replace(range: IntRange, text: String, offsetMapping: BigTextTransformOffsetMapping) = transformReplace(range, text, offsetMapping)
+    override fun replace(range: IntRange, text: CharSequence, offsetMapping: BigTextTransformOffsetMapping) = transformReplace(range, text, offsetMapping)
 
     override fun restoreToOriginal(range: IntRange) {
         val renderPositionAtOriginalStart = findTransformedPositionByOriginalPosition(range.start)

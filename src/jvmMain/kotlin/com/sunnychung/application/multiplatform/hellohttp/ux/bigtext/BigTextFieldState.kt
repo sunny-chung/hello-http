@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.AnnotatedString
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -23,7 +24,37 @@ fun rememberBigTextFieldState(initialValue: String = ""): Pair<MutableState<Stri
     return secondCacheKey to state
 }
 
-private fun String.abbr(): String {
+@Composable
+fun rememberAnnotatedBigTextFieldState(initialValue: AnnotatedString = AnnotatedString("")): Pair<MutableState<AnnotatedString>, MutableState<BigTextFieldState>> {
+    val secondCacheKey = rememberSaveable { mutableStateOf(initialValue) }
+    val state = rememberSaveable {
+        log.d { "cache miss 1" }
+        mutableStateOf(BigTextFieldState(BigText.createFromLargeAnnotatedString(initialValue), BigTextViewState()))
+    }
+    if (initialValue !== secondCacheKey.value) {
+        log.d { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
+        secondCacheKey.value = initialValue
+        state.value = BigTextFieldState(BigText.createFromLargeAnnotatedString(initialValue), BigTextViewState())
+    }
+    return secondCacheKey to state
+}
+
+@Composable
+fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableState<String>, MutableState<BigTextFieldState>> {
+    val secondCacheKey = rememberSaveable { mutableStateOf(initialValue) }
+    val state = rememberSaveable {
+        log.d { "cache miss 1" }
+        mutableStateOf(BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState()))
+    }
+    if (initialValue !== secondCacheKey.value) {
+        log.d { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
+        secondCacheKey.value = initialValue
+        state.value = BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState())
+    }
+    return secondCacheKey to state
+}
+
+private fun CharSequence.abbr(): CharSequence {
     return if (this.length > 20) {
         substring(0 .. 19)
     } else {

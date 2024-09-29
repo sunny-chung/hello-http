@@ -9,26 +9,28 @@ interface BigText {
 
     fun buildString(): String
 
-    fun substring(start: Int, endExclusive: Int): String
+    fun buildCharSequence(): CharSequence
 
-    fun substring(range: IntRange): String = substring(range.start, range.endInclusive + 1)
+    fun substring(start: Int, endExclusive: Int): CharSequence
+
+    fun substring(range: IntRange): CharSequence = substring(range.start, range.endInclusive + 1)
 
     fun subSequence(startIndex: Int, endIndex: Int) = substring(startIndex, endIndex)
 
-    fun append(text: String): Int
+    fun append(text: CharSequence): Int
 
-    fun insertAt(pos: Int, text: String): Int
+    fun insertAt(pos: Int, text: CharSequence): Int
 
     fun delete(start: Int, endExclusive: Int): Int
 
     fun delete(range: IntRange): Int = delete(range.start, range.endInclusive + 1)
 
-    fun replace(start: Int, endExclusive: Int, text: String) {
+    fun replace(start: Int, endExclusive: Int, text: CharSequence) {
         delete(start, endExclusive)
         insertAt(start, text)
     }
 
-    fun replace(range: IntRange, text: String) {
+    fun replace(range: IntRange, text: CharSequence) {
         delete(range)
         insertAt(range.start, text)
     }

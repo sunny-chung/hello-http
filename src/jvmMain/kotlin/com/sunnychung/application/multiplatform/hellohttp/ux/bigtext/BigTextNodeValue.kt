@@ -76,9 +76,7 @@ open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTe
     }
 }
 
-class TextBuffer(val size: Int) {
-    private val buffer = StringBuilder(size)
-
+abstract class TextBuffer {
     /**
      * Line break positions in the domain of character indices of this buffer.
      */
@@ -86,12 +84,11 @@ class TextBuffer(val size: Int) {
 //    var lineOffsetStarts: SortedSet<Int> = sortedSetOf()
 //    var rowOffsetStarts: List<Int> = emptyList()
 
-    val length: Int
-        get() = buffer.length
+    abstract val length: Int
 
-    fun append(text: String): IntRange {
-        val start = buffer.length
-        buffer.append(text)
+    fun append(text: CharSequence): IntRange {
+        val start = length
+        bufferAppend(text)
 //        text.forEachIndexed { index, c ->
 //            if (c == '\n') {
 //                lineOffsetStarts += start + index
@@ -103,16 +100,29 @@ class TextBuffer(val size: Int) {
         return start until start + text.length
     }
 
+    abstract fun bufferAppend(text: CharSequence)
+
     override fun toString(): String {
-        return buffer.toString()
+        return subSequence(0, length).toString()
     }
 
-    fun subSequence(start: Int, endExclusive: Int): CharSequence {
+    open fun subSequence(start: Int, endExclusive: Int): CharSequence {
         if (start >= endExclusive) {
             return ""
         }
-        return buffer.subSequence(start, endExclusive)
+        return bufferSubSequence(start, endExclusive)
     }
+
+    open fun substring(start: Int, endExclusive: Int): String {
+        if (start >= endExclusive) {
+            return ""
+        }
+        return bufferSubstring(start, endExclusive)
+    }
+
+    abstract fun bufferSubstring(start: Int, endExclusive: Int): String
+
+    abstract fun bufferSubSequence(start: Int, endExclusive: Int): CharSequence
 }
 
 enum class BufferOwnership {

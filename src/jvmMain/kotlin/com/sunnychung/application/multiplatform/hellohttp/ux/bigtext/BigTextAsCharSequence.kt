@@ -9,7 +9,7 @@ class BigTextAsCharSequence(internal val bigText: BigTextImpl) : CharSequence {
     }
 
     override fun subSequence(startIndex: Int, endIndex: Int): CharSequence {
-        return bigText.substring(startIndex, endIndex)
+        return bigText.subSequence(startIndex, endIndex)
     }
 
     override fun toString(): String = bigText.buildString()

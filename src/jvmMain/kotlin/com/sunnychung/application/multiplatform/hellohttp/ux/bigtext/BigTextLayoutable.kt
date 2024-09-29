@@ -20,7 +20,7 @@ interface BigTextLayoutable {
 
     fun findLineIndexByRowIndex(rowIndex: Int): Int
 
-    fun findRowString(rowIndex: Int): String
+    fun findRowString(rowIndex: Int): CharSequence
 
     fun findRowIndexByPosition(position: Int): Int
 

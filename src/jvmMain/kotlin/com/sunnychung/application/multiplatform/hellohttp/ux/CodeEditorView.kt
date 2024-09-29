@@ -67,6 +67,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberAnnotatedBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
@@ -79,6 +80,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Func
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -455,7 +458,7 @@ fun CodeEditorView(
 //                    modifier = Modifier.fillMaxHeight(),
 //                )
 
-                val (secondCacheKey, bigTextFieldState) = rememberBigTextFieldState(initialValue = textValue.text)
+                val (secondCacheKey, bigTextFieldState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
                 val bigTextValue = bigTextFieldState.value.text
                 var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
 
@@ -570,9 +573,9 @@ fun CodeEditorView(
                         .onEach {
                             log.d { "bigTextFieldState change ${it.changeId}" }
                             onTextChange?.let { onTextChange ->
-                                val string = it.bigText.buildString()
-                                onTextChange(string)
-                                secondCacheKey.value = string
+                                val string = it.bigText.buildCharSequence() as AnnotatedString
+                                onTextChange(string.text)
+                                secondCacheKey.value = string.text
                             }
                             bigTextValueId = it.changeId
                         }
@@ -581,7 +584,12 @@ fun CodeEditorView(
                     BigMonospaceTextField(
                         textFieldState = bigTextFieldState.value,
                         visualTransformation = visualTransformationToUse,
-                        textTransformation = remember { EnvironmentVariableIncrementalTransformation() }, // TODO replace this testing transformation
+                        textTransformation = remember {
+                            MultipleIncrementalTransformation(listOf(
+                                JsonSyntaxHighlightIncrementalTransformation(themeColours),
+                                EnvironmentVariableIncrementalTransformation()
+                            ))
+                        }, // TODO replace this testing transformation
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
 //                        textStyle = LocalTextStyle.current.copy(
 //                            fontFamily = FontFamily.Monospace,

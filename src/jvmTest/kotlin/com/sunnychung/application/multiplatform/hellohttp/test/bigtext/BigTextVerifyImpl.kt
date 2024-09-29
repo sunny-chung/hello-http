@@ -55,14 +55,18 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         return r
     }
 
-    override fun substring(start: Int, endExclusive: Int): String {
+    override fun buildCharSequence(): CharSequence {
+        return buildString()
+    }
+
+    override fun substring(start: Int, endExclusive: Int): CharSequence {
         val r = bigTextImpl.substring(start, endExclusive)
         val tr = stringImpl.substring(start, endExclusive)
         assertEquals(tr, r, "substring mismatch")
         return r
     }
 
-    override fun append(text: String): Int {
+    override fun append(text: CharSequence): Int {
         println("append ${text.length}")
         val r = bigTextImpl.append(text)
         if (isTransform) {
@@ -75,7 +79,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         return r
     }
 
-    override fun insertAt(pos: Int, text: String): Int {
+    override fun insertAt(pos: Int, text: CharSequence): Int {
         println("insert $pos, ${text.length}")
         val r = bigTextImpl.insertAt(pos, text)
         if (isTransform) {
@@ -111,11 +115,11 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         return r
     }
 
-    override fun replace(range: IntRange, text: String) {
+    override fun replace(range: IntRange, text: CharSequence) {
         replace(range, text, BigTextTransformOffsetMapping.Incremental)
     }
 
-    fun replace(range: IntRange, text: String, offsetMapping: BigTextTransformOffsetMapping) {
+    fun replace(range: IntRange, text: CharSequence, offsetMapping: BigTextTransformOffsetMapping) {
         println("replace $range -> ${text.length}")
         var r: Int = 0
         printDebugIfError {

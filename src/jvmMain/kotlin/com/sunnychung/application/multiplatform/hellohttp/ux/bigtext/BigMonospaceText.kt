@@ -80,10 +80,13 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.extension.toTextInput
 import com.sunnychung.application.multiplatform.hellohttp.util.ComposeUnicodeCharMeasurer
+import com.sunnychung.application.multiplatform.hellohttp.util.annotatedString
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.string
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -280,7 +283,7 @@ private fun CoreBigMonospaceText(
         log.d { "CoreBigMonospaceText recreate BigTextTransformed" }
         BigTextTransformerImpl(text).also {
 //            log.d { "transformedText = |${it.buildString()}|" }
-            if (log.config.minSeverity <= Severity.Debug) {
+            if (log.config.minSeverity <= Severity.Verbose) {
                 it.printDebug("transformedText")
             }
         }
@@ -305,11 +308,16 @@ private fun CoreBigMonospaceText(
 //        text.setLayouter(textLayouter)
 //        text.setContentWidth(contentWidth)
 
+        val startInstant = KInstant.now()
+
         transformedText.onLayoutCallback = {
             fireOnLayout()
         }
         transformedText.setLayouter(textLayouter)
         transformedText.setContentWidth(contentWidth)
+
+        val endInstant = KInstant.now()
+        log.d { "BigText layout took ${endInstant - startInstant}" }
 
         if (log.config.minSeverity <= Severity.Verbose) {
             (transformedText as BigTextImpl).printDebug("after init layout")
@@ -364,8 +372,10 @@ private fun CoreBigMonospaceText(
 
     val transformedState = remember(text, textTransformation) {
         if (textTransformation != null) {
+            val startInstant = KInstant.now()
             textTransformation.initialize(text, transformedText).also {
-                log.d { "CoreBigMonospaceText init transformedState ${it.hashCode()}" }
+                val endInstant = KInstant.now()
+                log.d { "CoreBigMonospaceText init transformedState ${it.hashCode()} took ${endInstant - startInstant}" }
 //                (transformedText as BigTextImpl).layout() // FIXME remove
                 if (log.config.minSeverity <= Severity.Verbose) {
                     (transformedText as BigTextImpl).printDebug("init transformedState")
@@ -434,7 +444,7 @@ private fun CoreBigMonospaceText(
     fun getTransformedStringWidth(start: Int, endExclusive: Int): Float {
         return (start .. endExclusive - 1)
             .map {
-                val char = transformedText.substring(it..it)
+                val char = transformedText.substring(it..it).string()
                 if (char == "\n") { // selecting \n shows a narrow width
                     textLayouter.charMeasurer.findCharWidth(" ")
                 } else {
@@ -502,7 +512,7 @@ private fun CoreBigMonospaceText(
         onValuePostChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
 //        (transformedText as BigTextImpl).layout() // FIXME remove
         updateViewState()
-        if (log.config.minSeverity <= Severity.Debug) {
+        if (log.config.minSeverity <= Severity.Verbose) {
             (transformedText as BigTextImpl).printDebug("transformedText onType '${textInput.replace("\n", "\\n")}'")
         }
         // update cursor after invoking listeners, because a transformation or change may take place
@@ -522,7 +532,7 @@ private fun CoreBigMonospaceText(
                     onValuePostChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
 //                    (transformedText as BigTextImpl).layout() // FIXME remove
                     updateViewState()
-                    if (log.config.minSeverity <= Severity.Debug) {
+                    if (log.config.minSeverity <= Severity.Verbose) {
                         (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
                     }
                     return true
@@ -535,7 +545,7 @@ private fun CoreBigMonospaceText(
                     onValuePostChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
 //                    (transformedText as BigTextImpl).layout() // FIXME remove
                     updateViewState()
-                    if (log.config.minSeverity <= Severity.Debug) {
+                    if (log.config.minSeverity <= Severity.Verbose) {
                         (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
                     }
                     // update cursor after invoking listeners, because a transformation or change may take place
@@ -553,13 +563,13 @@ private fun CoreBigMonospaceText(
     val tv = remember { TextFieldValue() } // this value is not used
 
     LaunchedEffect(transformedText) {
-        if (log.config.minSeverity <= Severity.Debug) {
+        if (log.config.minSeverity <= Severity.Verbose) {
             (0..text.length).forEach {
-                log.d { "findTransformedPositionByOriginalPosition($it) = ${transformedText.findTransformedPositionByOriginalPosition(it)}" }
+                log.v { "findTransformedPositionByOriginalPosition($it) = ${transformedText.findTransformedPositionByOriginalPosition(it)}" }
             }
 
             (0..transformedText.length).forEach {
-                log.d { "findOriginalPositionByTransformedPosition($it) = ${transformedText.findOriginalPositionByTransformedPosition(it)}" }
+                log.v { "findOriginalPositionByTransformedPosition($it) = ${transformedText.findOriginalPositionByTransformedPosition(it)}" }
             }
         }
     }
@@ -699,7 +709,7 @@ private fun CoreBigMonospaceText(
                         val textToCopy = text.substring(
                             viewState.selection.first.. viewState.selection.last
                         )
-                        clipboardManager.setText(AnnotatedString(textToCopy))
+                        clipboardManager.setText(textToCopy.annotatedString())
                         true
                     }
                     isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.V -> {
@@ -833,6 +843,8 @@ private fun CoreBigMonospaceText(
             viewState.firstVisibleRow = firstRowIndex
             viewState.lastVisibleRow = lastRowIndex
 
+            val startInstant = KInstant.now()
+
             with(density) {
                 (firstRowIndex..lastRowIndex).forEach { i ->
                     val startIndex = transformedText.findRowPositionStartIndexByRowIndex(i)
@@ -868,7 +880,7 @@ private fun CoreBigMonospaceText(
                     )
                     log.v { "text R$i TT $startIndex ..< $endIndex: $rowText" }
                     BasicText(
-                        text = rowText,
+                        text = rowText.annotatedString(),
                         style = textStyle,
                         maxLines = 1,
                         softWrap = false,
@@ -877,7 +889,7 @@ private fun CoreBigMonospaceText(
                     if (isEditable && isFocused && viewState.transformedCursorIndex in startIndex .. cursorDisplayRangeEndIndex) {
                         var x = 0f
                         (startIndex + 1 .. viewState.transformedCursorIndex).forEach {
-                            x += textLayouter.charMeasurer.findCharWidth(transformedText.substring(it - 1.. it - 1))
+                            x += textLayouter.charMeasurer.findCharWidth(transformedText.substring(it - 1.. it - 1).string())
                         }
                         BigTextFieldCursor(
                             lineHeight = lineHeight.toDp(),
@@ -889,6 +901,9 @@ private fun CoreBigMonospaceText(
                     }
                 }
             }
+
+            val endInstant = KInstant.now()
+            log.d { "Declare BigText content for render took ${endInstant - startInstant}" }
         }
     }
 }

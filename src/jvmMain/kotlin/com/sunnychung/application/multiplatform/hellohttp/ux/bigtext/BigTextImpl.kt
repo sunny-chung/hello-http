@@ -36,7 +36,12 @@ internal var isD = false
 
 private const val EPS = 1e-4f
 
-open class BigTextImpl : BigText, BigTextLayoutable {
+open class BigTextImpl(
+    val chunkSize: Int = 2 * 1024 * 1024, // 2 MB
+    val textBufferFactory: ((capacity: Int) -> TextBuffer) = { StringTextBuffer(it) },
+    val charSequenceBuilderFactory: ((capacity: Int) -> Appendable) = { StringBuilder(it) },
+    val charSequenceFactory: ((Appendable) -> CharSequence) = { it: Appendable -> it.toString() },
+) : BigText, BigTextLayoutable {
     open val tree: LengthTree<BigTextNodeValue> = LengthTree<BigTextNodeValue>(
         object : RedBlackTreeComputations<BigTextNodeValue> {
             override fun recomputeFromLeaf(it: RedBlackTree<BigTextNodeValue>.Node) = recomputeAggregatedValues(it)
@@ -46,8 +51,6 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         }
     )
     val buffers = mutableListOf<TextBuffer>()
-
-    val chunkSize: Int
 
     var layouter: TextLayouter? = null
         @JvmName("_setLayouter")
@@ -59,13 +62,8 @@ open class BigTextImpl : BigText, BigTextLayoutable {
 
     internal var changeHook: BigTextChangeHook? = null
 
-    constructor() {
-        chunkSize = 2 * 1024 * 1024 // 2 MB
-    }
-
-    constructor(chunkSize: Int) {
+    init {
         require(chunkSize > 0) { "chunkSize must be positive" }
-        this.chunkSize = chunkSize
     }
 
     fun RedBlackTree2<BigTextNodeValue>.findNodeByLineBreaks(index: Int): Pair<RedBlackTree<BigTextNodeValue>.Node, Int>? {
@@ -339,7 +337,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         return BigTextNodeValue()
     }
 
-    private fun insertChunkAtPosition(position: Int, chunkedString: String) {
+    private fun insertChunkAtPosition(position: Int, chunkedString: CharSequence) {
         log.d { "insertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
 //        if (position == 64) {
@@ -349,7 +347,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
             buffers.last().takeIf { it.length + chunkedString.length <= chunkSize }
         } else null
         if (buffer == null) {
-            buffer = TextBuffer(chunkSize)
+            buffer = textBufferFactory(chunkSize)
             buffers += buffer
         }
         require(buffer.length + chunkedString.length <= chunkSize)
@@ -541,7 +539,15 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         }
     }
 
-    override fun substring(start: Int, endExclusive: Int): String { // O(lg L + (e - s))
+    override fun buildCharSequence(): CharSequence {
+        val builder = charSequenceBuilderFactory(length)
+        tree.forEach {
+            builder.append(it.buffer.subSequence(it.renderBufferStart, it.renderBufferEndExclusive))
+        }
+        return charSequenceFactory(builder)
+    }
+
+    override fun substring(start: Int, endExclusive: Int): CharSequence { // O(lg L + (e - s))
         require(start <= endExclusive) { "start should be <= endExclusive" }
         require(0 <= start) { "Invalid start" }
         require(endExclusive <= length) { "endExclusive $endExclusive is out of bound. length = $length" }
@@ -550,7 +556,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
             return ""
         }
 
-        val result = StringBuilder(endExclusive - start)
+        val result = charSequenceBuilderFactory(endExclusive - start)
         var node = tree.findNodeByRenderCharIndex(start) ?: throw IllegalStateException("Cannot find string node for position $start")
         var nodeStartPos = findRenderPositionStart(node)
         var numRemainCharsToCopy = endExclusive - start
@@ -572,10 +578,10 @@ open class BigTextImpl : BigText, BigTextLayoutable {
             }
         }
 
-        return result.toString()
+        return charSequenceFactory(result)
     }
 
-    fun findLineString(lineIndex: Int): String {
+    fun findLineString(lineIndex: Int): CharSequence {
         require(0 <= lineIndex) { "lineIndex $lineIndex must be non-negative." }
         require(lineIndex <= numOfLines) { "lineIndex $lineIndex out of bound, numOfLines = $numOfLines." }
 
@@ -612,7 +618,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         return substring(startCharIndex, endCharIndex) // includes the last '\n' char
     }
 
-    override fun findRowString(rowIndex: Int): String {
+    override fun findRowString(rowIndex: Int): CharSequence {
         /**
          * @param rowOffset 0 = start of buffer; 1 = char index of the first row break
          */
@@ -648,7 +654,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
         return substring(startCharIndex, endCharIndex) // includes the last '\n' char
     }
 
-    override fun append(text: String): Int {
+    override fun append(text: CharSequence): Int {
         return insertAt(length, text)
 //        var start = 0
 //        while (start < text.length) {
@@ -664,7 +670,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
 //        }
     }
 
-    override fun insertAt(pos: Int, text: String): Int {
+    override fun insertAt(pos: Int, text: CharSequence): Int {
         var start = 0
         val prevNode = tree.findNodeByCharIndex(maxOf(0, pos - 1))
         val nodeStart = prevNode?.let { findPositionStart(it) }?.also {
@@ -1000,7 +1006,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
 
             (lineBreakIndexFrom..lineBreakIndexTo).forEach { lineBreakEntryIndex ->
                 val lineBreakCharIndex = buffer.lineOffsetStarts[lineBreakEntryIndex]
-                val subsequence = buffer.subSequence(charStartIndexInBuffer, lineBreakCharIndex)
+                val subsequence = buffer.substring(charStartIndexInBuffer, lineBreakCharIndex)
                 logL.d { "node ${nodeValue.debugKey()} buf #${nodeValue.bufferIndex} line break #$lineBreakEntryIndex seq $charStartIndexInBuffer ..< $lineBreakCharIndex" }
 
                 val (rowCharOffsets, _) = layouter.layoutOneLine(
@@ -1050,7 +1056,7 @@ open class BigTextImpl : BigText, BigTextLayoutable {
 //                val subsequence = buffer.subSequence(charStartIndexInBuffer, nodeValue.bufferOffsetEndExclusive)
                 val readRowUntilPos = nextBoundary //nodeValue.bufferOffsetEndExclusive //minOf(nodeValue.bufferOffsetEndExclusive, endPosExclusive - nodeStartPos + nodeValue.bufferOffsetStart)
                 logL.d { "node ${nodeValue.debugKey()} last row seq $charStartIndexInBuffer ..< ${readRowUntilPos}. start = $nodeStartPos" }
-                val subsequence = buffer.subSequence(charStartIndexInBuffer, readRowUntilPos)
+                val subsequence = buffer.substring(charStartIndexInBuffer, readRowUntilPos)
 
                 val (rowCharOffsets, lastRowOccupiedWidth) = layouter.layoutOneLine(
                     subsequence,

@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.transformation.inc
 import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersectWith
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.string
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEventType
@@ -42,7 +43,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                     val anotherBracket = originalText.findPositionByPattern(it - processLengthLimit, it - 1, "\${{", TextFBDirection.Backward)
                     log.d { "EnvironmentVariableIncrementalTransformation search end start=$it" }
                     if (anotherBracket != null) {
-                        val variableName = originalText.substring(anotherBracket + "\${{".length, it)
+                        val variableName = originalText.substring(anotherBracket + "\${{".length, it).string()
                         log.d { "EnvironmentVariableIncrementalTransformation add '$variableName'" }
                         transformer.replace(anotherBracket until it + "}}".length, createSpan(variableName), BigTextTransformOffsetMapping.WholeBlock)
                     }
@@ -53,7 +54,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                     val anotherBracket = originalText.findPositionByPattern(it + "\${{".length, it + processLengthLimit, "}}", TextFBDirection.Forward)
                     log.d { "EnvironmentVariableIncrementalTransformation search start end=$it" }
                     if (anotherBracket != null) {
-                        val variableName = originalText.substring(it + "\${{".length, anotherBracket)
+                        val variableName = originalText.substring(it + "\${{".length, anotherBracket).string()
                         log.d { "EnvironmentVariableIncrementalTransformation add '$variableName'" }
                         transformer.replace(it until anotherBracket + "}}".length, createSpan(variableName), BigTextTransformOffsetMapping.WholeBlock)
                     }
