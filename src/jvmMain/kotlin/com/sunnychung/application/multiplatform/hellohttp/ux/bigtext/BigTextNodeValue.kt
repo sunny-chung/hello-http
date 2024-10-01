@@ -46,6 +46,9 @@ open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTe
     open val renderBufferEndExclusive: Int
         get() = bufferOffsetEndExclusive
 
+    override val transformOffsetMapping: BigTextTransformOffsetMapping
+        get() = BigTextTransformOffsetMapping.WholeBlock
+
     internal var node: RedBlackTree<BigTextNodeValue>.Node? = null
 
     private val key = RANDOM.nextInt()

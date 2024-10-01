@@ -363,35 +363,63 @@ open class BigTextImpl(
         }
     }
 
-    protected fun insertChunkAtPosition(position: Int, chunkedStringLength: Int, ownership: BufferOwnership, buffer: TextBuffer, range: IntRange, newNodeConfigurer: BigTextNodeValue.() -> Unit) {
-        var node = tree.findNodeByCharIndex(position) // TODO optimize, don't do twice
-        var nodeStart = node?.let { findPositionStart(it) } // TODO optimize, don't do twice
-        val findPosition = maxOf(0, position - 1)
-        if (node != null && findPosition < nodeStart!!) {
-            node = tree.prevNode(node)
-            nodeStart = node?.let { findPositionStart(it) }
-        }
-        if (node != null) {
-            log.d { "> existing node (${node!!.value.debugKey()}) ${node!!.value.bufferOwnership.name.first()} $nodeStart .. ${nodeStart!! + node!!.value.bufferLength - 1}" }
-            require(maxOf(0, position - 1) in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1 || node.value.bufferLength == 0) {
-                printDebug()
-                findPositionStart(node!!)
-                "Found node ${node!!.value.debugKey()} but it is not in searching range"
+    protected fun insertChunkAtPosition(position: Int, chunkedStringLength: Int, ownership: BufferOwnership, buffer: TextBuffer, range: IntRange, isInsertAtRightmost: Boolean = false, newNodeConfigurer: BigTextNodeValue.() -> Unit): Int {
+//        var node = tree.findNodeByCharIndex(position, !isInsertAtRightmost) // TODO optimize, don't do twice
+        fun findNodeJustBeforePosition(position: Int, isThrowErrorIfMissing: Boolean): Pair<RedBlackTree<BigTextNodeValue>.Node?, Int?> {
+            // kotlin compiler bug: `node` and `nodeStart` are wrongly interpreted as the outer one, thus smart cast is impossible
+            // make the variable names different to workaround
+            var node_ = tree.findNodeByCharIndex(position, true) // TODO optimize, don't do twice
+            var nodeStart_ = node_?.let { findPositionStart(it) } // TODO optimize, don't do twice
+            val findPosition = maxOf(0, position - 1)
+            if (node_ != null && findPosition < nodeStart_!!) {
+                node_ = tree.prevNode(node_!!)
+                nodeStart_ = node_?.let { findPositionStart(it) }
             }
-        } else if (!tree.isEmpty) {
-            throw IllegalStateException("Node not found for position ${maxOf(0, position - 1)}")
+            if (node_ != null) {
+                log.d { "> existing node (${node_!!.value.debugKey()}) ${node_!!.value.bufferOwnership.name.first()} $nodeStart_ .. ${nodeStart_!! + node_!!.value.bufferLength - 1}" }
+                require(
+                    findPosition in nodeStart_!!..nodeStart_!! + node_!!.value.bufferLength - 1 || node_!!.value.bufferLength == 0
+                ) {
+                    printDebug()
+                    findPositionStart(node_!!)
+                    "Found node ${node_!!.value.debugKey()} but it is not in searching range"
+                }
+            } else if (isThrowErrorIfMissing && !tree.isEmpty) {
+                throw IllegalStateException("Node not found for position ${maxOf(0, position - 1)}")
+            }
+            return node_ to nodeStart_
+        }
+        var (node, nodeStart) = findNodeJustBeforePosition(
+            position = if (isInsertAtRightmost) position + 1 else position,
+            isThrowErrorIfMissing = !isInsertAtRightmost
+        )
+        if (node == null && isInsertAtRightmost) {
+            log.w { "Node $position not found. Find ${position - 1} instead" }
+            val r = findNodeJustBeforePosition(position = position, isThrowErrorIfMissing = true)
+            node = r.first
+            nodeStart = r.second
         }
         var insertDirection: InsertDirection = InsertDirection.Undefined
         val toBeRelayouted = mutableListOf<BigTextNodeValue>()
         var newContentNode: BigTextNodeValue? = null
-        val newNodeValues = if (node != null && position > 0 && position in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1) {
+        val newNodeValues = /*if (isInsertAtRightmost && node != null && position == nodeStart!! + node.value.bufferLength - 1) {
+            log.d { "> create new node right" }
+            insertDirection = InsertDirection.Right
+            listOf(createNodeValue().apply {
+                this.newNodeConfigurer()
+                newContentNode = this
+            })
+        } else*/ if (node != null && position > 0 && position in nodeStart!! .. nodeStart!! + node.value.bufferLength - 1) {
             val splitAtIndex = position - nodeStart
             log.d { "> split at $splitAtIndex" }
             val oldEnd = node.value.bufferOffsetEndExclusive
             val secondPartNodeValue = createNodeValue().apply { // the second part of the old string
                 bufferIndex = node!!.value.bufferIndex
-                bufferOffsetStart = node!!.value.bufferOffsetStart + splitAtIndex
-                bufferOffsetEndExclusive = oldEnd
+                updateRightValueDuringNodeSplit(
+                    rightNodeValue = this,
+                    oldNodeValue = node!!.value,
+                    splitAtIndex = splitAtIndex
+                )
                 this.buffer = node!!.value.buffer
                 this.bufferOwnership = node!!.value.bufferOwnership
 
@@ -405,11 +433,25 @@ open class BigTextImpl(
              * If A == position, then existing node is empty and thus can be deleted.
              */
             if (splitAtIndex > 0) {
-                node.value.bufferOffsetEndExclusive = node.value.bufferOffsetStart + splitAtIndex
+                updateLeftValueDuringNodeSplit(
+                    leftNodeValue = node!!.value,
+                    oldNodeValue = node!!.value,
+                    splitAtIndex = splitAtIndex
+                )
             } else {
+                val prevNode = tree.prevNode(node)
                 tree.delete(node)
-                node = tree.findNodeByCharIndex(maxOf(0, position - 1))
-                insertDirection = InsertDirection.Left
+                node = prevNode
+                if (node != null && isInsertAtRightmost) {
+                    val nodeStart = findPositionStart(node)
+                    if (nodeStart + node.value.bufferLength <= position) {
+                        insertDirection = InsertDirection.Right
+                    } else {
+                        insertDirection = InsertDirection.Left
+                    }
+                } else {
+                    insertDirection = InsertDirection.Left
+                }
             }
             // require(splitAtIndex + chunkedStringLength <= chunkSize) // this check appears to be not guarding anything
             toBeRelayouted += secondPartNodeValue
@@ -438,6 +480,7 @@ open class BigTextImpl(
             recomputeAggregatedValues(node)
             emptyList()
         }
+        var leftmostNewNodeValue: RedBlackTree<BigTextNodeValue>.Node? = null
         if (newNodeValues.isNotEmpty() && insertDirection == InsertDirection.Left) {
             node = if (node != null) {
                 tree.insertLeft(node, newNodeValues.first())
@@ -447,14 +490,19 @@ open class BigTextImpl(
             (1 .. newNodeValues.lastIndex).forEach {
                 node = tree.insertLeft(node!!, newNodeValues[it])
             }
+            leftmostNewNodeValue = node
         } else {
-            newNodeValues.forEach {
-                if (node?.value?.leftStringLength == position) {
+            val existingNodePositionStart = node?.value?.leftStringLength
+            newNodeValues.reversed().forEach {
+                node = if (existingNodePositionStart == position && insertDirection != InsertDirection.Right) {
                     tree.insertLeft(node!!, it) // insert before existing node
                 } else if (node != null) {
                     tree.insertRight(node!!, it)
                 } else {
                     tree.insertValue(it)
+                }
+                if (leftmostNewNodeValue == null) {
+                    leftmostNewNodeValue = node
                 }
             }
         }
@@ -470,6 +518,21 @@ open class BigTextImpl(
         }
 
         log.v { inspect("Finish I " + node?.value?.debugKey()) }
+
+        return leftmostNewNodeValue?.let { findRenderPositionStart(it) } ?: 0
+    }
+
+    protected open fun updateRightValueDuringNodeSplit(rightNodeValue: BigTextNodeValue, oldNodeValue: BigTextNodeValue, splitAtIndex: Int) {
+        with (rightNodeValue) {
+            bufferOffsetStart = oldNodeValue.bufferOffsetStart + splitAtIndex
+            bufferOffsetEndExclusive = oldNodeValue.bufferOffsetEndExclusive
+        }
+    }
+
+    protected open fun updateLeftValueDuringNodeSplit(leftNodeValue: BigTextNodeValue, oldNodeValue: BigTextNodeValue, splitAtIndex: Int) {
+        with (leftNodeValue) {
+            bufferOffsetEndExclusive = oldNodeValue.bufferOffsetStart + splitAtIndex
+        }
     }
 
     open fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue, left: RedBlackTree<BigTextNodeValue>.Node?) = with (nodeValue) {
@@ -706,7 +769,7 @@ open class BigTextImpl(
         }
     }
 
-    protected fun deleteUnchecked(start: Int, endExclusive: Int): Int {
+    protected fun deleteUnchecked(start: Int, endExclusive: Int, deleteMarker: BigTextNodeValue? = null): Int {
         if (start == endExclusive) {
             return 0
         }
@@ -716,6 +779,7 @@ open class BigTextImpl(
         var node: RedBlackTree<BigTextNodeValue>.Node? = tree.findNodeByCharIndex(endExclusive - 1, isIncludeMarkerNodes = false)
         var nodeRange = charIndexRangeOfNode(node!!)
         val newNodesInDescendingOrder = mutableListOf<BigTextNodeValue>()
+        var hasAddedDeleteMarker = false
         while (node?.isNotNil() == true && start <= nodeRange.endInclusive) {
             if (isD && nodeRange.start == 0) {
                 isD = true
@@ -735,6 +799,11 @@ open class BigTextImpl(
                 }
             }
             if (start in nodeRange.start + 1 .. nodeRange.last) {
+                if (!hasAddedDeleteMarker && deleteMarker != null) {
+                    newNodesInDescendingOrder += deleteMarker
+                    hasAddedDeleteMarker = true
+                }
+
                 // need to split
                 val splitAtIndex = start - nodeRange.start
                 log.d { "Split S at $splitAtIndex" }
@@ -760,6 +829,11 @@ open class BigTextImpl(
             if (node != null) {
                 nodeRange = charIndexRangeOfNode(node) // TODO optimize by calculation instead of querying
             }
+        }
+
+        if (!hasAddedDeleteMarker && deleteMarker != null) {
+            newNodesInDescendingOrder += deleteMarker
+            hasAddedDeleteMarker = true
         }
 
         newNodesInDescendingOrder.asReversed().forEach {

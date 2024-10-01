@@ -10,4 +10,6 @@ interface LengthNodeValue {
 
     val leftRenderLength: Int
     val currentRenderLength: Int
+
+    val transformOffsetMapping: BigTextTransformOffsetMapping
 }

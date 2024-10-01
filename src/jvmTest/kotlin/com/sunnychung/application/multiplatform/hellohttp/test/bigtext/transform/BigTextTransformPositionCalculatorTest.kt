@@ -47,6 +47,7 @@ class BigTextTransformPositionCalculatorTest {
 //            isD = true
 //        }
         v.verifyPositionCalculation()
+        isD = true
         v.insertAt(21, "xyzxxyyzz")
 //        if (chunkSize == 16) {
 //            isD = true
@@ -156,6 +157,8 @@ class BigTextTransformPositionCalculatorTest {
         v.verifyPositionCalculation()
 
         v.replace(4 .. 5, "=")
+        v.bigTextImpl.printDebug("After replacement '='")
+        if (chunkSize == 64) isD = true
         v.verifyPositionCalculation()
     }
 
@@ -178,6 +181,7 @@ class BigTextTransformPositionCalculatorTest {
         v.replace(55 .. 63, "-+-+-", BigTextTransformOffsetMapping.WholeBlock)
         v.verifyPositionCalculation()
 
+        if (chunkSize == 64) isD = true
         v.replace(65 .. 68, "some relatively long string that is longer than a chunk", BigTextTransformOffsetMapping.WholeBlock)
         if (chunkSize == 64) isD = true
         v.verifyPositionCalculation()
@@ -234,6 +238,7 @@ class BigTextTransformPositionCalculatorTest {
         v.replace(15 .. 23, "!?", replaceMapping)
         v.verifyPositionCalculation()
         v.insertAt(15, "inserted text 15")
+        isD = true
         v.verifyPositionCalculation()
 
         v.replace(0 .. 2, "-+-+-", replaceMapping)
@@ -291,22 +296,31 @@ class BigTextTransformPositionCalculatorTest {
         val v = BigTextVerifyImpl(tt)
         val originalLength = v.originalLength
 
+//        isD = true
         v.replace(32 .. 36, "long replacement", BigTextTransformOffsetMapping.Incremental)
+        tt.printDebug("after replacement")
         v.verifyPositionCalculation()
 
+//        isD = true
         v.replace(15 .. 23, "!?", BigTextTransformOffsetMapping.WholeBlock)
+        tt.printDebug("after replacement !?")
         v.verifyPositionCalculation()
 
         v.replace(0 .. 2, "-+-+-", BigTextTransformOffsetMapping.WholeBlock)
         v.verifyPositionCalculation()
 
+//        isD = true
         v.replace(originalLength - 12 until originalLength, "*-*-*", BigTextTransformOffsetMapping.Incremental)
+//        isD = true
         v.verifyPositionCalculation()
 
+//        if (chunkSize == 64) isD = true
         v.replace(3 .. 3, "some relatively long string that is longer than a chunk", BigTextTransformOffsetMapping.Incremental)
+//        if (chunkSize == 64) isD = true
         v.verifyPositionCalculation()
 
         v.replace(4 .. 5, "=", BigTextTransformOffsetMapping.WholeBlock)
+        if (chunkSize == 64) isD = true
         v.verifyPositionCalculation()
     }
 

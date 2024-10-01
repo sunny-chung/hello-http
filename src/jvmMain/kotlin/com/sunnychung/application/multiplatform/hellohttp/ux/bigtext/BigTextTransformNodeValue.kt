@@ -17,7 +17,7 @@ class BigTextTransformNodeValue : BigTextNodeValue() {
     var transformedBufferStart: Int = -1
     var transformedBufferEndExclusive: Int = -1
 
-    var transformOffsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.WholeBlock
+    override var transformOffsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.WholeBlock
     var incrementalTransformOffsetMappingLength = 0
 
     override val renderBufferStart: Int

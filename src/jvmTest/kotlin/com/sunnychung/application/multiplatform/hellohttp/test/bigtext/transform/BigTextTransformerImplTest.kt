@@ -55,9 +55,9 @@ class BigTextTransformerImplTest {
         original.append("12345678901234567890")
         isD = false
         val transformed = BigTextTransformerImpl(original)
-        transformed.transformInsert(14, "WXYZ")
-        if (chunkSize == 16) { isD = true }
         transformed.transformInsert(14,  "KJI")
+        if (chunkSize == 16) { isD = true }
+        transformed.transformInsert(14, "WXYZ")
 
         transformed.printDebug()
 
@@ -73,9 +73,9 @@ class BigTextTransformerImplTest {
         val original = BigTextImpl(chunkSize = chunkSize)
         original.append("12345678901234567890")
         val transformed = BigTextTransformerImpl(original)
-        transformed.transformInsert(0, "ABCDEFG")
-        transformed.transformInsert(0, "WXYZ")
         transformed.transformInsert(0,  "KJI")
+        transformed.transformInsert(0, "WXYZ")
+        transformed.transformInsert(0, "ABCDEFG")
 
         transformed.printDebug()
 
@@ -91,9 +91,9 @@ class BigTextTransformerImplTest {
         val original = BigTextImpl(chunkSize = chunkSize)
         original.append("12345678901234567890")
         val transformed = BigTextTransformerImpl(original)
-        transformed.transformInsert(20, "ABCDEFG")
-        transformed.transformInsert(20, "WXYZ")
         transformed.transformInsert(20,  "KJI")
+        transformed.transformInsert(20, "WXYZ")
+        transformed.transformInsert(20, "ABCDEFG")
 
         transformed.printDebug()
 
@@ -555,7 +555,7 @@ class BigTextTransformerImplTest {
 
         transformed.transformInsertAtOriginalEnd("(end)")
         transformed.transformInsert(69, "!")
-        "12345678abcd90123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%aabb!(end)qwertyuiop".let { expected ->
+        "12345678abcd90123456789012345678901234567890ABCDEFGHIJabcdefghij!@#\$%aabbqwertyuiop(end)!".let { expected ->
             assertEquals(expected, transformed.buildString())
             assertAllSubstring(expected, transformed)
         }
@@ -752,7 +752,7 @@ class BigTextTransformerImplTest {
 
         transformed.transformReplace(0 .. 1, "@")
         original.replace(0 .. 1, "")
-        "@*".let { expected ->
+        "*".let { expected ->
             assertEquals(expected, transformed.buildString())
             assertAllSubstring(expected, transformed)
         }
@@ -954,6 +954,39 @@ class BigTextTransformerImplTest {
             assertEquals(expected, original.buildString())
             assertEquals(expected, transformed.buildString())
             assertAllSubstring(expected, transformed)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun transformReplaceThenInsertToOriginalAtMiddle(chunkSize: Int) {
+        listOf("EEEEEE", "E".repeat(70)).forEach { insertContent ->
+            val initialText = "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+            val original = BigTextImpl(chunkSize = chunkSize)
+            original.append(initialText)
+            val transformed = BigTextTransformerImpl(original)
+
+            transformed.replace(3..10, "abcdef", BigTextTransformOffsetMapping.Incremental)
+            "123abcdef234567890123456789012345678901234567890123456789012345678901234567890".let { expected ->
+                assertEquals(expected, transformed.buildString())
+                assertEquals(initialText, original.buildString())
+                assertAllSubstring(expected, transformed)
+            }
+
+            transformed.printDebug("before insert")
+
+            original.insertAt(6, insertContent)
+
+            transformed.printDebug("after insert")
+
+            "123abc${insertContent}def234567890123456789012345678901234567890123456789012345678901234567890".let { expected ->
+                assertEquals(expected, transformed.buildString())
+                assertAllSubstring(expected, transformed)
+            }
+            assertEquals(
+                "123456${insertContent}78901234567890123456789012345678901234567890123456789012345678901234567890",
+                original.buildString()
+            )
         }
     }
 

@@ -123,7 +123,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         }
     }
 
-    private fun transformInsertChunkAtPosition(position: Int, chunkedString: CharSequence, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int) {
+    private fun transformInsertChunkAtPosition(position: Int, chunkedString: CharSequence, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int, isReplaceOriginal: Boolean): Int {
         logT.d { "transformInsertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
         var buffer = if (buffers.isNotEmpty()) {
@@ -135,11 +135,16 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         }
         require(buffer.length + chunkedString.length <= chunkSize)
         val range = buffer.append(chunkedString)
-        insertChunkAtPosition(position, chunkedString.length, BufferOwnership.Owned, buffer, range) {
+        return insertChunkAtPosition(position, chunkedString.length, BufferOwnership.Owned, buffer, range, true) {
             this as BigTextTransformNodeValue
             bufferIndex = -1
-            bufferOffsetStart = -1
-            bufferOffsetEndExclusive = -1
+            if (isReplaceOriginal && incrementalTransformOffsetMappingLength > 0) {
+                bufferOffsetStart = position
+                bufferOffsetEndExclusive = position + incrementalTransformOffsetMappingLength
+            } else {
+                bufferOffsetStart = -1
+                bufferOffsetEndExclusive = -1
+            }
             transformedBufferStart = range.start
             transformedBufferEndExclusive = range.endInclusive + 1
             transformOffsetMapping = offsetMapping
@@ -152,35 +157,111 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
     }
 
     fun transformInsert(pos: Int, text: CharSequence): Int {
-        return transformInsert(pos, text, BigTextTransformOffsetMapping.WholeBlock, 0)
+        return transformInsert(pos, text, BigTextTransformOffsetMapping.WholeBlock, 0, false)
     }
 
-    private fun transformInsert(pos: Int, text: CharSequence, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int): Int {
+    private fun transformInsert(pos: Int, text: CharSequence, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int, isReplaceOriginal: Boolean): Int {
         logT.d { "transformInsert($pos, \"$text\")" }
         require(pos in 0 .. originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
-        /**
-         * As insert position is searched by leftmost of original string position,
-         * the insert is done by inserting to the same point in reverse order,
-         * which is different from BigTextImpl#insertAt.
-         */
+        var renderPositionStart: Int? = null
 
-        var start = text.length
-        var last = buffers.lastOrNull()?.length
-        while (start > 0) {
-            if (last == null || last >= chunkSize) {
+        when (offsetMapping) {
+            BigTextTransformOffsetMapping.WholeBlock -> {
+//                /**
+//                 * As insert position is searched by leftmost of original string position,
+//                 * the insert is done by inserting to the same point in reverse order,
+//                 * which is different from BigTextImpl#insertAt.
+//                 */
+//
+//                var start = text.length
+//                var last = buffers.lastOrNull()?.length
+////                var isTheLastChunk = true
+//                while (start > 0) {
+//                    if (last == null || last >= chunkSize) {
+////                buffers += TextBuffer()
+//                        last = 0
+//                    }
+//                    val available = chunkSize - last
+//                    val append = minOf(available, start)
+//                    start -= append
+//
+//                    val incrementalOffsetLength = maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start))
+//                    // the last chunk values at least 1-char length
+////            val incrementalOffsetLength = if (isTheLastChunk && incrementalTransformOffsetMappingLength > 0) {
+////                maxOf(1, minOf(append, incrementalTransformOffsetMappingLength - start))
+////            } else {
+////                maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start - 1))
+////            }
+//                    transformInsertChunkAtPosition(pos, text.subSequence(start until start + append), offsetMapping, incrementalOffsetLength, isReplaceOriginal)
+//                    last = buffers.last().length
+////                    isTheLastChunk = false
+//                }
+
+                var start = 0
+                var last = buffers.lastOrNull()?.length
+                while (start < text.length) {
+                    if (last == null || last >= chunkSize) {
 //                buffers += TextBuffer()
-                last = 0
+                        last = 0
+                    }
+                    val available = chunkSize - last
+                    val append = minOf(available, text.length - start)
+
+                    val incrementalOffsetLength = maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start))
+                    // the last chunk values at least 1-char length
+//            val incrementalOffsetLength = if (isTheLastChunk && incrementalTransformOffsetMappingLength > 0) {
+//                maxOf(1, minOf(append, incrementalTransformOffsetMappingLength - start))
+//            } else {
+//                maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start - 1))
+//            }
+                    transformInsertChunkAtPosition(pos, text.subSequence(start until start + append), offsetMapping, incrementalOffsetLength, isReplaceOriginal).let {
+                        if (renderPositionStart == null) {
+                            renderPositionStart = it
+                        }
+                    }
+                    start += append
+                    last = buffers.last().length
+                }
             }
-            val available = chunkSize - last
-            val append = minOf(available, start)
-            start -= append
-            val incrementalOffsetLength = maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start))
-            transformInsertChunkAtPosition(pos, text.subSequence(start until start + append), offsetMapping, incrementalOffsetLength)
-            last = buffers.last().length
+
+            BigTextTransformOffsetMapping.Incremental -> {
+                var start = 0
+                var last = buffers.lastOrNull()?.length
+                var insertOffset = 0
+                while (start < text.length) {
+                    if (last == null || last >= chunkSize) {
+//                buffers += TextBuffer()
+                        last = 0
+                    }
+                    val available = chunkSize - last
+                    val append = minOf(available, text.length - start)
+
+                    val incrementalOffsetLength = maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start))
+                    // the last chunk values at least 1-char length
+//            val incrementalOffsetLength = if (isTheLastChunk && incrementalTransformOffsetMappingLength > 0) {
+//                maxOf(1, minOf(append, incrementalTransformOffsetMappingLength - start))
+//            } else {
+//                maxOf(0, minOf(append, incrementalTransformOffsetMappingLength - start - 1))
+//            }
+                    transformInsertChunkAtPosition(pos + insertOffset, text.subSequence(start until start + append), offsetMapping, incrementalOffsetLength, isReplaceOriginal).let {
+                        if (renderPositionStart == null) {
+                            renderPositionStart = it
+                        }
+                    }
+                    insertOffset += incrementalOffsetLength
+                    start += append
+                    last = buffers.last().length
+                }
+            }
         }
-        val renderPositionStart = findRenderPositionStart(tree.findNodeByCharIndex(pos)!!)
-        layout(maxOf(0, renderPositionStart - 1), minOf(length, renderPositionStart + text.length + 1))
+
+        if (renderPositionStart == null) {
+            renderPositionStart = 0
+        }
+
+//        val renderPositionStart = findRenderPositionStart(tree.findNodeByCharIndex(pos)!!)
+        layout(maxOf(0, renderPositionStart!! - 1), minOf(length, renderPositionStart!! + text.length + 1))
 //        layout()
         return text.length
     }
@@ -190,10 +271,14 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
     fun deleteOriginal(originalRange: IntRange) {
         require(0 <= originalRange.start) { "Invalid start" }
         require((originalRange.endInclusive + 1) in 0 .. originalLength) { "Out of bound. endExclusive = ${originalRange.endInclusive + 1}, originalLength = $originalLength" }
-        super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1)
+        super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1, null)
     }
 
     fun transformDelete(originalRange: IntRange): Int {
+        return transformDelete(originalRange = originalRange, isAddMarker = true, deleteMarkerRange = originalRange)
+    }
+
+    private fun transformDelete(originalRange: IntRange, isAddMarker: Boolean, deleteMarkerRange: IntRange): Int {
         logT.d { "transformDelete($originalRange)" }
         require(originalRange.start <= originalRange.endInclusive + 1) { "start should be <= endExclusive" }
         require(0 <= originalRange.start) { "Invalid start" }
@@ -206,23 +291,46 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         val startNode = tree.findNodeByCharIndex(originalRange.start)!!
         val renderStartPos = findRenderPositionStart(startNode)
         val buffer = startNode.value.buffer // the buffer is not used. just to prevent NPE
-        super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1)
-        insertChunkAtPosition(originalRange.start, originalRange.length, BufferOwnership.Owned, buffer, -2 .. -2) {
+        super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1, if (isAddMarker) createDeleteMarkerNodeValue(deleteMarkerRange) else null)
+        if (isAddMarker) {
+//            insertDeleteMarker(originalRange)
+        }
+        layout(maxOf(0, renderStartPos - 1), minOf(length, renderStartPos + 1))
+//        tree.visitInPostOrder { recomputeAggregatedValues(it) } //
+        logT.d { inspect("after transformDelete $originalRange") }
+        return - originalRange.length
+    }
+
+    private fun createDeleteMarkerNodeValue(originalRange: IntRange): BigTextNodeValue {
+        val dummyBuffer = StringTextBuffer(1)
+        return createNodeValue().apply {
             this as BigTextTransformNodeValue
             bufferIndex = -1
             bufferOffsetStart = 0
             bufferOffsetEndExclusive = originalRange.length
             transformedBufferStart = -2
             transformedBufferEndExclusive = -2
-            this.buffer = buffer
+            this.buffer = dummyBuffer
             this.bufferOwnership = BufferOwnership.Owned
 
             leftStringLength = 0
         }
-        layout(maxOf(0, renderStartPos - 1), minOf(length, renderStartPos + 1))
-//        tree.visitInPostOrder { recomputeAggregatedValues(it) } //
-        logT.d { inspect("after transformDelete $originalRange") }
-        return - originalRange.length
+    }
+
+    private fun insertDeleteMarker(originalRange: IntRange) {
+        val dummyBuffer = StringTextBuffer(1)
+        insertChunkAtPosition(originalRange.start, originalRange.length, BufferOwnership.Owned, dummyBuffer, -2..-2, true) {
+            this as BigTextTransformNodeValue
+            bufferIndex = -1
+            bufferOffsetStart = 0
+            bufferOffsetEndExclusive = originalRange.length
+            transformedBufferStart = -2
+            transformedBufferEndExclusive = -2
+            this.buffer = dummyBuffer
+            this.bufferOwnership = BufferOwnership.Owned
+
+            leftStringLength = 0
+        }
     }
 
     /**
@@ -328,14 +436,62 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 
     fun transformReplace(originalRange: IntRange, newText: CharSequence, offsetMapping: BigTextTransformOffsetMapping = BigTextTransformOffsetMapping.Incremental) {
         logT.d { "transformReplace($originalRange, $newText, $offsetMapping)" }
-        deleteTransformIf(originalRange)
-        transformDelete(originalRange)
+//        deleteTransformIf(originalRange)
         val incrementalTransformOffsetMappingLength = if (offsetMapping == BigTextTransformOffsetMapping.Incremental) {
             minOf(originalRange.length, newText.length)
         } else {
             0
         }
-        transformInsert(originalRange.start, newText, offsetMapping, incrementalTransformOffsetMappingLength)
+//        transformDelete(originalRange = originalRange, isAddMarker = incrementalTransformOffsetMappingLength <= 0)
+        transformDelete(originalRange = originalRange, isAddMarker = incrementalTransformOffsetMappingLength <= 0 || originalRange.length > incrementalTransformOffsetMappingLength, deleteMarkerRange = if (incrementalTransformOffsetMappingLength <= 0) {
+            originalRange
+        } else {
+            originalRange.endInclusive + 1 - maxOf(0, originalRange.length - incrementalTransformOffsetMappingLength) .. originalRange.endInclusive
+        })
+        transformInsert(
+            pos = originalRange.start,
+            text = newText,
+            offsetMapping = offsetMapping,
+            incrementalTransformOffsetMappingLength = incrementalTransformOffsetMappingLength,
+//            incrementalTransformOffsetMappingLength = incrementalTransformOffsetMappingLength - 1,
+            isReplaceOriginal = incrementalTransformOffsetMappingLength > 0,
+        )
+//        if (incrementalTransformOffsetMappingLength > 0 && originalRange.length > incrementalTransformOffsetMappingLength) {
+//            insertDeleteMarker(originalRange.endInclusive + 1 - maxOf(0, originalRange.length - incrementalTransformOffsetMappingLength) .. originalRange.endInclusive)
+//        }
+    }
+
+    override fun updateRightValueDuringNodeSplit(
+        rightNodeValue: BigTextNodeValue,
+        oldNodeValue: BigTextNodeValue,
+        splitAtIndex: Int
+    ) {
+        super.updateRightValueDuringNodeSplit(rightNodeValue, oldNodeValue, splitAtIndex)
+        with (rightNodeValue as BigTextTransformNodeValue) {
+            oldNodeValue as BigTextTransformNodeValue
+            transformOffsetMapping = oldNodeValue.transformOffsetMapping
+            incrementalTransformOffsetMappingLength = maxOf(0, oldNodeValue.incrementalTransformOffsetMappingLength - splitAtIndex)
+            if (oldNodeValue.transformedBufferStart >= 0) {
+                transformedBufferStart = oldNodeValue.transformedBufferStart + splitAtIndex
+                transformedBufferEndExclusive = oldNodeValue.transformedBufferEndExclusive
+            }
+        }
+    }
+
+    override fun updateLeftValueDuringNodeSplit(
+        leftNodeValue: BigTextNodeValue,
+        oldNodeValue: BigTextNodeValue,
+        splitAtIndex: Int
+    ) {
+        super.updateLeftValueDuringNodeSplit(leftNodeValue, oldNodeValue, splitAtIndex)
+        with (leftNodeValue as BigTextTransformNodeValue) {
+            oldNodeValue as BigTextTransformNodeValue
+            transformOffsetMapping = oldNodeValue.transformOffsetMapping
+            incrementalTransformOffsetMappingLength = minOf(splitAtIndex, oldNodeValue.incrementalTransformOffsetMappingLength)
+            if (oldNodeValue.transformedBufferStart >= 0) {
+                transformedBufferEndExclusive = oldNodeValue.transformedBufferStart + splitAtIndex
+            }
+        }
     }
 
     override fun computeCurrentNodeProperties(nodeValue: BigTextNodeValue, left: RedBlackTree<BigTextNodeValue>.Node?) = with (nodeValue) {
@@ -370,7 +526,8 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
             return transformedStart + if (node.value.bufferOwnership == BufferOwnership.Delegated) {
                 indexFromNodeStart
             } else if ((node.value as? BigTextTransformNodeValue)?.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental) {
-                indexFromNodeStart - (node.value as BigTextTransformNodeValue).incrementalTransformOffsetMappingLength
+//                indexFromNodeStart - (node.value as BigTextTransformNodeValue).incrementalTransformOffsetMappingLength
+                minOf((node.value as BigTextTransformNodeValue).incrementalTransformOffsetMappingLength, indexFromNodeStart)
             } else {
                 node.value.currentRenderLength
             }
@@ -416,25 +573,35 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 
         var incrementalTransformLength = 0
         var incrementalTransformLimit = 0
-        var n = firstMarkerNode as RedBlackTree<BigTextTransformNodeValue>.Node
+        var n = node as RedBlackTree<BigTextTransformNodeValue>.Node
+        var isBreakIfReachAnyIncrementalChunk = false
         while (true) {
-            if (n.value.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental && n.value.currentTransformedLength > 0) {
+            if (n.value.transformOffsetMapping == BigTextTransformOffsetMapping.Incremental && n.value.transformedBufferEndExclusive - n.value.transformedBufferStart > 0) {
+                if (isBreakIfReachAnyIncrementalChunk) { // this chunk does not own by this offset, but previous offset with buffer length at least 1
+                    break
+                }
                 incrementalTransformLength += n.value.currentTransformedLength
                 incrementalTransformLimit += n.value.incrementalTransformOffsetMappingLength
+            } else if (n.value.transformOffsetMapping == BigTextTransformOffsetMapping.WholeBlock) {
+                isBreakIfReachAnyIncrementalChunk = true
             }
-            if (n === node) {
+            if (n === firstMarkerNode) {
                 break
             }
-            n = tree.nextNode(n as RedBlackTree<BigTextNodeValue>.Node) as RedBlackTree<BigTextTransformNodeValue>.Node
+            n = tree.prevNode(n as RedBlackTree<BigTextNodeValue>.Node) as RedBlackTree<BigTextTransformNodeValue>.Node
         }
         if (incrementalTransformLimit > 0) { // incremental replacement
-            return transformedStart - maxOf(0, incrementalTransformLength - minOf(incrementalTransformLimit, indexFromNodeStart))
+//            return transformedStart - maxOf(0, incrementalTransformLength - minOf(incrementalTransformLimit, indexFromNodeStart))
+
+//            val transformedStartBeforeMarkers = findRenderPositionStart(firstMarkerNode)
+            return transformedStart + minOf(incrementalTransformLimit, indexFromNodeStart)
         }
 //        return transformedStart + indexFromNodeStart
-        return transformedStart + if (node.value.bufferOwnership == BufferOwnership.Delegated) {
+        return transformedStart + if (node.value.bufferOwnership == BufferOwnership.Delegated || incrementalTransformLength > 0) {
             indexFromNodeStart
         } else {
-            node.value.currentRenderLength
+            0
+//            node.value.currentRenderLength
         }
     }
 
