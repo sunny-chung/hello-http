@@ -152,7 +152,7 @@ open class BigTextImpl(
         val startPos = findRenderPositionStart(node)
         return startPos + if (index - 1 - rowStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
             node.value.bufferLength
-        } else if (index > 0) {
+        } else if (index - 1 - rowStart > 0) {
             node.value.rowBreakOffsets[index - 1 - rowStart] - node.value.renderBufferStart
         } else {
             0
@@ -176,7 +176,7 @@ open class BigTextImpl(
         val (node, rowIndexStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
         val rowOffset = if (rowIndex - 1 - rowIndexStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
             node.value.renderBufferEndExclusive
-        } else if (rowIndex > 0) {
+        } else if (rowIndex - 1 - rowIndexStart > 0) {
             val i = rowIndex - 1 - rowIndexStart
             if (i > node.value.rowBreakOffsets.lastIndex) {
                 throw IndexOutOfBoundsException("findLineIndexByRowIndex($rowIndex) rowBreakOffsets[$i] length ${node.value.rowBreakOffsets.size}")
@@ -187,7 +187,7 @@ open class BigTextImpl(
         }
         val positionStart = findRenderPositionStart(node)
         val rowPositionStart = positionStart + rowOffset - node.value.renderBufferStart
-        val lineBreakPosition = rowPositionStart - 1
+        val lineBreakPosition = maxOf(0, rowPositionStart - 1)
 
         val lineBreakAtNode = tree.findNodeByRenderCharIndex(lineBreakPosition)!!
         val lineStart = findLineStart(lineBreakAtNode)

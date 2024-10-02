@@ -106,6 +106,8 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
     ) {
         require(pos in 0..originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
+        val renderPos = findTransformedPositionByOriginalPosition(pos)
+
         insertChunkAtPosition(
             position = pos,
             chunkedStringLength = bufferOffsetEndExclusive - bufferOffsetStart,
@@ -121,6 +123,9 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 
             leftStringLength = 0
         }
+
+        val insertLength = bufferOffsetEndExclusive - bufferOffsetStart
+        layout(maxOf(0, renderPos - 1), minOf(length, renderPos + insertLength + 1))
     }
 
     private fun transformInsertChunkAtPosition(position: Int, chunkedString: CharSequence, offsetMapping: BigTextTransformOffsetMapping, incrementalTransformOffsetMappingLength: Int, isReplaceOriginal: Boolean): Int {
