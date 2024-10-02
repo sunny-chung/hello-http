@@ -898,6 +898,30 @@ class BigTextTransformerImplTest {
 
     @ParameterizedTest
     @ValueSource(ints = [1048576, 64, 16])
+    fun deleteAndReplaceOverlapped(chunkSize: Int) {
+        val initial = "1234567890223456789032345678904234567890_234567890623456789072345678908234567890\n"
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(initial)
+        }
+        val tt = BigTextTransformerImpl(t)
+        tt.replace(43 .. 60, "def") // incremental replace
+        assertEquals(
+            expected = initial
+                .replaceRange(43 .. 60, "def"),
+            actual = tt.buildString()
+        )
+
+        tt.delete(42 .. 43)
+        assertEquals(
+            expected = initial
+                .replaceRange(44 .. 60, "ef")
+                .replaceRange(42 .. 43, ""),
+            actual = tt.buildString()
+        )
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
     fun restoreToOriginal(chunkSize: Int) {
         val initialText = "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
         val original = BigTextImpl(chunkSize = chunkSize)
@@ -988,6 +1012,68 @@ class BigTextTransformerImplTest {
                 original.buildString()
             )
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun transformReplaceThenDeleteOriginalAtMiddle(chunkSize: Int) {
+        val initialText = "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append(initialText)
+        val transformed = BigTextTransformerImpl(original)
+
+        transformed.replace(3..10, "abcdef", BigTextTransformOffsetMapping.Incremental)
+        "123abcdef234567890123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(initialText, original.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+
+        transformed.printDebug("before delete")
+
+        original.delete(6 .. 7)
+
+        transformed.printDebug("after delete")
+
+        "123abcf234567890123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals(
+            "123456901234567890123456789012345678901234567890123456789012345678901234567890",
+            original.buildString()
+        )
+
+        original.delete(5 .. 5)
+        "123abf234567890123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals(
+            "12345901234567890123456789012345678901234567890123456789012345678901234567890",
+            original.buildString()
+        )
+
+        original.delete(5 .. 5) // equivalent to initial index 8
+        "123ab234567890123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals(
+            "1234501234567890123456789012345678901234567890123456789012345678901234567890",
+            original.buildString()
+        )
+
+        isD = true
+        original.delete(5 .. 5) // equivalent to initial index 9, out of replacement range
+        "123ab34567890123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertAllSubstring(expected, transformed)
+        }
+        assertEquals(
+            "123451234567890123456789012345678901234567890123456789012345678901234567890",
+            original.buildString()
+        )
     }
 
     @BeforeEach

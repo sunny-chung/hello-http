@@ -563,14 +563,16 @@ class BigTextTransformerLayoutTest {
         tt.delete(42 .. 43)
         verifyBigTextImplAgainstTestString(
             testString = initial
-                .replaceRange(42 .. 72, "")
+                .replaceRange(44 .. 72, "ef")
+                .replaceRange(42 .. 43, "")
                 .replaceRange(29 .. 38, "")
             , bigTextImpl = tt
         )
         tt.delete(38 .. 43)
         verifyBigTextImplAgainstTestString(
             testString = initial
-                .replaceRange(29 .. 72, "")
+                .replaceRange(44 .. 72, "ef")
+                .replaceRange(29 .. 43, "")
             , bigTextImpl = tt
         )
     }

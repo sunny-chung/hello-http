@@ -531,6 +531,7 @@ open class BigTextImpl(
 
     protected open fun updateLeftValueDuringNodeSplit(leftNodeValue: BigTextNodeValue, oldNodeValue: BigTextNodeValue, splitAtIndex: Int) {
         with (leftNodeValue) {
+            bufferOffsetStart = oldNodeValue.bufferOffsetStart
             bufferOffsetEndExclusive = oldNodeValue.bufferOffsetStart + splitAtIndex
         }
     }
@@ -790,8 +791,11 @@ open class BigTextImpl(
                 log.d { "Split E at $splitAtIndex" }
                 newNodesInDescendingOrder += createNodeValue().apply { // the second part of the existing string
                     bufferIndex = node!!.value.bufferIndex // FIXME transform
-                    bufferOffsetStart = node!!.value.bufferOffsetStart + splitAtIndex
-                    bufferOffsetEndExclusive = node!!.value.bufferOffsetEndExclusive
+                    updateRightValueDuringNodeSplit(
+                        rightNodeValue = this,
+                        oldNodeValue = node!!.value,
+                        splitAtIndex = splitAtIndex
+                    )
                     buffer = node!!.value.buffer
                     bufferOwnership = node!!.value.bufferOwnership
 
@@ -809,8 +813,11 @@ open class BigTextImpl(
                 log.d { "Split S at $splitAtIndex" }
                 newNodesInDescendingOrder += createNodeValue().apply { // the first part of the existing string
                     bufferIndex = node!!.value.bufferIndex
-                    bufferOffsetStart = node!!.value.bufferOffsetStart
-                    bufferOffsetEndExclusive = node!!.value.bufferOffsetStart + splitAtIndex
+                    updateLeftValueDuringNodeSplit(
+                        leftNodeValue = this,
+                        oldNodeValue = node!!.value,
+                        splitAtIndex = splitAtIndex
+                    )
                     buffer = node!!.value.buffer
                     bufferOwnership = node!!.value.bufferOwnership
 
