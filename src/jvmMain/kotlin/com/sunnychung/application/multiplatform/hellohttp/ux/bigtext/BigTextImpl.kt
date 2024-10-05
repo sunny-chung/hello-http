@@ -917,7 +917,7 @@ open class BigTextImpl(
 
         tree.forEach {
             val buffer = it.buffer
-            val chunkString = buffer.subSequence(it.bufferOffsetStart, it.bufferOffsetEndExclusive)
+            val chunkString = buffer.subSequence(it.renderBufferStart, it.renderBufferEndExclusive)
             layouter.indexCharWidth(chunkString.toString())
         }
 
