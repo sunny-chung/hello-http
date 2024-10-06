@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.MonospaceTextLayouter
@@ -811,6 +812,7 @@ class BigTextImplLayoutTest {
 
 fun verifyBigTextImplAgainstTestString(testString: String, bigTextImpl: BigTextImpl, softWrapAt: Int = 10) {
     val splitted = testString.split("\n")
+    val rowIndexAtLines = mutableListOf(0)
     val expectedRows = splitted.flatMapIndexed { index: Int, str: String ->
 //            val str = if (index < splitted.lastIndex) "$s\n" else s
         str.chunked(softWrapAt).let { ss ->
@@ -826,6 +828,8 @@ fun verifyBigTextImplAgainstTestString(testString: String, bigTextImpl: BigTextI
             } else {
                 ss
             }
+        }.also {
+            rowIndexAtLines += (rowIndexAtLines.lastOrNull() ?: 0) + it.size
         }
     }
 //        println("exp $expectedRows")
@@ -833,6 +837,11 @@ fun verifyBigTextImplAgainstTestString(testString: String, bigTextImpl: BigTextI
         assertEquals(expectedRows.size, bigTextImpl.numOfRows)
         expectedRows.forEachIndexed { index, s ->
             assertEquals(s, bigTextImpl.findRowString(index))
+            assertEquals(
+                rowIndexAtLines.binarySearchForMaxIndexOfValueAtMost(index),
+                bigTextImpl.findLineIndexByRowIndex(index),
+                "Line index of row index $index verify fail"
+            )
         }
     } catch (e: Throwable) {
         bigTextImpl.printDebug("ERROR")

@@ -93,9 +93,9 @@ open class BigTextImpl(
         return findNode {
             index
             when (find) {
-                in Int.MIN_VALUE until it.value.leftNumOfRowBreaks -> if (it.left.isNotNil()) -1 else 0
-                in it.value.leftNumOfRowBreaks until it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size -> 0
-                in it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
+                in Int.MIN_VALUE .. it.value.leftNumOfRowBreaks -> if (it.left.isNotNil()) -1 else 0
+                in it.value.leftNumOfRowBreaks + 1  .. it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size -> 0
+                in it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size + 1  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
                         find -= it.value.leftNumOfRowBreaks + it.value.rowBreakOffsets.size
@@ -145,7 +145,7 @@ open class BigTextImpl(
             return 0;
         }
 
-        val node = (tree.findNodeByRowBreaks(index - 1)
+        val node = (tree.findNodeByRowBreaks(index)
             ?: throw IllegalStateException("Cannot find the node right after ${index - 1} row breaks")
         ).first
         val rowStart = findRowStart(node)
@@ -173,12 +173,13 @@ open class BigTextImpl(
             return 0
         }
 
-        val (node, rowIndexStart) = tree.findNodeByRowBreaks(rowIndex - 1)!!
-        val rowOffset = if (rowIndex - 1 - rowIndexStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
+        val (node, rowIndexStart) = tree.findNodeByRowBreaks(rowIndex)!!
+        val rowOffset = if (rowIndex - rowIndexStart - 1 == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
             node.value.renderBufferEndExclusive
-        } else if (rowIndex - 1 - rowIndexStart >= 0) {
-            val i = rowIndex - 1 - rowIndexStart
+        } else if (rowIndex - rowIndexStart - 1 >= 0) { // FIXME > or >=?
+            val i = rowIndex - rowIndexStart - 1 // 0-th row break is the 1st row break. Usually rowBreakOffsets[0] > 0.
             if (i > node.value.rowBreakOffsets.lastIndex) {
+                printDebug("IndexOutOfBoundsException")
                 throw IndexOutOfBoundsException("findLineIndexByRowIndex($rowIndex) rowBreakOffsets[$i] length ${node.value.rowBreakOffsets.size}")
             }
             node.value.rowBreakOffsets[i]
@@ -194,8 +195,8 @@ open class BigTextImpl(
         val positionStartOfLineBreakNode = findRenderPositionStart(lineBreakAtNode)
         val lineBreakOffsetStarts = lineBreakAtNode.value.buffer.lineOffsetStarts
         // FIXME render pos domain should be converted to buffer pos domain before searching
-        val lineBreakMinIndex = lineBreakOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineBreakAtNode.value.bufferOffsetStart)
-        val lineBreakIndex = lineBreakOffsetStarts.binarySearchForMaxIndexOfValueAtMost(lineBreakPosition - positionStartOfLineBreakNode + lineBreakAtNode.value.bufferOffsetStart)
+        val lineBreakMinIndex = lineBreakOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineBreakAtNode.value.renderBufferStart)
+        val lineBreakIndex = lineBreakOffsetStarts.binarySearchForMaxIndexOfValueAtMost(lineBreakPosition - positionStartOfLineBreakNode + lineBreakAtNode.value.renderBufferStart)
         return (lineStart + if (lineBreakIndex < lineBreakMinIndex) {
             0
         } else {
@@ -692,22 +693,22 @@ open class BigTextImpl(
             } else if (rowOffset - 1 >= 0) {
                 val offsetedRowOffset = rowOffset - 1
                 node.value!!.rowBreakOffsets[offsetedRowOffset]
-            } else {
+            } else { // rowOffset == 0
                 node.value!!.renderBufferStart
             }
             return findRenderPositionStart(node) + (charOffsetInBuffer - node.value!!.renderBufferStart)
         }
 
-        val (startNode, startNodeRowStart) = tree.findNodeByRowBreaks(rowIndex - 1) ?:
+        val (startNode, startNodeRowStart) = tree.findNodeByRowBreaks(rowIndex) ?:
             if (rowIndex <= numOfRows) {
                 return ""
             } else {
                 throw IndexOutOfBoundsException("numOfRows = $numOfRows; but given index = $rowIndex")
             }
-        val endNodeFindPair = tree.findNodeByRowBreaks(rowIndex)
+        val endNodeFindPair = tree.findNodeByRowBreaks(rowIndex + 1)
         val endCharIndex = if (endNodeFindPair != null) { // includes the last '\n' char
             val (endNode, endNodeRowStart) = endNodeFindPair
-            require(endNodeRowStart <= rowIndex) { "Node ${endNode.value.debugKey()} violates [endNodeRowStart <= rowIndex]" }
+            require(endNodeRowStart <= rowIndex + 1) { "Node ${endNode.value.debugKey()} violates [endNodeRowStart <= rowIndex] ($endNodeRowStart)" }
 //            val lca = tree.lowestCommonAncestor(startNode, endNode)
             findCharPosOfRowOffset(endNode, rowIndex + 1 - endNodeRowStart)
         } else {
