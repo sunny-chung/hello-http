@@ -17,6 +17,8 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
 
     private val variableRegex = "\\$\\{\\{([^{}]{1,$processLengthLimit})\\}\\}".toRegex()
 
+    private val variableNameRegex = "[^{}\n\r]{1,$processLengthLimit}".toRegex()
+
     override fun initialize(text: BigText, transformer: BigTextTransformer) {
 //        if (true) return
 
@@ -44,8 +46,16 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                     log.d { "EnvironmentVariableIncrementalTransformation search end start=$it" }
                     if (anotherBracket != null) {
                         val variableName = originalText.substring(anotherBracket + "\${{".length, it).string()
-                        log.d { "EnvironmentVariableIncrementalTransformation add '$variableName'" }
-                        transformer.replace(anotherBracket until it + "}}".length, createSpan(variableName), BigTextTransformOffsetMapping.WholeBlock)
+                        if (isValidVariableName(variableName)) {
+                            log.d { "EnvironmentVariableIncrementalTransformation add '$variableName'" }
+                            transformer.replace(
+                                anotherBracket until it + "}}".length,
+                                createSpan(variableName),
+                                BigTextTransformOffsetMapping.WholeBlock
+                            )
+                        } else {
+                            log.d { "variableName '$variableName' is invalid" }
+                        }
                     }
                 }
                 originalText.findPositionByPattern(change.changeStartIndex, change.changeEndExclusiveIndex, "\${{", TextFBDirection.Forward).also {
@@ -55,8 +65,16 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                     log.d { "EnvironmentVariableIncrementalTransformation search start end=$it" }
                     if (anotherBracket != null) {
                         val variableName = originalText.substring(it + "\${{".length, anotherBracket).string()
-                        log.d { "EnvironmentVariableIncrementalTransformation add '$variableName'" }
-                        transformer.replace(it until anotherBracket + "}}".length, createSpan(variableName), BigTextTransformOffsetMapping.WholeBlock)
+                        if (isValidVariableName(variableName)) {
+                            log.d { "EnvironmentVariableIncrementalTransformation add '$variableName'" }
+                            transformer.replace(
+                                it until anotherBracket + "}}".length,
+                                createSpan(variableName),
+                                BigTextTransformOffsetMapping.WholeBlock
+                            )
+                        } else {
+                            log.d { "variableName '$variableName' is invalid" }
+                        }
                     }
                 }
             }
@@ -91,6 +109,10 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
 
     }
 
+    fun isValidVariableName(name: String): Boolean {
+        return name.matches(variableNameRegex)
+    }
+
     fun createSpan(variableName: String): String { // TODO change to AnnotatedString
         return "<$variableName>"
     }
@@ -98,10 +120,14 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
 
 fun BigText.findPositionByPattern(fromPosition: Int, toPosition: Int, pattern: String, direction: TextFBDirection): Int? {
     val substringBeginIndex = maxOf(0, fromPosition - pattern.length)
-    val substring = substring(substringBeginIndex, minOf(length, toPosition + pattern.length))
+    val substringEndExclusiveIndex = minOf(length, toPosition + pattern.length)
+    val substring = substring(substringBeginIndex, substringEndExclusiveIndex)
     val lookupResult = when (direction) {
         TextFBDirection.Forward -> substring.indexOf(pattern)
         TextFBDirection.Backward -> substring.lastIndexOf(pattern)
     }
-    return lookupResult.takeIf { it >= 0 }?.let { substringBeginIndex + lookupResult }
+    return lookupResult.takeIf { it >= 0 }
+        ?.let { substringBeginIndex + lookupResult }
+        .also { log.d { "findPositionByPattern f=$fromPosition, t=$toPosition, s=$substringBeginIndex, e=$substringEndExclusiveIndex, sub=$substring, d=$direction, p=$pattern, res=$it" } }
+        ?.takeIf { (it until it + pattern.length) hasIntersectWith (fromPosition until toPosition) }
 }
