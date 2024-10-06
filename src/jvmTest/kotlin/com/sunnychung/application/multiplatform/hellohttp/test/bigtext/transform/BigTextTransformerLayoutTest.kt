@@ -642,4 +642,31 @@ class BigTextTransformerLayoutTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun deleteOriginal(chunkSize: Int) {
+        val testString = "1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.\n"
+        val t = BigTextImpl(chunkSize = chunkSize).apply {
+            append(testString)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * 10)
+        }
+        val v = BigTextVerifyImpl(tt)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.replace(67 .. 67, "-") // split node at pos 67
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.delete(40 .. 59) // make render positions and original positions different
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        t.delete(67 .. 67)
+        v.stringImpl.delete(47 .. 47)
+        verifyBigTextImplAgainstTestString(testString = v.stringImpl.buildString(), bigTextImpl = tt)
+
+        v.bigTextImpl.printDebug()
+    }
+
 }

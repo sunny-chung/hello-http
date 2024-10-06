@@ -324,6 +324,26 @@ class BigTextImplLayoutTest {
 
     @ParameterizedTest
     @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun invalidLayout(chunkSize: Int) {
+        listOf(10, 200).forEach { softWrapAt ->
+            val initial = "1234567890a\nbc\n"
+            val t = BigTextVerifyImpl(chunkSize = chunkSize).apply {
+                append(initial)
+                bigTextImpl.setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                bigTextImpl.setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            t.insertAt(10, "ABCDE")
+            verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+
+            t.printDebug("Before layout")
+            t.bigTextImpl.layout(20, 21)
+            t.printDebug("After layout")
+            verifyBigTextImplAgainstTestString(testString = t.stringImpl.buildString(), bigTextImpl = t.bigTextImpl, softWrapAt = softWrapAt)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
     @Order(Integer.MAX_VALUE - 100) // This test is pretty time-consuming. Run at the last!
     fun manyInserts(chunkSize: Int) { //if (chunkSize != 256) return
         random = Random(1234567) // use a fixed seed for easier debug

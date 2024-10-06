@@ -990,9 +990,12 @@ open class BigTextImpl(
      * @param startPos Begin index of render positions.
      * @param endPosExclusive End index (exclusive) of render positions.
      */
-    protected fun layout(startPos: Int, endPosExclusive: Int) {
+    fun layout(startPos: Int, endPosExclusive: Int) {
         val layouter = this.layouter ?: return
         val contentWidth = this.contentWidth ?: return
+
+        if (startPos >= length) return
+        if (startPos >= endPosExclusive) return
 
         var lastOccupiedWidth = 0f
         var isLastEndWithForceRowBreak = false

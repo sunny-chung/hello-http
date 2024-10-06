@@ -276,11 +276,13 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
     fun deleteOriginal(originalRange: IntRange) {
         require(0 <= originalRange.start) { "Invalid start" }
         require((originalRange.endInclusive + 1) in 0 .. originalLength) { "Out of bound. endExclusive = ${originalRange.endInclusive + 1}, originalLength = $originalLength" }
+        val renderPositionStart = findTransformedPositionByOriginalPosition(originalRange.start)
         super.deleteUnchecked(
-            start = findOriginalPositionByTransformedPosition(findTransformedPositionByOriginalPosition(originalRange.start)),
+            start = findOriginalPositionByTransformedPosition(renderPositionStart),
             endExclusive = findOriginalPositionByTransformedPosition(findTransformedPositionByOriginalPosition(originalRange.endInclusive + 1)),
             deleteMarker = null
         )
+        layout(maxOf(0, renderPositionStart - 1), minOf(length, renderPositionStart + 1))
     }
 
     fun transformDelete(originalRange: IntRange): Int {

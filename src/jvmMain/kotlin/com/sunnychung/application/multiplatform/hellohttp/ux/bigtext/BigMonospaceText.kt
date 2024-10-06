@@ -371,6 +371,7 @@ private fun CoreBigMonospaceText(
 //    }
 
     val transformedState = remember(text, textTransformation) {
+        log.v { "CoreBigMonospaceText text = |${text.buildString()}|" }
         if (textTransformation != null) {
             val startInstant = KInstant.now()
             textTransformation.initialize(text, transformedText).also {
