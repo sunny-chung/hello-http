@@ -568,18 +568,19 @@ fun CodeEditorView(
 
 //                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
-                    bigTextFieldState.value.valueChangesFlow
-                        .debounce(100.milliseconds().toMilliseconds())
-                        .onEach {
-                            log.d { "bigTextFieldState change ${it.changeId}" }
-                            onTextChange?.let { onTextChange ->
-                                val string = it.bigText.buildCharSequence() as AnnotatedString
-                                onTextChange(string.text)
-                                secondCacheKey.value = string.text
+                    LaunchedEffect(bigTextFieldState) {
+                        bigTextFieldState.value.valueChangesFlow
+                            .debounce(100.milliseconds().toMilliseconds())
+                            .collect {
+                                log.d { "bigTextFieldState change ${it.changeId}" }
+                                onTextChange?.let { onTextChange ->
+                                    val string = it.bigText.buildCharSequence() as AnnotatedString
+                                    onTextChange(string.text)
+                                    secondCacheKey.value = string.text
+                                }
+                                bigTextValueId = it.changeId
                             }
-                            bigTextValueId = it.changeId
-                        }
-                        .launchIn(CoroutineScope(Dispatchers.Main))
+                    }
 
                     BigMonospaceTextField(
                         textFieldState = bigTextFieldState.value,
