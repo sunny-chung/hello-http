@@ -339,7 +339,7 @@ open class BigTextImpl(
     }
 
     private fun insertChunkAtPosition(position: Int, chunkedString: CharSequence) {
-        log.d { "insertChunkAtPosition($position, $chunkedString)" }
+        log.d { "$this insertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
 //        if (position == 64) {
 //            log.d { inspect("$position") }
@@ -763,8 +763,8 @@ open class BigTextImpl(
 
     override fun delete(start: Int, endExclusive: Int): Int {
         require(start <= endExclusive) { "start should be <= endExclusive" }
-        require(0 <= start) { "Invalid start" }
-        require(endExclusive <= length) { "endExclusive is out of bound" }
+        require(0 <= start) { "Invalid start ($start)" }
+        require(endExclusive <= length) { "endExclusive is out of bound ($endExclusive)" }
 
         return deleteUnchecked(start, endExclusive).also {
             changeHook?.afterDelete(this, start until endExclusive)
@@ -776,7 +776,7 @@ open class BigTextImpl(
             return 0
         }
 
-        log.d { "delete $start ..< $endExclusive" }
+        log.d { "$this delete $start ..< $endExclusive" }
 
         var node: RedBlackTree<BigTextNodeValue>.Node? = tree.findNodeByCharIndex(endExclusive - 1, isIncludeMarkerNodes = false)
         var nodeRange = charIndexRangeOfNode(node!!)

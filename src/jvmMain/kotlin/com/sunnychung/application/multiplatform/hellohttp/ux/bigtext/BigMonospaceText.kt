@@ -969,13 +969,13 @@ class BigTextViewState {
 
     fun updateCursorIndexByTransformed(transformedText: BigTextTransformed) {
         cursorIndex = transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex).also {
-            log.d { "cursorIndex = $it" }
+            log.d { "cursorIndex = $it (from T $transformedCursorIndex)" }
         }
     }
 
     fun updateTransformedCursorIndexByOriginal(transformedText: BigTextTransformed) {
         transformedCursorIndex = transformedText.findTransformedPositionByOriginalPosition(cursorIndex).also {
-            log.d { "updateTransformedCursorIndexByOriginal = $it" }
+            log.d { "updateTransformedCursorIndexByOriginal = $it (from $cursorIndex)" }
         }
     }
 

@@ -922,7 +922,7 @@ class BigTextTransformerImplTest {
 
     @ParameterizedTest
     @ValueSource(ints = [1048576, 64, 16])
-    fun restoreToOriginal(chunkSize: Int) {
+    fun restoreToOriginal1(chunkSize: Int) {
         val initialText = "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
         val original = BigTextImpl(chunkSize = chunkSize)
         original.append(initialText)
@@ -946,6 +946,35 @@ class BigTextTransformerImplTest {
         initialText.let { expected ->
             assertEquals(expected, transformed.buildString())
             assertEquals(expected, original.buildString())
+            assertEquals(expected.length, transformed.length)
+            assertEquals(initialText.length, transformed.originalLength)
+            assertAllSubstring(expected, transformed)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1048576, 64, 16])
+    fun restoreToOriginal2(chunkSize: Int) {
+        val initialText = "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+        val original = BigTextImpl(chunkSize = chunkSize)
+        original.append(initialText)
+        val transformed = BigTextTransformerImpl(original)
+
+        transformed.replace(11 .. 18, "ABCD", BigTextTransformOffsetMapping.WholeBlock)
+        "12345678901ABCD0123456789012345678901234567890123456789012345678901234567890".let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(initialText, original.buildString())
+            assertEquals(expected.length, transformed.length)
+            assertEquals(initialText.length, transformed.originalLength)
+            assertAllSubstring(expected, transformed)
+        }
+
+        transformed.restoreToOriginal(11 .. 18)
+        initialText.let { expected ->
+            assertEquals(expected, transformed.buildString())
+            assertEquals(expected, original.buildString())
+            assertEquals(expected.length, transformed.length)
+            assertEquals(initialText.length, transformed.originalLength)
             assertAllSubstring(expected, transformed)
         }
     }

@@ -273,15 +273,27 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 
     fun transformInsertAtOriginalEnd(text: CharSequence): Int = transformInsert(originalLength, text)
 
-    fun deleteOriginal(originalRange: IntRange) {
+    fun deleteOriginal(originalRange: IntRange, isReMapPositionNeeded: Boolean = true) {
         require(0 <= originalRange.start) { "Invalid start" }
         require((originalRange.endInclusive + 1) in 0 .. originalLength) { "Out of bound. endExclusive = ${originalRange.endInclusive + 1}, originalLength = $originalLength" }
         val renderPositionStart = findTransformedPositionByOriginalPosition(originalRange.start)
-        super.deleteUnchecked(
-            start = findOriginalPositionByTransformedPosition(renderPositionStart),
-            endExclusive = findOriginalPositionByTransformedPosition(findTransformedPositionByOriginalPosition(originalRange.endInclusive + 1)),
-            deleteMarker = null
-        )
+        if (isReMapPositionNeeded) {
+            super.deleteUnchecked(
+                start = findOriginalPositionByTransformedPosition(renderPositionStart),
+                endExclusive = findOriginalPositionByTransformedPosition(
+                    findTransformedPositionByOriginalPosition(
+                        originalRange.endInclusive + 1
+                    )
+                ),
+                deleteMarker = null
+            )
+        } else {
+            super.deleteUnchecked(
+                start = originalRange.start,
+                endExclusive = originalRange.endInclusive + 1,
+                deleteMarker = null
+            )
+        }
         layout(maxOf(0, renderPositionStart - 1), minOf(length, renderPositionStart + 1))
     }
 
@@ -718,7 +730,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         val renderPositionAtOriginalEnd = findTransformedPositionByOriginalPosition(range.endInclusive)
 
         deleteTransformIf(range)
-        deleteOriginal(range)
+        deleteOriginal(range, isReMapPositionNeeded = false)
 
         // insert the original text from `delegate`
         val originalNodeStart = delegate.tree.findNodeByCharIndex(range.start)
