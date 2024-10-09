@@ -289,6 +289,9 @@ private fun CoreBigMonospaceText(
         }
     }
 
+//    log.v { "text = |${text.buildString()}|" }
+//    log.v { "transformedText = |${transformedText.buildString()}|" }
+
     fun fireOnLayout() {
         lineHeight = (textLayouter.charMeasurer as ComposeUnicodeCharMeasurer).getRowHeight()
         onTextLayout?.let { callback ->

@@ -94,7 +94,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                                 transformer.restoreToOriginal(anotherStart until it + "}}".length)
                             }
                     }
-                originalText.findPositionByPattern(change.changeStartIndex - processLengthLimit, change.changeEndExclusiveIndex, "\${{", TextFBDirection.Forward)
+                originalText.findPositionByPattern(change.changeStartIndex - "\${{".length + 1, change.changeEndExclusiveIndex + "\${{".length, "\${{", TextFBDirection.Forward)
                     ?.takeIf { (it until it + "\${{".length) hasIntersectWith changeRange }
                     ?.let {
                         originalText.findPositionByPattern(it + "\${{".length, it + processLengthLimit, "}}", TextFBDirection.Forward)
