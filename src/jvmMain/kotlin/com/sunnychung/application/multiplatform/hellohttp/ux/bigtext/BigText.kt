@@ -35,6 +35,8 @@ interface BigText {
         insertAt(range.start, text)
     }
 
+    fun findLineAndColumnFromRenderPosition(renderPosition: Int): Pair<Int, Int>
+
     override fun hashCode(): Int
 
     override fun equals(other: Any?): Boolean

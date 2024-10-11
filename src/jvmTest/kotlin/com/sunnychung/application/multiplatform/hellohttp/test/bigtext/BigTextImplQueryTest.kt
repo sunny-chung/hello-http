@@ -219,6 +219,29 @@ class BigTextImplQueryTest {
         }
         t.verifyAllLines()
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1 * 1024 * 1024, 16, 64])
+    fun findLineAndColumnFromRenderPosition(chunkSize: Int) {
+        val testStrings = listOf(
+            "abc\nde\n\nfghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\naa",
+            "\n\nabcde\nf\n\n\n",
+            "",
+            "ab",
+            "\n\n\n",
+            "1234567890123456\n\n"
+        )
+
+        testStrings.forEach { testString ->
+            val t = BigTextVerifyImpl(chunkSize = chunkSize)
+            t.append(testString)
+
+            (0 until t.length).forEach {
+                val (lineIndex, columnIndex) = t.bigTextImpl.findLineAndColumnFromRenderPosition(it)
+                t.assertLineAndColumn(it, lineIndex, columnIndex)
+            }
+        }
+    }
 }
 
 private fun BigTextVerifyImpl.verifyAllLines() {
@@ -227,6 +250,22 @@ private fun BigTextVerifyImpl.verifyAllLines() {
         val result = this.bigTextImpl.findLineString(i)
         assertEquals(if (i == splitted.lastIndex) line else "$line\n", result)
     }
+}
+
+internal fun BigTextVerifyImpl.assertLineAndColumn(charIndex: Int, lineIndex: Int, columnIndex: Int) {
+    val s = stringImpl.buildString()
+    val numOfLineBreaks = s.substring(0 until charIndex).count { it == '\n' }
+    val lastLineBreakPosition = s.lastIndexOf('\n', charIndex - 1)
+    val lineStartPosition = if (lastLineBreakPosition >= 0) {
+        lastLineBreakPosition + 1
+    } else {
+        0
+    }
+    assertEquals(
+        expected = numOfLineBreaks to (charIndex - lineStartPosition),
+        actual = lineIndex to columnIndex,
+        message = "Mismatch line/col at char index = $charIndex value = '${s[charIndex]}'"
+    )
 }
 
 private fun random(from: Int, toExclusive: Int): Int {

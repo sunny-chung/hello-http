@@ -34,6 +34,10 @@ class InefficientBigText(text: String) : BigText {
         return -(endExclusive - start)
     }
 
+    override fun findLineAndColumnFromRenderPosition(renderPosition: Int): Pair<Int, Int> {
+        TODO("Not yet implemented")
+    }
+
     override fun hashCode(): Int =
         string.hashCode()
 

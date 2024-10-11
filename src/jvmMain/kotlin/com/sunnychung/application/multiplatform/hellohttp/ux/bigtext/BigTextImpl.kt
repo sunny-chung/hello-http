@@ -881,6 +881,47 @@ open class BigTextImpl(
         return start until start + node.value.bufferLength
     }
 
+    override fun findLineAndColumnFromRenderPosition(renderPosition: Int): Pair<Int, Int> {
+        val node = tree.findNodeByRenderCharIndex(renderPosition)
+            ?: throw IndexOutOfBoundsException("Node for position $renderPosition not found")
+        val nodeStart = findRenderPositionStart(node)
+        val lineStart = findLineStart(node)
+
+        if (node.renderLength() <= 0) {
+            throw IllegalStateException("Node render length is not positive")
+        }
+
+        val buffer = node.value.buffer
+        val lineBreakStartIndex = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value.renderBufferStart)
+        val lineBreakEndIndexInclusive = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value.renderBufferEndExclusive)
+        val lineBreakOffset = minOf(
+            lineBreakEndIndexInclusive,
+            buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(renderPosition - nodeStart - 1)
+        ).let {
+            if (it >= 0) {
+                it - maxOf(0, lineBreakStartIndex) + 1
+            } else {
+                0
+            }
+        }
+
+        val lineIndex = lineStart + lineBreakOffset
+
+        val (lineStartNode, lineStartNodeLineStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
+        val lineOffsetStarts = lineStartNode.value.buffer.lineOffsetStarts
+        val inRangeLineStartIndex = lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(lineStartNode.value.renderBufferStart)
+        val lineOffset = if (lineIndex - 1 >= 0) {
+            lineOffsetStarts[inRangeLineStartIndex + lineIndex - 1 - lineStartNodeLineStart] - lineStartNode.value.renderBufferStart + 1
+        } else {
+            0
+        }
+        val lineStartPos = findRenderPositionStart(lineStartNode) + lineOffset
+
+        val columnIndex = renderPosition - lineStartPos
+
+        return lineIndex to columnIndex
+    }
+
     override fun hashCode(): Int {
 //        TODO("Not yet implemented")
         return super.hashCode()
