@@ -463,7 +463,7 @@ private val jsonEncoder = jacksonObjectMapper().disable(DeserializationFeature.F
 @Composable
 fun BodyViewerView(
     modifier: Modifier = Modifier,
-    key: Any? = Unit,
+    key: String,
     content: ByteArray,
     errorMessage: String?,
     prettifiers: List<PrettifierDropDownValue>,
@@ -613,7 +613,7 @@ fun ResponseBodyView(response: UserResponse) {
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
-            key = response.id,
+            key = "Response:${response.id}/Body",
             content = response.body ?: byteArrayOf(),
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
@@ -707,6 +707,7 @@ fun ResponseStreamView(response: UserResponse) {
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
             modifier = Modifier.weight(0.6f),
+            key = "Response:${response.id}/Stream:${selectedMessage?.id}/Body",
             content = detailData ?: byteArrayOf(),
             prettifiers = prettifiers,
             selectedPrettifierState = remember(

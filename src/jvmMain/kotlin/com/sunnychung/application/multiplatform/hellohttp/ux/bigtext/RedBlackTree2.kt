@@ -17,9 +17,16 @@ interface RedBlackTreeComputations<T : Comparable<T>> {
 //    fun transferComputeResultTo(from: T, to: T)
 }
 
-open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T>) : RedBlackTree<T>() where T : Comparable<T>, T : DebuggableNode<T> {
+open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T>) : RedBlackTree<T>() where T : Comparable<T>, T : DebuggableNode<in T> {
 
     fun getRoot() = root
+
+    fun setRoot(node: RedBlackTree<T>.Node) {
+        root = node
+        var numNodes = 0
+        forEach { ++numNodes }
+        nodeCount = numNodes
+    }
 
     fun lastNodeOrNull(): Node? {
         var child: Node = root
@@ -78,7 +85,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
         }
 
         val z: Node = Node(`val`, RED, y, NIL, NIL)
-        `val`.attach(z)
+        (`val` as DebuggableNode<T>).attach(z)
 
         if (y === NIL) {
             root = z
@@ -103,7 +110,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      */
     fun insertLeft(parent: Node, value: T): Node {
         val z: Node = Node(value, RED, parent, NIL, NIL)
-        value.attach(z)
+        (value as DebuggableNode<T>).attach(z)
         if (root.isNil) {
             TODO("insertLeft root")
         }
@@ -129,7 +136,7 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
      */
     fun insertRight(parent: Node, value: T): Node {
         val z: Node = Node(value, RED, parent, NIL, NIL)
-        value.attach(z)
+        (value as DebuggableNode<T>).attach(z)
         if (root.isNil) {
             TODO("insertRight root")
         }
@@ -509,15 +516,16 @@ open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T
 
     fun debugTree(prepend: String = "    "): String = buildString {
         fun visit(node: Node): String {
-            val key = node.value?.debugKey().toString()
+            val nodeValue = node.value as DebuggableNode<T>?
+            val key = nodeValue?.debugKey().toString()
             if (node === root) {
-                appendLine("$prepend$key[/\"${node.value?.debugLabel(node)}\"\\]")
+                appendLine("$prepend$key[/\"${nodeValue?.debugLabel(node)}\"\\]")
             } else {
-                appendLine("$prepend$key[\"${node.value?.debugLabel(node)}\"]")
+                appendLine("$prepend$key[\"${nodeValue?.debugLabel(node)}\"]")
             }
             node.left.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--L-->${visit(it)}") }
             node.right.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--R-->${visit(it)}") }
-            node.parent.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--P-->${node.parent.value.debugKey()}") }
+//            node.parent.takeIf { it.isNotNil() }?.also { appendLine("$prepend$key--P-->${node.parent.value.debugKey()}") }
             return key
         }
         visit(root)

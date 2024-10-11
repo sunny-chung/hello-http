@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
+import com.sunnychung.application.multiplatform.hellohttp.util.string
 
 class InefficientBigText(text: String) : BigText {
     private var string: String = text
@@ -8,21 +9,23 @@ class InefficientBigText(text: String) : BigText {
     override val length: Int
         get() = string.length
 
-    override fun fullString(): String = string
+    override fun buildString(): String = string
 
-    override fun substring(start: Int, endExclusive: Int): String =
+    override fun buildCharSequence(): CharSequence = string
+
+    override fun substring(start: Int, endExclusive: Int): CharSequence =
         string.substring(start, endExclusive)
 
-    override fun substring(range: IntRange): String =
+    override fun substring(range: IntRange): CharSequence =
         substring(range.first, range.last)
 
-    override fun append(text: String): Int {
+    override fun append(text: CharSequence): Int {
         string += text
         return text.length
     }
 
-    override fun insertAt(pos: Int, text: String): Int {
-        string = string.insert(pos, text)
+    override fun insertAt(pos: Int, text: CharSequence): Int {
+        string = string.insert(pos, text.string())
         return text.length
     }
 
@@ -39,7 +42,7 @@ class InefficientBigText(text: String) : BigText {
             return false
         }
         return when(other) {
-            is InefficientBigText -> string == other.fullString()
+            is InefficientBigText -> string == other.buildString()
             else -> TODO()
         }
     }
