@@ -646,27 +646,27 @@ open class BigTextImpl(
         return charSequenceFactory(result)
     }
 
+    /**
+     * @param lineOffset 0 = start of buffer; 1 = char index after the 1st '\n'; 2 = char index after the 2nd '\n'; ...
+     */
+    protected fun findCharPosOfLineOffset(node: RedBlackTree<BigTextNodeValue>.Node, lineOffset: Int): Int {
+        val buffer = node.value!!.buffer
+        val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
+        val lineEndIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value!!.bufferOffsetEndExclusive - 1)
+        val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
+        val charOffsetInBuffer = if (offsetedLineOffset > lineEndIndexInBuffer) {
+            node.value!!.renderBufferEndExclusive
+        } else if (lineOffset - 1 >= 0) {
+            buffer.lineOffsetStarts[offsetedLineOffset] + 1
+        } else {
+            node.value!!.renderBufferStart
+        }
+        return findPositionStart(node) + (charOffsetInBuffer - node.value!!.renderBufferStart)
+    }
+
     fun findLineString(lineIndex: Int): CharSequence {
         require(0 <= lineIndex) { "lineIndex $lineIndex must be non-negative." }
         require(lineIndex <= numOfLines) { "lineIndex $lineIndex out of bound, numOfLines = $numOfLines." }
-
-        /**
-         * @param lineOffset 0 = start of buffer; 1 = char index after the 1st '\n'; 2 = char index after the 2nd '\n'; ...
-         */
-        fun findCharPosOfLineOffset(node: RedBlackTree<BigTextNodeValue>.Node, lineOffset: Int): Int {
-            val buffer = node.value!!.buffer
-            val lineStartIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value!!.bufferOffsetStart)
-            val lineEndIndexInBuffer = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value!!.bufferOffsetEndExclusive - 1)
-            val offsetedLineOffset = maxOf(0, lineStartIndexInBuffer) + (lineOffset) - 1
-            val charOffsetInBuffer = if (offsetedLineOffset > lineEndIndexInBuffer) {
-                node.value!!.renderBufferEndExclusive
-            } else if (lineOffset - 1 >= 0) {
-                buffer.lineOffsetStarts[offsetedLineOffset] + 1
-            } else {
-                node.value!!.renderBufferStart
-            }
-            return findPositionStart(node) + (charOffsetInBuffer - node.value!!.renderBufferStart)
-        }
 
         val (startNode, startNodeLineStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
         val endNodeFindPair = tree.findNodeByLineBreaks(lineIndex)
@@ -920,6 +920,17 @@ open class BigTextImpl(
         val columnIndex = renderPosition - lineStartPos
 
         return lineIndex to columnIndex
+    }
+
+    override fun findRenderCharIndexByLineAndColumn(lineIndex: Int, columnIndex: Int): Int {
+        require(0 <= lineIndex) { "lineIndex $lineIndex must be non-negative." }
+        require(lineIndex <= numOfLines) { "lineIndex $lineIndex out of bound, numOfLines = $numOfLines." }
+        require(0 <= columnIndex) { "columnIndex $lineIndex must be non-negative." }
+
+        val (startNode, startNodeLineStart) = tree.findNodeByLineBreaks(lineIndex - 1)!!
+        val startCharIndex = findCharPosOfLineOffset(startNode, lineIndex - startNodeLineStart)
+
+        return startCharIndex + columnIndex
     }
 
     override fun hashCode(): Int {

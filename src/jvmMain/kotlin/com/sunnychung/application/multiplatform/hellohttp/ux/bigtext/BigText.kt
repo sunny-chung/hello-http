@@ -37,6 +37,8 @@ interface BigText {
 
     fun findLineAndColumnFromRenderPosition(renderPosition: Int): Pair<Int, Int>
 
+    fun findRenderCharIndexByLineAndColumn(lineIndex: Int, columnIndex: Int): Int
+
     override fun hashCode(): Int
 
     override fun equals(other: Any?): Boolean
