@@ -257,6 +257,14 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         throw IndexOutOfBoundsException("Transformed position $transformedPosition not found")
     }
 
+    override fun findLineAndColumnFromRenderPosition(renderPosition: Int): Pair<Int, Int> {
+        TODO("Not yet implemented")
+    }
+
+    override fun findRenderCharIndexByLineAndColumn(lineIndex: Int, columnIndex: Int): Int {
+        TODO("Not yet implemented")
+    }
+
     override fun hashCode(): Int {
         val r = bigTextImpl.hashCode()
         val tr = stringImpl.hashCode()

@@ -892,14 +892,14 @@ open class BigTextImpl(
         }
 
         val buffer = node.value.buffer
-        val lineBreakStartIndex = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value.renderBufferStart)
+        val lineBreakStartIndex = buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(node.value.renderBufferStart)
         val lineBreakEndIndexInclusive = buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(node.value.renderBufferEndExclusive)
         val lineBreakOffset = minOf(
-            lineBreakEndIndexInclusive,
-            buffer.lineOffsetStarts.binarySearchForMaxIndexOfValueAtMost(renderPosition - nodeStart - 1)
+            lineBreakEndIndexInclusive + 1,
+            buffer.lineOffsetStarts.binarySearchForMinIndexOfValueAtLeast(renderPosition - nodeStart + node.value.renderBufferStart)
         ).let {
-            if (it >= 0) {
-                it - maxOf(0, lineBreakStartIndex) + 1
+            if (it >= 0 && it >= lineBreakStartIndex) {
+                it - maxOf(0, lineBreakStartIndex)
             } else {
                 0
             }
