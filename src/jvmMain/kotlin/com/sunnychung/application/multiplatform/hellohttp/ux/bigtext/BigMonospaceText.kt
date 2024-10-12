@@ -465,9 +465,6 @@ private fun CoreBigMonospaceText(
             eventType = eventType,
             changeStartIndex = changeStartIndex,
             changeEndExclusiveIndex = changeEndExclusiveIndex,
-            renderText = transformedText,
-            changeTransformedStartIndex = transformedText.findTransformedPositionByOriginalPosition(changeStartIndex),
-            changeTransformedEndExclusiveIndex = transformedText.findTransformedPositionByOriginalPosition(changeEndExclusiveIndex)
         )
     }
 
