@@ -168,8 +168,11 @@ fun loadNativeLibraries() {
         println("Loading native lib $libFileName")
         val dest = File(File(AppContext.dataDir, "lib"), libFileName)
         dest.parentFile.mkdirs()
-        enclosingClazz.javaClass.classLoader.getResourceAsStream(libFileName).use {
-            it.copyTo(FileOutputStream(dest))
+        enclosingClazz.javaClass.classLoader.getResourceAsStream(libFileName).use { `is` ->
+            `is` ?: throw RuntimeException("Lib $libFileName not found")
+            FileOutputStream(dest).use { os ->
+                `is`.copyTo(os)
+            }
         }
         System.load(dest.absolutePath)
     }
