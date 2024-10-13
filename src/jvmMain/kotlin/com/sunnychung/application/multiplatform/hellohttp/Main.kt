@@ -48,7 +48,6 @@ fun main() {
     val appDir = AppDirsFactory.getInstance().getUserDataDir("Hello HTTP", null, null)
     println("appDir = $appDir")
     AppContext.dataDir = File(appDir)
-    loadNativeLibraries()
     runBlocking {
         try {
             AppContext.SingleInstanceProcessService.apply { dataDir = File(appDir) }.enforce()
@@ -69,6 +68,7 @@ fun main() {
             }
             exitProcess(1)
         }
+        loadNativeLibraries()
         println("Preparing to start")
         AppContext.PersistenceManager.initialize()
 
