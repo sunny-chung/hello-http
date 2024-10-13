@@ -465,9 +465,6 @@ private fun CoreBigMonospaceText(
             eventType = eventType,
             changeStartIndex = changeStartIndex,
             changeEndExclusiveIndex = changeEndExclusiveIndex,
-            renderText = transformedText,
-            changeTransformedStartIndex = transformedText.findTransformedPositionByOriginalPosition(changeStartIndex),
-            changeTransformedEndExclusiveIndex = transformedText.findTransformedPositionByOriginalPosition(changeEndExclusiveIndex)
         )
     }
 
@@ -477,17 +474,15 @@ private fun CoreBigMonospaceText(
     }
 
     fun onValuePreChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
-        if (eventType == BigTextChangeEventType.Delete) {
-            viewState.version = Random.nextLong()
-            val event = generateChangeEvent(eventType, changeStartIndex, changeEndExclusiveIndex)
+        viewState.version = Random.nextLong()
+        val event = generateChangeEvent(eventType, changeStartIndex, changeEndExclusiveIndex)
 
-            // invoke textTransformation listener before deletion, so that it knows what will be deleted and transform accordingly
-            (textTransformation as? IncrementalTextTransformation<Any?>)?.onTextChange(
-                event,
-                transformedText,
-                transformedState
-            )
-        }
+        // invoke textTransformation listener before deletion, so that it knows what will be deleted and transform accordingly
+        (textTransformation as? IncrementalTextTransformation<Any?>)?.beforeTextChange(
+            event,
+            transformedText,
+            transformedState
+        )
     }
 
     fun onValuePostChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
@@ -495,13 +490,11 @@ private fun CoreBigMonospaceText(
 
         viewState.version = Random.nextLong()
         val event = generateChangeEvent(eventType, changeStartIndex, changeEndExclusiveIndex)
-        if (eventType != BigTextChangeEventType.Delete) {
-            (textTransformation as? IncrementalTextTransformation<Any?>)?.onTextChange(
-                event,
-                transformedText,
-                transformedState
-            )
-        }
+        (textTransformation as? IncrementalTextTransformation<Any?>)?.afterTextChange(
+            event,
+            transformedText,
+            transformedState
+        )
         onTextChange(event)
     }
 

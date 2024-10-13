@@ -30,7 +30,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
         }
     }
 
-    override fun onTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
+    override fun beforeTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
         // TODO handle multiple matches (e.g. triggered by pasting text)
 
         val originalText = change.bigText

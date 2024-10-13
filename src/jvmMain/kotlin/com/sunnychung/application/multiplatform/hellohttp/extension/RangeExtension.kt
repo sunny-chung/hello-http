@@ -17,6 +17,15 @@ infix fun IntRange.hasIntersectWith(other: IntRange): Boolean {
     return !intersect(other).isEmpty()
 }
 
+/**
+ * Use this function may overflow.
+ */
+infix fun UIntRange.hasIntersectWith(other: UIntRange): Boolean {
+    fun UIntRange.toIntRange() = start.toInt() .. endInclusive.toInt()
+
+    return !toIntRange().intersect(other.toIntRange()).isEmpty()
+}
+
 fun IntRange.toNonEmptyRange(): IntRange {
     if (length <= 0) {
         return start .. start

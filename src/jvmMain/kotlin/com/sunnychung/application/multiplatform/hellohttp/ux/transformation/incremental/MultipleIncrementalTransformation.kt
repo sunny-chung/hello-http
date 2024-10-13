@@ -13,9 +13,15 @@ class MultipleIncrementalTransformation(val transformations: List<IncrementalTex
         return Unit
     }
 
-    override fun onTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Any?) {
+    override fun beforeTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Any?) {
         transformations.forEach {
-            (it as IncrementalTextTransformation<Any?>).onTextChange(change, transformer, context)
+            (it as IncrementalTextTransformation<Any?>).beforeTextChange(change, transformer, context)
+        }
+    }
+
+    override fun afterTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Any?) {
+        transformations.forEach {
+            (it as IncrementalTextTransformation<Any?>).afterTextChange(change, transformer, context)
         }
     }
 

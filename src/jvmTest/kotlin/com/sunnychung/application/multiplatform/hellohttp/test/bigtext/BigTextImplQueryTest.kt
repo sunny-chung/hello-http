@@ -229,7 +229,8 @@ class BigTextImplQueryTest {
             "",
             "ab",
             "\n\n\n",
-            "1234567890123456\n\n"
+            "1234567890123456\n\n",
+            "{\n\"mmm\": \"nn\",\n\"x\": \"dasc\",\n  \"d\": {\n    \"cc\": [\n       \"v\"\n    ]\n  }\n}"
         )
 
         testStrings.forEach { testString ->
@@ -240,6 +241,28 @@ class BigTextImplQueryTest {
                 val (lineIndex, columnIndex) = t.bigTextImpl.findLineAndColumnFromRenderPosition(it)
                 t.assertLineAndColumn(it, lineIndex, columnIndex)
             }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1 * 1024 * 1024, 16, 64])
+    fun findLineAndColumnFromRenderPositionAfterInsert(chunkSize: Int) {
+        val t = BigTextVerifyImpl(chunkSize = chunkSize)
+        t.append("{\n" +
+                "\"mmm\": \"nn\",\n" +
+                "\"x\": \"dasc\",\n" +
+                "  \"d\": {\n" +
+                "    \"cc\": [\n" +
+                "       \n" +
+                "    ]\n" +
+                "  }\n" +
+                "}")
+
+        t.insertAt(56, "\"v\"")
+
+        (0 until t.length).forEach {
+            val (lineIndex, columnIndex) = t.bigTextImpl.findLineAndColumnFromRenderPosition(it)
+            t.assertLineAndColumn(it, lineIndex, columnIndex)
         }
     }
 }

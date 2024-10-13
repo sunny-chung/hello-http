@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.loadNativeLibraries
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -57,6 +58,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
             val appDir = File("build/testrun/data")
             AppContext.dataDir = appDir
             AppContext.SingleInstanceProcessService.apply { dataDir = appDir }.enforce()
+            loadNativeLibraries()
             runBlocking {
                 AppContext.PersistenceManager.initialize()
             }

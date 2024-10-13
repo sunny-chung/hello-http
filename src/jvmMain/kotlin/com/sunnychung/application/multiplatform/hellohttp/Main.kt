@@ -26,14 +26,20 @@ import com.sunnychung.application.multiplatform.hellohttp.document.OperationalDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.error.MultipleProcessError
 import com.sunnychung.application.multiplatform.hellohttp.model.Version
+import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.DataLossWarningDialogWindow
+import io.github.treesitter.ktreesitter.json.TreeSitterJson
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import net.harawata.appdirs.AppDirsFactory
 import java.awt.Dimension
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
@@ -62,6 +68,7 @@ fun main() {
             }
             exitProcess(1)
         }
+        loadNativeLibraries()
         println("Preparing to start")
         AppContext.PersistenceManager.initialize()
 
@@ -143,4 +150,45 @@ fun main() {
             }
         }
     }
+}
+
+fun loadNativeLibraries() {
+    val libraries = listOf("tree-sitter-json" to TreeSitterJson)
+    val systemArch = if (currentOS() == WindowsOS) {
+        "x64"
+    } else {
+        getSystemArchitecture()
+    }.uppercase()
+    libraries.forEach { (name, enclosingClazz) ->
+        val libFileName = when (currentOS()) {
+            LinuxOS -> "lib${name}-${systemArch}.so"
+            MacOS -> "lib${name}-${systemArch}.dylib"
+            else -> "${name}-${systemArch}.dll"
+        }
+        println("Loading native lib $libFileName")
+        val dest = File(File(AppContext.dataDir, "lib"), libFileName)
+        dest.parentFile.mkdirs()
+        enclosingClazz.javaClass.classLoader.getResourceAsStream(libFileName).use { `is` ->
+            `is` ?: throw RuntimeException("Lib $libFileName not found")
+            FileOutputStream(dest).use { os ->
+                `is`.copyTo(os)
+            }
+        }
+        System.load(dest.absolutePath)
+    }
+}
+
+fun getSystemArchitecture(): String {
+    return exec("uname", "-m").trim()
+}
+
+fun exec(vararg components: String): String {
+    val pb = ProcessBuilder(*components)
+    val process = pb.start()
+    val output = process.inputStream.bufferedReader().readText()
+    val exitCode = process.waitFor()
+    if (exitCode != 0) {
+        throw RuntimeException("${components.first()} Process finished with exit code $exitCode")
+    }
+    return output
 }

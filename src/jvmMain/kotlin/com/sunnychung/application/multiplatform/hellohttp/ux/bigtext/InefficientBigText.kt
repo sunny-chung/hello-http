@@ -38,6 +38,10 @@ class InefficientBigText(text: String) : BigText {
         TODO("Not yet implemented")
     }
 
+    override fun findRenderCharIndexByLineAndColumn(lineIndex: Int, columnIndex: Int): Int {
+        TODO("Not yet implemented")
+    }
+
     override fun hashCode(): Int =
         string.hashCode()
 

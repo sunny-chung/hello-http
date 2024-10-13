@@ -12,10 +12,6 @@ data class BigTextChangeEvent(
 
     val changeStartIndex: Int,
     val changeEndExclusiveIndex: Int,
-
-    val renderText: BigText,
-    val changeTransformedStartIndex: Int,
-    val changeTransformedEndExclusiveIndex: Int,
 )
 
 enum class BigTextChangeEventType {

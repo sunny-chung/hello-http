@@ -45,7 +45,7 @@ class AnnotatedStringTextBuffer(size: Int) : TextBuffer() {
                         .map {
                             AnnotatedString.Range(
                                 item = it.second,
-                                start = it.first.start - start,
+                                start = maxOf(0, it.first.start - start),
                                 end = minOf(endExclusive - start, it.first.endInclusive + 1 - start)
                             )
                         }
