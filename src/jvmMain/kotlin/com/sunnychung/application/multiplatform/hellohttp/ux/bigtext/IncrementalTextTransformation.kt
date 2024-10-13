@@ -4,5 +4,6 @@ interface IncrementalTextTransformation<C> {
 
     fun initialize(text: BigText, transformer: BigTextTransformer): C
 
-    fun onTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: C)
+    fun beforeTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: C) = Unit
+    fun afterTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: C) = Unit
 }

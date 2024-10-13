@@ -51,12 +51,11 @@ class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : Incr
     )
 
     val parser: Parser
-    var ast: Tree
+    lateinit var ast: Tree
 
     init {
         val language = Language(TreeSitterJson.language())
         parser = Parser(language)
-        ast = parser.parse("")
     }
 
     override fun initialize(text: BigText, transformer: BigTextTransformer) {
@@ -170,7 +169,7 @@ class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : Incr
         }
     }
 
-    override fun onTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
+    override fun afterTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
         val oldAst = ast
 
         when (change.eventType) {
@@ -199,11 +198,22 @@ class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : Incr
 
         ast = parser.parse(oldAst) { byte, point ->
             if (byte in 0u until change.bigText.length.toUInt()) {
-                change.bigText.substring(byte.toInt() ..byte.toInt())
+                change.bigText.substring(byte.toInt() ..byte.toInt()).let {
+                    val codePoints = it.codePoints().toArray()
+                    if (codePoints.size > 1 || codePoints.first() > 255) {
+                        "X" // replace multibyte char as single-byte char
+                    } else {
+                        it
+                    }
+                }
             } else {
                 "" // the doc is wrong. null would result in crash
+            }.also {
+                println("parse $byte = '$it'")
             }
         }
+
+        log.d { "AST change sexp = ${ast.rootNode.sexp()}" }
 
         val changedRanges = if (change.eventType == BigTextChangeEventType.Insert) { // if there is no structural change, `changedRanges` returns an empty list. but we need to update the display styles
             listOf(Range(Point(0u, 0u), Point(0u, 0u), change.changeStartIndex.toUInt(), change.changeEndExclusiveIndex.toUInt()))
@@ -279,7 +289,7 @@ class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : Incr
             }
         }
 
-        log.d { "AST change sexp = ${ast.rootNode.sexp()}" }
+        log.d { "AST change sexp after = ${ast.rootNode.sexp()}" }
 
     }
 
@@ -302,7 +312,9 @@ class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : Incr
             toPoint(startOffset),
             toPoint(oldEndOffset),
             toPoint(newEndOffset),
-        )
+        ).also {
+            log.d { "AST InputEdit ${it.startByte} ${it.oldEndByte} ${it.newEndByte} ${it.startPoint} ${it.oldEndPoint} ${it.newEndPoint}" }
+        }
     }
 
     fun createAnnotatedRange(text: BigText, style: SpanStyle, astNode: Node): AnnotatedString.Range<SpanStyle> {
