@@ -85,7 +85,7 @@ kotlin {
 
                 // incremental parser
                 implementation("io.github.tree-sitter:ktreesitter:0.23.0")
-                implementation("io.github.sunny-chung:ktreesitter-json:0.23.0.0")
+                implementation("io.github.sunny-chung:ktreesitter-json:0.23.0.1")
             }
 
             resources.srcDir("$buildDir/resources")
