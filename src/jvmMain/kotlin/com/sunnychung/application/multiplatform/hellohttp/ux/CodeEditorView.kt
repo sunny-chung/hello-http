@@ -568,7 +568,7 @@ fun CodeEditorView(
 
 //                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
-                    LaunchedEffect(bigTextFieldState) {
+                    LaunchedEffect(bigTextFieldState.value) {
                         bigTextFieldState.value.valueChangesFlow
                             .debounce(100.milliseconds().toMilliseconds())
                             .collect {
