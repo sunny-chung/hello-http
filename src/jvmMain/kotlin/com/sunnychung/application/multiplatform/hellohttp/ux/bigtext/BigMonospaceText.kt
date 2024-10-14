@@ -618,7 +618,10 @@ private fun CoreBigMonospaceText(
                     selectionEnd = selectedCharIndex
                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
                     viewState.updateSelectionByTransformedSelection(transformedText)
-                    viewState.transformedCursorIndex = selectionEnd + if (selectionEnd == viewState.transformedSelection.last) 1 else 0
+                    viewState.transformedCursorIndex = minOf(
+                        transformedText.length,
+                        selectionEnd + if (selectionEnd == viewState.transformedSelection.last) 1 else 0
+                    )
                     viewState.updateCursorIndexByTransformed(transformedText)
                 }
             )
