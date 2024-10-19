@@ -285,13 +285,15 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
                         originalRange.endInclusive + 1
                     )
                 ),
-                deleteMarker = null
+                deleteMarker = null,
+                isSkipLayout = true
             )
         } else {
             super.deleteUnchecked(
                 start = originalRange.start,
                 endExclusive = originalRange.endInclusive + 1,
-                deleteMarker = null
+                deleteMarker = null,
+                isSkipLayout = true
             )
         }
         layout(maxOf(0, renderPositionStart - 1), minOf(length, renderPositionStart + 1))
@@ -311,14 +313,24 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
             return 0
         }
 
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- before findNodeByCharIndex" }
         val startNode = tree.findNodeByCharIndex(originalRange.start)!!
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after findNodeByCharIndex" }
         val renderStartPos = findRenderPositionStart(startNode)
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after findRenderPositionStart" }
         val buffer = startNode.value.buffer // the buffer is not used. just to prevent NPE
-        super.deleteUnchecked(originalRange.start, originalRange.endInclusive + 1, if (isAddMarker) createDeleteMarkerNodeValue(deleteMarkerRange) else null)
+        super.deleteUnchecked(
+            start = originalRange.start,
+            endExclusive = originalRange.endInclusive + 1,
+            deleteMarker = if (isAddMarker) createDeleteMarkerNodeValue(deleteMarkerRange) else null,
+            isSkipLayout = true,
+        )
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after deleteUnchecked" }
         if (isAddMarker) {
 //            insertDeleteMarker(originalRange)
         }
         layout(maxOf(0, renderStartPos - 1), minOf(length, renderStartPos + 1))
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after layout" }
 //        tree.visitInPostOrder { recomputeAggregatedValues(it) } //
         logT.d { inspect("after transformDelete $originalRange") }
         return - originalRange.length
@@ -375,7 +387,8 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         val startNode = tree.findNodeByCharIndex(originalRange.start)!!
         val endNode = tree.findNodeByCharIndex(originalRange.endInclusive + 1)!!
         val renderStartPos = findRenderPositionStart(startNode)
-        val renderEndPos = findRenderPositionStart(endNode) + endNode.value.currentRenderLength
+//        val renderEndPos = findRenderPositionStart(endNode) + endNode.value.currentRenderLength
+        val renderEndPos = findTransformedPositionByOriginalPosition(originalRange.endInclusive + 1)
 
         var node: RedBlackTree<BigTextNodeValue>.Node? = endNode
         var nodeRange = charIndexRangeOfNode(node!!)
@@ -451,7 +464,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
             }
         }
 
-        layout(maxOf(0, renderStartPos - 1), minOf(length, renderEndPos))
+        layout(maxOf(0, renderStartPos - 1), minOf(length, renderEndPos + 1))
 //        tree.visitInPostOrder { recomputeAggregatedValues(it) } //
         logT.d { inspect("after deleteTransformIf $originalRange") }
         return - originalRange.length
