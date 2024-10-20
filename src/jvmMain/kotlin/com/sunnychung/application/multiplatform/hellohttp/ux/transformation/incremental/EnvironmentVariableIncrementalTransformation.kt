@@ -1,7 +1,11 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental
 
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withAnnotation
 import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersectWith
-import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.string
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
@@ -13,6 +17,10 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.Incremental
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.TextFBDirection
 
 class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformation<Unit> {
+    companion object {
+        const val TAG_PREFIX = "EnvVar/"
+        const val TAG = "EnvVar"
+    }
     val processLengthLimit = 30
 
     private val variableRegex = "\\$\\{\\{([^{}]{1,$processLengthLimit})\\}\\}".toRegex()
@@ -30,7 +38,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
         }
     }
 
-    override fun beforeTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
+    override fun afterTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
         // TODO handle multiple matches (e.g. triggered by pasting text)
 
         val originalText = change.bigText
@@ -39,10 +47,20 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                 // Find if there is pattern match ("\${{" or "}}") in the inserted text.
                 // If yes, try to locate the pair within `processLengthLimit`, and make desired replacement.
 
-                originalText.findPositionByPattern(change.changeStartIndex, change.changeEndExclusiveIndex, "}}", TextFBDirection.Forward).also {
+                originalText.findPositionByPattern(
+                    change.changeStartIndex,
+                    change.changeEndExclusiveIndex,
+                    "}}",
+                    TextFBDirection.Forward
+                ).also {
                     log.d { "EnvironmentVariableIncrementalTransformation search end end=$it" }
                 }?.let {
-                    val anotherBracket = originalText.findPositionByPattern(it - processLengthLimit, it - 1, "\${{", TextFBDirection.Backward)
+                    val anotherBracket = originalText.findPositionByPattern(
+                        it - processLengthLimit,
+                        it - 1,
+                        "\${{",
+                        TextFBDirection.Backward
+                    )
                     log.d { "EnvironmentVariableIncrementalTransformation search end start=$it" }
                     if (anotherBracket != null) {
                         val variableName = originalText.substring(anotherBracket + "\${{".length, it).string()
@@ -58,10 +76,20 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                         }
                     }
                 }
-                originalText.findPositionByPattern(change.changeStartIndex, change.changeEndExclusiveIndex, "\${{", TextFBDirection.Forward).also {
+                originalText.findPositionByPattern(
+                    change.changeStartIndex,
+                    change.changeEndExclusiveIndex,
+                    "\${{",
+                    TextFBDirection.Forward
+                ).also {
                     log.d { "EnvironmentVariableIncrementalTransformation search start start=$it" }
                 }?.let {
-                    val anotherBracket = originalText.findPositionByPattern(it + "\${{".length, it + processLengthLimit, "}}", TextFBDirection.Forward)
+                    val anotherBracket = originalText.findPositionByPattern(
+                        it + "\${{".length,
+                        it + processLengthLimit,
+                        "}}",
+                        TextFBDirection.Forward
+                    )
                     log.d { "EnvironmentVariableIncrementalTransformation search start end=$it" }
                     if (anotherBracket != null) {
                         val variableName = originalText.substring(it + "\${{".length, anotherBracket).string()
@@ -79,6 +107,15 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                 }
             }
 
+            else -> {}
+        }
+    }
+
+    override fun beforeTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
+        // TODO handle multiple matches (e.g. triggered by pasting text)
+
+        val originalText = change.bigText
+        when (change.eventType) {
             BigTextChangeEventType.Delete -> {
                 // Find if there is pattern match ("\${{" or "}}") in the inserted text.
                 // If yes, try to locate the pair within `processLengthLimit`, and remove the transformation by restoring them to original.
@@ -104,6 +141,8 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                             }
                     }
             }
+
+            else -> {}
         }
 
 
@@ -113,8 +152,14 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
         return name.matches(variableNameRegex)
     }
 
-    fun createSpan(variableName: String): String { // TODO change to AnnotatedString
-        return "<$variableName>"
+//    @OptIn(ExperimentalTextApi::class)
+    fun createSpan(variableName: String): CharSequence { // TODO change to AnnotatedString
+//        return buildAnnotatedString {
+//            withAnnotation(TAG, variableName) {
+//                append(variableName)
+//            }
+//        }
+        return AnnotatedString(variableName, listOf(AnnotatedString.Range(SpanStyle(), 0, variableName.length, "$TAG_PREFIX$variableName")))
     }
 }
 

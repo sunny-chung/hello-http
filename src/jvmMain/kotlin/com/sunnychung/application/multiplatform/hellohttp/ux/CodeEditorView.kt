@@ -80,10 +80,12 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Func
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.CollapseIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
@@ -609,8 +611,11 @@ fun CodeEditorView(
                                 EnvironmentVariableIncrementalTransformation()
                             ))
                         }, // TODO replace this testing transformation
-                        textDecorator = rememberLast(bigTextFieldState, themeColours) {
-                            JsonSyntaxHighlightDecorator(themeColours)
+                        textDecorator = rememberLast(bigTextFieldState, themeColours, knownVariables) {
+                            MultipleTextDecorator(listOf(
+                                JsonSyntaxHighlightDecorator(themeColours),
+                                EnvironmentVariableDecorator(themeColours, knownVariables)
+                            ))
                         },
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
 //                        textStyle = LocalTextStyle.current.copy(

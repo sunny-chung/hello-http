@@ -288,16 +288,16 @@ private fun CoreBigMonospaceText(
 //        }
 //    }
 
-    val transformedText: BigTextTransformed = remember(text, textTransformation, textDecorator) {
+    val transformedText: BigTextTransformed = remember(text, textTransformation) {
         log.d { "CoreBigMonospaceText recreate BigTextTransformed" }
         BigTextTransformerImpl(text).also {
 //            log.d { "transformedText = |${it.buildString()}|" }
-            it.decorator = textDecorator
             if (log.config.minSeverity <= Severity.Verbose) {
                 it.printDebug("transformedText")
             }
         }
     }
+    (transformedText as BigTextTransformerImpl).decorator = textDecorator
 
 //    log.v { "text = |${text.buildString()}|" }
 //    log.v { "transformedText = |${transformedText.buildString()}|" }

@@ -825,14 +825,15 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         charRangesToReapplyTransforms += originalRange
     }
 
-    override fun isDecorate(nodeValue: BigTextNodeValue): Boolean {
-        return nodeValue.bufferOwnership == BufferOwnership.Delegated
-    }
-
-    override fun decorate(copyStart: Int, copyEndExclusive: Int): CharSequence {
-        val originalStart = findOriginalPositionByTransformedPosition(copyStart)
-        val originalEndExclusive = findOriginalPositionByTransformedPosition(copyEndExclusive)
-        return decorator!!.onApplyDecoration(delegate, originalStart until originalEndExclusive)
+    override fun decorate(nodeValue: BigTextNodeValue, text: CharSequence, renderPositions: IntRange): CharSequence {
+        val decorator = decorator ?: return text
+        return if (nodeValue.bufferOwnership == BufferOwnership.Delegated) {
+            val originalStart = findOriginalPositionByTransformedPosition(renderPositions.start)
+            val originalEndInclusive = findOriginalPositionByTransformedPosition(renderPositions.endInclusive)
+            decorator.onApplyDecorationOnOriginal(text, originalStart .. originalEndInclusive)
+        } else {
+            decorator.onApplyDecorationOnTransformation(text, renderPositions)
+        }
     }
 }
 

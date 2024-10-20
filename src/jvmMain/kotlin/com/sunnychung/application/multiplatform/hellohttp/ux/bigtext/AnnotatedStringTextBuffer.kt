@@ -10,7 +10,7 @@ class AnnotatedStringTextBuffer(size: Int) : TextBuffer() {
 
     // TODO optimize it to use interval tree when styles that change character width are supported
     // otherwise layout would be very slow
-    private val spanStyles = TreeMap<Int, MutableList<Pair<IntRange, SpanStyle>>>()
+    private val spanStyles = TreeMap<Int, MutableList<Entry>>()
 
     override val length: Int
         get() = buffer.length
@@ -21,7 +21,7 @@ class AnnotatedStringTextBuffer(size: Int) : TextBuffer() {
             text.spanStyles.forEach {
                 val start = it.start + baseStart
                 val endExclusive = it.end + baseStart
-                spanStyles.getOrPut(start) { mutableListOf() } += (start until endExclusive) to it.item
+                spanStyles.getOrPut(start) { mutableListOf() } += Entry(start until endExclusive, it.item, it.tag)
             }
             buffer.append(text)
             return
@@ -40,17 +40,20 @@ class AnnotatedStringTextBuffer(size: Int) : TextBuffer() {
             spanStyles = spanStyles.subMap(0, endExclusive)
                 .flatMap { e ->
                     e.value.filter {
-                        queryRange hasIntersectWith it.first
+                        queryRange hasIntersectWith it.range
                     }
                         .map {
                             AnnotatedString.Range(
-                                item = it.second,
-                                start = maxOf(0, it.first.start - start),
-                                end = minOf(endExclusive - start, it.first.endInclusive + 1 - start)
+                                item = it.style,
+                                start = maxOf(0, it.range.start - start),
+                                end = minOf(endExclusive - start, it.range.endInclusive + 1 - start),
+                                tag = it.tag
                             )
                         }
                 },
             paragraphStyles = emptyList()
         )
     }
+
+    private class Entry(val range: IntRange, val style: SpanStyle, val tag: String)
 }

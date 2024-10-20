@@ -363,8 +363,6 @@ open class BigTextImpl(
         return BigTextNodeValue()
     }
 
-    protected open fun isDecorate(nodeValue: BigTextNodeValue): Boolean = true
-
     private fun insertChunkAtPosition(position: Int, chunkedString: CharSequence) {
         log.d { "$this insertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
@@ -694,14 +692,15 @@ open class BigTextImpl(
             val numCharsToCopy = copyEndExclusive - copyStart
             val copyUntilBufferIndex = copyFromBufferIndex + numCharsToCopy
             if (numCharsToCopy > 0) {
-                val subsequence = if (decorator != null && isDecorate(node.value)) {
-                    decorate(copyStart, copyEndExclusive).also {
+                val bufferSubsequence = node.value.buffer.subSequence(copyFromBufferIndex, copyUntilBufferIndex)
+                val subsequence = if (decorator != null) {
+                    decorate(node.value, bufferSubsequence, copyStart until copyEndExclusive).also {
                         if (it.length != numCharsToCopy) {
                             throw IllegalStateException("Returned CharSequence from decorator has length of ${it.length}. Expected length: $numCharsToCopy")
                         }
                     }
                 } else {
-                    node.value.buffer.subSequence(copyFromBufferIndex, copyUntilBufferIndex)
+                    bufferSubsequence
                 }
                 result.append(subsequence)
                 numRemainCharsToCopy -= numCharsToCopy
@@ -718,8 +717,8 @@ open class BigTextImpl(
         return charSequenceFactory(result)
     }
 
-    protected open fun decorate(copyStart: Int, copyEndExclusive: Int) =
-        decorator!!.onApplyDecoration(this, copyStart until copyEndExclusive)
+    protected open fun decorate(nodeValue: BigTextNodeValue, text: CharSequence, renderPositions: IntRange) =
+        decorator!!.onApplyDecorationOnOriginal(text, renderPositions)
 
     /**
      * @param lineOffset 0 = start of buffer; 1 = char index after the 1st '\n'; 2 = char index after the 2nd '\n'; ...

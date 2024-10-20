@@ -132,7 +132,7 @@ class JsonSyntaxHighlightDecorator(val colours: AppColor) : BigTextDecorator {
         log.v { "AST change sexp = ${ast.rootNode.sexp()}" }
     }
 
-    override fun onApplyDecoration(text: BigText, originalRange: IntRange): CharSequence {
+    override fun onApplyDecorationOnOriginal(text: CharSequence, originalRange: IntRange): CharSequence {
         log.v { "json sh onApplyDecoration ${originalRange}" }
         return highlight(text, originalRange) {
             it.children.forEach { c ->
@@ -143,11 +143,11 @@ class JsonSyntaxHighlightDecorator(val colours: AppColor) : BigTextDecorator {
         }
     }
 
-    protected fun highlight(bigText: BigText, range: IntRange, visitChildrensFunction: VisitScope.(Node) -> Unit): AnnotatedString {
+    protected fun highlight(text: CharSequence, range: IntRange, visitChildrensFunction: VisitScope.(Node) -> Unit): AnnotatedString {
         val spans = mutableListOf<AnnotatedString.Range<SpanStyle>>()
 
-        fun applyStyle(bigText: BigText, style: SpanStyle, node: Node) {
-            createAnnotatedRange(bigText, style, node, range)?.let {
+        fun applyStyle(style: SpanStyle, node: Node) {
+            createAnnotatedRange(style, node, range)?.let {
                 spans += it
             }
         }
@@ -162,7 +162,7 @@ class JsonSyntaxHighlightDecorator(val colours: AppColor) : BigTextDecorator {
             when (it.type) {
                 "pair" -> {
                     val keyChild = it.childByFieldName("key")!!
-                    applyStyle(bigText, objectKeyStyle, keyChild)
+                    applyStyle(objectKeyStyle, keyChild)
 //                        log.v { "AST change highlight ${keyChild.startByte} ..< ${keyChild.endByte} = key" }
 //                    log.v { "AST highlight ${keyChild.startPoint.toCharIndex()} ..< ${keyChild.endPoint.toCharIndex()} = key" }
                     it.childByFieldName("value")?.let {
@@ -170,19 +170,19 @@ class JsonSyntaxHighlightDecorator(val colours: AppColor) : BigTextDecorator {
                     }
                 }
                 "null" -> {
-                    applyStyle(bigText, nothingLiteralStyle, it)
+                    applyStyle(nothingLiteralStyle, it)
                 }
                 "number" -> {
-                    applyStyle(bigText, numberLiteralStyle, it)
+                    applyStyle(numberLiteralStyle, it)
                 }
                 "string" -> {
-                    applyStyle(bigText, stringLiteralStyle, it)
+                    applyStyle(stringLiteralStyle, it)
                 }
                 "false" -> {
-                    applyStyle(bigText, booleanFalseLiteralStyle, it)
+                    applyStyle(booleanFalseLiteralStyle, it)
                 }
                 "true" -> {
-                    applyStyle(bigText, booleanTrueLiteralStyle, it)
+                    applyStyle(booleanTrueLiteralStyle, it)
                 }
                 else -> {
                     visitChildrens()
@@ -191,7 +191,7 @@ class JsonSyntaxHighlightDecorator(val colours: AppColor) : BigTextDecorator {
             log.v { "AST finish visit change ${it.startByte} ..< ${it.endByte}" }
         }
 
-        return AnnotatedString(bigText.substring(range).toString(), spans)
+        return AnnotatedString(text.toString(), spans)
     }
 
     fun createInputEdit(event: BigTextChangeEvent, startOffset: Int, oldEndOffset: Int, newEndOffset: Int): InputEdit {
@@ -218,7 +218,7 @@ class JsonSyntaxHighlightDecorator(val colours: AppColor) : BigTextDecorator {
         }
     }
 
-    fun createAnnotatedRange(text: BigText, style: SpanStyle, astNode: Node, bigTextRange: IntRange): AnnotatedString.Range<SpanStyle>? {
+    fun createAnnotatedRange(style: SpanStyle, astNode: Node, bigTextRange: IntRange): AnnotatedString.Range<SpanStyle>? {
         val startCharIndex = maxOf(0, astNode.startByte.toInt() - bigTextRange.start)
         val endCharIndex = minOf(bigTextRange.length, maxOf(0, astNode.endByte.toInt() - bigTextRange.start))
 //        val startCharIndex = text.findRenderCharIndexByLineAndColumn(astNode.startPoint.row.toInt(), astNode.startPoint.column.toInt())
