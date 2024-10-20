@@ -132,9 +132,11 @@ fun BigMonospaceText(
     isSelectable: Boolean = false,
     visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
+    textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
+    onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
     text = text,
@@ -146,9 +148,11 @@ fun BigMonospaceText(
     onTextChange = {},
     visualTransformation = visualTransformation,
     textTransformation = textTransformation,
+    textDecorator = textDecorator,
     scrollState = scrollState,
     viewState = viewState,
     onTextLayout = onTextLayout,
+    onTransformInit = onTransformInit,
 )
 
 @Composable
@@ -160,6 +164,7 @@ fun BigMonospaceTextField(
     color: Color = LocalColor.current.text,
     visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
+    textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) {
@@ -174,6 +179,7 @@ fun BigMonospaceTextField(
         },
         visualTransformation = visualTransformation,
         textTransformation = textTransformation,
+        textDecorator = textDecorator,
         scrollState = scrollState,
         viewState = textFieldState.viewState,
         onTextLayout = onTextLayout
@@ -190,6 +196,7 @@ fun BigMonospaceTextField(
     onTextChange: (BigTextChangeEvent) -> Unit,
     visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
+    textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
@@ -204,6 +211,7 @@ fun BigMonospaceTextField(
     onTextChange = onTextChange,
     visualTransformation = visualTransformation,
     textTransformation = textTransformation,
+    textDecorator = textDecorator,
     scrollState = scrollState,
     viewState = viewState,
     onTextLayout = onTextLayout,
@@ -222,9 +230,11 @@ private fun CoreBigMonospaceText(
     onTextChange: (BigTextChangeEvent) -> Unit,
     visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
+    textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
+    onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) {
     log.d { "CoreBigMonospaceText recompose" }
 
@@ -278,10 +288,11 @@ private fun CoreBigMonospaceText(
 //        }
 //    }
 
-    val transformedText: BigTextTransformed = remember(text, textTransformation) {
+    val transformedText: BigTextTransformed = remember(text, textTransformation, textDecorator) {
         log.d { "CoreBigMonospaceText recreate BigTextTransformed" }
         BigTextTransformerImpl(text).also {
 //            log.d { "transformedText = |${it.buildString()}|" }
+            it.decorator = textDecorator
             if (log.config.minSeverity <= Severity.Verbose) {
                 it.printDebug("transformedText")
             }
@@ -383,9 +394,31 @@ private fun CoreBigMonospaceText(
                 if (log.config.minSeverity <= Severity.Verbose) {
                     (transformedText as BigTextImpl).printDebug("init transformedState")
                 }
+                viewState.transformText = transformedText
+                onTransformInit?.invoke(transformedText)
             }
         } else {
             null
+        }
+    }
+
+    remember(text, textDecorator) {
+        if (textDecorator != null) {
+            val startInstant = KInstant.now()
+            textDecorator.initialize(text).also {
+                val endInstant = KInstant.now()
+                log.d { "CoreBigMonospaceText init textDecorator took ${endInstant - startInstant}" }
+            }
+        }
+    }
+
+    if (textTransformation != null) {
+        viewState.pollReapplyTransformCharRanges().forEach {
+            log.d { "onReapplyTransform $it" }
+            val startInstant = KInstant.now()
+            (textTransformation as IncrementalTextTransformation<Any?>)
+                .onReapplyTransform(text, it, transformedText, transformedState)
+            log.d { "onReapplyTransform done ${KInstant.now() - startInstant}" }
         }
     }
 
@@ -482,6 +515,7 @@ private fun CoreBigMonospaceText(
             transformedText,
             transformedState
         )
+        textDecorator?.beforeTextChange(event)
     }
 
     fun onValuePostChange(eventType: BigTextChangeEventType, changeStartIndex: Int, changeEndExclusiveIndex: Int) {
@@ -494,6 +528,7 @@ private fun CoreBigMonospaceText(
             transformedText,
             transformedState
         )
+        textDecorator?.afterTextChange(event)
         onTextChange(event)
     }
 

@@ -62,13 +62,13 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberAnnotatedBigTextFieldState
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -79,15 +79,13 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Envi
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.CollapseIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
 import kotlin.random.Random
@@ -458,13 +456,14 @@ fun CodeEditorView(
 //                    modifier = Modifier.fillMaxHeight(),
 //                )
 
-                val (secondCacheKey, bigTextFieldState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
-                val bigTextValue = bigTextFieldState.value.text
+                val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
+                val bigTextFieldState = bigTextFieldMutableState.value
+                val bigTextValue = bigTextFieldState.text
                 var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
 
                 BigTextLineNumbersView(
                     scrollState = scrollState,
-                    bigTextViewState = bigTextFieldState.value.viewState,
+                    bigTextViewState = bigTextFieldState.viewState,
                     bigTextValueId = bigTextValueId,
                     bigText = bigTextValue as BigTextImpl,
                     layoutResult = layoutResult,
@@ -476,15 +475,34 @@ fun CodeEditorView(
                 )
 
                 if (isReadOnly) {
+                    val collapseIncrementalTransformation = remember(bigTextFieldState) {
+                        CollapseIncrementalTransformation(themeColours, collapsedChars.values.toList())
+                    }
+                    var transformedText by remember(bigTextFieldState) { mutableStateOf<BigTextTransformed?>(null) }
+
+                    transformedText?.let { transformedText ->
+                        collapseIncrementalTransformation.update(collapsedChars.values.toList(), bigTextFieldState.viewState)
+                    }
+
                     BigMonospaceText(
                         text = bigTextValue as BigTextImpl,
                         padding = PaddingValues(4.dp),
                         visualTransformation = visualTransformationToUse,
+                        textTransformation = rememberLast(bigTextFieldState) {
+                            MultipleIncrementalTransformation(listOf(
+//                                JsonSyntaxHighlightIncrementalTransformation(themeColours),
+                                collapseIncrementalTransformation,
+                            ))
+                        },
+                        textDecorator = rememberLast(bigTextFieldState, themeColours) {
+                            JsonSyntaxHighlightDecorator(themeColours)
+                        },
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
                         isSelectable = true,
                         scrollState = scrollState,
-                        viewState = bigTextFieldState.value.viewState,
+                        viewState = bigTextFieldState.viewState,
                         onTextLayout = { layoutResult = it },
+                        onTransformInit = { transformedText = it },
                         modifier = Modifier.fillMaxSize()
                             .run {
                                 if (testTag != null) {
@@ -568,8 +586,8 @@ fun CodeEditorView(
 
 //                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
-                    LaunchedEffect(bigTextFieldState.value) {
-                        bigTextFieldState.value.valueChangesFlow
+                    LaunchedEffect(bigTextFieldState) {
+                        bigTextFieldState.valueChangesFlow
                             .debounce(100.milliseconds().toMilliseconds())
                             .collect {
                                 log.d { "bigTextFieldState change ${it.changeId}" }
@@ -583,14 +601,17 @@ fun CodeEditorView(
                     }
 
                     BigMonospaceTextField(
-                        textFieldState = bigTextFieldState.value,
+                        textFieldState = bigTextFieldState,
                         visualTransformation = visualTransformationToUse,
                         textTransformation = remember {
                             MultipleIncrementalTransformation(listOf(
-                                JsonSyntaxHighlightIncrementalTransformation(themeColours),
+//                                JsonSyntaxHighlightIncrementalTransformation(themeColours),
                                 EnvironmentVariableIncrementalTransformation()
                             ))
                         }, // TODO replace this testing transformation
+                        textDecorator = rememberLast(bigTextFieldState, themeColours) {
+                            JsonSyntaxHighlightDecorator(themeColours)
+                        },
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
 //                        textStyle = LocalTextStyle.current.copy(
 //                            fontFamily = FontFamily.Monospace,
@@ -855,26 +876,26 @@ fun BigTextLineNumbersView(
     val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
 
     // Note that layoutResult.text != bigText
-    val layoutText = layoutResult?.text as? BigTextImpl
+    val layoutText = layoutResult?.text as? BigTextTransformerImpl
 
     var prevHasLayouted by remember { mutableStateOf(false) }
     prevHasLayouted = layoutText?.hasLayouted ?: false
     prevHasLayouted
 
     val viewportTop = scrollState.value
-    val firstLine = layoutText?.findLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
-    val lastLine = (layoutText?.findLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
-    log.d { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${layoutText?.numOfLines}" }
+    val firstLine = layoutText?.findOriginalLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
+    val lastLine = (layoutText?.findOriginalLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
+    log.d { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${layoutText?.numOfOriginalLines}" }
     val rowHeight = layoutResult?.rowHeight ?: 0f
     CoreLineNumbersView(
         firstLine = firstLine,
-        lastLine = minOf(lastLine, layoutText?.numOfLines ?: 1),
-        totalLines = layoutText?.numOfLines ?: 1,
+        lastLine = minOf(lastLine, layoutText?.numOfOriginalLines ?: 1),
+        totalLines = layoutText?.numOfOriginalLines ?: 1,
         lineHeight = (rowHeight).toDp(),
 //        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
         getLineOffset = {
-            ((layoutText?.findFirstRowIndexOfLine(it).also { r ->
-                log.v { "layoutText.findFirstRowIndexOfLine($it) = $r" }
+            ((layoutText?.findFirstRowIndexByOriginalLineIndex(it).also { r ->
+                log.d { "layoutText.findFirstRowIndexOfLine($it) = $r" }
             }
                 ?: 0) * rowHeight - viewportTop).toDp()
         },

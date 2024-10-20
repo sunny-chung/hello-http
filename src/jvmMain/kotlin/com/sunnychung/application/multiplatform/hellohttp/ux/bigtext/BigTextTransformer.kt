@@ -17,4 +17,6 @@ interface BigTextTransformer {
     fun replace(range: IntRange, text: CharSequence, offsetMapping: BigTextTransformOffsetMapping)
 
     fun restoreToOriginal(range: IntRange)
+
+//    fun layoutTransaction(transaction: BigTextLayoutTransaction.() -> Unit)
 }

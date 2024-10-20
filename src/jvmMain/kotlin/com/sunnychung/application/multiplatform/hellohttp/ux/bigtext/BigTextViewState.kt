@@ -55,34 +55,34 @@ class BigTextViewState {
     internal var transformedCursorIndex by mutableStateOf(0)
     var cursorIndex by mutableStateOf(0)
 
-    fun updateCursorIndexByTransformed(transformedText: TransformedText) {
+    internal fun updateCursorIndexByTransformed(transformedText: TransformedText) {
         cursorIndex = transformedText.offsetMapping.transformedToOriginal(transformedCursorIndex)
     }
 
-    fun updateTransformedCursorIndexByOriginal(transformedText: TransformedText) {
+    internal fun updateTransformedCursorIndexByOriginal(transformedText: TransformedText) {
         transformedCursorIndex = transformedText.offsetMapping.originalToTransformed(cursorIndex)
     }
 
-    fun updateCursorIndexByTransformed(transformedText: BigTextTransformed) {
+    internal fun updateCursorIndexByTransformed(transformedText: BigTextTransformed) {
         cursorIndex = transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex).also {
             com.sunnychung.application.multiplatform.hellohttp.util.log.d { "cursorIndex = $it (from T $transformedCursorIndex)" }
         }
     }
 
-    fun updateTransformedCursorIndexByOriginal(transformedText: BigTextTransformed) {
+    internal fun updateTransformedCursorIndexByOriginal(transformedText: BigTextTransformed) {
         transformedCursorIndex = transformedText.findTransformedPositionByOriginalPosition(cursorIndex).also {
             com.sunnychung.application.multiplatform.hellohttp.util.log.d { "updateTransformedCursorIndexByOriginal = $it (from $cursorIndex)" }
         }
         cursorIndex = transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex)
     }
 
-    fun roundTransformedCursorIndex(direction: CursorAdjustDirection, transformedText: BigTextTransformed, compareWithPosition: Int, isOnlyWithinBlock: Boolean) {
+    internal fun roundTransformedCursorIndex(direction: CursorAdjustDirection, transformedText: BigTextTransformed, compareWithPosition: Int, isOnlyWithinBlock: Boolean) {
         transformedCursorIndex = roundedTransformedCursorIndex(transformedCursorIndex, direction, transformedText, compareWithPosition, isOnlyWithinBlock).also {
             com.sunnychung.application.multiplatform.hellohttp.util.log.d { "roundedTransformedCursorIndex($transformedCursorIndex, $direction, ..., $compareWithPosition) = $it" }
         }
     }
 
-    fun roundedTransformedCursorIndex(transformedCursorIndex: Int, direction: CursorAdjustDirection, transformedText: BigTextTransformed, compareWithPosition: Int, isOnlyWithinBlock: Boolean): Int {
+    internal fun roundedTransformedCursorIndex(transformedCursorIndex: Int, direction: CursorAdjustDirection, transformedText: BigTextTransformed, compareWithPosition: Int, isOnlyWithinBlock: Boolean): Int {
         val possibleRange = 0 .. transformedText.length
         val previousMappedPosition = transformedText.findOriginalPositionByTransformedPosition(compareWithPosition)
         when (direction) {
@@ -127,4 +127,20 @@ class BigTextViewState {
             }
         }
     }
+
+    private val charRangesToReapplyTransforms = mutableSetOf<IntRange>()
+
+    fun requestReapplyTransformation(originalRange: IntRange) {
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "requestReapplyTransformation $originalRange" }
+        charRangesToReapplyTransforms += originalRange
+    }
+
+    fun pollReapplyTransformCharRanges(): List<IntRange> {
+        val result = charRangesToReapplyTransforms.toList()
+        charRangesToReapplyTransforms.clear()
+        return result
+    }
+
+    var transformText: BigTextTransformed? = null
+        internal set
 }

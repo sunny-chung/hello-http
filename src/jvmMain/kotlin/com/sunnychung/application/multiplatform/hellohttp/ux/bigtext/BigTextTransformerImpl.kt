@@ -4,6 +4,7 @@ import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.MutableLoggerConfig
 import co.touchlab.kermit.Severity
+import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.extension.toNonEmptyRange
@@ -93,6 +94,12 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 
     val originalLength: Int
         get() = tree.getRoot().length()
+
+    override val numOfOriginalLines: Int
+        get() = delegate.numOfOriginalLines
+
+    // not thread-safe
+    val charRangesToReapplyTransforms = mutableSetOf<IntRange>()
 
     override fun createNodeValue(): BigTextNodeValue {
         return BigTextTransformNodeValue()
@@ -313,11 +320,11 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
             return 0
         }
 
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- before findNodeByCharIndex" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "transformDelete -- before findNodeByCharIndex" }
         val startNode = tree.findNodeByCharIndex(originalRange.start)!!
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after findNodeByCharIndex" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "transformDelete -- after findNodeByCharIndex" }
         val renderStartPos = findRenderPositionStart(startNode)
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after findRenderPositionStart" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "transformDelete -- after findRenderPositionStart" }
         val buffer = startNode.value.buffer // the buffer is not used. just to prevent NPE
         super.deleteUnchecked(
             start = originalRange.start,
@@ -325,12 +332,12 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
             deleteMarker = if (isAddMarker) createDeleteMarkerNodeValue(deleteMarkerRange) else null,
             isSkipLayout = true,
         )
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after deleteUnchecked" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "transformDelete -- after deleteUnchecked" }
         if (isAddMarker) {
 //            insertDeleteMarker(originalRange)
         }
         layout(maxOf(0, renderStartPos - 1), minOf(length, renderStartPos + 1))
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformDelete -- after layout" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "transformDelete -- after layout" }
 //        tree.visitInPostOrder { recomputeAggregatedValues(it) } //
         logT.d { inspect("after transformDelete $originalRange") }
         return - originalRange.length
@@ -478,12 +485,14 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         } else {
             0
         }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformReplace -- before transformDelete" }
 //        transformDelete(originalRange = originalRange, isAddMarker = incrementalTransformOffsetMappingLength <= 0)
         transformDelete(originalRange = originalRange, isAddMarker = incrementalTransformOffsetMappingLength <= 0 || originalRange.length > incrementalTransformOffsetMappingLength, deleteMarkerRange = if (incrementalTransformOffsetMappingLength <= 0) {
             originalRange
         } else {
             originalRange.endInclusive + 1 - maxOf(0, originalRange.length - incrementalTransformOffsetMappingLength) .. originalRange.endInclusive
         })
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformReplace -- before transformInsert" }
         transformInsert(
             pos = originalRange.start,
             text = newText,
@@ -492,6 +501,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 //            incrementalTransformOffsetMappingLength = incrementalTransformOffsetMappingLength - 1,
             isReplaceOriginal = incrementalTransformOffsetMappingLength > 0,
         )
+        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "transformReplace -- after transformInsert" }
 //        if (incrementalTransformOffsetMappingLength > 0 && originalRange.length > incrementalTransformOffsetMappingLength) {
 //            insertDeleteMarker(originalRange.endInclusive + 1 - maxOf(0, originalRange.length - incrementalTransformOffsetMappingLength) .. originalRange.endInclusive)
 //        }
@@ -728,6 +738,32 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         return nodeStart + minOf(node.value.bufferLength, indexFromNodeStart)
     }
 
+    fun findFirstRowIndexByOriginalLineIndex(originalLineIndex: Int): Int {
+        require(originalLineIndex in 0 .. delegate.numOfLines) { "Original line index $originalLineIndex is out of range." }
+        val (originalNode, originalNodeLineStart) = delegate.tree.findNodeByLineBreaksExact(originalLineIndex)
+            ?: throw IllegalStateException("Node of line index $originalLineIndex is not found")
+        val originalNodePositionStart = delegate.tree.findPositionStart(originalNode)
+        val lineBreakIndex = originalLineIndex - originalNodeLineStart - 1
+        val lineOriginalPositionStart = originalNodePositionStart + if (lineBreakIndex >= 0) {
+            val lineOffsets = originalNode.value.buffer.lineOffsetStarts
+            val lineOffsetStartIndex = lineOffsets.binarySearchForMinIndexOfValueAtLeast(originalNode.value.bufferOffsetStart)
+            require(lineOffsetStartIndex >= 0)
+            lineOffsets[lineOffsetStartIndex + lineBreakIndex] - originalNode.value.bufferOffsetStart
+        } else {
+            0
+        } + 1
+
+        val transformedPosition = findTransformedPositionByOriginalPosition(lineOriginalPositionStart)
+        return findRowIndexByPosition(transformedPosition)
+    }
+
+    fun findOriginalLineIndexByRowIndex(rowIndex: Int): Int {
+        val rowPositionStart = findRowPositionStartIndexByRowIndex(rowIndex)
+        val originalPosition = findOriginalPositionByTransformedPosition(rowPositionStart)
+        val (originalLine, originalCol) = delegate.findLineAndColumnFromRenderPosition(originalPosition)
+        return originalLine
+    }
+
     override fun insertAt(pos: Int, text: CharSequence): Int = transformInsert(pos, text)
 
     override fun append(text: CharSequence): Int = transformInsertAtOriginalEnd(text)
@@ -771,6 +807,29 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         } while (nodePositionStart <= range.endInclusive)
 
         layout(maxOf(0, renderPositionAtOriginalStart - 1), minOf(length, renderPositionAtOriginalEnd + 1))
+    }
+
+//    override fun layoutTransaction(transaction: BigTextLayoutTransaction.() -> Unit) {
+//        val transactionManager = BigTextLayoutTransaction(this)
+//        with(transactionManager) {
+//            start()
+//            transaction()
+//            close()
+//        }
+//    }
+
+    override fun requestReapplyTransformation(originalRange: IntRange) {
+        charRangesToReapplyTransforms += originalRange
+    }
+
+    override fun isDecorate(nodeValue: BigTextNodeValue): Boolean {
+        return nodeValue.bufferOwnership == BufferOwnership.Delegated
+    }
+
+    override fun decorate(copyStart: Int, copyEndExclusive: Int): CharSequence {
+        val originalStart = findOriginalPositionByTransformedPosition(copyStart)
+        val originalEndExclusive = findOriginalPositionByTransformedPosition(copyEndExclusive)
+        return decorator!!.onApplyDecoration(delegate, originalStart until originalEndExclusive)
     }
 }
 

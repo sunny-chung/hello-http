@@ -25,4 +25,15 @@ class MultipleIncrementalTransformation(val transformations: List<IncrementalTex
         }
     }
 
+    override fun onReapplyTransform(
+        text: BigText,
+        originalRange: IntRange,
+        transformer: BigTextTransformer,
+        context: Any?
+    ) {
+        transformations.forEach {
+            (it as IncrementalTextTransformation<Any?>).onReapplyTransform(text, originalRange, transformer, context)
+        }
+    }
+
 }

@@ -6,6 +6,8 @@ interface BigTextLayoutable {
 
     val numOfLines: Int
 
+    val numOfOriginalLines: Int
+
     val numOfRows: Int
 
     val lastRowIndex: Int

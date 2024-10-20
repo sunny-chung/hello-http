@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.transformation.inc
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersectWith
+import com.sunnychung.application.multiplatform.hellohttp.util.VisitScope
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.toPoint
 import com.sunnychung.application.multiplatform.hellohttp.util.visit
@@ -12,8 +13,10 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChan
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformer
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.IncrementalTextTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import io.github.treesitter.ktreesitter.InputEdit
 import io.github.treesitter.ktreesitter.Language
 import io.github.treesitter.ktreesitter.Node
@@ -236,54 +239,12 @@ class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : Incr
 //                log.d { "AST change ${it.range} type=${it.type} grammarType=${it.grammarType} p=${it.parent} sexp=${it.sexp()}" }
 //            }
 
-            fun applyStyle(style: SpanStyle, node: Node) {
-                val startCharIndex: Int = node.startByte.toInt()
-                val endCharIndexExclusive: Int = node.endByte.toInt()
-//                val ar = AnnotatedString.Range(style, startCharIndex, endCharIndexExclusive)
-                transformer.replace(startCharIndex until endCharIndexExclusive, AnnotatedString(change.bigText.substring(startCharIndex until endCharIndexExclusive).toString(), style), BigTextTransformOffsetMapping.Incremental)
-                log.d { "AST change highlight -- $startCharIndex ..< $endCharIndexExclusive" }
-            }
-
             val cr = cr.startByte until cr.endByte
 
-            ast.rootNode.visit {
-                log.d { "AST visit change ${it.startByte} ..< ${it.endByte} = ${it.type}" }
-
-                fun visitChildrens() {
-                    it.children.forEach { c ->
-                        if ((c.startByte until c.endByte) hasIntersectWith cr) {
-                            visit(c)
-                        }
-                    }
-                }
-
-                when (it.type) {
-                    "pair" -> {
-                        val keyChild = it.childByFieldName("key")!!
-                        applyStyle(objectKeyStyle, keyChild)
-//                        log.v { "AST change highlight ${keyChild.startByte} ..< ${keyChild.endByte} = key" }
-//                    log.v { "AST highlight ${keyChild.startPoint.toCharIndex()} ..< ${keyChild.endPoint.toCharIndex()} = key" }
-                        it.childByFieldName("value")?.let {
-                            visit(it)
-                        }
-                    }
-                    "null" -> {
-                        applyStyle(nothingLiteralStyle, it)
-                    }
-                    "number" -> {
-                        applyStyle(numberLiteralStyle, it)
-                    }
-                    "string" -> {
-                        applyStyle(stringLiteralStyle, it)
-                    }
-                    "false" -> {
-                        applyStyle(booleanFalseLiteralStyle, it)
-                    }
-                    "true" -> {
-                        applyStyle(booleanTrueLiteralStyle, it)
-                    }
-                    else -> {
-                        visitChildrens()
+            highlight(change.bigText, transformer) {
+                it.children.forEach { c ->
+                    if ((c.startByte until c.endByte) hasIntersectWith cr) {
+                        visit(c)
                     }
                 }
             }
@@ -291,6 +252,71 @@ class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : Incr
 
         log.d { "AST change sexp after = ${ast.rootNode.sexp()}" }
 
+    }
+
+    override fun onReapplyTransform(text: BigText, originalRange: IntRange, transformer: BigTextTransformer, context: Unit) {
+        log.d { "json sh onReapplyTransform ${originalRange}" }
+//        transformer.layoutTransaction {
+            highlight(text, transformer) {
+                it.children.forEach { c ->
+                    if ((c.startByte.toInt() until c.endByte.toInt()) hasIntersectWith originalRange) {
+                        visit(c)
+                    }
+                }
+            }
+//            layout(originalRange.start, originalRange.endInclusive + 1)
+//        }
+        log.d { "no. of nodes = ${(transformer as BigTextTransformerImpl).tree.size()}" }
+    }
+
+    fun applyStyle(bigText: BigText, transformer: BigTextTransformer, style: SpanStyle, node: Node) {
+        val startCharIndex: Int = node.startByte.toInt()
+        val endCharIndexExclusive: Int = node.endByte.toInt()
+//                val ar = AnnotatedString.Range(style, startCharIndex, endCharIndexExclusive)
+        val startInstant = KInstant.now()
+        transformer.replace(startCharIndex until endCharIndexExclusive, AnnotatedString(bigText.substring(startCharIndex until endCharIndexExclusive).toString(), style), BigTextTransformOffsetMapping.Incremental)
+        log.d { "AST change highlight -- $startCharIndex ..< $endCharIndexExclusive -- ${KInstant.now() - startInstant}" }
+    }
+
+    protected fun highlight(bigText: BigText, transformer: BigTextTransformer, visitChildrensFunction: VisitScope.(Node) -> Unit) {
+        ast.rootNode.visit {
+            log.d { "AST visit change ${it.startByte} ..< ${it.endByte} = ${it.type}" }
+
+            fun visitChildrens() {
+                visitChildrensFunction(it)
+            }
+
+            when (it.type) {
+                "pair" -> {
+                    val keyChild = it.childByFieldName("key")!!
+                    applyStyle(bigText, transformer, objectKeyStyle, keyChild)
+//                        log.v { "AST change highlight ${keyChild.startByte} ..< ${keyChild.endByte} = key" }
+//                    log.v { "AST highlight ${keyChild.startPoint.toCharIndex()} ..< ${keyChild.endPoint.toCharIndex()} = key" }
+                    it.childByFieldName("value")?.let {
+                        visit(it)
+                    }
+                }
+                "null" -> {
+                    applyStyle(bigText, transformer, nothingLiteralStyle, it)
+                }
+                "number" -> {
+                    applyStyle(bigText, transformer, numberLiteralStyle, it)
+                }
+                "string" -> {
+                    applyStyle(bigText, transformer, stringLiteralStyle, it)
+                }
+                "false" -> {
+                    applyStyle(bigText, transformer, booleanFalseLiteralStyle, it)
+                }
+                "true" -> {
+                    applyStyle(bigText, transformer, booleanTrueLiteralStyle, it)
+                }
+                else -> {
+                    visitChildrens()
+                }
+            }
+            log.d { "AST finish visit change ${it.startByte} ..< ${it.endByte}" }
+        }
     }
 
     fun createInputEdit(event: BigTextChangeEvent, startOffset: Int, oldEndOffset: Int, newEndOffset: Int): InputEdit {

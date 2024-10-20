@@ -56,9 +56,13 @@ open class BigTextImpl(
         @JvmName("_setLayouter")
         protected set
 
+    internal var isLayoutEnabled: Boolean = true
+
     internal var contentWidth: Float? = null
 
     override var onLayoutCallback: (() -> Unit)? = null
+
+    var decorator: BigTextDecorator? = null
 
     internal var changeHook: BigTextChangeHook? = null
 
@@ -76,6 +80,27 @@ open class BigTextImpl(
 //                it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
                 in it.value.leftNumOfLineBreaks until it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange -> 0
                 in it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
+                    val isTurnRight = compareResult > 0
+                    if (isTurnRight) {
+                        find -= it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange
+                        lineStart += it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange
+                    }
+                }
+                else -> throw IllegalStateException("what is find? $find")
+            }
+        }?.let { it to lineStart + it.value.leftNumOfLineBreaks /*findLineStart(it)*/ }
+    }
+
+    fun RedBlackTree2<BigTextNodeValue>.findNodeByLineBreaksExact(index: Int): Pair<RedBlackTree<BigTextNodeValue>.Node, Int>? {
+        var find = index
+        var lineStart = 0
+        return findNode {
+            index
+            when (find) {
+                in Int.MIN_VALUE until it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
+//                it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
+                in it.value.leftNumOfLineBreaks .. it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange -> 0
+                in it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange + 1  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
                         find -= it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange
@@ -337,6 +362,8 @@ open class BigTextImpl(
     protected open fun createNodeValue(): BigTextNodeValue {
         return BigTextNodeValue()
     }
+
+    protected open fun isDecorate(nodeValue: BigTextNodeValue): Boolean = true
 
     private fun insertChunkAtPosition(position: Int, chunkedString: CharSequence) {
         log.d { "$this insertChunkAtPosition($position, $chunkedString)" }
@@ -646,6 +673,54 @@ open class BigTextImpl(
         return charSequenceFactory(result)
     }
 
+    // TODO: refactor not to duplicate implementation of substring
+    override fun subSequence(start: Int, endExclusive: Int): CharSequence {
+        require(start <= endExclusive) { "start should be <= endExclusive" }
+        require(0 <= start) { "Invalid start" }
+        require(endExclusive <= length) { "endExclusive $endExclusive is out of bound. length = $length" }
+
+        if (start == endExclusive) {
+            return charSequenceFactory(charSequenceBuilderFactory(0))
+        }
+
+        val result = charSequenceBuilderFactory(endExclusive - start)
+        var node = tree.findNodeByRenderCharIndex(start) ?: throw IllegalStateException("Cannot find string node for position $start")
+        var nodeStartPos = findRenderPositionStart(node)
+        var numRemainCharsToCopy = endExclusive - start
+        var copyFromBufferIndex = start - nodeStartPos + node.value.renderBufferStart
+        while (numRemainCharsToCopy > 0) {
+            val copyEndExclusive = minOf(endExclusive, nodeStartPos + node.value.currentRenderLength)
+            val copyStart = maxOf(start, nodeStartPos)
+            val numCharsToCopy = copyEndExclusive - copyStart
+            val copyUntilBufferIndex = copyFromBufferIndex + numCharsToCopy
+            if (numCharsToCopy > 0) {
+                val subsequence = if (decorator != null && isDecorate(node.value)) {
+                    decorate(copyStart, copyEndExclusive).also {
+                        if (it.length != numCharsToCopy) {
+                            throw IllegalStateException("Returned CharSequence from decorator has length of ${it.length}. Expected length: $numCharsToCopy")
+                        }
+                    }
+                } else {
+                    node.value.buffer.subSequence(copyFromBufferIndex, copyUntilBufferIndex)
+                }
+                result.append(subsequence)
+                numRemainCharsToCopy -= numCharsToCopy
+            } /*else {
+                break
+            }*/
+            if (numRemainCharsToCopy > 0) {
+                nodeStartPos += node.value.currentRenderLength
+                node = tree.nextNode(node) ?: throw IllegalStateException("Cannot find the next string node. Requested = $start ..< $endExclusive. Remain = $numRemainCharsToCopy")
+                copyFromBufferIndex = node.value.renderBufferStart
+            }
+        }
+
+        return charSequenceFactory(result)
+    }
+
+    protected open fun decorate(copyStart: Int, copyEndExclusive: Int) =
+        decorator!!.onApplyDecoration(this, copyStart until copyEndExclusive)
+
     /**
      * @param lineOffset 0 = start of buffer; 1 = char index after the 1st '\n'; 2 = char index after the 2nd '\n'; ...
      */
@@ -861,7 +936,7 @@ open class BigTextImpl(
 //            recomputeAggregatedValues(it)
 //        }
 
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "deleteUnchecked -- before layout" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "deleteUnchecked -- before layout" }
 
         // layout the new nodes explicitly, as
         // the layout outside the loop may not be able to touch the new nodes
@@ -871,13 +946,13 @@ open class BigTextImpl(
             layout(startPos, endPos)
         }
 
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "deleteUnchecked -- after inner layout 1" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "deleteUnchecked -- after inner layout 1" }
 
         if (!isSkipLayout) {
             layout(maxOf(0, start - 1), minOf(length, start + 1))
         }
 
-        com.sunnychung.application.multiplatform.hellohttp.util.log.d { "deleteUnchecked -- after inner layout 2" }
+        com.sunnychung.application.multiplatform.hellohttp.util.log.v { "deleteUnchecked -- after inner layout 2" }
 
         log.v { inspect("Finish D " + node?.value?.debugKey()) }
 
@@ -1051,6 +1126,15 @@ open class BigTextImpl(
      * @param endPosExclusive End index (exclusive) of render positions.
      */
     fun layout(startPos: Int, endPosExclusive: Int) {
+        if (!isLayoutEnabled) return
+        _layout(startPos = startPos, endPosExclusive = endPosExclusive)
+    }
+
+    fun forceLayout(startPos: Int, endPosExclusive: Int) {
+        _layout(startPos = startPos, endPosExclusive = endPosExclusive)
+    }
+
+    private fun _layout(startPos: Int, endPosExclusive: Int) {
         val layouter = this.layouter ?: return
         val contentWidth = this.contentWidth ?: return
 
@@ -1320,6 +1404,9 @@ open class BigTextImpl(
 
     override val lastRowIndex: Int
         get() = numOfRows - 1
+
+    override val numOfOriginalLines: Int
+        get() = numOfLines
 
     /**
      * This is an expensive operation that defeats the purpose of BigText.

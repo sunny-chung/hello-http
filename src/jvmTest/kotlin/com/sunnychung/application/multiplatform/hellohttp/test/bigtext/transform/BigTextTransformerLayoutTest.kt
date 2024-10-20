@@ -643,6 +643,32 @@ class BigTextTransformerLayoutTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
+    fun findFirstRowIndexByOriginalLineIndex(chunkSize: Int) {
+        listOf(100, 10, 37, 1000, 10000).forEach { softWrapAt ->
+            val t = BigTextImpl(chunkSize = chunkSize).apply {
+                append("{\"a\":\"bcd\${{abc\nde}}ef}\"}\n\n\${{asd\n\nf}}\n\n1234567890223456789032345678904234567890\n\n")
+            }
+            val tt = BigTextTransformerImpl(t).apply {
+                setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+                setContentWidth(16f * softWrapAt + 1.23f)
+            }
+            val v = BigTextVerifyImpl(tt)
+            v.replace(9 .. 19, "<abc>")
+            v.replace(27 .. 37, "<asd>")
+            v.verifyPositionCalculation()
+            val expectedRowPosStarts = when (softWrapAt) {
+                10 -> listOf(0, 1, 2, 3, 3, 3, 4, 5, 9, 10)
+                37 -> listOf(0, 0, 1, 2, 2, 2, 3, 4, 6, 7)
+                else -> listOf(0, 0, 1, 2, 2, 2, 3, 4, 5, 6)
+            }
+            expectedRowPosStarts.forEachIndexed { i, expected ->
+                assertEquals(expected, tt.findFirstRowIndexByOriginalLineIndex(i), "chunkSize=$chunkSize, softWrapAt $softWrapAt, line $i")
+            }
+        }
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = [1048576, 64, 16])
     fun deleteOriginal(chunkSize: Int) {
         val testString = "1234567890<234567890<bcdefghij<BCDEFGHIJ<row break< should h<appen her<e.\n"
