@@ -289,9 +289,9 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
                 start = findOriginalPositionByTransformedPosition(renderPositionStart),
                 endExclusive = findOriginalPositionByTransformedPosition(
                     findTransformedPositionByOriginalPosition(
-                        originalRange.endInclusive + 1
+                        originalRange.endInclusive
                     )
-                ),
+                ) + 1,
                 deleteMarker = null,
                 isSkipLayout = true
             )

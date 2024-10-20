@@ -752,7 +752,7 @@ class BigTextTransformerImplTest {
 
         transformed.transformReplace(0 .. 1, "@")
         original.replace(0 .. 1, "")
-        "*".let { expected ->
+        "".let { expected ->
             assertEquals(expected, transformed.buildString())
             assertAllSubstring(expected, transformed)
         }
