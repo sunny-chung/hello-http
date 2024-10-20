@@ -965,6 +965,9 @@ open class BigTextImpl(
     }
 
     override fun findLineAndColumnFromRenderPosition(renderPosition: Int): Pair<Int, Int> {
+        if (tree.isEmpty && renderPosition == 0) {
+            return 0 to 0
+        }
         val node = tree.findNodeByRenderCharIndex(renderPosition)
             ?: throw IndexOutOfBoundsException("Node for position $renderPosition not found")
         val nodeStart = findRenderPositionStart(node)

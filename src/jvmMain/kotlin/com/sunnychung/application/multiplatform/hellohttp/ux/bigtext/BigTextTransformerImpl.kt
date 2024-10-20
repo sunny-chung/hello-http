@@ -740,6 +740,9 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 
     fun findFirstRowIndexByOriginalLineIndex(originalLineIndex: Int): Int {
         require(originalLineIndex in 0 .. delegate.numOfLines) { "Original line index $originalLineIndex is out of range." }
+        if (delegate.tree.isEmpty && originalLineIndex == 0) {
+            return 0
+        }
         val (originalNode, originalNodeLineStart) = delegate.tree.findNodeByLineBreaksExact(originalLineIndex)
             ?: throw IllegalStateException("Node of line index $originalLineIndex is not found")
         val originalNodePositionStart = delegate.tree.findPositionStart(originalNode)
