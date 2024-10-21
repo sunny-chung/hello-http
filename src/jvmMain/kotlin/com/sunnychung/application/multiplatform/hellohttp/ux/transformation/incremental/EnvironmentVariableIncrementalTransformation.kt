@@ -26,7 +26,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
 
     private val variableNameRegex = "[^{}\$\n\r]{1,$processLengthLimit}".toRegex()
 
-    private val variableRegex = "\\$\\{\\{(${variableNameRegex.pattern)\\}\\}".toRegex()
+    private val variableRegex = "\\$\\{\\{(${variableNameRegex.pattern})\\}\\}".toRegex()
 
     override fun initialize(text: BigText, transformer: BigTextTransformer) {
 //        if (true) return
@@ -124,7 +124,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
         val startOffset = maxOf(0, change.changeStartIndex - processLengthLimit)
         val substring = change.bigText.substring(
             startOffset
-            ..
+            until
             minOf(change.bigText.length, change.changeEndExclusiveIndex + processLengthLimit)
         )
         return variableRegex.findAll(substring)
@@ -182,7 +182,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
     }
 
 //    @OptIn(ExperimentalTextApi::class)
-    fun createSpan(variableName: String): CharSequence { // TODO change to AnnotatedString
+    private fun createSpan(variableName: String): CharSequence {
 //        return buildAnnotatedString {
 //            withAnnotation(TAG, variableName) {
 //                append(variableName)

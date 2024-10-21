@@ -82,6 +82,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.Sear
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.CollapseIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
@@ -608,7 +609,8 @@ fun CodeEditorView(
                         textTransformation = remember {
                             MultipleIncrementalTransformation(listOf(
 //                                JsonSyntaxHighlightIncrementalTransformation(themeColours),
-                                EnvironmentVariableIncrementalTransformation()
+                                EnvironmentVariableIncrementalTransformation(),
+                                FunctionIncrementalTransformation(themeColours)
                             ))
                         }, // TODO replace this testing transformation
                         textDecorator = rememberLast(bigTextFieldState, themeColours, knownVariables) {
