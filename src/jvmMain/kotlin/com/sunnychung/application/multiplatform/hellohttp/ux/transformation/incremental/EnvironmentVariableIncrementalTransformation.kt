@@ -6,6 +6,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withAnnotation
 import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersectWith
+import com.sunnychung.application.multiplatform.hellohttp.util.RangeWithResult
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.string
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
@@ -23,9 +24,9 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
     }
     val processLengthLimit = 30
 
-    private val variableRegex = "\\$\\{\\{([^{}]{1,$processLengthLimit})\\}\\}".toRegex()
+    private val variableNameRegex = "[^{}\$\n\r]{1,$processLengthLimit}".toRegex()
 
-    private val variableNameRegex = "[^{}\n\r]{1,$processLengthLimit}".toRegex()
+    private val variableRegex = "\\$\\{\\{(${variableNameRegex.pattern)\\}\\}".toRegex()
 
     override fun initialize(text: BigText, transformer: BigTextTransformer) {
 //        if (true) return
@@ -39,15 +40,13 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
     }
 
     override fun afterTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
-        // TODO handle multiple matches (e.g. triggered by pasting text)
-
         val originalText = change.bigText
         when (change.eventType) {
             BigTextChangeEventType.Insert -> {
                 // Find if there is pattern match ("\${{" or "}}") in the inserted text.
                 // If yes, try to locate the pair within `processLengthLimit`, and make desired replacement.
 
-                originalText.findPositionByPattern(
+                /*originalText.findPositionByPattern(
                     change.changeStartIndex,
                     change.changeEndExclusiveIndex,
                     "}}",
@@ -104,16 +103,40 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                             log.d { "variableName '$variableName' is invalid" }
                         }
                     }
-                }
+                }*/
+
+                val changeRange = change.changeStartIndex until change.changeEndExclusiveIndex
+
+                val variables = findNearbyPatterns(change)
+                variables.filter { it.range hasIntersectWith changeRange }
+                    .forEach {
+                        val variableName = it.result.groups[1]!!.value
+                        transformer.restoreToOriginal(it.range)
+                        transformer.replace(it.range, createSpan(variableName), BigTextTransformOffsetMapping.WholeBlock)
+                    }
             }
 
             else -> {}
         }
     }
 
-    override fun beforeTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
-        // TODO handle multiple matches (e.g. triggered by pasting text)
+    private fun findNearbyPatterns(change: BigTextChangeEvent): Sequence<RangeWithResult<MatchResult>> {
+        val startOffset = maxOf(0, change.changeStartIndex - processLengthLimit)
+        val substring = change.bigText.substring(
+            startOffset
+            ..
+            minOf(change.bigText.length, change.changeEndExclusiveIndex + processLengthLimit)
+        )
+        return variableRegex.findAll(substring)
+            .map {
+                RangeWithResult(
+                    range = it.range.start + startOffset..it.range.endInclusive + startOffset,
+                    result = it
+                )
+            }
+    }
 
+    override fun beforeTextChange(change: BigTextChangeEvent, transformer: BigTextTransformer, context: Unit) {
         val originalText = change.bigText
         when (change.eventType) {
             BigTextChangeEventType.Delete -> {
@@ -122,7 +145,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
 
                 val changeRange = change.changeStartIndex until change.changeEndExclusiveIndex
 
-                originalText.findPositionByPattern(change.changeStartIndex - processLengthLimit, change.changeEndExclusiveIndex, "}}", TextFBDirection.Backward)
+                /*originalText.findPositionByPattern(change.changeStartIndex - processLengthLimit, change.changeEndExclusiveIndex, "}}", TextFBDirection.Backward)
                     ?.takeIf { (it until it + "}}".length) hasIntersectWith changeRange }
                     ?.let {
                         originalText.findPositionByPattern(it - processLengthLimit, it - 1, "\${{", TextFBDirection.Backward)
@@ -139,6 +162,12 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
                                 log.d { "EnvironmentVariableIncrementalTransformation delete B" }
                                 transformer.restoreToOriginal(it until anotherStart + "}}".length)
                             }
+                    }*/
+
+                val variables = findNearbyPatterns(change)
+                variables.filter { it.range hasIntersectWith changeRange }
+                    .forEach {
+                        transformer.restoreToOriginal(it.range)
                     }
             }
 
@@ -163,7 +192,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
     }
 }
 
-fun BigText.findPositionByPattern(fromPosition: Int, toPosition: Int, pattern: String, direction: TextFBDirection): Int? {
+private fun BigText.findPositionByPattern(fromPosition: Int, toPosition: Int, pattern: String, direction: TextFBDirection): Int? {
     val substringBeginIndex = maxOf(0, fromPosition - pattern.length)
     val substringEndExclusiveIndex = minOf(length, toPosition + pattern.length)
     val substring = substring(substringBeginIndex, substringEndExclusiveIndex)
