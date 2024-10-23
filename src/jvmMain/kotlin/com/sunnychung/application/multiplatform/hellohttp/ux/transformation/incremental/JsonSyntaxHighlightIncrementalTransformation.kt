@@ -36,6 +36,7 @@ private val BOOLEAN_TRUE_LITERAL_REGEX = "true".toRegex()
 private val BOOLEAN_FALSE_LITERAL_REGEX = "false".toRegex()
 private val NOTHING_LITERAL_REGEX = "null|undefined".toRegex()
 
+@Deprecated(message = "Use JsonSyntaxHighlightDecorator instead.", replaceWith = ReplaceWith("JsonSyntaxHighlightDecorator"))
 class JsonSyntaxHighlightIncrementalTransformation(val colours: AppColor) : IncrementalTextTransformation<Unit> {
     val objectKeyStyle = SpanStyle(color = colours.syntaxColor.objectKey)
     val stringLiteralStyle = SpanStyle(color = colours.syntaxColor.stringLiteral)

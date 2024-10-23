@@ -33,6 +33,7 @@ import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.DataLossWarningDialogWindow
+import io.github.dralletje.ktreesitter.graphql.TreeSitterGraphql
 import io.github.treesitter.ktreesitter.json.TreeSitterJson
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -153,7 +154,7 @@ fun main() {
 }
 
 fun loadNativeLibraries() {
-    val libraries = listOf("tree-sitter-json" to TreeSitterJson)
+    val libraries = listOf("tree-sitter-json" to TreeSitterJson, "tree-sitter-graphql" to TreeSitterGraphql)
     val systemArch = if (currentOS() == WindowsOS) {
         "x64"
     } else {
