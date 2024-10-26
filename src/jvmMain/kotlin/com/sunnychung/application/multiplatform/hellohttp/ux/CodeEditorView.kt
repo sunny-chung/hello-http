@@ -508,6 +508,7 @@ fun CodeEditorView(
                         onTextLayout = { layoutResult = it },
                         onTransformInit = { transformedText = it },
                         modifier = Modifier.fillMaxSize()
+                            .focusRequester(textFieldFocusRequester)
                             .run {
                                 if (testTag != null) {
                                     testTag(testTag)
