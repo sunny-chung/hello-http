@@ -374,6 +374,8 @@ fun CodeEditorView(
         if (lastSearchResultViewIndex != searchResultViewIndex && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
             lastSearchResultViewIndex = searchResultViewIndex
             searchResultRanges!!.getOrNull(searchResultViewIndex)?.start?.let { position ->
+                if (position > layoutResult!!.text.length) return@let
+
                 val visibleVerticalRange = scrollState.value .. scrollState.value + textFieldSize!!.height
                 val rowIndex = layoutResult!!.text.findRowIndexByPosition(position)
                 val rowVerticalRange = layoutResult!!.getTopOfRow(rowIndex).toInt()  .. layoutResult!!.getBottomOfRow(rowIndex).toInt()

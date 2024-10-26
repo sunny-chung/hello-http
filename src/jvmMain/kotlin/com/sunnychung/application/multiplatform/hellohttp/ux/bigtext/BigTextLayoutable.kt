@@ -4,6 +4,8 @@ interface BigTextLayoutable {
 
     val hasLayouted: Boolean
 
+    val length: Int
+
     val numOfLines: Int
 
     val numOfOriginalLines: Int
