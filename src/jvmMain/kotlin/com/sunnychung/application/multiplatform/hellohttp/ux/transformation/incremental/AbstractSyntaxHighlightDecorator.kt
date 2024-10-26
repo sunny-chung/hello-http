@@ -12,6 +12,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChan
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEventType
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.CacheableBigTextDecorator
 import io.github.treesitter.ktreesitter.InputEdit
 import io.github.treesitter.ktreesitter.Language
 import io.github.treesitter.ktreesitter.Node
@@ -19,11 +20,11 @@ import io.github.treesitter.ktreesitter.Parser
 import io.github.treesitter.ktreesitter.Point
 import io.github.treesitter.ktreesitter.Tree
 
-abstract class AbstractSyntaxHighlightDecorator(language: Language) : BigTextDecorator {
+abstract class AbstractSyntaxHighlightDecorator(language: Language) : CacheableBigTextDecorator() {
     protected val parser: Parser = Parser(language)
     protected lateinit var ast: Tree
 
-    override fun initialize(text: BigText) {
+    override fun doInitialize(text: BigText) {
         val s = text.buildString()
 
 //        val singleByteCharSequence = s.map { // buggy

@@ -30,8 +30,8 @@ class GraphqlSyntaxHighlightDecorator(colours: AppColor) : AbstractSyntaxHighlig
     val NOTHING_LITERAL_STYLE = SpanStyle(color = colours.syntaxColor.nothingLiteral)
     val FIELD_STYLE = SpanStyle(color = colours.syntaxColor.field)
 
-    override fun initialize(text: BigText) {
-        super.initialize(text)
+    override fun doInitialize(text: BigText) {
+        super.doInitialize(text)
         log.d { "Graphql sexp = ${ast.rootNode.sexp()}" }
     }
 

@@ -22,7 +22,7 @@ class EnvironmentVariableDecorator(themeColors: AppColor, val knownVariables: Se
         if (text is AnnotatedString) {
 //            val tagRanges = text.getStringAnnotations(EnvironmentVariableIncrementalTransformation.TAG, 0, text.length)
             val tagRanges = text.spanStyles.filter { it.tag.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) }
-                if (tagRanges.isNotEmpty()) {
+            if (tagRanges.isNotEmpty()) {
                 val previousSpanStyles = text.spanStyles
                 val newSpanStyles = tagRanges.map { tagRange ->
                     val name = tagRange.tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")

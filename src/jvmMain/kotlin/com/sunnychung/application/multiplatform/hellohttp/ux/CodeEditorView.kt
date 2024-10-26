@@ -19,11 +19,13 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,10 +57,12 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.google.common.collect.TreeRangeMap
 import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
+import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
@@ -83,13 +87,17 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.SearchHighlightDecorator
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
 import kotlin.random.Random
@@ -132,6 +140,14 @@ fun CodeEditorView(
             it
         }
     }
+
+    val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
+    val bigTextFieldState = bigTextFieldMutableState.value
+    val bigTextValue = bigTextFieldState.text
+    var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
+
+    var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
+
     var textLayoutResult by rememberLast(newText) { mutableStateOf<TextLayoutResult?>(null) }
     var lineTops by rememberLast(newText, textLayoutResult) { mutableStateOf<List<Float>?>(null) }
     log.d { "len newText ${newText.length}, textValue.text ${textValue.text.length}, text ${text.length}" }
@@ -250,14 +266,25 @@ fun CodeEditorView(
         isWholeWord = false
     )) }
     var searchPattern by rememberLast(searchText, searchOptions) { mutableStateOf<Regex?>(null) }
+    val searchPatternLatest by rememberUpdatedState(searchPattern)
+//    var searchPattern4 by rememberUpdatedMutableState(searchPatternState) // for use in LaunchedEffect
     val scrollState = rememberScrollState()
     val searchBarFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
 
-    var searchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
-    var lastSearchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
-    var searchResultRanges by rememberLast(text, searchPattern) { mutableStateOf<List<IntRange>?>(null) }
+    var searchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
+    var lastSearchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
+    val searchResultRangesState = rememberLast(bigTextValue) { MutableStateFlow<List<IntRange>?>(null) } //= rememberLast(text, searchPattern) { mutableStateOf<List<IntRange>?>(null) }
+    val searchResultRanges by searchResultRangesState.collectAsState()
     var textFieldSize by remember { mutableStateOf<IntSize?>(null) }
+    val searchResultRangeTreeState = rememberLast(bigTextValue) { MutableStateFlow<TreeRangeMap<Int, Int>?>(null) } //= rememberLast(text, searchPattern) { mutableStateOf<TreeRangeMap<Int, Int>?>(null) }
+    val searchResultRangeTree by searchResultRangeTreeState.collectAsState()
+
+    val searchTrigger = remember { Channel<Unit>() }
+
+    remember(searchOptions) {
+        searchTrigger.trySend(Unit)
+    }
 
     if (searchText.isNotEmpty() && searchPattern == null) {
         val regexOption = if (searchOptions.isCaseSensitive) setOf() else setOf(RegexOption.IGNORE_CASE)
@@ -272,7 +299,38 @@ fun CodeEditorView(
             searchPattern = pattern
             searchResultViewIndex = 0
             lastSearchResultViewIndex = -1
+            log.d { "set search pattern ${searchPattern?.pattern}" }
         } catch (_: Throwable) {}
+    }
+    log.d { "get search pattern ${searchPattern?.pattern}" }
+
+    LaunchedEffect(bigTextValue) {
+        searchTrigger.receiveAsFlow()
+            .debounce(210L)
+            .filter { isSearchVisible }
+            .collectLatest {
+//                    log.d { "search triggered ${searchPattern?.pattern} ${searchPattern0?.pattern} ${searchPattern1?.pattern} ${searchPattern2?.pattern} ${searchPattern3?.pattern}" }
+//                    log.d { "search triggered ${searchPattern2?.pattern} ${searchPattern3?.pattern}" }
+                log.d { "search triggered ${searchPatternLatest?.pattern}" }
+                if (searchPatternLatest != null) {
+                    try {
+                        val fullText = bigTextValue.buildString()
+                        val r = searchPatternLatest!!
+                            .findAll(fullText)
+                            .map { it.range }
+                            .sortedBy { it.start }
+                            .toList()
+                        searchResultRangesState.value = r
+                        searchResultRangeTreeState.value = TreeRangeMaps.from(r)
+                        log.d { "search r ${r.size}" }
+                    } catch (e: Throwable) {
+                        log.d(e) { "search error" }
+                    }
+                } else {
+                    searchResultRangesState.value = null
+                    searchResultRangeTreeState.value = null
+                }
+            }
     }
     var searchResultSummary = if (!searchResultRanges.isNullOrEmpty()) {
         "${searchResultViewIndex + 1}/${searchResultRanges?.size}"
@@ -313,31 +371,16 @@ fun CodeEditorView(
             )
         }
 
-        if (searchPattern != null && searchResultRanges == null) {
-            try {
-                searchResultRanges = searchPattern!!
-                    .findAll(
-                        MultipleVisualTransformation(visualTransformations)
-                            .filter(AnnotatedString(textValue.text))
-                            .text.text
-                    )
-                    .map { it.range }
-                    .sortedBy { it.start }
-                    .toList()
-            } catch (_: Throwable) {}
-        }
-
-        if (lastSearchResultViewIndex != searchResultViewIndex && textLayoutResult != null && textFieldSize != null && searchResultRanges != null) {
+        if (lastSearchResultViewIndex != searchResultViewIndex && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
             lastSearchResultViewIndex = searchResultViewIndex
-            val index = searchResultRanges!!.getOrNull(searchResultViewIndex)?.start
-            index?.let {
+            searchResultRanges!!.getOrNull(searchResultViewIndex)?.start?.let { position ->
                 val visibleVerticalRange = scrollState.value .. scrollState.value + textFieldSize!!.height
-                val lineIndex = textLayoutResult!!.getLineForOffset(it)
-                val lineVerticalRange = textLayoutResult!!.getLineTop(lineIndex).toInt() .. textLayoutResult!!.getLineBottom(lineIndex).toInt()
-                if (lineVerticalRange !in visibleVerticalRange) {
+                val rowIndex = layoutResult!!.text.findRowIndexByPosition(position)
+                val rowVerticalRange = layoutResult!!.getTopOfRow(rowIndex).toInt()  .. layoutResult!!.getBottomOfRow(rowIndex).toInt()
+                if (rowVerticalRange !in visibleVerticalRange) {
                     coroutineScope.launch {
-                        log.d { "CEV scroll l=$lineIndex r=$lineVerticalRange v=$visibleVerticalRange" }
-                        scrollState.animateScrollTo(lineVerticalRange.start)
+                        log.d { "CEV scroll l=$rowIndex r=$rowVerticalRange v=$visibleVerticalRange" }
+                        scrollState.animateScrollTo(rowVerticalRange.start)
                     }
                 }
             }
@@ -403,7 +446,11 @@ fun CodeEditorView(
         if (isSearchVisible) {
             TextSearchBar(
                 text = searchText,
-                onTextChange = { searchText = it },
+                onTextChange = {
+                    searchText = it
+                    log.d { "searchTrigger send" }
+                    searchTrigger.trySend(Unit)
+                },
                 statusText = searchResultSummary,
                 searchOptions = searchOptions,
                 onToggleRegex = { searchOptions = searchOptions.copy(isRegex = it) },
@@ -447,8 +494,6 @@ fun CodeEditorView(
                     collapsedChars -= collapsableChars[index]
                 }
 
-                var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
-
 //                BigLineNumbersView(
 //                    scrollState = scrollState,
 //                    bigTextViewState = bigTextViewState,
@@ -459,11 +504,6 @@ fun CodeEditorView(
 //                    onExpandLine = onExpandLine,
 //                    modifier = Modifier.fillMaxHeight(),
 //                )
-
-                val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
-                val bigTextFieldState = bigTextFieldMutableState.value
-                val bigTextValue = bigTextFieldState.text
-                var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
 
                 BigTextLineNumbersView(
                     scrollState = scrollState,
@@ -477,6 +517,10 @@ fun CodeEditorView(
                     onExpandLine = onExpandLine,
                     modifier = Modifier.fillMaxHeight(),
                 )
+
+                val syntaxHighlightDecorator = rememberLast(bigTextFieldState, themeColours) {
+                    JsonSyntaxHighlightDecorator(themeColours)
+                }
 
                 if (isReadOnly) {
                     val collapseIncrementalTransformation = remember(bigTextFieldState) {
@@ -498,8 +542,11 @@ fun CodeEditorView(
                                 collapseIncrementalTransformation,
                             ))
                         },
-                        textDecorator = rememberLast(bigTextFieldState, themeColours) {
-                            JsonSyntaxHighlightDecorator(themeColours)
+                        textDecorator = rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex) {
+                            MultipleTextDecorator(listOf(
+                                syntaxHighlightDecorator,
+                                SearchHighlightDecorator(searchResultRangeTree ?: TreeRangeMap.create(), searchResultViewIndex, themeColours),
+                            ))
                         },
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
                         isSelectable = true,
@@ -593,7 +640,7 @@ fun CodeEditorView(
 
                     LaunchedEffect(bigTextFieldState) {
                         bigTextFieldState.valueChangesFlow
-                            .debounce(100.milliseconds().toMilliseconds())
+                            .debounce(200.milliseconds().toMilliseconds())
                             .collect {
                                 log.d { "bigTextFieldState change ${it.changeId}" }
                                 onTextChange?.let { onTextChange ->
@@ -602,6 +649,7 @@ fun CodeEditorView(
                                     secondCacheKey.value = string.text
                                 }
                                 bigTextValueId = it.changeId
+                                searchTrigger.trySend(Unit)
                             }
                     }
 
@@ -615,11 +663,11 @@ fun CodeEditorView(
                                 FunctionIncrementalTransformation(themeColours)
                             ))
                         }, // TODO replace this testing transformation
-                        textDecorator = rememberLast(bigTextFieldState, themeColours, knownVariables) {
+                        textDecorator = rememberLast(bigTextFieldState, themeColours, knownVariables, searchResultRangeTree, searchResultViewIndex) {
                             MultipleTextDecorator(listOf(
-//                                JsonSyntaxHighlightDecorator(themeColours),
-                                GraphqlSyntaxHighlightDecorator(themeColours),
-                                EnvironmentVariableDecorator(themeColours, knownVariables)
+                                syntaxHighlightDecorator,
+                                EnvironmentVariableDecorator(themeColours, knownVariables),
+                                SearchHighlightDecorator(searchResultRangeTree ?: TreeRangeMap.create(), searchResultViewIndex, themeColours),
                             ))
                         },
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
@@ -905,7 +953,7 @@ fun BigTextLineNumbersView(
 //        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
         getLineOffset = {
             ((layoutText?.findFirstRowIndexByOriginalLineIndex(it).also { r ->
-                log.d { "layoutText.findFirstRowIndexOfLine($it) = $r" }
+                log.v { "layoutText.findFirstRowIndexOfLine($it) = $r" }
             }
                 ?: 0) * rowHeight - viewportTop).toDp()
         },

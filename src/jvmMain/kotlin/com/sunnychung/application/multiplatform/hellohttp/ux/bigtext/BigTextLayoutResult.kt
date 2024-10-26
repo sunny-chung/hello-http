@@ -31,4 +31,7 @@ class BigTextLayoutResult(
 class BigTextSimpleLayoutResult(
     val text: BigTextLayoutable,
     val rowHeight: Float
-)
+) {
+    fun getTopOfRow(rowIndex: Int): Float = rowIndex * rowHeight
+    fun getBottomOfRow(rowIndex: Int): Float = (rowIndex + 1) * rowHeight
+}
