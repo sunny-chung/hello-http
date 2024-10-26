@@ -66,6 +66,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
@@ -142,11 +143,6 @@ fun CodeEditorView(
         }
     }
 
-    val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
-    val bigTextFieldState = bigTextFieldMutableState.value
-    val bigTextValue = bigTextFieldState.text
-    var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
-
     var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
     var textLayoutResult by rememberLast(newText) { mutableStateOf<TextLayoutResult?>(null) }
@@ -167,6 +163,11 @@ fun CodeEditorView(
         )
         cursorDelta = 0
     }
+
+    val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
+    val bigTextFieldState: BigTextFieldState = bigTextFieldMutableState.value
+    val bigTextValue: BigTextImpl = bigTextFieldState.text
+    var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
 
     var collapsedLines = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
     var collapsedChars = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
