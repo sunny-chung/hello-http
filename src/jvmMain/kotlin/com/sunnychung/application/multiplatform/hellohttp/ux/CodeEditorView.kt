@@ -88,6 +88,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.SearchHighlightDecorator
@@ -521,7 +522,8 @@ fun CodeEditorView(
                 )
 
                 val syntaxHighlightDecorator = rememberLast(bigTextFieldState, themeColours) {
-                    JsonSyntaxHighlightDecorator(themeColours)
+//                    JsonSyntaxHighlightDecorator(themeColours)
+                    KotlinSyntaxHighlightSlowDecorator(themeColours)
                 }
 
                 if (isReadOnly) {
