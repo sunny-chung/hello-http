@@ -423,8 +423,12 @@ private fun CoreBigMonospaceText(
     }
 
     rememberLast(viewState.selection.start, viewState.selection.last, textTransformation) {
-        viewState.transformedSelection = transformedText.findTransformedPositionByOriginalPosition(viewState.selection.start) ..
-            transformedText.findTransformedPositionByOriginalPosition(maxOf(0, viewState.selection.last))
+        viewState.transformedSelection = if (viewState.hasSelection()) {
+            transformedText.findTransformedPositionByOriginalPosition(viewState.selection.start) ..
+                    transformedText.findTransformedPositionByOriginalPosition(maxOf(0, viewState.selection.last))
+        } else {
+            IntRange.EMPTY
+        }
     }
 
     val coroutineScope = rememberCoroutineScope() // for scrolling

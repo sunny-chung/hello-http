@@ -30,7 +30,7 @@ class BigTextViewState {
 
     var selection: IntRange by mutableStateOf(0..-1)
 
-    fun hasSelection(): Boolean = transformedSelection.start >= 0 && !transformedSelection.isEmpty()
+    fun hasSelection(): Boolean = !selection.isEmpty() && transformedSelection.start >= 0 && !transformedSelection.isEmpty()
 
     internal fun updateSelectionByTransformedSelection(transformedText: TransformedText) {
         selection = transformedText.offsetMapping.transformedToOriginal(transformedSelection.first) ..
