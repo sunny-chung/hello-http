@@ -536,13 +536,29 @@ private fun CoreBigMonospaceText(
         onTextChange(event)
     }
 
+    fun deleteSelection(isSaveUndoSnapshot: Boolean) {
+        if (viewState.hasSelection()) {
+            val start = viewState.selection.start
+            val endExclusive = viewState.selection.endInclusive + 1
+            onValuePreChange(BigTextChangeEventType.Delete, start, endExclusive)
+            text.delete(start, endExclusive)
+            if (isSaveUndoSnapshot) {
+                text.recordCurrentChangeSequenceIntoUndoHistory()
+            }
+            onValuePostChange(BigTextChangeEventType.Delete, start, endExclusive)
+
+            viewState.selection = EMPTY_SELECTION_RANGE // cannot use IntRange.EMPTY as `viewState.selection.start` is in use
+            viewState.transformedSelection = EMPTY_SELECTION_RANGE
+            viewState.cursorIndex = start
+            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+        }
+    }
+
     fun onType(textInput: String) {
         log.v { "key in '$textInput'" }
         if (viewState.hasSelection()) {
-            text.delete(viewState.selection.start, minOf(text.length, viewState.selection.endInclusive + 1))
-            viewState.cursorIndex = viewState.selection.start
-            viewState.selection = IntRange.EMPTY
-            viewState.transformedSelection = IntRange.EMPTY
+            deleteSelection(isSaveUndoSnapshot = false)
         }
         val insertPos = viewState.cursorIndex
         onValuePreChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
@@ -565,17 +581,7 @@ private fun CoreBigMonospaceText(
         val cursor = viewState.cursorIndex
 
         if (viewState.hasSelection()) {
-            val start = viewState.selection.start
-            val endExclusive = viewState.selection.endInclusive + 1
-            onValuePreChange(BigTextChangeEventType.Delete, start, endExclusive)
-            text.delete(start, endExclusive)
-            text.recordCurrentChangeSequenceIntoUndoHistory()
-            onValuePostChange(BigTextChangeEventType.Delete, start, endExclusive)
-
-            viewState.selection = EMPTY_SELECTION_RANGE // cannot use IntRange.EMPTY as `viewState.selection.start` is in use
-            viewState.cursorIndex = start
-            viewState.updateTransformedCursorIndexByOriginal(transformedText)
-            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+            deleteSelection(isSaveUndoSnapshot = true)
             updateViewState()
             return true
         }

@@ -523,8 +523,8 @@ fun CodeEditorView(
                 )
 
                 val syntaxHighlightDecorator = rememberLast(bigTextFieldState, themeColours) {
-//                    JsonSyntaxHighlightDecorator(themeColours)
-                    KotlinSyntaxHighlightSlowDecorator(themeColours)
+                    JsonSyntaxHighlightDecorator(themeColours)
+//                    KotlinSyntaxHighlightSlowDecorator(themeColours)
                 }
 
                 if (isReadOnly) {
