@@ -9,4 +9,5 @@ fun BigText.Companion.createFromLargeAnnotatedString(initialContent: AnnotatedSt
 ).apply {
     log.d { "createFromLargeAnnotatedString ${initialContent.length}" }
     append(initialContent)
+    isUndoEnabled = true // it has to be after append to avoid recording into the undo history
 }

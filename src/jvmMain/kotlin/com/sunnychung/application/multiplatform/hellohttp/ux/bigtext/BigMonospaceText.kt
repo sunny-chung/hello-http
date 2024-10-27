@@ -543,6 +543,7 @@ private fun CoreBigMonospaceText(
         val insertPos = viewState.cursorIndex
         onValuePreChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
         text.insertAt(insertPos, textInput)
+        text.recordCurrentChangeSequenceIntoUndoHistory()
         onValuePostChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
 //        (transformedText as BigTextImpl).layout() // FIXME remove
         updateViewState()
@@ -563,6 +564,7 @@ private fun CoreBigMonospaceText(
                 if (cursor + 1 <= text.length) {
                     onValuePreChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
                     text.delete(cursor, cursor + 1)
+                    text.recordCurrentChangeSequenceIntoUndoHistory()
                     onValuePostChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
 //                    (transformedText as BigTextImpl).layout() // FIXME remove
                     updateViewState()
@@ -576,6 +578,7 @@ private fun CoreBigMonospaceText(
                 if (cursor - 1 >= 0) {
                     onValuePreChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
                     text.delete(cursor - 1, cursor)
+                    text.recordCurrentChangeSequenceIntoUndoHistory()
                     onValuePostChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
 //                    (transformedText as BigTextImpl).layout() // FIXME remove
                     updateViewState()
@@ -592,6 +595,44 @@ private fun CoreBigMonospaceText(
             }
         }
         return false
+    }
+
+    fun onUndoRedo(operation: (BigTextChangeCallback) -> Unit) {
+        var lastChangeEnd = -1
+        operation(object : BigTextChangeCallback {
+            override fun onValuePreChange(
+                eventType: BigTextChangeEventType,
+                changeStartIndex: Int,
+                changeEndExclusiveIndex: Int
+            ) {
+                onValuePreChange(eventType, changeStartIndex, changeEndExclusiveIndex)
+            }
+
+            override fun onValuePostChange(
+                eventType: BigTextChangeEventType,
+                changeStartIndex: Int,
+                changeEndExclusiveIndex: Int
+            ) {
+                onValuePostChange(eventType, changeStartIndex, changeEndExclusiveIndex)
+                lastChangeEnd = when (eventType) {
+                    BigTextChangeEventType.Insert -> changeEndExclusiveIndex
+                    BigTextChangeEventType.Delete -> changeStartIndex
+                }
+            }
+        })
+        if (lastChangeEnd >= 0) {
+            viewState.cursorIndex = lastChangeEnd
+            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+        }
+    }
+
+    fun undo() {
+        onUndoRedo { text.undo(it) }
+    }
+
+    fun redo() {
+        onUndoRedo { text.redo(it) }
     }
 
     val tv = remember { TextFieldValue() } // this value is not used
@@ -759,6 +800,18 @@ private fun CoreBigMonospaceText(
                         } else {
                             false
                         }
+                    }
+                    isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && !it.isShiftPressed && it.key == Key.Z -> {
+                        // Hit Ctrl-Z or Cmd-Z to undo
+                        log.d { "BigMonospaceTextField hit undo" }
+                        undo()
+                        true
+                    }
+                    isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.isShiftPressed && it.key == Key.Z -> {
+                        // Hit Ctrl-Shift-Z or Cmd-Shift-Z to redo
+                        log.d { "BigMonospaceTextField hit redo" }
+                        redo()
+                        true
                     }
                     /* selection */
                     it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.A -> {

@@ -8,6 +8,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.addToThisAsc
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMaxIndexOfValueAtMost
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForMinIndexOfValueAtLeast
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
+import com.sunnychung.application.multiplatform.hellohttp.util.CircularList
 import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
 import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
@@ -38,6 +39,7 @@ private const val EPS = 1e-4f
 
 open class BigTextImpl(
     val chunkSize: Int = 2 * 1024 * 1024, // 2 MB
+    val undoHistoryCapacity: Int = 1000,
     val textBufferFactory: ((capacity: Int) -> TextBuffer) = { StringTextBuffer(it) },
     val charSequenceBuilderFactory: ((capacity: Int) -> Appendable) = { StringBuilder(it) },
     val charSequenceFactory: ((Appendable) -> CharSequence) = { it: Appendable -> it.toString() },
@@ -62,7 +64,16 @@ open class BigTextImpl(
 
     override var onLayoutCallback: (() -> Unit)? = null
 
+    /**
+     * Note: It is required to call {@link recordCurrentChangeSequenceIntoUndoHistory()} manually to make undo works!
+     */
+    var isUndoEnabled: Boolean = false
+
     var decorator: BigTextDecorator? = null
+
+    var currentChanges: MutableList<BigTextInputChange> = mutableListOf()
+    val undoHistory = CircularList<BigTextInputOperation>(undoHistoryCapacity)
+    val redoHistory = CircularList<BigTextInputOperation>(undoHistoryCapacity)
 
     internal var changeHook: BigTextChangeHook? = null
 
@@ -386,6 +397,17 @@ open class BigTextImpl(
             this.bufferOwnership = BufferOwnership.Owned
 
             leftStringLength = 0
+        }
+        if (isUndoEnabled) {
+            currentChanges += BigTextInputChange(
+                type = BigTextChangeEventType.Insert,
+                buffer = buffer,
+                bufferCharIndexes = range.start .. range.endInclusive,
+                positions = position until position + chunkedString.length
+            ).also {
+                log.i { "Record change for undo: $it" }
+            }
+            clearRedoHistory()
         }
     }
 
@@ -860,9 +882,12 @@ open class BigTextImpl(
             if (isD && nodeRange.start == 0) {
                 isD = true
             }
+            var splitStartAt = 0
+            var splitEndAt = node.value.bufferLength
             if (endExclusive - 1 in nodeRange.start..nodeRange.last - 1) {
                 // need to split
                 val splitAtIndex = endExclusive - nodeRange.start
+                splitEndAt = splitAtIndex
                 log.d { "Split E at $splitAtIndex" }
                 newNodesInDescendingOrder += createNodeValue().apply { // the second part of the existing string
                     bufferIndex = node!!.value.bufferIndex // FIXME transform
@@ -885,6 +910,7 @@ open class BigTextImpl(
 
                 // need to split
                 val splitAtIndex = start - nodeRange.start
+                splitStartAt = splitAtIndex
                 log.d { "Split S at $splitAtIndex" }
                 newNodesInDescendingOrder += createNodeValue().apply { // the first part of the existing string
                     bufferIndex = node!!.value.bufferIndex
@@ -903,6 +929,21 @@ open class BigTextImpl(
             log.d { "Delete node ${node!!.value.debugKey()} at ${nodeRange.start} .. ${nodeRange.last}" }
             if (nodeRange.start == 2083112) {
                 isD = true
+            }
+            if (isUndoEnabled) {
+                currentChanges += BigTextInputChange(
+                    type = BigTextChangeEventType.Delete,
+                    buffer = node.value.buffer,
+                    bufferCharIndexes = node.value.bufferOffsetStart + splitStartAt
+                            until
+                            node.value.bufferOffsetStart + splitEndAt,
+                    positions = nodeRange.start + splitStartAt
+                            until
+                            nodeRange.start + splitEndAt,
+                ).also {
+                    log.i { "Record change for undo: $it" }
+                }
+                clearRedoHistory()
             }
             tree.delete(node)
             log.v { inspect("After delete " + node?.value?.debugKey()) }
@@ -956,6 +997,120 @@ open class BigTextImpl(
         log.v { inspect("Finish D " + node?.value?.debugKey()) }
 
         return -(endExclusive - start)
+    }
+
+    fun recordCurrentChangeSequenceIntoUndoHistory() {
+        if (!isUndoEnabled) {
+            return
+        }
+
+        if (currentChanges.isNotEmpty()) {
+            undoHistory.push(BigTextInputOperation(currentChanges.toList()))
+            currentChanges = mutableListOf()
+        }
+    }
+
+    protected fun clearRedoHistory() {
+        redoHistory.clear()
+    }
+
+    protected fun applyReverseChangeSequence(changes: List<BigTextInputChange>, callback: BigTextChangeCallback?) {
+        if (!isUndoEnabled) {
+            return
+        }
+        try {
+            isUndoEnabled = false // don't record the following changes into the undo history
+
+            changes.asReversed().forEach {
+                when (it.type) {
+                    BigTextChangeEventType.Delete -> {
+                        callback?.onValuePreChange(BigTextChangeEventType.Insert, it.positions.start, it.positions.endInclusive + 1)
+                        insertChunkAtPosition(it.positions.start, it.bufferCharIndexes.length, BufferOwnership.Owned, it.buffer, it.bufferCharIndexes)  {
+                            bufferIndex = -3
+                            bufferOffsetStart = it.bufferCharIndexes.start
+                            bufferOffsetEndExclusive = it.bufferCharIndexes.endInclusive + 1
+                            this.buffer = it.buffer
+                            this.bufferOwnership = BufferOwnership.Owned
+
+                            leftStringLength = 0
+                        }
+                        callback?.onValuePostChange(BigTextChangeEventType.Insert, it.positions.start, it.positions.endInclusive + 1)
+                    }
+
+                    BigTextChangeEventType.Insert -> {
+                        callback?.onValuePreChange(BigTextChangeEventType.Delete, it.positions.start, it.positions.endInclusive + 1)
+                        delete(it.positions)
+                        callback?.onValuePostChange(BigTextChangeEventType.Delete, it.positions.start, it.positions.endInclusive + 1)
+                    }
+                }
+            }
+        } finally {
+            isUndoEnabled = true
+        }
+    }
+
+    protected fun applyChangeSequence(changes: List<BigTextInputChange>, callback: BigTextChangeCallback?) {
+        if (!isUndoEnabled) {
+            return
+        }
+        try {
+            isUndoEnabled = false // don't record the following changes into the undo history
+
+            changes.forEach {
+                when (it.type) {
+                    BigTextChangeEventType.Insert -> {
+                        callback?.onValuePreChange(BigTextChangeEventType.Insert, it.positions.start, it.positions.endInclusive + 1)
+                        insertChunkAtPosition(it.positions.start, it.bufferCharIndexes.length, BufferOwnership.Owned, it.buffer, it.bufferCharIndexes)  {
+                            bufferIndex = -3
+                            bufferOffsetStart = it.bufferCharIndexes.start
+                            bufferOffsetEndExclusive = it.bufferCharIndexes.endInclusive + 1
+                            this.buffer = it.buffer
+                            this.bufferOwnership = BufferOwnership.Owned
+
+                            leftStringLength = 0
+                        }
+                        callback?.onValuePostChange(BigTextChangeEventType.Insert, it.positions.start, it.positions.endInclusive + 1)
+                    }
+
+                    BigTextChangeEventType.Delete -> {
+                        callback?.onValuePreChange(BigTextChangeEventType.Delete, it.positions.start, it.positions.endInclusive + 1)
+                        delete(it.positions)
+                        callback?.onValuePostChange(BigTextChangeEventType.Delete, it.positions.start, it.positions.endInclusive + 1)
+                    }
+                }
+            }
+        } finally {
+            isUndoEnabled = true
+        }
+    }
+
+    fun undo(callback: BigTextChangeCallback? = null): Boolean {
+        if (!isUndoEnabled) {
+            return false
+        }
+        if (currentChanges.isNotEmpty()) {
+            applyReverseChangeSequence(currentChanges, callback)
+            redoHistory.push(BigTextInputOperation(currentChanges.toList()))
+            currentChanges = mutableListOf()
+            return true
+        }
+        val lastOperation = undoHistory.removeHead() ?: return false
+        applyReverseChangeSequence(lastOperation.changes, callback)
+        redoHistory.push(lastOperation)
+        return true
+    }
+
+    fun redo(callback: BigTextChangeCallback? = null): Boolean {
+        if (!isUndoEnabled) {
+            return false
+        }
+        if (currentChanges.isNotEmpty()) { // should not happen
+            return false
+        }
+        val lastOperation = redoHistory.removeHead() ?: return false
+        applyChangeSequence(lastOperation.changes, callback)
+        undoHistory.push(lastOperation)
+        return true
     }
 
     fun charIndexRangeOfNode(node: RedBlackTree<BigTextNodeValue>.Node): IntRange {
