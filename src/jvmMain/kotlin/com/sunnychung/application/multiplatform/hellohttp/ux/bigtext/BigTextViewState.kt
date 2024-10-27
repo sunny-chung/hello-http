@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.TransformedText
 
+val EMPTY_SELECTION_RANGE = 0 .. -1
+
 class BigTextViewState {
     /**
      * A unique value that changes when the BigText string value is changed.

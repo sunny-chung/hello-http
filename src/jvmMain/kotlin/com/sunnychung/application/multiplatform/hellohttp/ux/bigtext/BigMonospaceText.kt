@@ -563,6 +563,23 @@ private fun CoreBigMonospaceText(
 
     fun onDelete(direction: TextFBDirection): Boolean {
         val cursor = viewState.cursorIndex
+
+        if (viewState.hasSelection()) {
+            val start = viewState.selection.start
+            val endExclusive = viewState.selection.endInclusive + 1
+            onValuePreChange(BigTextChangeEventType.Delete, start, endExclusive)
+            text.delete(start, endExclusive)
+            text.recordCurrentChangeSequenceIntoUndoHistory()
+            onValuePostChange(BigTextChangeEventType.Delete, start, endExclusive)
+
+            viewState.selection = EMPTY_SELECTION_RANGE // cannot use IntRange.EMPTY as `viewState.selection.start` is in use
+            viewState.cursorIndex = start
+            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+            updateViewState()
+            return true
+        }
+
         when (direction) {
             TextFBDirection.Forward -> {
                 if (cursor + 1 <= text.length) {
@@ -570,7 +587,6 @@ private fun CoreBigMonospaceText(
                     text.delete(cursor, cursor + 1)
                     text.recordCurrentChangeSequenceIntoUndoHistory()
                     onValuePostChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
-//                    (transformedText as BigTextImpl).layout() // FIXME remove
                     updateViewState()
                     if (log.config.minSeverity <= Severity.Verbose) {
                         (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
@@ -584,7 +600,6 @@ private fun CoreBigMonospaceText(
                     text.delete(cursor - 1, cursor)
                     text.recordCurrentChangeSequenceIntoUndoHistory()
                     onValuePostChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
-//                    (transformedText as BigTextImpl).layout() // FIXME remove
                     updateViewState()
                     if (log.config.minSeverity <= Severity.Verbose) {
                         (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
