@@ -158,7 +158,12 @@ fun loadNativeLibraries() {
     val systemArch = if (currentOS() == WindowsOS) {
         "x64"
     } else {
-        getSystemArchitecture()
+        getSystemArchitecture().let {
+            when (it.lowercase()) {
+                "x86_64" -> "x64"
+                else -> it
+            }
+        }
     }.uppercase()
     libraries.forEach { (name, enclosingClazz) ->
         val libFileName = when (currentOS()) {
