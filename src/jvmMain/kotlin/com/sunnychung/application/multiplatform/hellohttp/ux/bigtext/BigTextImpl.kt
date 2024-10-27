@@ -405,7 +405,7 @@ open class BigTextImpl(
                 bufferCharIndexes = range.start .. range.endInclusive,
                 positions = position until position + chunkedString.length
             ).also {
-                log.i { "Record change for undo: $it" }
+                log.v { "Record change for undo: $it" }
             }
             clearRedoHistory()
         }
@@ -941,7 +941,7 @@ open class BigTextImpl(
                             until
                             nodeRange.start + splitEndAt,
                 ).also {
-                    log.i { "Record change for undo: $it" }
+                    log.v { "Record change for undo: $it" }
                 }
                 clearRedoHistory()
             }
