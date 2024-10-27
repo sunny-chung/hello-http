@@ -660,6 +660,26 @@ private fun CoreBigMonospaceText(
         onUndoRedo { text.redo(it) }
     }
 
+    fun copySelection() {
+        if (!viewState.hasSelection()) {
+            return
+        }
+
+        val textToCopy = text.substring(
+            viewState.selection.first.. viewState.selection.last
+        )
+        clipboardManager.setText(textToCopy.annotatedString())
+    }
+
+    fun cutSelection() {
+        if (!viewState.hasSelection()) {
+            return
+        }
+
+        copySelection()
+        deleteSelection(isSaveUndoSnapshot = true)
+    }
+
     val tv = remember { TextFieldValue() } // this value is not used
 
     LaunchedEffect(transformedText) {
@@ -809,10 +829,13 @@ private fun CoreBigMonospaceText(
                     it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.C && !viewState.transformedSelection.isEmpty() -> {
                         // Hit Ctrl-C or Cmd-C to copy
                         log.d { "BigMonospaceText hit copy" }
-                        val textToCopy = text.substring(
-                            viewState.selection.first.. viewState.selection.last
-                        )
-                        clipboardManager.setText(textToCopy.annotatedString())
+                        copySelection()
+                        true
+                    }
+                    it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.X && !viewState.transformedSelection.isEmpty() -> {
+                        // Hit Ctrl-X or Cmd-X to cut
+                        log.d { "BigMonospaceText hit cut" }
+                        cutSelection()
                         true
                     }
                     isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.V -> {
