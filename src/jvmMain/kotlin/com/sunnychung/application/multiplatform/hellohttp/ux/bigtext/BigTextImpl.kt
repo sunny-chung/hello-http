@@ -645,6 +645,12 @@ open class BigTextImpl(
     val lastIndex: Int
         get() = length - 1
 
+    val isEmpty: Boolean
+        get() = length <= 0
+
+    val isNotEmpty: Boolean
+        get() = length > 0
+
     override fun buildString(): String {
         return tree.joinToString("") {
             it.buffer.subSequence(it.renderBufferStart, it.renderBufferEndExclusive)

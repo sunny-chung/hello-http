@@ -198,7 +198,7 @@ fun BigMonospaceTextField(
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
-    viewState: BigTextViewState = remember { BigTextViewState() },
+    viewState: BigTextViewState = remember(text) { BigTextViewState() },
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
@@ -232,7 +232,7 @@ private fun CoreBigMonospaceText(
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
-    viewState: BigTextViewState = remember { BigTextViewState() },
+    viewState: BigTextViewState = remember(text) { BigTextViewState() },
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) {
@@ -835,8 +835,10 @@ private fun CoreBigMonospaceText(
                     /* selection */
                     it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.A -> {
                         // Hit Ctrl-A or Cmd-A to select all
-                        viewState.selection = 0 .. text.lastIndex
-                        viewState.updateTransformedSelectionBySelection(transformedText)
+                        if (text.isNotEmpty) {
+                            viewState.selection = 0..text.lastIndex
+                            viewState.updateTransformedSelectionBySelection(transformedText)
+                        }
                         true
                     }
                     it.type == KeyEventType.KeyDown && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
