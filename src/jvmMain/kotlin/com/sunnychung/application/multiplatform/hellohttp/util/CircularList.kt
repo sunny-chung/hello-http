@@ -19,7 +19,7 @@ class CircularList<T>(val capacity: Int) {
     val isEmpty: Boolean
         get() = size <= 0
 
-    private val store = ArrayList<T?>(capacity)
+    private var store = ArrayList<T?>()
 
     fun push(item: T) {
         val oldSize = size
@@ -70,5 +70,6 @@ class CircularList<T>(val capacity: Int) {
     fun clear() {
         head = -1
         tail = -1
+        store = ArrayList()
     }
 }
