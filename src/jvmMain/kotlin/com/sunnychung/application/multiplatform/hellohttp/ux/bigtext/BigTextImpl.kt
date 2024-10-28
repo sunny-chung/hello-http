@@ -1119,6 +1119,10 @@ open class BigTextImpl(
         return true
     }
 
+    fun isUndoable(): Boolean = isUndoEnabled && (currentChanges.isNotEmpty() || undoHistory.isNotEmpty)
+
+    fun isRedoable(): Boolean = isUndoEnabled && currentChanges.isEmpty() && redoHistory.isNotEmpty
+
     fun charIndexRangeOfNode(node: RedBlackTree<BigTextNodeValue>.Node): IntRange {
         val start = findPositionStart(node)
         return start until start + node.value.bufferLength

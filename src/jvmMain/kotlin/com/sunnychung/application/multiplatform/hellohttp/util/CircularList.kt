@@ -19,6 +19,9 @@ class CircularList<T>(val capacity: Int) {
     val isEmpty: Boolean
         get() = size <= 0
 
+    val isNotEmpty: Boolean
+        get() = size > 0
+
     private var store = ArrayList<T?>()
 
     fun push(item: T) {

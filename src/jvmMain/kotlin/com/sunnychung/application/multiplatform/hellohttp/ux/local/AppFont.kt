@@ -16,6 +16,8 @@ data class AppFont(
 
     val createLabelSize: TextUnit,
     val largeInfoSize: TextUnit,
+
+    val contextMenuFontSize: TextUnit,
 )
 
 val LocalFont = compositionLocalOf { regularFont() }
@@ -30,4 +32,6 @@ internal fun regularFont() = AppFont(
 
     createLabelSize = 20.sp,
     largeInfoSize = 29.sp,
+
+    contextMenuFontSize = 13.sp,
 )

@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
@@ -48,6 +49,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -82,6 +84,9 @@ import com.sunnychung.application.multiplatform.hellohttp.util.ComposeUnicodeCha
 import com.sunnychung.application.multiplatform.hellohttp.util.annotatedString
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.string
+import com.sunnychung.application.multiplatform.hellohttp.ux.ContextMenuView
+import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownDivider
+import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownKeyValue
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -217,7 +222,7 @@ fun BigMonospaceTextField(
     onTextLayout = onTextLayout,
 )
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun CoreBigMonospaceText(
     modifier: Modifier = Modifier,
@@ -442,6 +447,8 @@ private fun CoreBigMonospaceText(
     var selectionEnd by remember { mutableStateOf<Int>(-1) }
     var isHoldingShiftKey by remember { mutableStateOf(false) }
     var isFocused by remember { mutableStateOf(false) }
+
+    var isShowContextMenu by remember { mutableStateOf(false) }
 
     val viewportTop = scrollState.value.toFloat()
 
@@ -680,6 +687,23 @@ private fun CoreBigMonospaceText(
         deleteSelection(isSaveUndoSnapshot = true)
     }
 
+    fun paste(): Boolean {
+        val textToPaste = clipboardManager.getText()?.text
+        return if (!textToPaste.isNullOrEmpty()) {
+            onType(textToPaste)
+            true
+        } else {
+            false
+        }
+    }
+
+    fun selectAll() {
+        if (text.isNotEmpty) {
+            viewState.selection = 0..text.lastIndex
+            viewState.updateTransformedSelectionBySelection(transformedText)
+        }
+    }
+
     val tv = remember { TextFieldValue() } // this value is not used
 
     LaunchedEffect(transformedText) {
@@ -753,6 +777,12 @@ private fun CoreBigMonospaceText(
                             PointerEventType.Press -> {
                                 val position = event.changes.first().position
                                 log.v { "press ${position.x} ${position.y} shift=$isHoldingShiftKey" }
+
+                                if (event.button == PointerButton.Secondary) {
+                                    isShowContextMenu = !isShowContextMenu
+                                    continue
+                                }
+
                                 if (isHoldingShiftKey) {
                                     val selectionStart = viewState.transformedSelectionStart
                                     selectionEnd = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Selection)
@@ -841,13 +871,7 @@ private fun CoreBigMonospaceText(
                     isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.V -> {
                         // Hit Ctrl-V or Cmd-V to paste
                         log.d { "BigMonospaceTextField hit paste" }
-                        val textToPaste = clipboardManager.getText()?.text
-                        if (!textToPaste.isNullOrEmpty()) {
-                            onType(textToPaste)
-                            true
-                        } else {
-                            false
-                        }
+                        paste()
                     }
                     isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && !it.isShiftPressed && it.key == Key.Z -> {
                         // Hit Ctrl-Z or Cmd-Z to undo
@@ -864,10 +888,7 @@ private fun CoreBigMonospaceText(
                     /* selection */
                     it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.A -> {
                         // Hit Ctrl-A or Cmd-A to select all
-                        if (text.isNotEmpty) {
-                            viewState.selection = 0..text.lastIndex
-                            viewState.updateTransformedSelectionBySelection(transformedText)
-                        }
+                        selectAll()
                         true
                     }
                     it.type == KeyEventType.KeyDown && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
@@ -1045,6 +1066,36 @@ private fun CoreBigMonospaceText(
             val endInstant = KInstant.now()
             log.d { "Declare BigText content for render took ${endInstant - startInstant}" }
         }
+
+        ContextMenuView(
+            isShowContextMenu = isShowContextMenu,
+            onDismissRequest = { isShowContextMenu = false },
+            colors = LocalColor.current,
+            testTagParts = null,
+            populatedItems = listOf(
+                DropDownKeyValue(ContextMenuItem.Copy, "Copy", viewState.hasSelection()),
+                DropDownKeyValue(ContextMenuItem.Paste, "Paste", clipboardManager.hasText()),
+                DropDownKeyValue(ContextMenuItem.Cut, "Cut", viewState.hasSelection()),
+                DropDownDivider,
+                DropDownKeyValue(ContextMenuItem.Undo, "Undo", text.isUndoable()),
+                DropDownKeyValue(ContextMenuItem.Redo, "Redo", text.isRedoable()),
+                DropDownDivider,
+                DropDownKeyValue(ContextMenuItem.SelectAll, "Select All", text.isNotEmpty),
+            ),
+            onClickItem = {
+                when (it.key as ContextMenuItem) {
+                    ContextMenuItem.Copy -> copySelection()
+                    ContextMenuItem.Paste -> paste()
+                    ContextMenuItem.Cut -> cutSelection()
+                    ContextMenuItem.Undo -> undo()
+                    ContextMenuItem.Redo -> redo()
+                    ContextMenuItem.SelectAll -> selectAll()
+                }
+                true
+            },
+            selectedItem = null,
+            isClickable = true,
+        )
     }
 }
 
@@ -1058,4 +1109,8 @@ enum class TextFBDirection {
 
 enum class CursorAdjustDirection {
     Forward, Backward, Bidirectional
+}
+
+private enum class ContextMenuItem {
+    Copy, Paste, Cut, Undo, Redo, SelectAll
 }
