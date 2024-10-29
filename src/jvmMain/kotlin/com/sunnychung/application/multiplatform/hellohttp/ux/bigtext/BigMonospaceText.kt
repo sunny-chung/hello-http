@@ -80,6 +80,8 @@ import co.touchlab.kermit.Severity
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.extension.toTextInput
+import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
+import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.ComposeUnicodeCharMeasurer
 import com.sunnychung.application.multiplatform.hellohttp.util.annotatedString
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -854,7 +856,7 @@ private fun CoreBigMonospaceText(
                 }
             }
             .onPreviewKeyEvent {
-                log.v { "BigMonospaceText onPreviewKeyEvent" }
+                log.v { "BigMonospaceText onPreviewKeyEvent ${it.key}" }
                 when {
                     it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.C && !viewState.transformedSelection.isEmpty() -> {
                         // Hit Ctrl-C or Cmd-C to copy
@@ -920,6 +922,28 @@ private fun CoreBigMonospaceText(
                         }
                         it.key == Key.Delete -> {
                             onDelete(TextFBDirection.Forward)
+                        }
+                        /* text navigation */
+                        currentOS() == MacOS && it.isMetaPressed && it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
+                            // use `transformedText` as basis because `text` does not perform layout
+                            val currentRowIndex = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
+                            val newTransformedPosition = if (it.key == Key.DirectionLeft) {
+                                // home -> move to start of row
+                                log.d { "move to start of row $currentRowIndex" }
+                                transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex)
+                            } else {
+                                // end -> move to end of row
+                                log.d { "move to end of row $currentRowIndex" }
+                                if (currentRowIndex + 1 <= transformedText.lastRowIndex) {
+                                    transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex + 1) - /* the '\n' char */ 1
+                                } else {
+                                    transformedText.length
+                                }
+                            }
+                            viewState.transformedCursorIndex = newTransformedPosition
+                            viewState.updateCursorIndexByTransformed(transformedText)
+                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            true
                         }
                         it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
                             val delta = if (it.key == Key.DirectionRight) 1 else -1
