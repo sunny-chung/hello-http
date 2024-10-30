@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerButton
@@ -856,7 +857,7 @@ private fun CoreBigMonospaceText(
                 }
             }
             .onPreviewKeyEvent {
-                log.v { "BigMonospaceText onPreviewKeyEvent ${it.key}" }
+                log.v { "BigMonospaceText onPreviewKeyEvent ${it.type} ${it.key} ${it.key.nativeKeyCode} ${it.key.keyCode}" }
                 when {
                     it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.C && !viewState.transformedSelection.isEmpty() -> {
                         // Hit Ctrl-C or Cmd-C to copy
@@ -924,10 +925,11 @@ private fun CoreBigMonospaceText(
                             onDelete(TextFBDirection.Forward)
                         }
                         /* text navigation */
-                        currentOS() == MacOS && it.isMetaPressed && it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
+                        (currentOS() == MacOS && it.isMetaPressed && it.key in listOf(Key.DirectionLeft, Key.DirectionRight)) ||
+                         it.key in listOf(Key.MoveHome, Key.MoveEnd) -> {
                             // use `transformedText` as basis because `text` does not perform layout
                             val currentRowIndex = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
-                            val newTransformedPosition = if (it.key == Key.DirectionLeft) {
+                            val newTransformedPosition = if (it.key in listOf(Key.DirectionLeft, Key.MoveHome)) {
                                 // home -> move to start of row
                                 log.d { "move to start of row $currentRowIndex" }
                                 transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex)
