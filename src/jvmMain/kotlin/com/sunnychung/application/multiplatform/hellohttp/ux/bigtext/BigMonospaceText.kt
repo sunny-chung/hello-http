@@ -957,6 +957,20 @@ private fun CoreBigMonospaceText(
                             onDelete(TextFBDirection.Forward)
                         }
                         /* text navigation */
+                        (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionUp) ||
+                        (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveHome) -> {
+                            viewState.cursorIndex = 0 // TODO scroll to new position
+                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            true
+                        }
+                        (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionDown) ||
+                        (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveEnd) -> {
+                            viewState.cursorIndex = text.length // TODO scroll to new position
+                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            true
+                        }
                         (currentOS() == MacOS && it.isMetaPressed && it.key in listOf(Key.DirectionLeft, Key.DirectionRight)) ||
                          it.key in listOf(Key.MoveHome, Key.MoveEnd) -> {
                             // use `transformedText` as basis because `text` does not perform layout
