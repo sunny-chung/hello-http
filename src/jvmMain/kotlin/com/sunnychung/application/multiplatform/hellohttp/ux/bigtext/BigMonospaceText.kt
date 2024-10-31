@@ -707,6 +707,38 @@ private fun CoreBigMonospaceText(
         }
     }
 
+    fun findPreviousWordBoundaryPositionFromCursor(): Int {
+        val currentRowIndex = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
+        val transformedRowStart = transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex)
+        val rowStart = transformedText.findOriginalPositionByTransformedPosition(transformedRowStart)
+        val substringFromRowStartToCursor = text.substring(rowStart, viewState.cursorIndex)
+        if (substringFromRowStartToCursor.isEmpty()) {
+            return maxOf(0, rowStart - 1)
+        }
+        val wordBoundaryAt = "\\b".toRegex().findAll(substringFromRowStartToCursor)
+            .filter { it.range.start < substringFromRowStartToCursor.length }
+            .lastOrNull()?.range?.start ?: 0
+        return rowStart + wordBoundaryAt
+    }
+
+    fun findNextWordBoundaryPositionFromCursor(): Int {
+        val currentRowIndex = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
+        val transformedRowEnd = if (currentRowIndex + 1 <= transformedText.lastRowIndex) {
+            transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex + 1)
+        } else {
+            transformedText.length
+        }
+        val rowEnd = transformedText.findOriginalPositionByTransformedPosition(transformedRowEnd)
+        val substringFromCursorToRowEnd = text.substring(viewState.cursorIndex, rowEnd)
+        if (substringFromCursorToRowEnd.isEmpty()) {
+            return minOf(text.length, rowEnd)
+        }
+        val wordBoundaryAt = "\\b".toRegex().findAll(substringFromCursorToRowEnd)
+            .filter { it.range.start > 0 }
+            .firstOrNull()?.range?.start ?: substringFromCursorToRowEnd.length
+        return viewState.cursorIndex + wordBoundaryAt
+    }
+
     val tv = remember { TextFieldValue() } // this value is not used
 
     LaunchedEffect(transformedText) {
@@ -944,6 +976,26 @@ private fun CoreBigMonospaceText(
                             }
                             viewState.transformedCursorIndex = newTransformedPosition
                             viewState.updateCursorIndexByTransformed(transformedText)
+                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            true
+                        }
+                        it.key == Key.DirectionLeft && (
+                            (currentOS() == MacOS && it.isAltPressed) ||
+                            (currentOS() != MacOS && it.isCtrlPressed)
+                        ) -> {
+                            val newPosition = findPreviousWordBoundaryPositionFromCursor()
+                            viewState.cursorIndex = newPosition
+                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            true
+                        }
+                        it.key == Key.DirectionRight && (
+                            (currentOS() == MacOS && it.isAltPressed) ||
+                            (currentOS() != MacOS && it.isCtrlPressed)
+                        ) -> {
+                            val newPosition = findNextWordBoundaryPositionFromCursor()
+                            viewState.cursorIndex = newPosition
+                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
                             viewState.transformedSelectionStart = viewState.transformedCursorIndex
                             true
                         }
