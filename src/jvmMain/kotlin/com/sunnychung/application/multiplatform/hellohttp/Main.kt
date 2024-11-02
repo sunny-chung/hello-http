@@ -174,7 +174,7 @@ fun loadNativeLibraries() {
         println("Loading native lib $libFileName")
         val dest = File(File(AppContext.dataDir, "lib"), libFileName)
         dest.parentFile.mkdirs()
-        if (!dest.canWrite()) {
+        if (dest.isFile && !dest.canWrite()) {
             println("Warning: ${dest.path} is not writable. Skip exporting lib.")
         } else {
             enclosingClazz.javaClass.classLoader.getResourceAsStream(libFileName).use { `is` ->
