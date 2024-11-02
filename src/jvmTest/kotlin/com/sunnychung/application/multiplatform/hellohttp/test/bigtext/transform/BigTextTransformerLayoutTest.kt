@@ -644,7 +644,7 @@ class BigTextTransformerLayoutTest {
 
     @ParameterizedTest
     @ValueSource(ints = [256, 64, 16, 65536, 1 * 1024 * 1024])
-    fun findFirstRowIndexByOriginalLineIndex(chunkSize: Int) {
+    fun findFirstRowIndexByOriginalLineIndex1(chunkSize: Int) {
         listOf(100, 10, 37, 1000, 10000).forEach { softWrapAt ->
             val t = BigTextImpl(chunkSize = chunkSize).apply {
                 append("{\"a\":\"bcd\${{abc\nde}}ef}\"}\n\n\${{asd\n\nf}}\n\n1234567890223456789032345678904234567890\n\n")
@@ -665,6 +665,40 @@ class BigTextTransformerLayoutTest {
             expectedRowPosStarts.forEachIndexed { i, expected ->
                 assertEquals(expected, tt.findFirstRowIndexByOriginalLineIndex(i), "chunkSize=$chunkSize, softWrapAt $softWrapAt, line $i")
             }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [43, 16, 200])
+    fun findFirstRowIndexByOriginalLineIndex2(softWrapAt: Int) {
+        val initial = "{\n" +
+                "  \"asffgsdfggsdgsdgsdsdh\": [\"adfd\", \"Sgfsfg\", \"sfgdsfg\", [\"gsafg\", \"sfg\", \"kkk\"]]\n" +
+                "}"
+
+        val t = BigTextImpl(chunkSize = 256).apply {
+            append(initial)
+        }
+        val tt = BigTextTransformerImpl(t).apply {
+            setLayouter(MonospaceTextLayouter(FixedWidthCharMeasurer(16f)))
+            setContentWidth(16f * softWrapAt + 1.23f)
+        }
+        val expectedRowPosStarts0 = when (softWrapAt) {
+            43 -> listOf(0, 1, 3)
+            16 -> listOf(0, 1, 7)
+            else -> listOf(0, 1, 2)
+        }
+        expectedRowPosStarts0.forEachIndexed { i, expected ->
+            assertEquals(expected, tt.findFirstRowIndexByOriginalLineIndex(i), "before change. softWrapAt $softWrapAt, line $i")
+        }
+
+        t.insertAt(84, "\n")
+        val expectedRowPosStarts = when (softWrapAt) {
+            43 -> listOf(0, 1, 3, 4)
+            16 -> listOf(0, 1, 7, 8)
+            else -> listOf(0, 1, 2, 3)
+        }
+        expectedRowPosStarts.forEachIndexed { i, expected ->
+            assertEquals(expected, tt.findFirstRowIndexByOriginalLineIndex(i), "after change. softWrapAt $softWrapAt, line $i")
         }
     }
 

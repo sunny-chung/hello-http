@@ -751,10 +751,10 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
             val lineOffsets = originalNode.value.buffer.lineOffsetStarts
             val lineOffsetStartIndex = lineOffsets.binarySearchForMinIndexOfValueAtLeast(originalNode.value.bufferOffsetStart)
             require(lineOffsetStartIndex >= 0)
-            lineOffsets[lineOffsetStartIndex + lineBreakIndex] - originalNode.value.bufferOffsetStart
+            lineOffsets[lineOffsetStartIndex + lineBreakIndex] - originalNode.value.bufferOffsetStart + /* find the position just after the '\n' char */ 1
         } else {
             0
-        } + 1
+        }
 
         val transformedPosition = findTransformedPositionByOriginalPosition(lineOriginalPositionStart)
         return findRowIndexByPosition(transformedPosition)
