@@ -73,7 +73,6 @@ import androidx.compose.ui.text.input.CommitTextCommand
 import androidx.compose.ui.text.input.ImeOptions
 import androidx.compose.ui.text.input.SetComposingTextCommand
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -110,7 +109,6 @@ fun BigMonospaceText(
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
-    visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
@@ -124,7 +122,6 @@ fun BigMonospaceText(
     isSelectable = isSelectable,
     isEditable = false,
     onTextChange = {},
-    visualTransformation = visualTransformation,
     textTransformation = textTransformation,
     scrollState = scrollState,
     viewState = viewState,
@@ -139,7 +136,6 @@ fun BigMonospaceText(
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
-    visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -155,7 +151,6 @@ fun BigMonospaceText(
     isSelectable = isSelectable,
     isEditable = false,
     onTextChange = {},
-    visualTransformation = visualTransformation,
     textTransformation = textTransformation,
     textDecorator = textDecorator,
     scrollState = scrollState,
@@ -171,7 +166,6 @@ fun BigMonospaceTextField(
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
-    visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -186,7 +180,6 @@ fun BigMonospaceTextField(
         onTextChange = {
             textFieldState.emitValueChange(it.changeId)
         },
-        visualTransformation = visualTransformation,
         textTransformation = textTransformation,
         textDecorator = textDecorator,
         scrollState = scrollState,
@@ -203,7 +196,6 @@ fun BigMonospaceTextField(
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
     onTextChange: (BigTextChangeEvent) -> Unit,
-    visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -218,7 +210,6 @@ fun BigMonospaceTextField(
     isSelectable = true,
     isEditable = true,
     onTextChange = onTextChange,
-    visualTransformation = visualTransformation,
     textTransformation = textTransformation,
     textDecorator = textDecorator,
     scrollState = scrollState,
@@ -237,7 +228,6 @@ private fun CoreBigMonospaceText(
     isSelectable: Boolean = false,
     isEditable: Boolean = false,
     onTextChange: (BigTextChangeEvent) -> Unit,
-    visualTransformation: VisualTransformation,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -352,13 +342,6 @@ private fun CoreBigMonospaceText(
         }
     }
 
-//    val visualTransformationToUse = visualTransformation
-//    val transformedText = rememberLast(text.length, text.hashCode(), visualTransformationToUse) {
-//        visualTransformationToUse.filter(AnnotatedString(text.buildString())).also {
-//            log.v { "transformed text = `$it`" }
-//        }
-//    }
-
 //    val layoutResult = rememberLast(transformedText.text.length, transformedText.hashCode(), textStyle, lineHeight, contentWidth, textLayouter) {
 //        textLayouter.layout(
 //            text = text.fullString(),
@@ -388,11 +371,6 @@ private fun CoreBigMonospaceText(
                 setter.call(scrollState, scrollableHeight.roundToInt())
             }
     }
-
-//    rememberLast(viewState.selection.start, viewState.selection.last, visualTransformation) {
-//        viewState.transformedSelection = transformedText.offsetMapping.originalToTransformed(viewState.selection.start) ..
-//            transformedText.offsetMapping.originalToTransformed(viewState.selection.last)
-//    }
 
     val transformedState = remember(text, textTransformation) {
         log.v { "CoreBigMonospaceText text = |${text.buildString()}|" }

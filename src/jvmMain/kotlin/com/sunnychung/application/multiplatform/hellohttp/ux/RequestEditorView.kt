@@ -50,7 +50,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +64,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
@@ -84,8 +84,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLas
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.GraphqlQuerySyntaxHighlightTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import graphql.language.OperationDefinition
@@ -1133,11 +1131,7 @@ private fun RequestBodyEditor(
                             body = StringBody(it)
                         )
                     },
-                    transformations = if (selectedContentType == ContentType.Json) {
-                        listOf(JsonSyntaxHighlightTransformation(colours = colors))
-                    } else {
-                        emptyList()
-                    },
+                    syntaxHighlight = if (selectedContentType == ContentType.Json) SyntaxHighlight.Json else SyntaxHighlight.None,
                     modifier = remainModifier,
                 )
             }
@@ -1246,7 +1240,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    transformations = listOf(GraphqlQuerySyntaxHighlightTransformation(colours = colors)),
+                    syntaxHighlight = SyntaxHighlight.Graphql,
                     testTag = TestTag.RequestGraphqlDocumentTextField.name,
                     modifier = Modifier.fillMaxWidth().weight(0.62f),
                 )
@@ -1280,7 +1274,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    syntaxHighlight = SyntaxHighlight.Json,
                     testTag = TestTag.RequestGraphqlVariablesTextField.name,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 200.dp).weight(0.38f),
                 )
@@ -1330,7 +1324,7 @@ private fun RequestBodyTextEditor(
     overridePredicate: (UserRequestExample.Overrides?) -> Boolean,
     translateToText: (UserRequestExample) -> String?,
     translateTextChangeToNewUserRequestExample: (String) -> UserRequestExample,
-    transformations: List<VisualTransformation>,
+    syntaxHighlight: SyntaxHighlight,
     testTag: String? = null,
 ) {
     val colors = LocalColor.current
@@ -1352,7 +1346,7 @@ private fun RequestBodyTextEditor(
                     )
                 )
             },
-            transformations = transformations,
+            syntaxHighlight = syntaxHighlight,
             testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
         )
     } else {
@@ -1363,7 +1357,8 @@ private fun RequestBodyTextEditor(
             knownVariables = environmentVariableKeys,
             text = translateToText(baseExample) ?: "",
             onTextChange = {},
-            textColor = colors.placeholder, // intended to have no syntax highlighting
+            textColor = colors.placeholder,
+            syntaxHighlight = SyntaxHighlight.None // intended to have no syntax highlighting
         )
     }
 }
@@ -1560,7 +1555,7 @@ fun StreamingPayloadEditorView(
                     )
                 )
             },
-            transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)),
+            syntaxHighlight = SyntaxHighlight.Json,
             testTag = TestTag.RequestPayloadTextField.name,
         )
     }

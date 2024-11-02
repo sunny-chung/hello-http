@@ -55,6 +55,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
 import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
@@ -64,7 +65,6 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
@@ -545,11 +545,7 @@ fun BodyViewerView(
                     text = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
                     collapsableChars = prettifyResult.collapsableCharRange,
-                    transformations = if (selectedView.prettifier!!.formatName.contains("JSON")) {
-                        listOf(JsonSyntaxHighlightTransformation(colours = colours))
-                    } else {
-                        emptyList()
-                    },
+                    syntaxHighlight = if (selectedView.prettifier!!.formatName.contains("JSON")) SyntaxHighlight.Json else SyntaxHighlight.None,
                     testTag = TestTag.ResponseBody.name,
                 )
             }
@@ -560,6 +556,7 @@ fun BodyViewerView(
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
+                    syntaxHighlight = SyntaxHighlight.None,
                     testTag = TestTag.ResponseError.name,
                 )
             }
@@ -632,6 +629,7 @@ fun ResponseBodyView(response: UserResponse) {
                 isReadOnly = true,
                 text = response.postFlightErrorMessage ?: "",
                 textColor = LocalColor.current.warning,
+                syntaxHighlight = SyntaxHighlight.None,
                 modifier = Modifier.fillMaxWidth().height(100.dp),
             )
         }

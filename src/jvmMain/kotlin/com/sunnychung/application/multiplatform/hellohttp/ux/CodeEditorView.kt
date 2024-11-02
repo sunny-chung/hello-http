@@ -52,7 +52,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -62,10 +61,12 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryAp
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
@@ -79,15 +80,11 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDe
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.CollapseTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.CollapseIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
@@ -115,7 +112,7 @@ fun CodeEditorView(
     collapsableLines: List<IntRange> = emptyList(),
     collapsableChars: List<IntRange> = emptyList(),
     textColor: Color = LocalColor.current.text,
-    transformations: List<VisualTransformation> = emptyList(),
+    syntaxHighlight: SyntaxHighlight,
     isEnableVariables: Boolean = false,
     knownVariables: Set<String> = setOf(),
     testTag: String? = null,
@@ -340,23 +337,41 @@ fun CodeEditorView(
         ""
     }
 
-    var visualTransformations = transformations +
-            if (isEnableVariables) {
-                listOf(
-                    EnvironmentVariableTransformation(
-                        themeColors = themeColours,
-                        knownVariables = knownVariables
-                    ),
-                    FunctionTransformation(themeColours),
-                )
-            } else {
-                emptyList()
-            } +
-            if (isReadOnly) {
-                listOf(CollapseTransformation(themeColours, collapsedChars.values.toList()))
-            } else {
-                emptyList()
-            }
+    val variableTransformations = remember(bigTextFieldState, themeColours, isEnableVariables) {
+        if (isEnableVariables) {
+            listOf(
+                EnvironmentVariableIncrementalTransformation(),
+                FunctionIncrementalTransformation(themeColours)
+            )
+        } else {
+            emptyList()
+        }
+    }
+
+    val variableDecorators = remember(bigTextFieldState, themeColours, isEnableVariables, knownVariables) {
+        if (isEnableVariables) {
+            listOf(
+                EnvironmentVariableDecorator(themeColours, knownVariables),
+            )
+        } else {
+            emptyList()
+        }
+    }
+
+    val syntaxHighlightDecorators = rememberLast(bigTextFieldState, themeColours) {
+        when (syntaxHighlight) {
+            SyntaxHighlight.None -> emptyList()
+            SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightDecorator(themeColours))
+            SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
+            SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
+        }
+    }
+
+    val searchDecorators = rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex) {
+        listOf(
+            SearchHighlightDecorator(searchResultRangeTree ?: TreeRangeMap.create(), searchResultViewIndex, themeColours),
+        )
+    }
 
     textLayoutResult?.let { tl ->
         (0..minOf(10, tl.lineCount - 1)).forEach {
@@ -365,14 +380,6 @@ fun CodeEditorView(
     }
 
     if (isSearchVisible) {
-        if (!searchResultRanges.isNullOrEmpty() && searchPattern != null) {
-            visualTransformations += SearchHighlightTransformation(
-                searchPattern = searchPattern!!,
-                currentIndex = searchResultViewIndex,
-                colours = themeColours,
-            )
-        }
-
         if (lastSearchResultViewIndex != searchResultViewIndex && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
             lastSearchResultViewIndex = searchResultViewIndex
             searchResultRanges!!.getOrNull(searchResultViewIndex)?.start?.let { position ->
@@ -401,32 +408,6 @@ fun CodeEditorView(
         val size = searchResultRanges?.size ?: 0
         if (size < 1) return
         searchResultViewIndex = (searchResultViewIndex - 1 + size) % size
-    }
-
-    val visualTransformationToUse = visualTransformations.let {
-        if (newText.length > 1 * 1024 * 1024 /* 1 MB */) {
-            // disable all styles to avoid hanging
-            return@let VisualTransformation.None
-        }
-        if (it.size > 1) {
-            MultipleVisualTransformation(it)
-        } else if (it.size == 1) {
-            it.first()
-        } else {
-            VisualTransformation.None
-        }
-    }
-
-    log.d { "lineTops ${lineTops != null}, textLayoutResult ${textLayoutResult != null}" }
-
-    if (lineTops == null && textLayoutResult != null) {
-        log.d { "lineTops recalc start" }
-        val charOffsetMapping = visualTransformationToUse.filter(AnnotatedString(textValue.text)).offsetMapping
-        val lineOffsets = listOf(0) + "\n".toRegex().findAll(textValue.text).map { charOffsetMapping.originalToTransformed(it.range.endInclusive + 1) }
-        log.v { "lineOffsets = $lineOffsets" }
-        lineTops = lineOffsets.map { textLayoutResult!!.getLineTop(textLayoutResult!!.getLineForOffset(it)) } + // O(l * L * 1)
-                (Float.POSITIVE_INFINITY)
-        log.d { "lineTops recalc end" }
     }
 
     Column(modifier = modifier.onPreviewKeyEvent {
@@ -522,11 +503,6 @@ fun CodeEditorView(
                     modifier = Modifier.fillMaxHeight(),
                 )
 
-                val syntaxHighlightDecorator = rememberLast(bigTextFieldState, themeColours) {
-                    JsonSyntaxHighlightDecorator(themeColours)
-//                    KotlinSyntaxHighlightSlowDecorator(themeColours)
-                }
-
                 if (isReadOnly) {
                     val collapseIncrementalTransformation = remember(bigTextFieldState) {
                         CollapseIncrementalTransformation(themeColours, collapsedChars.values.toList())
@@ -540,19 +516,15 @@ fun CodeEditorView(
                     BigMonospaceText(
                         text = bigTextValue as BigTextImpl,
                         padding = PaddingValues(4.dp),
-                        visualTransformation = visualTransformationToUse,
-                        textTransformation = rememberLast(bigTextFieldState) {
+                        textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
                             MultipleIncrementalTransformation(listOf(
-//                                JsonSyntaxHighlightIncrementalTransformation(themeColours),
                                 collapseIncrementalTransformation,
                             ))
                         },
-                        textDecorator = rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex) {
-                            MultipleTextDecorator(listOf(
-                                syntaxHighlightDecorator,
-                                SearchHighlightDecorator(searchResultRangeTree ?: TreeRangeMap.create(), searchResultViewIndex, themeColours),
-                            ))
-                        },
+                        textDecorator = //rememberLast(bigTextFieldState, syntaxHighlightDecorators, searchDecorators) {
+                            MultipleTextDecorator(syntaxHighlightDecorators + searchDecorators)
+                        //},
+                        ,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
                         isSelectable = true,
                         scrollState = scrollState,
@@ -660,21 +632,15 @@ fun CodeEditorView(
 
                     BigMonospaceTextField(
                         textFieldState = bigTextFieldState,
-                        visualTransformation = visualTransformationToUse,
-                        textTransformation = remember {
-                            MultipleIncrementalTransformation(listOf(
-//                                JsonSyntaxHighlightIncrementalTransformation(themeColours),
-                                EnvironmentVariableIncrementalTransformation(),
-                                FunctionIncrementalTransformation(themeColours)
-                            ))
-                        }, // TODO replace this testing transformation
-                        textDecorator = rememberLast(bigTextFieldState, themeColours, knownVariables, searchResultRangeTree, searchResultViewIndex) {
-                            MultipleTextDecorator(listOf(
-                                syntaxHighlightDecorator,
-                                EnvironmentVariableDecorator(themeColours, knownVariables),
-                                SearchHighlightDecorator(searchResultRangeTree ?: TreeRangeMap.create(), searchResultViewIndex, themeColours),
-                            ))
+                        textTransformation = remember(variableTransformations) {
+                            MultipleIncrementalTransformation(
+                                variableTransformations
+                            )
                         },
+                        textDecorator = //rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex, syntaxHighlightDecorator) {
+                            MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
+                        //},
+                        ,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
 //                        textStyle = LocalTextStyle.current.copy(
 //                            fontFamily = FontFamily.Monospace,
