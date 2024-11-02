@@ -754,7 +754,7 @@ private fun CoreBigMonospaceText(
                 rowVerticalRange.start
             } else {
                 // scroll to a position that includes the bottom of the row + a little space
-                minOf(layoutResult.bottom.toInt(), maxOf(0, rowVerticalRange.endInclusive + layoutResult.rowHeight.toInt() - height))
+                minOf(layoutResult.bottom.toInt(), maxOf(0, rowVerticalRange.endInclusive + maxOf(2, (layoutResult.rowHeight * 0.5).toInt()) - height))
             }
             coroutineScope.launch {
                 scrollState.animateScrollTo(scrollToPosition)
