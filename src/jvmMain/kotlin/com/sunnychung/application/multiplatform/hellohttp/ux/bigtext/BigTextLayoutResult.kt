@@ -34,4 +34,10 @@ class BigTextSimpleLayoutResult(
 ) {
     fun getTopOfRow(rowIndex: Int): Float = rowIndex * rowHeight
     fun getBottomOfRow(rowIndex: Int): Float = (rowIndex + 1) * rowHeight
+
+    val top: Float
+        get() = 0f
+
+    val bottom: Float
+        get() = getBottomOfRow(text.lastRowIndex)
 }

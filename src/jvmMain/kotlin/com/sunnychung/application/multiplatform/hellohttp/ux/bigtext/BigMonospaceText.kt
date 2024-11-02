@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Severity
+import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.extension.toTextInput
@@ -296,6 +297,8 @@ private fun CoreBigMonospaceText(
 //        }
 //    }
 
+    var layoutResult by remember(textLayouter, width) { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
+
     val transformedText: BigTextTransformed = remember(text, textTransformation) {
         log.d { "CoreBigMonospaceText recreate BigTextTransformed" }
         BigTextTransformerImpl(text).also {
@@ -317,7 +320,7 @@ private fun CoreBigMonospaceText(
 //                text = text,
                 text = transformedText, // layout is only performed in `transformedText`
                 rowHeight = lineHeight,
-            ))
+            ).also { layoutResult = it })
         }
     }
 
@@ -739,6 +742,26 @@ private fun CoreBigMonospaceText(
         return viewState.cursorIndex + wordBoundaryAt
     }
 
+    fun scrollToCursor() {
+        val layoutResult = layoutResult ?: return
+
+        // scroll to cursor position if out of visible range
+        val visibleVerticalRange = scrollState.value .. scrollState.value + height
+        val row = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
+        val rowVerticalRange = layoutResult.getTopOfRow(row).toInt() .. layoutResult.getBottomOfRow(row).toInt()
+        if (rowVerticalRange !in visibleVerticalRange) {
+            val scrollToPosition = if (rowVerticalRange.start < visibleVerticalRange.start) {
+                rowVerticalRange.start
+            } else {
+                // scroll to a position that includes the bottom of the row + a little space
+                minOf(layoutResult.bottom.toInt(), maxOf(0, rowVerticalRange.endInclusive + layoutResult.rowHeight.toInt() - height))
+            }
+            coroutineScope.launch {
+                scrollState.animateScrollTo(scrollToPosition)
+            }
+        }
+    }
+
     fun updateOriginalCursorOrSelection(newPosition: Int, isSelection: Boolean) {
         val oldCursorPosition = viewState.cursorIndex
         viewState.cursorIndex = newPosition // TODO scroll to new position
@@ -755,6 +778,7 @@ private fun CoreBigMonospaceText(
             viewState.transformedSelectionStart = viewState.transformedCursorIndex
             viewState.transformedSelection = IntRange.EMPTY
         }
+        scrollToCursor()
     }
 
     fun updateTransformedCursorOrSelection(newTransformedPosition: Int, isSelection: Boolean) {
@@ -774,6 +798,7 @@ private fun CoreBigMonospaceText(
             viewState.transformedSelectionStart = viewState.transformedCursorIndex
             viewState.transformedSelection = IntRange.EMPTY
         }
+        scrollToCursor()
     }
 
     val tv = remember { TextFieldValue() } // this value is not used
