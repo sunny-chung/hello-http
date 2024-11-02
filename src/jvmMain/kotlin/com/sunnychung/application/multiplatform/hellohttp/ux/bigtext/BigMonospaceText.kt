@@ -739,6 +739,43 @@ private fun CoreBigMonospaceText(
         return viewState.cursorIndex + wordBoundaryAt
     }
 
+    fun updateOriginalCursorOrSelection(newPosition: Int, isSelection: Boolean) {
+        val oldCursorPosition = viewState.cursorIndex
+        viewState.cursorIndex = newPosition // TODO scroll to new position
+        viewState.updateTransformedCursorIndexByOriginal(transformedText)
+        if (isSelection) {
+            val selectionStart = if (viewState.hasSelection()) {
+                transformedText.findOriginalPositionByTransformedPosition(viewState.transformedSelectionStart)
+            } else {
+                oldCursorPosition
+            }
+            viewState.selection = minOf(selectionStart, newPosition) until maxOf(selectionStart, newPosition)
+            viewState.updateTransformedSelectionBySelection(transformedText)
+        } else {
+            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+            viewState.transformedSelection = IntRange.EMPTY
+        }
+    }
+
+    fun updateTransformedCursorOrSelection(newTransformedPosition: Int, isSelection: Boolean) {
+        val oldTransformedCursorPosition = viewState.transformedCursorIndex
+        viewState.transformedCursorIndex = newTransformedPosition
+        viewState.updateCursorIndexByTransformed(transformedText)
+        if (isSelection) {
+            val selectionTransformedStart = if (viewState.hasSelection()) {
+                viewState.transformedSelectionStart
+            } else {
+                oldTransformedCursorPosition
+            }
+            log.d { "select T $selectionTransformedStart ~ $newTransformedPosition" }
+            viewState.transformedSelection = minOf(selectionTransformedStart, newTransformedPosition) until maxOf(selectionTransformedStart, newTransformedPosition)
+            viewState.updateSelectionByTransformedSelection(transformedText)
+        } else {
+            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+            viewState.transformedSelection = IntRange.EMPTY
+        }
+    }
+
     val tv = remember { TextFieldValue() } // this value is not used
 
     LaunchedEffect(transformedText) {
@@ -829,6 +866,7 @@ private fun CoreBigMonospaceText(
                                     viewState.updateSelectionByTransformedSelection(transformedText)
                                 } else {
                                     viewState.transformedSelection = IntRange.EMPTY
+                                    viewState.selection = EMPTY_SELECTION_RANGE
 //                                    focusRequester.freeFocus()
                                 }
 
@@ -959,16 +997,12 @@ private fun CoreBigMonospaceText(
                         /* text navigation */
                         (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionUp) ||
                         (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveHome) -> {
-                            viewState.cursorIndex = 0 // TODO scroll to new position
-                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
-                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            updateOriginalCursorOrSelection(newPosition = 0, isSelection = it.isShiftPressed)
                             true
                         }
                         (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionDown) ||
                         (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveEnd) -> {
-                            viewState.cursorIndex = text.length // TODO scroll to new position
-                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
-                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            updateOriginalCursorOrSelection(newPosition = text.length, isSelection = it.isShiftPressed)
                             true
                         }
                         (currentOS() == MacOS && it.isMetaPressed && it.key in listOf(Key.DirectionLeft, Key.DirectionRight)) ||
@@ -988,9 +1022,10 @@ private fun CoreBigMonospaceText(
                                     transformedText.length
                                 }
                             }
-                            viewState.transformedCursorIndex = newTransformedPosition
-                            viewState.updateCursorIndexByTransformed(transformedText)
-                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            updateTransformedCursorOrSelection(
+                                newTransformedPosition = newTransformedPosition,
+                                isSelection = it.isShiftPressed,
+                            )
                             true
                         }
                         it.key == Key.DirectionLeft && (
@@ -998,9 +1033,7 @@ private fun CoreBigMonospaceText(
                             (currentOS() != MacOS && it.isCtrlPressed)
                         ) -> {
                             val newPosition = findPreviousWordBoundaryPositionFromCursor()
-                            viewState.cursorIndex = newPosition
-                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
-                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            updateOriginalCursorOrSelection(newPosition = newPosition, isSelection = it.isShiftPressed)
                             true
                         }
                         it.key == Key.DirectionRight && (
@@ -1008,23 +1041,22 @@ private fun CoreBigMonospaceText(
                             (currentOS() != MacOS && it.isCtrlPressed)
                         ) -> {
                             val newPosition = findNextWordBoundaryPositionFromCursor()
-                            viewState.cursorIndex = newPosition
-                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
-                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            updateOriginalCursorOrSelection(newPosition = newPosition, isSelection = it.isShiftPressed)
                             true
                         }
                         it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
                             val delta = if (it.key == Key.DirectionRight) 1 else -1
-                            viewState.transformedSelection = IntRange.EMPTY // TODO handle Shift key
                             if (viewState.transformedCursorIndex + delta in 0 .. transformedText.length) {
-                                viewState.transformedCursorIndex += delta
-                                if (delta > 0) {
-                                    viewState.roundTransformedCursorIndex(CursorAdjustDirection.Forward, transformedText, viewState.transformedCursorIndex - delta, false)
+                                var newTransformedPosition = viewState.transformedCursorIndex + delta
+                                newTransformedPosition = if (delta > 0) {
+                                    viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Forward, transformedText, viewState.transformedCursorIndex /* FIXME IndexOutOfBoundsException */, false)
                                 } else {
-                                    viewState.roundTransformedCursorIndex(CursorAdjustDirection.Backward, transformedText, viewState.transformedCursorIndex, true)
+                                    viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Backward, transformedText, newTransformedPosition, true)
                                 }
-                                viewState.updateCursorIndexByTransformed(transformedText)
-                                viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                                updateTransformedCursorOrSelection(
+                                    newTransformedPosition = newTransformedPosition,
+                                    isSelection = it.isShiftPressed,
+                                )
                                 log.v { "set cursor pos LR => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
                             }
                             true
@@ -1033,8 +1065,7 @@ private fun CoreBigMonospaceText(
 //                            val row = layoutResult.rowStartCharIndices.binarySearchForMaxIndexOfValueAtMost(viewState.transformedCursorIndex)
                             val row = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
                             val newRow = row + if (it.key == Key.DirectionDown) 1 else -1
-                            viewState.transformedSelection = IntRange.EMPTY // TODO handle Shift key
-                            viewState.transformedCursorIndex = Unit.let {
+                            var newTransformedPosition = Unit.let {
                                 if (newRow < 0) {
                                     0
                                 } else if (newRow > transformedText.lastRowIndex) {
@@ -1053,9 +1084,11 @@ private fun CoreBigMonospaceText(
                                     }
                                 }
                             }
-                            viewState.roundTransformedCursorIndex(CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
-                            viewState.updateCursorIndexByTransformed(transformedText)
-                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            newTransformedPosition = viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
+                            updateTransformedCursorOrSelection(
+                                newTransformedPosition = newTransformedPosition,
+                                isSelection = it.isShiftPressed,
+                            )
                             true
                         }
                         else -> false
