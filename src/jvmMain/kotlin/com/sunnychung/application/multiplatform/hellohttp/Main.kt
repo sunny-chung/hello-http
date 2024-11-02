@@ -41,6 +41,7 @@ import net.harawata.appdirs.AppDirsFactory
 import java.awt.Dimension
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
@@ -174,15 +175,15 @@ fun loadNativeLibraries() {
         println("Loading native lib $libFileName")
         val dest = File(File(AppContext.dataDir, "lib"), libFileName)
         dest.parentFile.mkdirs()
-        if (dest.isFile && !dest.canWrite()) {
-            println("Warning: ${dest.path} is not writable. Skip exporting lib.")
-        } else {
+        try {
             enclosingClazz.javaClass.classLoader.getResourceAsStream(libFileName).use { `is` ->
                 `is` ?: throw RuntimeException("Lib $libFileName not found")
                 FileOutputStream(dest).use { os ->
                     `is`.copyTo(os)
                 }
             }
+        } catch (e: IOException) {
+            println("Warning: ${dest.path} is not writable. Skip exporting lib. Exception: ${e.message}")
         }
         System.load(dest.absolutePath)
     }
