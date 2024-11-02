@@ -74,6 +74,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimp
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberAnnotatedBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
@@ -615,13 +616,14 @@ fun CodeEditorView(
 
 //                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
 
-                    LaunchedEffect(bigTextFieldState) {
+                    LaunchedEffect(bigTextFieldState, onTextChange) {
                         bigTextFieldState.valueChangesFlow
                             .debounce(200.milliseconds().toMilliseconds())
                             .collect {
                                 log.d { "bigTextFieldState change ${it.changeId}" }
                                 onTextChange?.let { onTextChange ->
                                     val string = it.bigText.buildCharSequence() as AnnotatedString
+                                    log.v { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
                                     onTextChange(string.text)
                                     secondCacheKey.value = string.text
                                 }

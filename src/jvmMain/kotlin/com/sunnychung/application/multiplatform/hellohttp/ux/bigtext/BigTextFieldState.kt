@@ -54,7 +54,7 @@ fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableS
     return secondCacheKey to state
 }
 
-private fun CharSequence.abbr(): CharSequence {
+fun CharSequence.abbr(): CharSequence {
     return if (this.length > 20) {
         substring(0 .. 19)
     } else {

@@ -547,7 +547,7 @@ private fun CoreBigMonospaceText(
     }
 
     fun onType(textInput: String) {
-        log.v { "key in '$textInput'" }
+        log.v { "$text key in '$textInput' ${viewState.hasSelection()}" }
         if (viewState.hasSelection()) {
             deleteSelection(isSaveUndoSnapshot = false)
         }
