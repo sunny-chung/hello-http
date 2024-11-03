@@ -63,6 +63,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
+import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
@@ -618,12 +619,12 @@ fun CodeEditorView(
 
                     LaunchedEffect(bigTextFieldState, onTextChange) {
                         bigTextFieldState.valueChangesFlow
-                            .debounce(200.milliseconds().toMilliseconds())
+                            .chunkedLatest(200.milliseconds())
                             .collect {
-                                log.d { "bigTextFieldState change ${it.changeId}" }
+                                log.d { "bigTextFieldState change ${it.changeId} ${it.bigText.buildString()}" }
                                 onTextChange?.let { onTextChange ->
                                     val string = it.bigText.buildCharSequence() as AnnotatedString
-                                    log.v { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
+                                    log.d { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
                                     onTextChange(string.text)
                                     secondCacheKey.value = string.text
                                 }
