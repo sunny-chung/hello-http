@@ -108,9 +108,9 @@ open class BigTextImpl(
         return findNode {
             index
             when (find) {
-                in Int.MIN_VALUE until it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
+                in Int.MIN_VALUE .. it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
 //                it.value.leftNumOfLineBreaks -> if (it.left.isNotNil()) -1 else 0
-                in it.value.leftNumOfLineBreaks .. it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange -> 0
+                in it.value.leftNumOfLineBreaks + 1 .. it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange -> 0
                 in it.value.leftNumOfLineBreaks + it.value.renderNumLineBreaksInRange + 1  until Int.MAX_VALUE -> (if (it.right.isNotNil()) 1 else 0).also { compareResult ->
                     val isTurnRight = compareResult > 0
                     if (isTurnRight) {
@@ -196,7 +196,7 @@ open class BigTextImpl(
     }
 
     fun findPositionStartOfLine(lineIndex: Int): Int {
-        val (node, lineIndexStart) = tree.findNodeByLineBreaks(lineIndex)
+        val (node, lineIndexStart) = tree.findNodeByLineBreaksExact(lineIndex)
             ?: throw IndexOutOfBoundsException("Cannot find node for line $lineIndex")
         val positionStart = findPositionStart(node)
         val lineBreakIndex = lineIndex - lineIndexStart - 1

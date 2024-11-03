@@ -265,6 +265,43 @@ class BigTextImplQueryTest {
             t.assertLineAndColumn(it, lineIndex, columnIndex)
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = [2 * 1024 * 1024, 16, 64])
+    fun findPositionStartOfLine(chunkSize: Int) {
+        val t = BigTextImpl(chunkSize = chunkSize)
+        t.append("fx\n" +
+                "    sdf    a\n" +
+                "         esr\n" +
+                "    dfgh    \n" +
+                "\n" +
+                "atr\n" +
+                "\n" +
+                "ar\n")
+        run {
+            t.printDebug("after append")
+            val linePositionStarts = (0..8).map { t.findPositionStartOfLine(it) }
+            assertEquals(listOf(0, 3, 16, 29, 42, 43, 47, 48, 51), linePositionStarts)
+        }
+
+        t.delete(29 .. 32)
+        t.delete(16 .. 19)
+        t.delete(3 .. 6)
+        run {
+            t.printDebug("after dec")
+            val linePositionStarts = (0..8).map { t.findPositionStartOfLine(it) }
+            assertEquals(listOf(0, 3, 12, 21, 30, 31, 35, 36, 39), linePositionStarts)
+        }
+
+        t.insertAt(21, " ".repeat(4))
+        t.insertAt(12, " ".repeat(4))
+        t.insertAt(3, " ".repeat(4))
+        run {
+            t.printDebug("after inc")
+            val linePositionStarts = (0..8).map { t.findPositionStartOfLine(it) }
+            assertEquals(listOf(0, 3, 16, 29, 42, 43, 47, 48, 51), linePositionStarts)
+        }
+    }
 }
 
 private fun BigTextVerifyImpl.verifyAllLines() {
