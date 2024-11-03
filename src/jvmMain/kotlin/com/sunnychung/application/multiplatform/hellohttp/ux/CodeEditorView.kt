@@ -70,6 +70,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospac
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextInputFilter
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
@@ -141,6 +142,8 @@ fun CodeEditorView(
             it
         }
     }
+
+    val inputFilter = BigTextInputFilter { it.replace("\r\n".toRegex(), "\n") }
 
     var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
@@ -518,6 +521,7 @@ fun CodeEditorView(
                     BigMonospaceText(
                         text = bigTextValue as BigTextImpl,
                         padding = PaddingValues(4.dp),
+                        inputFilter = inputFilter,
                         textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
                             MultipleIncrementalTransformation(listOf(
                                 collapseIncrementalTransformation,
@@ -635,6 +639,7 @@ fun CodeEditorView(
 
                     BigMonospaceTextField(
                         textFieldState = bigTextFieldState,
+                        inputFilter = inputFilter,
                         textTransformation = remember(variableTransformations) {
                             MultipleIncrementalTransformation(
                                 variableTransformations

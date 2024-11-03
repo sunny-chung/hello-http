@@ -109,6 +109,7 @@ fun BigMonospaceText(
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
+    inputFilter: BigTextInputFilter? = null,
     textTransformation: IncrementalTextTransformation<*>? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
@@ -122,6 +123,7 @@ fun BigMonospaceText(
     isSelectable = isSelectable,
     isEditable = false,
     onTextChange = {},
+    inputFilter = inputFilter,
     textTransformation = textTransformation,
     scrollState = scrollState,
     viewState = viewState,
@@ -136,6 +138,7 @@ fun BigMonospaceText(
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
+    inputFilter: BigTextInputFilter? = null,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -151,6 +154,7 @@ fun BigMonospaceText(
     isSelectable = isSelectable,
     isEditable = false,
     onTextChange = {},
+    inputFilter = inputFilter,
     textTransformation = textTransformation,
     textDecorator = textDecorator,
     scrollState = scrollState,
@@ -166,6 +170,7 @@ fun BigMonospaceTextField(
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
+    inputFilter: BigTextInputFilter? = null,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -180,6 +185,7 @@ fun BigMonospaceTextField(
         onTextChange = {
             textFieldState.emitValueChange(it.changeId)
         },
+        inputFilter = inputFilter,
         textTransformation = textTransformation,
         textDecorator = textDecorator,
         scrollState = scrollState,
@@ -196,6 +202,7 @@ fun BigMonospaceTextField(
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
     onTextChange: (BigTextChangeEvent) -> Unit,
+    inputFilter: BigTextInputFilter? = null,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -210,6 +217,7 @@ fun BigMonospaceTextField(
     isSelectable = true,
     isEditable = true,
     onTextChange = onTextChange,
+    inputFilter = inputFilter,
     textTransformation = textTransformation,
     textDecorator = textDecorator,
     scrollState = scrollState,
@@ -228,6 +236,7 @@ private fun CoreBigMonospaceText(
     isSelectable: Boolean = false,
     isEditable: Boolean = false,
     onTextChange: (BigTextChangeEvent) -> Unit,
+    inputFilter: BigTextInputFilter? = null,
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
@@ -552,6 +561,7 @@ private fun CoreBigMonospaceText(
             deleteSelection(isSaveUndoSnapshot = false)
         }
         val insertPos = viewState.cursorIndex
+        val textInput = inputFilter?.filter(textInput) ?: textInput
         onValuePreChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
         text.insertAt(insertPos, textInput)
         text.recordCurrentChangeSequenceIntoUndoHistory()
@@ -559,7 +569,7 @@ private fun CoreBigMonospaceText(
 //        (transformedText as BigTextImpl).layout() // FIXME remove
         updateViewState()
         if (log.config.minSeverity <= Severity.Verbose) {
-            (transformedText as BigTextImpl).printDebug("transformedText onType '${textInput.replace("\n", "\\n")}'")
+            (transformedText as BigTextImpl).printDebug("transformedText onType '${textInput.string().replace("\n", "\\n")}'")
         }
         // update cursor after invoking listeners, because a transformation or change may take place
         viewState.cursorIndex = minOf(text.length, insertPos + textInput.length)
