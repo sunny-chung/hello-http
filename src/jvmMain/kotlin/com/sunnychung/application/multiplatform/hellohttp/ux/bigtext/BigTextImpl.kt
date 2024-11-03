@@ -71,7 +71,12 @@ open class BigTextImpl(
 
     var decorator: BigTextDecorator? = null
 
+    var undoMetadataSupplier: (() -> Any?)? = null
+
+    private var currentUndoMetadata: Any? = null
+    private var currentRedoMetadata: Any? = null
     var currentChanges: MutableList<BigTextInputChange> = mutableListOf()
+        private set
     val undoHistory = CircularList<BigTextInputOperation>(undoHistoryCapacity)
     val redoHistory = CircularList<BigTextInputOperation>(undoHistoryCapacity)
 
@@ -419,6 +424,7 @@ open class BigTextImpl(
             leftStringLength = 0
         }
         if (isUndoEnabled) {
+            recordCurrentUndoMetadata()
             currentChanges += BigTextInputChange(
                 type = BigTextChangeEventType.Insert,
                 buffer = buffer,
@@ -957,6 +963,7 @@ open class BigTextImpl(
                 isD = true
             }
             if (isUndoEnabled) {
+                recordCurrentUndoMetadata()
                 currentChanges += BigTextInputChange(
                     type = BigTextChangeEventType.Delete,
                     buffer = node.value.buffer,
@@ -1031,9 +1038,18 @@ open class BigTextImpl(
         }
 
         if (currentChanges.isNotEmpty()) {
-            undoHistory.push(BigTextInputOperation(currentChanges.toList()))
+            undoHistory.push(BigTextInputOperation(currentChanges.toList(), currentUndoMetadata, undoMetadataSupplier?.invoke()))
             currentChanges = mutableListOf()
+            recordCurrentUndoMetadata()
         }
+    }
+
+    protected fun recordCurrentUndoMetadata() {
+        if (currentChanges.isEmpty()) {
+            currentUndoMetadata = undoMetadataSupplier?.invoke()
+        }
+        currentRedoMetadata = undoMetadataSupplier?.invoke()
+        log.d { "reset um = $currentUndoMetadata, rm = $currentRedoMetadata" }
     }
 
     protected fun clearRedoHistory() {
@@ -1110,33 +1126,42 @@ open class BigTextImpl(
         }
     }
 
-    fun undo(callback: BigTextChangeCallback? = null): Boolean {
+    fun undo(callback: BigTextChangeCallback? = null): Pair<Boolean, Any?> {
         if (!isUndoEnabled) {
-            return false
+            return false to null
         }
         if (currentChanges.isNotEmpty()) {
+            val undoMetadata = currentUndoMetadata
+            val redoMetadata = currentRedoMetadata
             applyReverseChangeSequence(currentChanges, callback)
-            redoHistory.push(BigTextInputOperation(currentChanges.toList()))
+            redoHistory.push(BigTextInputOperation(currentChanges.toList(), undoMetadata, redoMetadata))
             currentChanges = mutableListOf()
-            return true
+            recordCurrentUndoMetadata()
+            return true to undoMetadata
         }
-        val lastOperation = undoHistory.removeHead() ?: return false
+        val lastOperation = undoHistory.removeHead() ?: return false to null
         applyReverseChangeSequence(lastOperation.changes, callback)
+        currentUndoMetadata = lastOperation.undoMetadata
+        currentRedoMetadata = lastOperation.redoMetadata
+        log.d { "undo set um = $currentUndoMetadata, rm = $currentRedoMetadata" }
         redoHistory.push(lastOperation)
-        return true
+        return true to lastOperation.undoMetadata
     }
 
-    fun redo(callback: BigTextChangeCallback? = null): Boolean {
+    fun redo(callback: BigTextChangeCallback? = null): Pair<Boolean, Any?> {
         if (!isUndoEnabled) {
-            return false
+            return false to null
         }
         if (currentChanges.isNotEmpty()) { // should not happen
-            return false
+            return false to null
         }
-        val lastOperation = redoHistory.removeHead() ?: return false
+        val lastOperation = redoHistory.removeHead() ?: return false to null
         applyChangeSequence(lastOperation.changes, callback)
+        currentUndoMetadata = lastOperation.undoMetadata
+        currentRedoMetadata = lastOperation.redoMetadata
+        log.d { "undo set um = $currentUndoMetadata, rm = $currentRedoMetadata" }
         undoHistory.push(lastOperation)
-        return true
+        return true to lastOperation.redoMetadata
     }
 
     fun isUndoable(): Boolean = isUndoEnabled && (currentChanges.isNotEmpty() || undoHistory.isNotEmpty)

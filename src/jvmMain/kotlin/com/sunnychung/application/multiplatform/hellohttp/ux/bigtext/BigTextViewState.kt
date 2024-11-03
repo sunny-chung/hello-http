@@ -50,8 +50,12 @@ class BigTextViewState {
     }
 
     internal fun updateTransformedSelectionBySelection(transformedText: BigTextTransformed) {
-        transformedSelection = transformedText.findTransformedPositionByOriginalPosition(selection.first) ..
-                transformedText.findTransformedPositionByOriginalPosition(selection.last)
+        transformedSelection = if (!selection.isEmpty()) {
+            transformedText.findTransformedPositionByOriginalPosition(selection.first) ..
+                    transformedText.findTransformedPositionByOriginalPosition(selection.last)
+        } else {
+            IntRange.EMPTY
+        }
     }
 
     internal var transformedCursorIndex by mutableStateOf(0)

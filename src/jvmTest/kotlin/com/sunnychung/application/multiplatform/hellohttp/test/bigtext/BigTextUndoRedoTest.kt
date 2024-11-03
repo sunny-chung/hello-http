@@ -121,7 +121,7 @@ class BigTextUndoRedoTest {
         t.delete(6 .. 6)
         assertEquals("abcdef", t.buildString())
         listOf("abcdefg", "abcd").forEach { expected ->
-            assertEquals(true, t.undo())
+            assertEquals(true, t.undo().first)
             assertEquals(expected, t.buildString())
         }
 
@@ -129,7 +129,7 @@ class BigTextUndoRedoTest {
         t.append("x")
         assertEquals("abcdx", t.buildString())
         (1..10).forEach {
-            assertEquals(false, t.redo())
+            assertEquals(false, t.redo().first)
             assertEquals("abcdx", t.buildString())
         }
 
@@ -139,27 +139,27 @@ class BigTextUndoRedoTest {
     fun assertUndoRedoUndo(reversedExpectedStrings: List<String>, t: BigTextImpl) {
         assertEquals(reversedExpectedStrings.first(), t.buildString())
         reversedExpectedStrings.stream().skip(1).forEach { expected ->
-            assertEquals(true, t.undo())
+            assertEquals(true, t.undo().first)
             assertEquals(expected, t.buildString())
         }
         (1..3).forEach {
-            assertEquals(false, t.undo())
+            assertEquals(false, t.undo().first)
             assertEquals(reversedExpectedStrings.last(), t.buildString())
         }
         reversedExpectedStrings.asReversed().stream().skip(1).forEach { expected ->
-            assertEquals(true, t.redo())
+            assertEquals(true, t.redo().first)
             assertEquals(expected, t.buildString())
         }
         (1..10).forEach {
-            assertEquals(false, t.redo())
+            assertEquals(false, t.redo().first)
             assertEquals(reversedExpectedStrings.first(), t.buildString())
         }
         reversedExpectedStrings.stream().skip(1).forEach { expected ->
-            assertEquals(true, t.undo())
+            assertEquals(true, t.undo().first)
             assertEquals(expected, t.buildString())
         }
         (1..10).forEach {
-            assertEquals(false, t.undo())
+            assertEquals(false, t.undo().first)
             assertEquals(reversedExpectedStrings.last(), t.buildString())
         }
     }

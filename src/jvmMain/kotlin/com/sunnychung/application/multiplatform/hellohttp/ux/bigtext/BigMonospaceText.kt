@@ -299,6 +299,15 @@ private fun CoreBigMonospaceText(
 //    log.v { "text = |${text.buildString()}|" }
 //    log.v { "transformedText = |${transformedText.buildString()}|" }
 
+    remember(text, viewState) {
+        text.undoMetadataSupplier = {
+            BigTextUndoMetadata(
+                cursor = viewState.cursorIndex,
+                selection = viewState.selection,
+            )
+        }
+    }
+
     fun fireOnLayout() {
         lineHeight = (textLayouter.charMeasurer as ComposeUnicodeCharMeasurer).getRowHeight()
         onTextLayout?.let { callback ->
@@ -455,6 +464,26 @@ private fun CoreBigMonospaceText(
         )
     }
 
+    fun scrollToCursor() {
+        val layoutResult = layoutResult ?: return
+
+        // scroll to cursor position if out of visible range
+        val visibleVerticalRange = scrollState.value .. scrollState.value + height
+        val row = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
+        val rowVerticalRange = layoutResult.getTopOfRow(row).toInt() .. layoutResult.getBottomOfRow(row).toInt()
+        if (rowVerticalRange !in visibleVerticalRange) {
+            val scrollToPosition = if (rowVerticalRange.start < visibleVerticalRange.start) {
+                rowVerticalRange.start
+            } else {
+                // scroll to a position that includes the bottom of the row + a little space
+                minOf(layoutResult.bottom.toInt(), maxOf(0, rowVerticalRange.endInclusive + maxOf(2, (layoutResult.rowHeight * 0.5).toInt()) - height))
+            }
+            coroutineScope.launch {
+                scrollState.animateScrollTo(scrollToPosition)
+            }
+        }
+    }
+
     fun updateViewState() {
         viewState.lastVisibleRow = minOf(viewState.lastVisibleRow, transformedText.lastRowIndex)
         log.d { "lastVisibleRow = ${viewState.lastVisibleRow}, lastRowIndex = ${transformedText.lastRowIndex}" }
@@ -498,15 +527,16 @@ private fun CoreBigMonospaceText(
             val start = viewState.selection.start
             val endExclusive = viewState.selection.endInclusive + 1
             delete(start, endExclusive)
-            if (isSaveUndoSnapshot) {
-                text.recordCurrentChangeSequenceIntoUndoHistory()
-            }
 
             viewState.selection = EMPTY_SELECTION_RANGE // cannot use IntRange.EMPTY as `viewState.selection.start` is in use
             viewState.transformedSelection = EMPTY_SELECTION_RANGE
             viewState.cursorIndex = start
             viewState.updateTransformedCursorIndexByOriginal(transformedText)
             viewState.transformedSelectionStart = viewState.transformedCursorIndex
+
+            if (isSaveUndoSnapshot) {
+                text.recordCurrentChangeSequenceIntoUndoHistory()
+            }
         }
     }
 
@@ -524,9 +554,6 @@ private fun CoreBigMonospaceText(
         }
         val insertPos = viewState.cursorIndex
         insertAt(insertPos, textInput)
-        if (isSaveUndoSnapshot) {
-            text.recordCurrentChangeSequenceIntoUndoHistory()
-        }
         updateViewState()
         if (log.config.minSeverity <= Severity.Verbose) {
             (transformedText as BigTextImpl).printDebug("transformedText onType '${textInput.string().replace("\n", "\\n")}'")
@@ -536,6 +563,9 @@ private fun CoreBigMonospaceText(
         viewState.updateTransformedCursorIndexByOriginal(transformedText)
         viewState.transformedSelectionStart = viewState.transformedCursorIndex
         log.v { "set cursor pos 2 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
+        if (isSaveUndoSnapshot) {
+            text.recordCurrentChangeSequenceIntoUndoHistory()
+        }
     }
 
     fun onDelete(direction: TextFBDirection): Boolean {
@@ -552,12 +582,12 @@ private fun CoreBigMonospaceText(
                 if (cursor + 1 <= text.length) {
                     onValuePreChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
                     text.delete(cursor, cursor + 1)
-                    text.recordCurrentChangeSequenceIntoUndoHistory()
                     onValuePostChange(BigTextChangeEventType.Delete, cursor, cursor + 1)
                     updateViewState()
                     if (log.config.minSeverity <= Severity.Verbose) {
                         (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
                     }
+                    text.recordCurrentChangeSequenceIntoUndoHistory()
                     return true
                 }
             }
@@ -565,7 +595,6 @@ private fun CoreBigMonospaceText(
                 if (cursor - 1 >= 0) {
                     onValuePreChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
                     text.delete(cursor - 1, cursor)
-                    text.recordCurrentChangeSequenceIntoUndoHistory()
                     onValuePostChange(BigTextChangeEventType.Delete, cursor - 1, cursor)
                     updateViewState()
                     if (log.config.minSeverity <= Severity.Verbose) {
@@ -576,6 +605,7 @@ private fun CoreBigMonospaceText(
                     viewState.updateTransformedCursorIndexByOriginal(transformedText)
                     viewState.transformedSelectionStart = viewState.transformedCursorIndex
                     log.v { "set cursor pos 3 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
+                    text.recordCurrentChangeSequenceIntoUndoHistory()
                     return true
                 }
             }
@@ -583,9 +613,9 @@ private fun CoreBigMonospaceText(
         return false
     }
 
-    fun onUndoRedo(operation: (BigTextChangeCallback) -> Unit) {
+    fun onUndoRedo(operation: (BigTextChangeCallback) -> Pair<Boolean, Any?>) {
         var lastChangeEnd = -1
-        operation(object : BigTextChangeCallback {
+        val stateToBeRestored = operation(object : BigTextChangeCallback {
             override fun onValuePreChange(
                 eventType: BigTextChangeEventType,
                 changeStartIndex: Int,
@@ -606,7 +636,17 @@ private fun CoreBigMonospaceText(
                 }
             }
         })
-        if (lastChangeEnd >= 0) {
+        updateViewState()
+        (stateToBeRestored.second as? BigTextUndoMetadata)?.let { state ->
+            viewState.selection = state.selection
+            viewState.updateTransformedSelectionBySelection(transformedText)
+            viewState.cursorIndex = state.cursor
+            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+            scrollToCursor()
+            return
+        }
+        if (lastChangeEnd >= 0) { // this `if` should never execute
             viewState.cursorIndex = lastChangeEnd
             viewState.updateTransformedCursorIndexByOriginal(transformedText)
             viewState.transformedSelectionStart = viewState.transformedCursorIndex
@@ -690,29 +730,9 @@ private fun CoreBigMonospaceText(
         return viewState.cursorIndex + wordBoundaryAt
     }
 
-    fun scrollToCursor() {
-        val layoutResult = layoutResult ?: return
-
-        // scroll to cursor position if out of visible range
-        val visibleVerticalRange = scrollState.value .. scrollState.value + height
-        val row = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
-        val rowVerticalRange = layoutResult.getTopOfRow(row).toInt() .. layoutResult.getBottomOfRow(row).toInt()
-        if (rowVerticalRange !in visibleVerticalRange) {
-            val scrollToPosition = if (rowVerticalRange.start < visibleVerticalRange.start) {
-                rowVerticalRange.start
-            } else {
-                // scroll to a position that includes the bottom of the row + a little space
-                minOf(layoutResult.bottom.toInt(), maxOf(0, rowVerticalRange.endInclusive + maxOf(2, (layoutResult.rowHeight * 0.5).toInt()) - height))
-            }
-            coroutineScope.launch {
-                scrollState.animateScrollTo(scrollToPosition)
-            }
-        }
-    }
-
     fun updateOriginalCursorOrSelection(newPosition: Int, isSelection: Boolean) {
         val oldCursorPosition = viewState.cursorIndex
-        viewState.cursorIndex = newPosition // TODO scroll to new position
+        viewState.cursorIndex = newPosition
         viewState.updateTransformedCursorIndexByOriginal(transformedText)
         if (isSelection) {
             val selectionStart = if (viewState.hasSelection()) {

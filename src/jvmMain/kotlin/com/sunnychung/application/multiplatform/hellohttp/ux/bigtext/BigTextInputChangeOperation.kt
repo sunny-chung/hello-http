@@ -3,7 +3,17 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 
 data class BigTextInputOperation(
-    val changes: List<BigTextInputChange>
+    val changes: List<BigTextInputChange>,
+
+    /**
+     * Metadata to apply if changes of this operation have been reversed.
+     */
+    val undoMetadata: Any?,
+
+    /**
+     * Metadata to apply if changes of this operation have been applied.
+     */
+    val redoMetadata: Any?,
 )
 
 data class BigTextInputChange(
