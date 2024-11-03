@@ -124,59 +124,20 @@ fun CodeEditorView(
     knownVariables: Set<String> = setOf(),
     testTag: String? = null,
 ) {
-    val colors: TextFieldColors = TextFieldDefaults.textFieldColors(
-        textColor = textColor,
-        placeholderColor = LocalColor.current.placeholder,
-        cursorColor = LocalColor.current.cursor,
-        backgroundColor = LocalColor.current.backgroundInputField
-    )
     val themeColours = LocalColor.current
     val coroutineScope = rememberCoroutineScope()
-
-    // Replace "\r\n" by "\n" because to workaround the issue:
-    // https://github.com/JetBrains/compose-multiplatform/issues/3877
-    fun String.filterForTextField() = replace("\r\n", "\n")
-
-    var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
-    var cursorDelta by remember { mutableStateOf(0) }
-    val newText = text.filterForTextField().let {
-        if (isReadOnly && it.length > MAX_TEXT_FIELD_LENGTH) {
-            it.substring(0 .. MAX_TEXT_FIELD_LENGTH - 1) + "\n... (trimmed. total ${it.length} bytes)"
-        } else {
-            it
-        }
-    }
 
     val inputFilter = BigTextInputFilter { it.replace("\r\n".toRegex(), "\n") }
 
     var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
-    var textLayoutResult by rememberLast(newText) { mutableStateOf<TextLayoutResult?>(null) }
-    var lineTops by rememberLast(newText, textLayoutResult) { mutableStateOf<List<Float>?>(null) }
-    log.d { "len newText ${newText.length}, textValue.text ${textValue.text.length}, text ${text.length}" }
-    if (newText != textValue.text) {
-        log.d { "CodeEditorView replace text len ${textValue.text.length} -> ${newText.length}" }
-        textValue = textValue.copy(text = newText)
-        lineTops = null // recalculate
-        textLayoutResult = null
-    }
-    if (cursorDelta > 0) {
-        textValue = textValue.copy(
-            selection = TextRange(
-                textValue.selection.start + cursorDelta,
-                textValue.selection.end + cursorDelta
-            )
-        )
-        cursorDelta = 0
-    }
-
-    val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = textValue.text)
+    val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = text)
     val bigTextFieldState: BigTextFieldState = bigTextFieldMutableState.value
     val bigTextValue: BigTextImpl = bigTextFieldState.text
-    var bigTextValueId by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<Long>(Random.nextLong()) }
+    var bigTextValueId by remember(bigTextFieldState) { mutableStateOf<Long>(Random.nextLong()) }
 
-    var collapsedLines = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
-    var collapsedChars = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
+    var collapsedLines = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
+    var collapsedChars = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
 
     log.d { "CodeEditorView recompose" }
 
@@ -184,14 +145,12 @@ fun CodeEditorView(
         log.d { "onPressEnterAddIndent" }
 
         val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
-//        val lineStartPosition = bigTextValue.findPositionStartOfLine(lineIndex)
         val previousLineString = bigTextValue.findLineString(lineIndex) // as '\n' is not yet inputted, current line is the "previous line"
         var spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
         textManipulator.replaceAtCursor(newSpaces)
     }
 
-    log.v { "cursor at ${textValue.selection}" }
     fun onPressTab(textManipulator: BigTextManipulator, isShiftPressed: Boolean) {
         val vs = bigTextFieldState.viewState
         val text = bigTextFieldState.text
@@ -265,7 +224,6 @@ fun CodeEditorView(
     )) }
     var searchPattern by rememberLast(searchText, searchOptions) { mutableStateOf<Regex?>(null) }
     val searchPatternLatest by rememberUpdatedState(searchPattern)
-//    var searchPattern4 by rememberUpdatedMutableState(searchPatternState) // for use in LaunchedEffect
     val scrollState = rememberScrollState()
     val searchBarFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
@@ -307,8 +265,6 @@ fun CodeEditorView(
             .debounce(210L)
             .filter { isSearchVisible }
             .collectLatest {
-//                    log.d { "search triggered ${searchPattern?.pattern} ${searchPattern0?.pattern} ${searchPattern1?.pattern} ${searchPattern2?.pattern} ${searchPattern3?.pattern}" }
-//                    log.d { "search triggered ${searchPattern2?.pattern} ${searchPattern3?.pattern}" }
                 log.d { "search triggered ${searchPatternLatest?.pattern}" }
                 if (searchPatternLatest != null) {
                     try {
@@ -372,11 +328,6 @@ fun CodeEditorView(
         )
     }
 
-    textLayoutResult?.let { tl ->
-        (0..minOf(10, tl.lineCount - 1)).forEach {
-            log.d { "> TL Line $it top=${tl.getLineTop(it)} bottom=${tl.getLineBottom(it)} h=${tl.getLineBottom(it) - tl.getLineTop(it)}" }
-        }
-    }
 
     if (isSearchVisible) {
         if (lastSearchResultViewIndex != searchResultViewIndex && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
@@ -465,7 +416,6 @@ fun CodeEditorView(
             }
         }
         Box(modifier = Modifier.weight(1f).onGloballyPositioned { textFieldSize = it.size }) {
-//        log.v { "CodeEditorView text=$text" }
             Row {
                 val onCollapseLine = { i: Int ->
                     val index = collapsableLines.indexOfFirst { it.start == i }
@@ -477,17 +427,6 @@ fun CodeEditorView(
                     collapsedLines -= collapsableLines[index]
                     collapsedChars -= collapsableChars[index]
                 }
-
-//                BigLineNumbersView(
-//                    scrollState = scrollState,
-//                    bigTextViewState = bigTextViewState,
-//                    textLayout = layoutResult,
-//                    collapsableLines = collapsableLines,
-//                    collapsedLines = collapsedLines.values.toList(),
-//                    onCollapseLine = onCollapseLine,
-//                    onExpandLine = onExpandLine,
-//                    modifier = Modifier.fillMaxHeight(),
-//                )
 
                 BigTextLineNumbersView(
                     scrollState = scrollState,
@@ -543,78 +482,6 @@ fun CodeEditorView(
                     )
 //                    return@Row // compose bug: return here would crash
                 } else {
-                    /*LineNumbersView(
-                        scrollState = scrollState,
-                        textLayoutResult = textLayoutResult,
-                        lineTops = lineTops,
-                        collapsableLines = collapsableLines,
-                        collapsedLines = collapsedLines.values.toList(),
-                        onCollapseLine = onCollapseLine,
-                        onExpandLine = onExpandLine,
-                        modifier = Modifier.fillMaxHeight(),
-                    )
-
-                    AppTextField(
-                        value = textValue,
-                        onValueChange = {
-                            textValue = it
-                            log.d { "CEV sel ${textValue.selection.start}" }
-                            onTextChange?.invoke(it.text)
-                        },
-                        visualTransformation = visualTransformationToUse,
-                        readOnly = isReadOnly,
-                        textStyle = LocalTextStyle.current.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = LocalFont.current.codeEditorBodyFontSize,
-                        ),
-                        colors = colors,
-                        onTextLayout = { textLayoutResult = it },
-                        modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
-                            .focusRequester(textFieldFocusRequester)
-                            .run {
-                                if (!isReadOnly) {
-                                    this.onPreviewKeyEvent {
-                                        if (it.type == KeyEventType.KeyDown) {
-                                            when (it.key) {
-                                                Key.Enter -> {
-                                                    if (!it.isShiftPressed
-                                                        && !it.isAltPressed
-                                                        && !it.isCtrlPressed
-                                                        && !it.isMetaPressed
-                                                    ) {
-                                                        onPressEnterAddIndent()
-                                                        true
-                                                    } else {
-                                                        false
-                                                    }
-                                                }
-
-                                                Key.Tab -> {
-                                                    onPressTab(it.isShiftPressed)
-                                                    true
-                                                }
-
-                                                else -> false
-                                            }
-                                        } else {
-                                            false
-                                        }
-                                    }
-                                } else {
-                                    this
-                                }
-                            }
-                            .run {
-                                if (testTag != null) {
-                                    testTag(testTag)
-                                } else {
-                                    this
-                                }
-                            }
-                    )*/
-
-//                    var bigTextValue by remember(textValue.text.length, textValue.text.hashCode()) { mutableStateOf<BigText>(BigText.createFromLargeString(text)) } // FIXME performance
-
                     LaunchedEffect(bigTextFieldState, onTextChange) {
                         bigTextFieldState.valueChangesFlow
                             .chunkedLatest(200.milliseconds())
@@ -644,11 +511,6 @@ fun CodeEditorView(
                         //},
                         ,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
-//                        textStyle = LocalTextStyle.current.copy(
-//                            fontFamily = FontFamily.Monospace,
-//                            fontSize = LocalFont.current.codeEditorBodyFontSize,
-//                        ),
-//                        colors = colors,
                         scrollState = scrollState,
                         onTextLayout = { layoutResult = it },
                         keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
@@ -770,110 +632,6 @@ data class SearchOptions(
     val isWholeWord: Boolean, // ignore if isRegex is true
 )
 
-@Composable
-fun LineNumbersView(
-    modifier: Modifier = Modifier,
-    scrollState: ScrollState,
-    textLayoutResult: TextLayoutResult?,
-    lineTops: List<Float>?,
-    collapsableLines: List<IntRange>,
-    collapsedLines: List<IntRange>,
-    onCollapseLine: (Int) -> Unit,
-    onExpandLine: (Int) -> Unit,
-) = with(LocalDensity.current) {
-    val colours = LocalColor.current
-    val fonts = LocalFont.current
-    var size by remember { mutableStateOf<IntSize?>(null) }
-    val textStyle = LocalTextStyle.current.copy(
-        fontSize = fonts.codeEditorLineNumberFontSize,
-        fontFamily = FontFamily.Monospace,
-        color = colours.unimportant,
-    )
-    log.v { "LineNumbersView ${size != null} && ${textLayoutResult != null} && ${lineTops != null}" }
-    var lastTextLayoutResult by remember { mutableStateOf(textLayoutResult) }
-    var lastLineTops by remember { mutableStateOf(lineTops) }
-
-    val textLayoutResult = textLayoutResult ?: lastTextLayoutResult
-    val lineTops = lineTops ?: lastLineTops
-
-    lastTextLayoutResult = textLayoutResult
-    lastLineTops = lineTops
-
-    val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
-
-    var lineHeight = 0f
-    val viewportTop = scrollState.value.toFloat()
-    val (firstLine, lastLine) = if (size != null && textLayoutResult != null && lineTops != null) {
-        val viewportBottom = viewportTop + size!!.height
-        log.d { "LineNumbersView before calculation" }
-        // 0-based line index
-        // include the partially visible line before the first line that is entirely visible
-        val firstLine = maxOf(0, lineTops.binarySearchForInsertionPoint { if (it >= viewportTop) 1 else -1 } - 1)
-        val lastLine = lineTops.binarySearchForInsertionPoint { if (it > viewportBottom) 1 else -1 }
-        log.v { "LineNumbersView $firstLine ~ <$lastLine / $viewportTop ~ $viewportBottom" }
-        log.v { "lineTops = $lineTops" }
-        log.v { "collapsedLines = $collapsedLines" }
-        log.d { "LineNumbersView after calculation" }
-        lineHeight = textLayoutResult.getLineBottom(0) - textLayoutResult.getLineTop(0)
-
-        firstLine to lastLine
-    } else {
-        0 to -1
-    }
-    CoreLineNumbersView(
-        firstLine = firstLine,
-        lastLine = minOf(lastLine, (lineTops?.size ?: 0) - 1),
-        totalLines = lineTops?.size ?: 1,
-        lineHeight = lineHeight.toDp(),
-        getLineOffset = { (lineTops!![it] - viewportTop).toDp() },
-        textStyle = textStyle,
-        collapsedLinesState = collapsedLinesState,
-        onCollapseLine = onCollapseLine,
-        onExpandLine = onExpandLine,
-        modifier = modifier.onGloballyPositioned { size = it.size }
-    )
-}
-
-@OptIn(TemporaryApi::class)
-@Composable
-fun BigLineNumbersView(
-    modifier: Modifier = Modifier,
-    bigTextViewState: BigTextViewState,
-    textLayout: BigTextLayoutResult?,
-    scrollState: ScrollState,
-    collapsableLines: List<IntRange>,
-    collapsedLines: List<IntRange>,
-    onCollapseLine: (Int) -> Unit,
-    onExpandLine: (Int) -> Unit,
-) = with(LocalDensity.current) {
-    val colours = LocalColor.current
-    val fonts = LocalFont.current
-
-    val textStyle = LocalTextStyle.current.copy(
-        fontSize = fonts.codeEditorLineNumberFontSize,
-        fontFamily = FontFamily.Monospace,
-        color = colours.unimportant,
-    )
-    val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
-
-    val viewportTop = scrollState.value
-    val firstLine = textLayout?.findLineNumberByRowNumber(bigTextViewState.firstVisibleRow) ?: 0
-    val lastLine = (textLayout?.findLineNumberByRowNumber(bigTextViewState.lastVisibleRow) ?: -100) + 1
-    log.v { "lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${textLayout?.totalLinesBeforeTransformation}" }
-    CoreLineNumbersView(
-        firstLine = firstLine,
-        lastLine = minOf(lastLine, textLayout?.totalLinesBeforeTransformation ?: 1),
-        totalLines = textLayout?.totalLinesBeforeTransformation ?: 1,
-        lineHeight = (textLayout?.rowHeight ?: 0f).toDp(),
-        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
-        textStyle = textStyle,
-        collapsedLinesState = collapsedLinesState,
-        onCollapseLine = onCollapseLine,
-        onExpandLine = onExpandLine,
-        modifier = modifier
-    )
-}
-
 /**
  * The purpose of this class is to avoid unnecessary heavy computations of cache keys.
  * It must be wrapped by another @Composable with collapsableLines and collapsedLines as parameters.
@@ -923,7 +681,6 @@ fun BigTextLineNumbersView(
         lastLine = minOf(lastLine, layoutText?.numOfOriginalLines ?: 1),
         totalLines = layoutText?.numOfOriginalLines ?: 1,
         lineHeight = (rowHeight).toDp(),
-//        getLineOffset = { (textLayout!!.getLineTop(it) - viewportTop).toDp() },
         getLineOffset = {
             ((layoutText?.findFirstRowIndexByOriginalLineIndex(it).also { r ->
                 log.v { "layoutText.findFirstRowIndexOfLine($it) = $r" }
@@ -947,8 +704,6 @@ private fun CoreLineNumbersView(
     lineHeight: Dp,
     getLineOffset: (Int) -> Dp,
     textStyle: TextStyle,
-//    collapsableLines: List<IntRange>,
-//    collapsedLines: List<IntRange>,
     collapsedLinesState: CollapsedLinesState,
     onCollapseLine: (Int) -> Unit,
     onExpandLine: (Int) -> Unit,

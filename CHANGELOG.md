@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Removed
+- Text fields and response body viewer now do not trim content over 4 MB (but other limits still apply)
 
 ## [1.6.0] - 2024-07-22
 
