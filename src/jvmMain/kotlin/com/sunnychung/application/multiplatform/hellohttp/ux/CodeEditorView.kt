@@ -35,6 +35,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -67,11 +68,12 @@ import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextInputFilter
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextKeyboardInputProcessor
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
@@ -176,20 +178,18 @@ fun CodeEditorView(
 
     log.d { "CodeEditorView recompose" }
 
-    fun onPressEnterAddIndent() {
-        val cursorPos = textValue.selection.min
-        assert(textValue.selection.length == 0)
+    fun onPressEnterAddIndent(textManipulator: BigTextManipulator) {
+//        val cursorPos = textValue.selection.min
+//        assert(textValue.selection.length == 0)
 
         log.d { "onPressEnterAddIndent" }
 
-        val text = textValue.text
-        var lastLineStart = getLineStart(text, cursorPos)
-        var spacesMatch = "^(\\s+)".toRegex().matchAt(text.substring(lastLineStart, cursorPos), 0)
+        val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
+//        val lineStartPosition = bigTextValue.findPositionStartOfLine(lineIndex)
+        val previousLineString = bigTextValue.findLineString(lineIndex) // as '\n' is not yet inputted, current line is the "previous line"
+        var spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
-        log.d { "onPressEnterAddIndent add ${newSpaces.length} spaces. current cursor $cursorPos" }
-//        textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length)) // no use
-        cursorDelta += newSpaces.length
-        onTextChange?.invoke(text.insert(cursorPos, newSpaces))
+        textManipulator.replaceAtCursor(newSpaces)
     }
 
     log.v { "cursor at ${textValue.selection}" }
@@ -657,41 +657,41 @@ fun CodeEditorView(
 //                        colors = colors,
                         scrollState = scrollState,
                         onTextLayout = { layoutResult = it },
-                        modifier = Modifier.fillMaxSize()
-                            .focusRequester(textFieldFocusRequester)
-                            .run {
-                                if (!isReadOnly) {
-                                    this.onPreviewKeyEvent {
-                                        if (it.type == KeyEventType.KeyDown) {
-                                            when (it.key) {
-                                                Key.Enter -> {
-                                                    if (!it.isShiftPressed
-                                                        && !it.isAltPressed
-                                                        && !it.isCtrlPressed
-                                                        && !it.isMetaPressed && false // FIXME
-                                                    ) {
-                                                        onPressEnterAddIndent()
-                                                        true
-                                                    } else {
-                                                        false
-                                                    }
-                                                }
-
-                                                Key.Tab -> {
-                                                    onPressTab(it.isShiftPressed)
-                                                    true
-                                                }
-
-                                                else -> false
+                        keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
+                            override fun beforeProcessInput(
+                                it: KeyEvent,
+                                viewState: BigTextViewState,
+                                textManipulator: BigTextManipulator
+                            ): Boolean {
+                                return if (it.type == KeyEventType.KeyDown) {
+                                    when (it.key) {
+                                        Key.Enter -> {
+                                            if (!it.isShiftPressed
+                                                && !it.isAltPressed
+                                                && !it.isCtrlPressed
+                                                && !it.isMetaPressed
+                                            ) {
+                                                onPressEnterAddIndent(textManipulator)
+                                                true
+                                            } else {
+                                                false
                                             }
-                                        } else {
-                                            false
                                         }
+
+                                        Key.Tab -> {
+                                            onPressTab(it.isShiftPressed)
+                                            true
+                                        }
+
+                                        else -> false
                                     }
                                 } else {
-                                    this
+                                    false
                                 }
                             }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                            .focusRequester(textFieldFocusRequester)
                             .run {
                                 if (testTag != null) {
                                     testTag(testTag)

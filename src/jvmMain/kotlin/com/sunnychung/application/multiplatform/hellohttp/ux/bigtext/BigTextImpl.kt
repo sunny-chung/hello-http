@@ -195,6 +195,26 @@ open class BigTextImpl(
         }
     }
 
+    fun findPositionStartOfLine(lineIndex: Int): Int {
+        val (node, lineIndexStart) = tree.findNodeByLineBreaks(lineIndex)
+            ?: throw IndexOutOfBoundsException("Cannot find node for line $lineIndex")
+        val positionStart = findPositionStart(node)
+        val lineBreakIndex = lineIndex - lineIndexStart - 1
+
+        val positionStartOffsetOfLine = if (lineBreakIndex >= 0) {
+            val lineOffsets = node.value.buffer.lineOffsetStarts
+            val lineOffsetStartIndex = lineOffsets.binarySearchForMinIndexOfValueAtLeast(node.value.renderBufferStart)
+            require(lineOffsetStartIndex >= 0)
+            lineOffsets[lineOffsetStartIndex + lineBreakIndex] -
+                    node.value.renderBufferStart +
+                    /* find the position just after the '\n' char */ 1
+        } else {
+            0
+        }
+
+        return positionStart + positionStartOffsetOfLine
+    }
+
     /**
      * @param rowIndex 0-based
      * @return 0-based

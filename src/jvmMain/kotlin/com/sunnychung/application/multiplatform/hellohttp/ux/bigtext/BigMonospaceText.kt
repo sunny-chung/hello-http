@@ -41,6 +41,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -174,6 +175,7 @@ fun BigMonospaceTextField(
     textTransformation: IncrementalTextTransformation<*>? = null,
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
+    keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) {
     BigMonospaceTextField(
@@ -190,6 +192,7 @@ fun BigMonospaceTextField(
         textDecorator = textDecorator,
         scrollState = scrollState,
         viewState = textFieldState.viewState,
+        keyboardInputProcessor = keyboardInputProcessor,
         onTextLayout = onTextLayout
     )
 }
@@ -207,6 +210,7 @@ fun BigMonospaceTextField(
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember(text) { BigTextViewState() },
+    keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
@@ -222,6 +226,7 @@ fun BigMonospaceTextField(
     textDecorator = textDecorator,
     scrollState = scrollState,
     viewState = viewState,
+    keyboardInputProcessor = keyboardInputProcessor,
     onTextLayout = onTextLayout,
 )
 
@@ -241,6 +246,7 @@ private fun CoreBigMonospaceText(
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember(text) { BigTextViewState() },
+    keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) {
@@ -536,16 +542,20 @@ private fun CoreBigMonospaceText(
         onTextChange(event)
     }
 
+    fun delete(start: Int, endExclusive: Int) {
+        onValuePreChange(BigTextChangeEventType.Delete, start, endExclusive)
+        text.delete(start, endExclusive)
+        onValuePostChange(BigTextChangeEventType.Delete, start, endExclusive)
+    }
+
     fun deleteSelection(isSaveUndoSnapshot: Boolean) {
         if (viewState.hasSelection()) {
             val start = viewState.selection.start
             val endExclusive = viewState.selection.endInclusive + 1
-            onValuePreChange(BigTextChangeEventType.Delete, start, endExclusive)
-            text.delete(start, endExclusive)
+            delete(start, endExclusive)
             if (isSaveUndoSnapshot) {
                 text.recordCurrentChangeSequenceIntoUndoHistory()
             }
-            onValuePostChange(BigTextChangeEventType.Delete, start, endExclusive)
 
             viewState.selection = EMPTY_SELECTION_RANGE // cannot use IntRange.EMPTY as `viewState.selection.start` is in use
             viewState.transformedSelection = EMPTY_SELECTION_RANGE
@@ -555,18 +565,23 @@ private fun CoreBigMonospaceText(
         }
     }
 
-    fun onType(textInput: String) {
-        log.v { "$text key in '$textInput' ${viewState.hasSelection()}" }
+    fun insertAt(insertPos: Int, textInput: CharSequence) {
+        val textInput = inputFilter?.filter(textInput) ?: textInput
+        onValuePreChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
+        text.insertAt(insertPos, textInput)
+        onValuePostChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
+    }
+
+    fun onType(textInput: CharSequence, isSaveUndoSnapshot: Boolean = true) {
+        log.i { "$text key in '$textInput' ${viewState.hasSelection()}" }
         if (viewState.hasSelection()) {
             deleteSelection(isSaveUndoSnapshot = false)
         }
         val insertPos = viewState.cursorIndex
-        val textInput = inputFilter?.filter(textInput) ?: textInput
-        onValuePreChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
-        text.insertAt(insertPos, textInput)
-        text.recordCurrentChangeSequenceIntoUndoHistory()
-        onValuePostChange(BigTextChangeEventType.Insert, insertPos, insertPos + textInput.length)
-//        (transformedText as BigTextImpl).layout() // FIXME remove
+        insertAt(insertPos, textInput)
+        if (isSaveUndoSnapshot) {
+            text.recordCurrentChangeSequenceIntoUndoHistory()
+        }
         updateViewState()
         if (log.config.minSeverity <= Severity.Verbose) {
             (transformedText as BigTextImpl).printDebug("transformedText onType '${textInput.string().replace("\n", "\\n")}'")
@@ -789,6 +804,231 @@ private fun CoreBigMonospaceText(
         scrollToCursor()
     }
 
+    fun processKeyboardInput(it: KeyEvent): Boolean {
+        return when {
+            it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.C && !viewState.transformedSelection.isEmpty() -> {
+                // Hit Ctrl-C or Cmd-C to copy
+                log.d { "BigMonospaceText hit copy" }
+                copySelection()
+                true
+            }
+            it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.X && !viewState.transformedSelection.isEmpty() -> {
+                // Hit Ctrl-X or Cmd-X to cut
+                log.d { "BigMonospaceText hit cut" }
+                cutSelection()
+                true
+            }
+            isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.V -> {
+                // Hit Ctrl-V or Cmd-V to paste
+                log.d { "BigMonospaceTextField hit paste" }
+                paste()
+            }
+            isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && !it.isShiftPressed && it.key == Key.Z -> {
+                // Hit Ctrl-Z or Cmd-Z to undo
+                log.d { "BigMonospaceTextField hit undo" }
+                undo()
+                true
+            }
+            isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.isShiftPressed && it.key == Key.Z -> {
+                // Hit Ctrl-Shift-Z or Cmd-Shift-Z to redo
+                log.d { "BigMonospaceTextField hit redo" }
+                redo()
+                true
+            }
+            /* selection */
+            it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.A -> {
+                // Hit Ctrl-A or Cmd-A to select all
+                selectAll()
+                true
+            }
+            it.type == KeyEventType.KeyDown && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
+                isHoldingShiftKey = true
+                false
+            }
+            it.type == KeyEventType.KeyUp && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
+                isHoldingShiftKey = false
+                false
+            }
+            /* text input */
+            isEditable && it.isTypedEvent -> {
+                log.v { "key type '${it.key}'" }
+                val textInput = it.toTextInput()
+                if (textInput != null) {
+                    onType(textInput)
+                    true
+                } else {
+                    false
+                }
+            }
+            isEditable && it.type == KeyEventType.KeyDown -> when {
+                it.key == Key.Enter && !it.isShiftPressed && !it.isCtrlPressed && !it.isAltPressed && !it.isMetaPressed -> {
+                    onType("\n")
+                    true
+                }
+                it.key == Key.Backspace -> {
+                    onDelete(TextFBDirection.Backward)
+                }
+                it.key == Key.Delete -> {
+                    onDelete(TextFBDirection.Forward)
+                }
+                /* text navigation */
+                (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionUp) ||
+                        (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveHome) -> {
+                    updateOriginalCursorOrSelection(newPosition = 0, isSelection = it.isShiftPressed)
+                    true
+                }
+                (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionDown) ||
+                        (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveEnd) -> {
+                    updateOriginalCursorOrSelection(newPosition = text.length, isSelection = it.isShiftPressed)
+                    true
+                }
+                (currentOS() == MacOS && it.isMetaPressed && it.key in listOf(Key.DirectionLeft, Key.DirectionRight)) ||
+                        it.key in listOf(Key.MoveHome, Key.MoveEnd) -> {
+                    // use `transformedText` as basis because `text` does not perform layout
+                    val currentRowIndex = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
+                    val newTransformedPosition = if (it.key in listOf(Key.DirectionLeft, Key.MoveHome)) {
+                        // home -> move to start of row
+                        log.d { "move to start of row $currentRowIndex" }
+                        transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex)
+                    } else {
+                        // end -> move to end of row
+                        log.d { "move to end of row $currentRowIndex" }
+                        if (currentRowIndex + 1 <= transformedText.lastRowIndex) {
+                            transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex + 1) - /* the '\n' char */ 1
+                        } else {
+                            transformedText.length
+                        }
+                    }
+                    updateTransformedCursorOrSelection(
+                        newTransformedPosition = newTransformedPosition,
+                        isSelection = it.isShiftPressed,
+                    )
+                    true
+                }
+                it.key == Key.DirectionLeft && (
+                        (currentOS() == MacOS && it.isAltPressed) ||
+                                (currentOS() != MacOS && it.isCtrlPressed)
+                        ) -> {
+                    val newPosition = findPreviousWordBoundaryPositionFromCursor()
+                    updateOriginalCursorOrSelection(newPosition = newPosition, isSelection = it.isShiftPressed)
+                    true
+                }
+                it.key == Key.DirectionRight && (
+                        (currentOS() == MacOS && it.isAltPressed) ||
+                                (currentOS() != MacOS && it.isCtrlPressed)
+                        ) -> {
+                    val newPosition = findNextWordBoundaryPositionFromCursor()
+                    updateOriginalCursorOrSelection(newPosition = newPosition, isSelection = it.isShiftPressed)
+                    true
+                }
+                it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
+                    val delta = if (it.key == Key.DirectionRight) 1 else -1
+                    if (viewState.transformedCursorIndex + delta in 0 .. transformedText.length) {
+                        var newTransformedPosition = viewState.transformedCursorIndex + delta
+                        newTransformedPosition = if (delta > 0) {
+                            viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Forward, transformedText, viewState.transformedCursorIndex /* FIXME IndexOutOfBoundsException */, false)
+                        } else {
+                            viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Backward, transformedText, newTransformedPosition, true)
+                        }
+                        updateTransformedCursorOrSelection(
+                            newTransformedPosition = newTransformedPosition,
+                            isSelection = it.isShiftPressed,
+                        )
+                        log.v { "set cursor pos LR => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
+                    }
+                    true
+                }
+                it.key in listOf(Key.DirectionUp, Key.DirectionDown) -> {
+//                            val row = layoutResult.rowStartCharIndices.binarySearchForMaxIndexOfValueAtMost(viewState.transformedCursorIndex)
+                    val row = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
+                    val newRow = row + if (it.key == Key.DirectionDown) 1 else -1
+                    var newTransformedPosition = Unit.let {
+                        if (newRow < 0) {
+                            0
+                        } else if (newRow > transformedText.lastRowIndex) {
+                            transformedText.length
+                        } else {
+                            val col = viewState.transformedCursorIndex - transformedText.findRowPositionStartIndexByRowIndex(row)
+                            val newRowLength = if (newRow + 1 <= transformedText.lastRowIndex) {
+                                transformedText.findRowPositionStartIndexByRowIndex(newRow + 1) - 1
+                            } else {
+                                transformedText.length
+                            } - transformedText.findRowPositionStartIndexByRowIndex(newRow)
+                            if (col <= newRowLength) {
+                                transformedText.findRowPositionStartIndexByRowIndex(newRow) + col
+                            } else {
+                                transformedText.findRowPositionStartIndexByRowIndex(newRow) + newRowLength
+                            }
+                        }
+                    }
+                    newTransformedPosition = viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
+                    updateTransformedCursorOrSelection(
+                        newTransformedPosition = newTransformedPosition,
+                        isSelection = it.isShiftPressed,
+                    )
+                    true
+                }
+                else -> false
+            }
+            else -> false
+        }
+    }
+
+    fun onProcessKeyboardInput(keyEvent: KeyEvent): Boolean {
+        var hasManipulatedText = false
+        val textManipulator = object : BigTextManipulator {
+            override fun append(text: CharSequence) {
+                hasManipulatedText = true
+                insertAt(text.length, text)
+            }
+
+            override fun insertAt(pos: Int, text: CharSequence) {
+                hasManipulatedText = true
+                insertAt(pos, text)
+            }
+
+            override fun replaceAtCursor(text: CharSequence) {
+                hasManipulatedText = true
+                onType(text, isSaveUndoSnapshot = false) // save undo snapshot at the end
+            }
+
+            override fun delete(range: IntRange) {
+                hasManipulatedText = true
+                delete(range.start, range.endInclusive + 1)
+            }
+
+            override fun replace(range: IntRange, text: CharSequence) {
+                hasManipulatedText = true
+                delete(range.start, range.endInclusive + 1)
+                insertAt(range.start, text)
+            }
+
+            override fun setCursorPosition(position: Int) {
+                require(position in 0 .. text.length) { "Cursor position $position is out of range. Text length: ${text.length}" }
+                viewState.cursorIndex = position
+                viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                viewState.transformedSelectionStart = viewState.transformedCursorIndex
+            }
+        }
+
+        try {
+            if (keyboardInputProcessor?.beforeProcessInput(keyEvent, viewState, textManipulator) == true) {
+                return true
+            }
+            var result = processKeyboardInput(keyEvent)
+            if (keyboardInputProcessor?.afterProcessInput(keyEvent, viewState, textManipulator) == true) {
+                result = true
+            }
+            return result
+
+        } finally {
+            if (hasManipulatedText) {
+                updateViewState()
+                text.recordCurrentChangeSequenceIntoUndoHistory()
+            }
+        }
+    }
+
     val tv = remember { TextFieldValue() } // this value is not used
 
     LaunchedEffect(transformedText) {
@@ -941,173 +1181,7 @@ private fun CoreBigMonospaceText(
             }
             .onPreviewKeyEvent {
                 log.v { "BigMonospaceText onPreviewKeyEvent ${it.type} ${it.key} ${it.key.nativeKeyCode} ${it.key.keyCode}" }
-                when {
-                    it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.C && !viewState.transformedSelection.isEmpty() -> {
-                        // Hit Ctrl-C or Cmd-C to copy
-                        log.d { "BigMonospaceText hit copy" }
-                        copySelection()
-                        true
-                    }
-                    it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.X && !viewState.transformedSelection.isEmpty() -> {
-                        // Hit Ctrl-X or Cmd-X to cut
-                        log.d { "BigMonospaceText hit cut" }
-                        cutSelection()
-                        true
-                    }
-                    isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.V -> {
-                        // Hit Ctrl-V or Cmd-V to paste
-                        log.d { "BigMonospaceTextField hit paste" }
-                        paste()
-                    }
-                    isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && !it.isShiftPressed && it.key == Key.Z -> {
-                        // Hit Ctrl-Z or Cmd-Z to undo
-                        log.d { "BigMonospaceTextField hit undo" }
-                        undo()
-                        true
-                    }
-                    isEditable && it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.isShiftPressed && it.key == Key.Z -> {
-                        // Hit Ctrl-Shift-Z or Cmd-Shift-Z to redo
-                        log.d { "BigMonospaceTextField hit redo" }
-                        redo()
-                        true
-                    }
-                    /* selection */
-                    it.type == KeyEventType.KeyDown && it.isCtrlOrCmdPressed() && it.key == Key.A -> {
-                        // Hit Ctrl-A or Cmd-A to select all
-                        selectAll()
-                        true
-                    }
-                    it.type == KeyEventType.KeyDown && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
-                        isHoldingShiftKey = true
-                        false
-                    }
-                    it.type == KeyEventType.KeyUp && it.key in listOf(Key.ShiftLeft, Key.ShiftRight) -> {
-                        isHoldingShiftKey = false
-                        false
-                    }
-                    /* text input */
-                    isEditable && it.isTypedEvent -> {
-                        log.v { "key type '${it.key}'" }
-                        val textInput = it.toTextInput()
-                        if (textInput != null) {
-                            onType(textInput)
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    isEditable && it.type == KeyEventType.KeyDown -> when {
-                        it.key == Key.Enter && !it.isShiftPressed && !it.isCtrlPressed && !it.isAltPressed && !it.isMetaPressed -> {
-                            onType("\n")
-                            true
-                        }
-                        it.key == Key.Backspace -> {
-                            onDelete(TextFBDirection.Backward)
-                        }
-                        it.key == Key.Delete -> {
-                            onDelete(TextFBDirection.Forward)
-                        }
-                        /* text navigation */
-                        (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionUp) ||
-                        (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveHome) -> {
-                            updateOriginalCursorOrSelection(newPosition = 0, isSelection = it.isShiftPressed)
-                            true
-                        }
-                        (currentOS() == MacOS && it.isMetaPressed && it.key == Key.DirectionDown) ||
-                        (currentOS() != MacOS && it.isCtrlPressed && it.key == Key.MoveEnd) -> {
-                            updateOriginalCursorOrSelection(newPosition = text.length, isSelection = it.isShiftPressed)
-                            true
-                        }
-                        (currentOS() == MacOS && it.isMetaPressed && it.key in listOf(Key.DirectionLeft, Key.DirectionRight)) ||
-                         it.key in listOf(Key.MoveHome, Key.MoveEnd) -> {
-                            // use `transformedText` as basis because `text` does not perform layout
-                            val currentRowIndex = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
-                            val newTransformedPosition = if (it.key in listOf(Key.DirectionLeft, Key.MoveHome)) {
-                                // home -> move to start of row
-                                log.d { "move to start of row $currentRowIndex" }
-                                transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex)
-                            } else {
-                                // end -> move to end of row
-                                log.d { "move to end of row $currentRowIndex" }
-                                if (currentRowIndex + 1 <= transformedText.lastRowIndex) {
-                                    transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex + 1) - /* the '\n' char */ 1
-                                } else {
-                                    transformedText.length
-                                }
-                            }
-                            updateTransformedCursorOrSelection(
-                                newTransformedPosition = newTransformedPosition,
-                                isSelection = it.isShiftPressed,
-                            )
-                            true
-                        }
-                        it.key == Key.DirectionLeft && (
-                            (currentOS() == MacOS && it.isAltPressed) ||
-                            (currentOS() != MacOS && it.isCtrlPressed)
-                        ) -> {
-                            val newPosition = findPreviousWordBoundaryPositionFromCursor()
-                            updateOriginalCursorOrSelection(newPosition = newPosition, isSelection = it.isShiftPressed)
-                            true
-                        }
-                        it.key == Key.DirectionRight && (
-                            (currentOS() == MacOS && it.isAltPressed) ||
-                            (currentOS() != MacOS && it.isCtrlPressed)
-                        ) -> {
-                            val newPosition = findNextWordBoundaryPositionFromCursor()
-                            updateOriginalCursorOrSelection(newPosition = newPosition, isSelection = it.isShiftPressed)
-                            true
-                        }
-                        it.key in listOf(Key.DirectionLeft, Key.DirectionRight) -> {
-                            val delta = if (it.key == Key.DirectionRight) 1 else -1
-                            if (viewState.transformedCursorIndex + delta in 0 .. transformedText.length) {
-                                var newTransformedPosition = viewState.transformedCursorIndex + delta
-                                newTransformedPosition = if (delta > 0) {
-                                    viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Forward, transformedText, viewState.transformedCursorIndex /* FIXME IndexOutOfBoundsException */, false)
-                                } else {
-                                    viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Backward, transformedText, newTransformedPosition, true)
-                                }
-                                updateTransformedCursorOrSelection(
-                                    newTransformedPosition = newTransformedPosition,
-                                    isSelection = it.isShiftPressed,
-                                )
-                                log.v { "set cursor pos LR => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
-                            }
-                            true
-                        }
-                        it.key in listOf(Key.DirectionUp, Key.DirectionDown) -> {
-//                            val row = layoutResult.rowStartCharIndices.binarySearchForMaxIndexOfValueAtMost(viewState.transformedCursorIndex)
-                            val row = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
-                            val newRow = row + if (it.key == Key.DirectionDown) 1 else -1
-                            var newTransformedPosition = Unit.let {
-                                if (newRow < 0) {
-                                    0
-                                } else if (newRow > transformedText.lastRowIndex) {
-                                    transformedText.length
-                                } else {
-                                    val col = viewState.transformedCursorIndex - transformedText.findRowPositionStartIndexByRowIndex(row)
-                                    val newRowLength = if (newRow + 1 <= transformedText.lastRowIndex) {
-                                        transformedText.findRowPositionStartIndexByRowIndex(newRow + 1) - 1
-                                    } else {
-                                        transformedText.length
-                                    } - transformedText.findRowPositionStartIndexByRowIndex(newRow)
-                                    if (col <= newRowLength) {
-                                        transformedText.findRowPositionStartIndexByRowIndex(newRow) + col
-                                    } else {
-                                        transformedText.findRowPositionStartIndexByRowIndex(newRow) + newRowLength
-                                    }
-                                }
-                            }
-                            newTransformedPosition = viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
-                            updateTransformedCursorOrSelection(
-                                newTransformedPosition = newTransformedPosition,
-                                isSelection = it.isShiftPressed,
-                            )
-                            true
-                        }
-                        else -> false
-                    }
-                    else -> false
-                }
+                onProcessKeyboardInput(it)
             }
 //            .then(BigTextInputModifierElement(1))
             .focusable(isSelectable) // `focusable` should be after callback modifiers that use focus
