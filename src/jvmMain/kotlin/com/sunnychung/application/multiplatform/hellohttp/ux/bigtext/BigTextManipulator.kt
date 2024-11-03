@@ -13,4 +13,6 @@ interface BigTextManipulator {
     fun replace(range: IntRange, text: CharSequence)
 
     fun setCursorPosition(position: Int)
+
+    fun setSelection(range: IntRange)
 }

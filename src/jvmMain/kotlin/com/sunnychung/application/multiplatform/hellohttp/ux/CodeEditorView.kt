@@ -62,6 +62,8 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryAp
 import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.insert
+import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
+import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
@@ -179,9 +181,6 @@ fun CodeEditorView(
     log.d { "CodeEditorView recompose" }
 
     fun onPressEnterAddIndent(textManipulator: BigTextManipulator) {
-//        val cursorPos = textValue.selection.min
-//        assert(textValue.selection.length == 0)
-
         log.d { "onPressEnterAddIndent" }
 
         val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
@@ -193,72 +192,67 @@ fun CodeEditorView(
     }
 
     log.v { "cursor at ${textValue.selection}" }
-    fun onPressTab(isShiftPressed: Boolean) {
-        val selection = textValue.selection
-        val text = textValue.text
-        if (selection.length == 0) {
-            val cursorPos = selection.min
+    fun onPressTab(textManipulator: BigTextManipulator, isShiftPressed: Boolean) {
+        val vs = bigTextFieldState.viewState
+        val text = bigTextFieldState.text
+        if (!isShiftPressed && !vs.hasSelection()) {
             val newSpaces = " ".repeat(4)
-            textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length))
-            onTextChange?.invoke(text.insert(cursorPos, newSpaces))
-        } else if (!isShiftPressed) { // select text and press tab to insert 1-level indent to lines
-            val lineStarts = getAllLineStartsInRegion(
-                text = text,
-                from = selection.min,
-                to = selection.max - 1,
-            )
-            log.v { "lineStarts = $lineStarts" }
-            val newSpaces = " ".repeat(4)
-            var s = text
-            for (i in lineStarts.size - 1 downTo 0) {
-                val it = lineStarts[i]
-                s = s.insert(it, newSpaces)
-            }
+            textManipulator.replaceAtCursor(newSpaces)
+            return
+        }
 
-            val (minOffset, maxOffset) = Pair(newSpaces.length, newSpaces.length * lineStarts.size)
-            log.d { "off = $minOffset, $maxOffset" }
-            textValue = textValue.copy(
-                text = s,
-                selection = TextRange(
-                    start = selection.start + if (!selection.reversed) minOffset else maxOffset,
-                    end = selection.end + if (!selection.reversed) maxOffset else minOffset,
-                )
-            )
+        val lineRange = if (vs.hasSelection()) {
+            text.findLineAndColumnFromRenderPosition(vs.selection.start).first ..
+                text.findLineAndColumnFromRenderPosition(vs.selection.endInclusive).first
+        } else {
+            val currentLineIndex = text.findLineAndColumnFromRenderPosition(vs.cursorIndex).first
+            currentLineIndex .. currentLineIndex
+        }
 
-            onTextChange?.invoke(s)
-        } else { // select text and press shift+tab to remove 1-level indent from lines
-            val lineStarts = getAllLineStartsInRegion(
-                text = text,
-                from = selection.min,
-                to = selection.max - 1,
-            )
-            log.v { "lineStarts R = $lineStarts" }
-            var s = text
-            var firstLineSpaces = 0
-            var numSpaces = 0
-            for (i in lineStarts.size - 1 downTo 0) {
-                val it = lineStarts[i]
-                // at most remove 4 spaces
-                val spaceRange = "^ {1,4}".toRegex().matchAt(s.substring(it, minOf(it + 4, s.length)), 0)?.range
-                if (spaceRange != null) {
-                    s = s.removeRange(it + spaceRange.start..it + spaceRange.endInclusive)
-                    val spaceLength = spaceRange.endInclusive + 1 - spaceRange.start
-                    numSpaces += spaceLength
-                    if (i == 0) firstLineSpaces = spaceLength
+        val isCursorAtSelectionStart = !vs.hasSelection() || vs.cursorIndex == vs.selection.start
+        var selectionStartChange = 0
+        var selectionEndChange = 0
+
+        log.d { "tab line range = $lineRange" }
+
+        lineRange.reversed().forEach {
+            val linePosStart = text.findPositionStartOfLine(it)
+            log.d { "tab line $it pos $linePosStart" }
+            if (!isShiftPressed) { // increase indent
+                val newSpaces = " ".repeat(4)
+                selectionStartChange = newSpaces.length
+                selectionEndChange += newSpaces.length
+                textManipulator.insertAt(linePosStart, newSpaces)
+            } else { // decrease indent
+                val line = text.findLineString(it)
+                val textToBeDeleted = "^( {1,4}|\t)".toRegex().matchAt(line, 0) ?: return@forEach
+                val rangeToBeDeleted = linePosStart until linePosStart + textToBeDeleted.groups[1]!!.range.length
+                textManipulator.delete(rangeToBeDeleted)
+
+                if (it == lineRange.first) {
+                    selectionStartChange -= textToBeDeleted.groups[1]!!.range.length
+                } else {
+                    val intersectionWithSelectionRange = vs.selection intersect rangeToBeDeleted
+                    log.d { "tab selectionEndChange -= ${intersectionWithSelectionRange.length}" }
+                    selectionEndChange -= intersectionWithSelectionRange.length
                 }
             }
+        }
 
-            val (minOffset, maxOffset) = Pair(- firstLineSpaces, - numSpaces)
-            log.d { "off = $minOffset, $maxOffset" }
-            textValue = textValue.copy(
-                text = s,
-                selection = TextRange(
-                    start = maxOf(0, selection.start + if (!selection.reversed) minOffset else maxOffset),
-                    end = selection.end + if (!selection.reversed) maxOffset else minOffset,
-                )
-            )
+        if (isShiftPressed) {
+            selectionEndChange += selectionStartChange
+        }
 
-            onTextChange?.invoke(s)
+        log.d { "tab ∆sel = $selectionStartChange, $selectionEndChange" }
+        if (selectionStartChange != 0 || selectionEndChange != 0) {
+            if (vs.hasSelection()) {
+                textManipulator.setSelection(vs.selection.start + selectionStartChange..vs.selection.endInclusive + selectionEndChange)
+            }
+            if (isCursorAtSelectionStart) {
+                textManipulator.setCursorPosition(vs.cursorIndex + selectionStartChange)
+            } else {
+                textManipulator.setCursorPosition(vs.cursorIndex + selectionEndChange)
+            }
         }
     }
 
@@ -679,7 +673,7 @@ fun CodeEditorView(
                                         }
 
                                         Key.Tab -> {
-                                            onPressTab(it.isShiftPressed)
+                                            onPressTab(textManipulator, it.isShiftPressed)
                                             true
                                         }
 

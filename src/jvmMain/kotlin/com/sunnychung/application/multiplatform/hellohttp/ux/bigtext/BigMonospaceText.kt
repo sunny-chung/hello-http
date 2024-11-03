@@ -1008,6 +1008,15 @@ private fun CoreBigMonospaceText(
                 viewState.cursorIndex = position
                 viewState.updateTransformedCursorIndexByOriginal(transformedText)
                 viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                scrollToCursor()
+            }
+
+            override fun setSelection(range: IntRange) {
+                require(range.start in 0 .. text.length) { "Range start ${range.start} is out of range. Text length: ${text.length}" }
+                require(range.endInclusive + 1 in 0 .. text.length) { "Range end ${range.endInclusive} is out of range. Text length: ${text.length}" }
+
+                viewState.selection = range
+                viewState.updateTransformedSelectionBySelection(transformedText)
             }
         }
 
