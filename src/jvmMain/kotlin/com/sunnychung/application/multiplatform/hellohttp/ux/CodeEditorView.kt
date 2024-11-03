@@ -65,6 +65,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
+import com.sunnychung.application.multiplatform.hellohttp.util.ObjectRef
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -491,7 +492,7 @@ fun CodeEditorView(
                                     val string = it.bigText.buildCharSequence() as AnnotatedString
                                     log.d { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
                                     onTextChange(string.text)
-                                    secondCacheKey.value = string.text
+                                    secondCacheKey.value = ObjectRef(string.text)
                                 }
                                 bigTextValueId = it.changeId
                                 searchTrigger.trySend(Unit)

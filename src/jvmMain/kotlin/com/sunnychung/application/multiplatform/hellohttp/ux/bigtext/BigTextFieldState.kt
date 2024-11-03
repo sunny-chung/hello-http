@@ -5,6 +5,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.AnnotatedString
+import com.sunnychung.application.multiplatform.hellohttp.util.ObjectRef
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -40,16 +41,22 @@ fun rememberAnnotatedBigTextFieldState(initialValue: AnnotatedString = Annotated
 }
 
 @Composable
-fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableState<String>, MutableState<BigTextFieldState>> {
-    val secondCacheKey = rememberSaveable { mutableStateOf(initialValue) }
+fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableState<ObjectRef<String>>, MutableState<BigTextFieldState>> {
+    val secondCacheKey = rememberSaveable { mutableStateOf(ObjectRef(initialValue)) }
     val state = rememberSaveable {
-        log.d { "cache miss 1" }
+        log.i { "cache miss 1" }
         mutableStateOf(BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState()))
     }
-    if (initialValue !== secondCacheKey.value) {
-        log.d { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
-        secondCacheKey.value = initialValue
+    if (ObjectRef(initialValue) != secondCacheKey.value) {
+        log.i { "cache miss. old key2 = ${secondCacheKey.value.ref.abbr()}; new key2 = ${initialValue.abbr()}" }
+
+//        // set a value different from initialValue, otherwise the value 'equals' to the old value and would not be set to secondCacheKey.value
+//        secondCacheKey.value = if (initialValue.isNotEmpty()) "" else " "
+//        secondCacheKey.value = initialValue
+
+        secondCacheKey.value = ObjectRef(initialValue)
         state.value = BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState())
+//        log.i { "new view state = ${state.value.viewState}" }
     }
     return secondCacheKey to state
 }
