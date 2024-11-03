@@ -23,6 +23,7 @@ import io.github.treesitter.ktreesitter.Tree
 abstract class AbstractSyntaxHighlightDecorator(language: Language) : CacheableBigTextDecorator() {
     protected val parser: Parser = Parser(language)
     protected lateinit var ast: Tree
+    protected var oldEndPoint: Point? = null
 
     override fun doInitialize(text: BigText) {
         val s = text.buildString()
@@ -54,25 +55,34 @@ abstract class AbstractSyntaxHighlightDecorator(language: Language) : CacheableB
         }
     }
 
-    protected fun createInputEdit(event: BigTextChangeEvent, startOffset: Int, oldEndOffset: Int, newEndOffset: Int): InputEdit {
-        fun toPoint(offset: Int): Point {
-            return event.bigText.findLineAndColumnFromRenderPosition(offset)
-                .also {
-                    require(it.first >= 0 && it.second >= 0) {
-                        (event.bigText as BigTextImpl).printDebug("[ERROR]")
-                        "convert out of range. i=$offset, lc=$it, s = |${event.bigText.buildString()}|"
-                    }
+    protected fun toPoint(text: BigText, offset: Int): Point {
+        return text.findLineAndColumnFromRenderPosition(offset)
+            .also {
+                require(it.first >= 0 && it.second >= 0) {
+                    (text as BigTextImpl).printDebug("[ERROR]")
+                    "convert out of range. i=$offset, lc=$it, s = |${text.buildString()}|"
                 }
-                .toPoint()
+            }
+            .toPoint()
+    }
+
+    override fun beforeTextChange(event: BigTextChangeEvent) {
+        oldEndPoint = if (event.eventType == BigTextChangeEventType.Delete) {
+            toPoint(event.bigText, event.changeEndExclusiveIndex)
+        } else {
+            null
         }
+    }
+
+    protected fun createInputEdit(event: BigTextChangeEvent, startOffset: Int, oldEndOffset: Int, newEndOffset: Int): InputEdit {
 
         return InputEdit(
             startOffset.toUInt(),
             oldEndOffset.toUInt(),
             newEndOffset.toUInt(),
-            toPoint(startOffset),
-            toPoint(oldEndOffset),
-            toPoint(newEndOffset),
+            toPoint(event.bigText, startOffset),
+            oldEndPoint ?: toPoint(event.bigText, oldEndOffset), // store oldEndPoint before deletion to avoid crash or miscalculation
+            toPoint(event.bigText, newEndOffset),
         ).also {
             log.d { "AST InputEdit ${it.startByte} ${it.oldEndByte} ${it.newEndByte} ${it.startPoint} ${it.oldEndPoint} ${it.newEndPoint}" }
         }
