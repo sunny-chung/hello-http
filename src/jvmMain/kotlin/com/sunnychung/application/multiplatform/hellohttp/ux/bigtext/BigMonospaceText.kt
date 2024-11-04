@@ -513,6 +513,7 @@ private fun CoreBigMonospaceText(
             transformedState
         )
         textDecorator?.afterTextChange(event)
+        log.d { "call onTextChange for ${event.changeId}" }
         onTextChange(event)
     }
 
@@ -830,8 +831,24 @@ private fun CoreBigMonospaceText(
                     onType("\n")
                     true
                 }
-                it.key == Key.Backspace -> {
-                    onDelete(TextFBDirection.Backward)
+                it.key == Key.Backspace -> when {
+                    (currentOS() == MacOS && it.isAltPressed) ||
+                        (currentOS() != MacOS && it.isCtrlPressed) -> {
+                            // delete previous word
+                            val previousWordPosition = findPreviousWordBoundaryPositionFromCursor()
+                            if (previousWordPosition >= viewState.cursorIndex) {
+                                return false
+                            }
+                            delete(previousWordPosition, viewState.cursorIndex)
+                            updateViewState()
+                            // update cursor after invoking listeners, because a transformation or change may take place
+                            viewState.cursorIndex = previousWordPosition
+                            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+                            text.recordCurrentChangeSequenceIntoUndoHistory()
+                            true
+                        }
+                    else -> onDelete(TextFBDirection.Backward)
                 }
                 it.key == Key.Delete -> {
                     onDelete(TextFBDirection.Forward)
