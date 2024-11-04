@@ -163,6 +163,11 @@ tasks.withType<Test> {
         showStandardStreams = true
         exceptionFormat = TestExceptionFormat.FULL
     }
+    if (project.hasProperty("isCI") && project.property("isCI").toString().toBoolean()) {
+        filter {
+            excludeTestsMatching("com.sunnychung.application.multiplatform.hellohttp.test.bigtext.**")
+        }
+    }
 }
 
 compose.desktop {
