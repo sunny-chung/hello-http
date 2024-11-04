@@ -2,13 +2,15 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.AnnotatedString
-import com.sunnychung.application.multiplatform.hellohttp.util.ObjectRef
+import com.sunnychung.application.multiplatform.hellohttp.util.MutableObjectRef
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.filter
 
 @Composable
 fun rememberBigTextFieldState(initialValue: String = ""): Pair<MutableState<String>, MutableState<BigTextFieldState>> {
@@ -41,20 +43,16 @@ fun rememberAnnotatedBigTextFieldState(initialValue: AnnotatedString = Annotated
 }
 
 @Composable
-fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableState<ObjectRef<String>>, MutableState<BigTextFieldState>> {
-    val secondCacheKey = rememberSaveable { mutableStateOf(ObjectRef(initialValue)) }
+fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableObjectRef<String>, MutableState<BigTextFieldState>> {
+    val secondCacheKey by rememberSaveable { mutableStateOf(MutableObjectRef(initialValue)) }
     val state = rememberSaveable {
         log.i { "cache miss 1" }
         mutableStateOf(BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState()))
     }
-    if (ObjectRef(initialValue) != secondCacheKey.value) {
-        log.i { "cache miss. old key2 = ${secondCacheKey.value.ref.abbr()}; new key2 = ${initialValue.abbr()}" }
+    if (initialValue !== secondCacheKey.value) {
+        log.i { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
 
-//        // set a value different from initialValue, otherwise the value 'equals' to the old value and would not be set to secondCacheKey.value
-//        secondCacheKey.value = if (initialValue.isNotEmpty()) "" else " "
-//        secondCacheKey.value = initialValue
-
-        secondCacheKey.value = ObjectRef(initialValue)
+        secondCacheKey.value = initialValue
         state.value = BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState())
 //        log.i { "new view state = ${state.value.viewState}" }
     }
@@ -70,18 +68,30 @@ fun CharSequence.abbr(): CharSequence {
 }
 
 class BigTextFieldState(val text: BigTextImpl, val viewState: BigTextViewState) {
+    private var lastSequence = -1
+    private var lastConsumedSequence = -1
+
     private val valueChangesMutableFlow = MutableSharedFlow<BigTextChangeWithoutDetail>(
-        replay = 0,
+        replay = 1,
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    val valueChangesFlow: SharedFlow<BigTextChangeWithoutDetail> = valueChangesMutableFlow
+    val valueChangesFlow: Flow<BigTextChangeWithoutDetail> = valueChangesMutableFlow
+        .filter { it.sequence > lastConsumedSequence }
 
     internal fun emitValueChange(changeId: Long) {
         logV.v { "BigTextFieldState emitValueChange A $changeId" }
 //        logV.v { "BigTextFieldState emitValueChange B $changeId" }
-        valueChangesMutableFlow.tryEmit(BigTextChangeWithoutDetail(changeId = changeId, bigText = text))
+        valueChangesMutableFlow.tryEmit(BigTextChangeWithoutDetail(changeId = changeId, bigText = text, sequence = ++lastSequence)).let { isSuccess ->
+            if (!isSuccess) {
+                logV.w { "BigTextFieldState emitValueChange fail. #Subscribers = ${valueChangesMutableFlow.subscriptionCount.value}" }
+            }
+        }
+    }
+
+    fun markConsumed(sequence: Int) {
+        lastConsumedSequence = maxOf(lastConsumedSequence, sequence)
     }
 }
 
-class BigTextChangeWithoutDetail(val changeId: Long, val bigText: BigTextImpl)
+class BigTextChangeWithoutDetail(val changeId: Long, val bigText: BigTextImpl, val sequence: Int)

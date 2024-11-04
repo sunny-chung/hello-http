@@ -9,6 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.Collections
 import kotlin.test.Test
@@ -114,6 +115,32 @@ class ChunkedLatestFlowTest {
             }
 
             assertEquals(listOf(10), results)
+        }
+    }
+
+    @Test
+    fun collectAfterCancel() {
+        runBlocking {
+            val results = Collections.synchronizedList(mutableListOf<Int>())
+
+            coroutineScope {
+                val flow = flow<Int> {
+                    (0..12).forEach {
+                        emit(it)
+                        delay(145)
+                    }
+                }
+                    .chunkedLatest(500.milliseconds())
+                    .onEach { results += it }
+                    .launchIn(this)
+
+                launch {
+                    delay(410)
+                    flow.cancel()
+                }
+            }
+
+            assertEquals(listOf(2), results)
         }
     }
 }

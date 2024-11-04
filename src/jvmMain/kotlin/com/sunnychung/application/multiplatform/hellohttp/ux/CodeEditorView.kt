@@ -104,6 +104,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
@@ -484,7 +485,9 @@ fun CodeEditorView(
 //                    return@Row // compose bug: return here would crash
                 } else {
                     LaunchedEffect(bigTextFieldState, onTextChange) {
+                        log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
                         bigTextFieldState.valueChangesFlow
+                            .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
                             .chunkedLatest(200.milliseconds())
                             .collect {
                                 log.d { "bigTextFieldState change ${it.changeId} ${it.bigText.buildString()}" }
@@ -492,10 +495,12 @@ fun CodeEditorView(
                                     val string = it.bigText.buildCharSequence() as AnnotatedString
                                     log.d { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
                                     onTextChange(string.text)
-                                    secondCacheKey.value = ObjectRef(string.text)
+                                    secondCacheKey.value = string.text
                                 }
                                 bigTextValueId = it.changeId
                                 searchTrigger.trySend(Unit)
+
+                                bigTextFieldState.markConsumed(it.sequence)
                             }
                     }
 

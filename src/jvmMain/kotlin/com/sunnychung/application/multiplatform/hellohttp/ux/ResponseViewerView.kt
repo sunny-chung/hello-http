@@ -529,14 +529,16 @@ fun BodyViewerView(
             }
             isJsonPathError = hasError
 
-            val prettifyResult = try {
-                if (isRaw) {
-                    selectedView.prettifier!!.prettify(contentToUse)
-                } else {
-                    PrettifyResult(contentToUse.decodeToString())
+            val prettifyResult = remember(contentToUse) {
+                try {
+                    if (isRaw) {
+                        selectedView.prettifier!!.prettify(contentToUse)
+                    } else {
+                        PrettifyResult(contentToUse.decodeToString())
+                    }
+                } catch (e: Throwable) {
+                    PrettifyResult(contentToUse.decodeToString() ?: "")
                 }
-            } catch (e: Throwable) {
-                PrettifyResult(contentToUse.decodeToString() ?: "")
             }
 
             CopyableContentContainer(textToCopy = prettifyResult.prettyString, modifier = modifier) {
