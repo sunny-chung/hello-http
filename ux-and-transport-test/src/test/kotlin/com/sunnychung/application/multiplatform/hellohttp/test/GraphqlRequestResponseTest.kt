@@ -323,12 +323,12 @@ suspend fun ComposeUiTest.createGraphqlRequest(request: UserRequestTemplate, env
     val body = request.examples.first().body as GraphqlBody
 
     onNodeWithTag(TestTag.RequestGraphqlDocumentTextField.name)
-        .performTextInput(body.document)
+        .performTextInput(this, body.document)
 
     delayShort() // needed, otherwise document text field sometimes have no text inputted
 
     onNodeWithTag(TestTag.RequestGraphqlVariablesTextField.name)
-        .performTextInput(body.variables)
+        .performTextInput(this, body.variables)
 
     if (body.operationName != null) {
         delayShort()

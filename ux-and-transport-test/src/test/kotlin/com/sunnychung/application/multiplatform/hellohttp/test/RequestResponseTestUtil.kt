@@ -127,7 +127,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
             .performClickWithRetry(this)
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
-            .performTextInput("Test Project ${KZonedInstant.nowAtLocalZoneOffset().format("HH:mm:ss")}")
+            .performTextInput(this, "Test Project ${KZonedInstant.nowAtLocalZoneOffset().format("HH:mm:ss")}")
         waitForIdle()
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
             .performClickWithRetry(this)
@@ -140,7 +140,7 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
             .performClickWithRetry(this)
         waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
-            .performTextInput("Test Subproject")
+            .performTextInput(this, "Test Subproject")
         waitForIdle()
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogDoneButton.name)
             .assertIsDisplayedWithRetry(this)
@@ -428,7 +428,7 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
     waitForIdle()
 
     onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-        .performTextInput(name)
+        .performTextInput(this, name)
 
     waitUntil(3.seconds().millis) {
         // one in list view and one in text field
@@ -512,7 +512,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
 
     onNodeWithTag(TestTag.RequestUrlTextField.name)
         .assertIsDisplayedWithRetry(this)
-        .performTextInput(request.url)
+        .performTextInput(this, request.url)
 
     delayShort()
 
@@ -541,7 +541,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                 if (body.isNotEmpty()) {
                     onNodeWithTag(TestTag.RequestStringBodyTextField.name)
                         .assertIsDisplayedWithRetry(this)
-                        .performTextInput(body)
+                        .performTextInput(this, body)
                     delayShort()
                 }
             }
@@ -580,7 +580,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                         )
                     )
                         .assertIsDisplayedWithRetry(this)
-                        .performTextInput(it.key)
+                        .performTextInput(this, it.key)
                     delayShort()
                     onNode(
                         hasTestTag(
@@ -608,7 +608,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                                 )
                             )
                                 .assertIsDisplayedWithRetry(this)
-                                .performTextInput(it.value)
+                                .performTextInput(this, it.value)
                             delayShort()
                         }
 
@@ -729,7 +729,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                         )
                     )
                         .assertIsDisplayedWithRetry(this)
-                        .performTextInput(it.key)
+                        .performTextInput(this, it.key)
                     delayShort()
 
                     onNode(
@@ -755,7 +755,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                         )
                     )
                         .assertIsDisplayedWithRetry(this)
-                        .performTextInput(it.value)
+                        .performTextInput(this, it.value)
                     delayShort()
                 }
             }
@@ -817,7 +817,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                 )
             )
                 .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.key)
+                .performTextInput(this, it.key)
             delayShort()
             onNode(
                 hasTestTag(
@@ -842,7 +842,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
                 )
             )
                 .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.value)
+                .performTextInput(this, it.value)
             delayShort()
         }
     }
@@ -874,11 +874,11 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
             )
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
                 .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.key)
+                .performTextInput(this, it.key)
             delayShort()
             onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
                 .assertIsDisplayedWithRetry(this)
-                .performTextInput(it.value)
+                .performTextInput(this, it.value)
             delayShort()
         }
     }
@@ -892,7 +892,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
 
         onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
             .assertIsDisplayedWithRetry(this)
-            .performTextInput(baseExample.preFlight.executeCode)
+            .performTextInput(this, baseExample.preFlight.executeCode)
 
         waitUntil {
             onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
@@ -1042,7 +1042,7 @@ suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: B
 
     onNodeWithTag(TestTag.RequestPayloadTextField.name)
         .assertIsDisplayedWithRetry(this)
-        .performTextInput(payload)
+        .performTextInput(this, payload)
 
     delayShort()
 
@@ -1183,5 +1183,14 @@ fun SemanticsNodeInteractionCollection.fetchSemanticsNodesWithRetry(host: Compos
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
         }
+    }
+}
+
+/**
+ * To work around the bug: https://issuetracker.google.com/issues/319395743
+ */
+fun SemanticsNodeInteraction.performTextInput(host: ComposeUiTest, s: String) {
+    host.runOnUiThread {
+        performTextInput(s)
     }
 }

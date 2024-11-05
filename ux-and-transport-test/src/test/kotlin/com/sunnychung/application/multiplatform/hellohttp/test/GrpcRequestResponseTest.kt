@@ -351,7 +351,7 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
         if (request.examples.first().body is StringBody) {
             onNodeWithTag(TestTag.RequestStringBodyTextField.name)
                 .assertIsDisplayedWithRetry(this)
-                .performTextInput((request.examples.first().body as StringBody).value)
+                .performTextInput(this, (request.examples.first().body as StringBody).value)
             delayShort()
         }
     }
