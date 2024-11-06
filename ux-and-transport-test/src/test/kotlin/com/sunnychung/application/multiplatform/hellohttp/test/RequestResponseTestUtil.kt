@@ -438,7 +438,7 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
         waitForIdle()
 
         // one in list view and one in text field
-        onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).size == 2
+        onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodesWithRetry(this).size == 2
     }
 
     waitForIdle()
