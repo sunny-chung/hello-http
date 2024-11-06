@@ -127,7 +127,8 @@ fun RequestEditorView(
 
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
-    val environmentVariableKeys = environment?.variables?.filter { it.isEnabled }?.map { it.key }?.toSet() ?: emptySet()
+    val environmentVariables = environment?.variables?.filter { it.isEnabled }?.map { it.key to it.value }?.toMap() ?: emptyMap()
+    val environmentVariableKeys = environmentVariables.keys
 
     val currentGraphqlOperation = if (request.application == ProtocolApplication.Graphql) {
         (selectedExample.body as? GraphqlBody)?.getOperation(isThrowError = false)
@@ -566,7 +567,7 @@ fun RequestEditorView(
                     request = request,
                     onRequestModified = onRequestModified,
                     selectedExample = selectedExample,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     currentGraphqlOperation = currentGraphqlOperation,
                 )
 
@@ -597,7 +598,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         testTagPart = TestTagPart.RequestHeader,
                         modifier = Modifier.fillMaxWidth(),
@@ -630,7 +631,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         testTagPart = TestTagPart.RequestQueryParameter,
                         modifier = Modifier.fillMaxWidth(),
@@ -679,7 +680,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
@@ -718,7 +719,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
@@ -734,7 +735,7 @@ fun RequestEditorView(
                 selectedPayloadExampleId = selectedPayloadExampleId!!,
                 onSelectExample = { selectedPayloadExampleId = it.id },
                 hasCompleteButton = request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true,
-                knownVariables = environmentVariableKeys,
+                knownVariables = environmentVariables,
                 onClickSendPayload = onClickSendPayload,
                 onClickCompleteStream = onClickCompleteStream,
                 connectionStatus = connectionStatus,
@@ -917,7 +918,7 @@ private fun RequestKeyValueEditorView(
     value: List<UserKeyValuePair>?,
     baseValue: List<UserKeyValuePair>?,
     baseDisabledIds: Set<String>,
-    knownVariables: Set<String>,
+    knownVariables: Map<String, String>,
     onValueUpdate: (List<UserKeyValuePair>) -> Unit,
     onDisableUpdate: (Set<String>) -> Unit,
     isSupportFileValue: Boolean,
@@ -986,7 +987,7 @@ private fun RequestBodyEditor(
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     selectedExample: UserRequestExample,
-    environmentVariableKeys: Set<String>,
+    environmentVariables: Map<String, String>,
     currentGraphqlOperation: OperationDefinition?,
 ) {
     val colors = LocalColor.current
@@ -1121,7 +1122,7 @@ private fun RequestBodyEditor(
                 RequestBodyTextEditor(
                     request = request,
                     onRequestModified = onRequestModified,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     selectedExample = selectedExample,
                     overridePredicate = { it?.isOverrideBody != false },
                     translateToText = { (it.body as? StringBody)?.value },
@@ -1164,7 +1165,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    knownVariables = environmentVariableKeys,
+                    knownVariables = environmentVariables,
                     isSupportFileValue = false,
                     testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm,
                     modifier = remainModifier,
@@ -1198,7 +1199,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    knownVariables = environmentVariableKeys,
+                    knownVariables = environmentVariables,
                     isSupportFileValue = true,
                     testTagPart = TestTagPart.RequestBodyMultipartForm,
                     modifier = remainModifier,
@@ -1229,7 +1230,7 @@ private fun RequestBodyEditor(
                 RequestBodyTextEditor(
                     request = request,
                     onRequestModified = onRequestModified,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     selectedExample = selectedExample,
                     overridePredicate = { it?.isOverrideBodyContent != false },
                     translateToText = { (it.body as? GraphqlBody)?.document },
@@ -1263,7 +1264,7 @@ private fun RequestBodyEditor(
                 RequestBodyTextEditor(
                     request = request,
                     onRequestModified = onRequestModified,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     selectedExample = selectedExample,
                     overridePredicate = { it?.isOverrideBodyVariables != false },
                     translateToText = { (it.body as? GraphqlBody)?.variables },
@@ -1319,7 +1320,7 @@ private fun RequestBodyTextEditor(
     modifier: Modifier,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
-    environmentVariableKeys: Set<String>,
+    environmentVariables: Map<String, String>,
     selectedExample: UserRequestExample,
     overridePredicate: (UserRequestExample.Overrides?) -> Boolean,
     translateToText: (UserRequestExample) -> String?,
@@ -1335,7 +1336,7 @@ private fun RequestBodyTextEditor(
             modifier = modifier,
             isReadOnly = false,
             isEnableVariables = true,
-            knownVariables = environmentVariableKeys,
+            knownVariables = environmentVariables,
             text = translateToText(selectedExample) ?: "",
             onTextChange = {
                 onRequestModified(
@@ -1354,7 +1355,7 @@ private fun RequestBodyTextEditor(
             modifier = modifier,
             isReadOnly = true,
             isEnableVariables = true,
-            knownVariables = environmentVariableKeys,
+            knownVariables = environmentVariables,
             text = translateToText(baseExample) ?: "",
             onTextChange = {},
             textColor = colors.placeholder,
@@ -1416,7 +1417,7 @@ fun StreamingPayloadEditorView(
     selectedPayloadExampleId: String,
     onSelectExample: (PayloadExample) -> Unit,
     hasCompleteButton: Boolean,
-    knownVariables: Set<String>,
+    knownVariables: Map<String, String>,
     onClickSendPayload: (String) -> Unit,
     onClickCompleteStream: () -> Unit,
     connectionStatus: ConnectionStatus,

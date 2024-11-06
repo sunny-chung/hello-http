@@ -31,7 +31,7 @@ class EnvironmentVariableDecorator(themeColors: AppColor, val knownVariables: Se
                     } else {
                         unknownVariableStyle
                     }
-                    AnnotatedString.Range(style, tagRange.start, tagRange.end)
+                    AnnotatedString.Range(style, tagRange.start, tagRange.end, tagRange.tag)
                 }
                 return AnnotatedString(text.text, previousSpanStyles + newSpanStyles, text.paragraphStyles)
             }

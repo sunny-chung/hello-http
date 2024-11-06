@@ -48,34 +48,27 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.google.common.collect.TreeRangeMap
-import com.sunnychung.application.multiplatform.hellohttp.annotation.TemporaryApi
-import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
-import com.sunnychung.application.multiplatform.hellohttp.extension.insert
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
-import com.sunnychung.application.multiplatform.hellohttp.util.ObjectRef
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.ux.AppUX.ENV_VAR_VALUE_MAX_DISPLAY_LENGTH
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextInputFilter
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextKeyboardInputProcessor
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
@@ -83,8 +76,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTran
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberAnnotatedBigTextFieldState
-import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
-import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -123,7 +114,7 @@ fun CodeEditorView(
     textColor: Color = LocalColor.current.text,
     syntaxHighlight: SyntaxHighlight,
     isEnableVariables: Boolean = false,
-    knownVariables: Set<String> = setOf(),
+    knownVariables: Map<String, String> = mutableMapOf(),
     testTag: String? = null,
 ) {
     val themeColours = LocalColor.current
@@ -308,7 +299,7 @@ fun CodeEditorView(
     val variableDecorators = remember(bigTextFieldState, themeColours, isEnableVariables, knownVariables) {
         if (isEnableVariables) {
             listOf(
-                EnvironmentVariableDecorator(themeColours, knownVariables),
+                EnvironmentVariableDecorator(themeColours, knownVariables.keys),
             )
         } else {
             emptyList()
@@ -504,64 +495,86 @@ fun CodeEditorView(
                             }
                     }
 
-                    BigMonospaceTextField(
-                        textFieldState = bigTextFieldState,
-                        inputFilter = inputFilter,
-                        textTransformation = remember(variableTransformations) {
-                            MultipleIncrementalTransformation(
-                                variableTransformations
-                            )
-                        },
-                        textDecorator = //rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex, syntaxHighlightDecorator) {
+                    var mouseHoverVariable by remember(bigTextFieldState) { mutableStateOf<String?>(null) }
+                    AppTooltipArea(
+                        isVisible = mouseHoverVariable != null && mouseHoverVariable in knownVariables,
+                        tooltipText = mouseHoverVariable?.let {
+                            val s = knownVariables[it] ?: return@let null
+                            if (s.length > ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) {
+                                s.substring(0, ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) + " ..."
+                            } else {
+                                s
+                            }
+                        } ?: "",
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        BigMonospaceTextField(
+                            textFieldState = bigTextFieldState,
+                            inputFilter = inputFilter,
+                            textTransformation = remember(variableTransformations) {
+                                MultipleIncrementalTransformation(
+                                    variableTransformations
+                                )
+                            },
+                            textDecorator = //rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex, syntaxHighlightDecorator) {
                             MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
-                        //},
-                        ,
-                        fontSize = LocalFont.current.codeEditorBodyFontSize,
-                        scrollState = scrollState,
-                        onTextLayout = { layoutResult = it },
-                        keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
-                            override fun beforeProcessInput(
-                                it: KeyEvent,
-                                viewState: BigTextViewState,
-                                textManipulator: BigTextManipulator
-                            ): Boolean {
-                                return if (it.type == KeyEventType.KeyDown) {
-                                    when (it.key) {
-                                        Key.Enter -> {
-                                            if (!it.isShiftPressed
-                                                && !it.isAltPressed
-                                                && !it.isCtrlPressed
-                                                && !it.isMetaPressed
-                                            ) {
-                                                onPressEnterAddIndent(textManipulator)
-                                                true
-                                            } else {
-                                                false
+                            //},
+                            ,
+                            fontSize = LocalFont.current.codeEditorBodyFontSize,
+                            scrollState = scrollState,
+                            onTextLayout = { layoutResult = it },
+                            keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
+                                override fun beforeProcessInput(
+                                    it: KeyEvent,
+                                    viewState: BigTextViewState,
+                                    textManipulator: BigTextManipulator
+                                ): Boolean {
+                                    return if (it.type == KeyEventType.KeyDown) {
+                                        when (it.key) {
+                                            Key.Enter -> {
+                                                if (!it.isShiftPressed
+                                                    && !it.isAltPressed
+                                                    && !it.isCtrlPressed
+                                                    && !it.isMetaPressed
+                                                ) {
+                                                    onPressEnterAddIndent(textManipulator)
+                                                    true
+                                                } else {
+                                                    false
+                                                }
                                             }
-                                        }
 
-                                        Key.Tab -> {
-                                            onPressTab(textManipulator, it.isShiftPressed)
-                                            true
-                                        }
+                                            Key.Tab -> {
+                                                onPressTab(textManipulator, it.isShiftPressed)
+                                                true
+                                            }
 
-                                        else -> false
+                                            else -> false
+                                        }
+                                    } else {
+                                        false
                                     }
-                                } else {
-                                    false
                                 }
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                            .focusRequester(textFieldFocusRequester)
-                            .run {
-                                if (testTag != null) {
-                                    testTag(testTag)
+                            },
+                            onPointerEvent = { event, tag ->
+                                log.v { "onPointerEventOnAnnotatedTag $tag $event" }
+                                mouseHoverVariable = if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
+                                    tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
                                 } else {
-                                    this
+                                    null
                                 }
-                            }
-                    )
+                            },
+                            modifier = Modifier.fillMaxSize()
+                                .focusRequester(textFieldFocusRequester)
+                                .run {
+                                    if (testTag != null) {
+                                        testTag(testTag)
+                                    } else {
+                                        this
+                                    }
+                                }
+                        )
+                    }
                 }
             }
             VerticalScrollbar(

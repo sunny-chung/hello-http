@@ -47,7 +47,7 @@ fun KeyValueEditorView(
     disabledIds: Set<String>,
     isSupportFileValue: Boolean = false,
     isSupportVariables: Boolean = false,
-    knownVariables: Set<String> = emptySet(),
+    knownVariables: Map<String, String> = emptyMap(),
     onItemChange: (index: Int, item: UserKeyValuePair) -> Unit,
     onItemAddLast: (item: UserKeyValuePair) -> Unit,
     onItemDelete: (index: Int) -> Unit,
@@ -128,7 +128,7 @@ fun KeyValueEditorView(
                             MultipleVisualTransformation(listOf(
                                 EnvironmentVariableTransformation(
                                     themeColors = colors,
-                                    knownVariables = knownVariables
+                                    knownVariables = knownVariables.keys
                                 ),
                                 FunctionTransformation(themeColors = colors),
                             ))
@@ -169,7 +169,7 @@ fun KeyValueEditorView(
                                 MultipleVisualTransformation(listOf(
                                     EnvironmentVariableTransformation(
                                         themeColors = colors,
-                                        knownVariables = knownVariables
+                                        knownVariables = knownVariables.keys
                                     ),
                                     FunctionTransformation(themeColors = colors),
                                 ))

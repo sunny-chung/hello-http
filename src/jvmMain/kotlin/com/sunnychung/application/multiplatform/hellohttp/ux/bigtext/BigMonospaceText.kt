@@ -52,6 +52,7 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerButton
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -144,6 +145,7 @@ fun BigMonospaceText(
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember { BigTextViewState() },
+    onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) = CoreBigMonospaceText(
@@ -160,6 +162,7 @@ fun BigMonospaceText(
     textDecorator = textDecorator,
     scrollState = scrollState,
     viewState = viewState,
+    onPointerEvent = onPointerEvent,
     onTextLayout = onTextLayout,
     onTransformInit = onTransformInit,
 )
@@ -176,6 +179,7 @@ fun BigMonospaceTextField(
     textDecorator: BigTextDecorator? = null,
     scrollState: ScrollState = rememberScrollState(),
     keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
+    onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) {
     BigMonospaceTextField(
@@ -193,6 +197,7 @@ fun BigMonospaceTextField(
         scrollState = scrollState,
         viewState = textFieldState.viewState,
         keyboardInputProcessor = keyboardInputProcessor,
+        onPointerEvent = onPointerEvent,
         onTextLayout = onTextLayout
     )
 }
@@ -211,6 +216,7 @@ fun BigMonospaceTextField(
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember(text) { BigTextViewState() },
     keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
+    onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
@@ -227,6 +233,7 @@ fun BigMonospaceTextField(
     scrollState = scrollState,
     viewState = viewState,
     keyboardInputProcessor = keyboardInputProcessor,
+    onPointerEvent = onPointerEvent,
     onTextLayout = onTextLayout,
 )
 
@@ -247,6 +254,7 @@ private fun CoreBigMonospaceText(
     scrollState: ScrollState = rememberScrollState(),
     viewState: BigTextViewState = remember(text) { BigTextViewState() },
     keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
+    onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) {
@@ -1084,10 +1092,21 @@ private fun CoreBigMonospaceText(
                     viewState.updateCursorIndexByTransformed(transformedText)
                 }
             )
-            .pointerInput(isEditable, text, transformedText.hasLayouted, viewState, viewportTop, lineHeight, contentWidth, transformedText.length, transformedText.hashCode()) {
+            .pointerInput(isEditable, text, transformedText.hasLayouted, viewState, viewportTop, lineHeight, contentWidth, transformedText.length, transformedText.hashCode(), onPointerEvent) {
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
+
+                        if (onPointerEvent != null) {
+                            val position = event.changes.first().position
+                            val transformedCharIndex = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Cursor)
+                            val tag = if (transformedCharIndex in 0 .. transformedText.lastIndex) {
+                                val charSequenceUnderPointer = transformedText.subSequence(transformedCharIndex, transformedCharIndex + 1)
+                                (charSequenceUnderPointer as? AnnotatedString)?.spanStyles?.firstOrNull { it.tag.isNotEmpty() }?.tag
+                            } else null
+                            onPointerEvent(event, tag)
+                        }
+
                         when (event.type) {
                             PointerEventType.Press -> {
                                 val position = event.changes.first().position
