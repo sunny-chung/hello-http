@@ -1149,7 +1149,9 @@ fun SemanticsNodeInteraction.performClickWithRetry(host: ComposeUiTest): Semanti
 fun SemanticsNodeInteraction.assertIsDisplayedWithRetry(host: ComposeUiTest): SemanticsNodeInteraction {
     while (true) {
         try {
-            assertIsDisplayed()
+            host.runOnUiThread {
+                assertIsDisplayed()
+            }
             return this
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
