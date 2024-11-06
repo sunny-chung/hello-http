@@ -48,6 +48,7 @@ import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
+import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownDisplayTexts
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
@@ -430,7 +431,11 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
     onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
         .performTextInput(this, name)
 
+    delayShort()
+
     waitUntil(3.seconds().millis) {
+        waitForIdle()
+
         // one in list view and one in text field
         onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).size == 2
     }
@@ -459,6 +464,13 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
                 .fetchSemanticsNodesWithRetry(this)
                 .size == 1
         }
+
+        println("DropdownMenu items: ${
+            onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
+                .fetchSemanticsNodeWithRetry(this)
+                .config
+                .getOrNull(DropDownDisplayTexts)
+        }")
 
         onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
             .performScrollToNode(hasTestTag(itemTag))
