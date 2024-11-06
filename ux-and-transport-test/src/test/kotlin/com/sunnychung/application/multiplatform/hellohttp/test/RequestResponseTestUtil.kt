@@ -1169,7 +1169,9 @@ fun SemanticsNode.getTexts(): List<String> {
 fun SemanticsNodeInteraction.fetchSemanticsNodeWithRetry(host: ComposeUiTest): SemanticsNode {
     while (true) {
         try {
-            return fetchSemanticsNode()
+            return host.runOnUiThread {
+                fetchSemanticsNode()
+            }
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
         }
@@ -1179,7 +1181,9 @@ fun SemanticsNodeInteraction.fetchSemanticsNodeWithRetry(host: ComposeUiTest): S
 fun SemanticsNodeInteractionCollection.fetchSemanticsNodesWithRetry(host: ComposeUiTest): List<SemanticsNode> {
     while (true) {
         try {
-            return fetchSemanticsNodes()
+            return host.runOnUiThread {
+                fetchSemanticsNodes()
+            }
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
         }
