@@ -432,8 +432,9 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
         .performTextInput(this, name)
 
     delayShort()
+    waitForIdle()
 
-    waitUntil(3.seconds().millis) {
+    waitUntil(30.seconds().millis) { // easy to fail
         waitForIdle()
 
         // one in list view and one in text field
