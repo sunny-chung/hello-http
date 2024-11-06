@@ -19,6 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -155,6 +158,9 @@ fun <T : DropDownable> ContextMenuView(
         expanded = isShowContextMenu,
         onDismissRequest = onDismissRequest,
         modifier = Modifier.background(colors.backgroundContextMenu)
+            .semantics {
+                set(DropDownDisplayTexts, populatedItems.map { it.displayText })
+            }
             .run {
                 if (testTagParts != null) {
                     testTag(buildTestTag(*testTagParts, TestTagPart.DropdownMenu)!!)
@@ -228,3 +234,10 @@ data class DropDownMap<T>(private val values: List<DropDownKeyValue<T>>) {
     operator fun get(key: T) = mapByKey[key]
 
 }
+
+val DropDownDisplayTexts = SemanticsPropertyKey<List<String>>(
+    name = "DropDownDisplayTexts",
+    mergePolicy = { parentValue, childValue ->
+        parentValue ?: childValue
+    }
+)
