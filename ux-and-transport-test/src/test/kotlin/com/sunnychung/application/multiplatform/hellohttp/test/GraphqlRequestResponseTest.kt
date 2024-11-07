@@ -3,6 +3,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.test
 
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -303,7 +304,7 @@ class GraphqlRequestResponseTest(testName: String, httpVersion: HttpConfig.HttpP
     }
 }
 
-suspend fun ComposeUiTest.createGraphqlRequest(request: UserRequestTemplate, environment: TestEnvironment) {
+suspend fun DesktopComposeUiTest.createGraphqlRequest(request: UserRequestTemplate, environment: TestEnvironment) {
     createRequest(request = request, environment = environment)
     selectRequestMethod("GraphQL")
     delayShort()
@@ -343,7 +344,7 @@ suspend fun ComposeUiTest.createGraphqlRequest(request: UserRequestTemplate, env
     }
 }
 
-suspend fun ComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment) {
+suspend fun DesktopComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment) {
     createGraphqlRequest(request = request, environment = environment)
 
     delayShort()
@@ -359,7 +360,7 @@ suspend fun ComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTempla
     waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
 }
 
-fun ComposeUiTest.assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequest: Boolean = false): String? {
+fun DesktopComposeUiTest.assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequest: Boolean = false): String? {
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals(if (!isSubscriptionRequest) {
         "200 OK"
     } else {

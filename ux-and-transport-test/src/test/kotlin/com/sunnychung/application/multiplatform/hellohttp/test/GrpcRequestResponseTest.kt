@@ -4,6 +4,7 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertTextEquals
@@ -261,7 +262,7 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
         assertSuccessStatus()
     }
 
-    suspend fun ComposeUiTest.createGrpcRequest(environment: TestEnvironment, requestDecorator: (UserRequestTemplate) -> UserRequestTemplate) {
+    suspend fun DesktopComposeUiTest.createGrpcRequest(environment: TestEnvironment, requestDecorator: (UserRequestTemplate) -> UserRequestTemplate) {
         val request = UserRequestTemplate(
             id = uuidString(),
             application = ProtocolApplication.Grpc,
@@ -357,11 +358,11 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
     }
 }
 
-fun ComposeUiTest.assertStatus(expected: String) {
+fun DesktopComposeUiTest.assertStatus(expected: String) {
     onNodeWithTag(TestTag.ResponseStatus.name)
         .assertTextEquals(expected)
 }
 
-fun ComposeUiTest.assertSuccessStatus() {
+fun DesktopComposeUiTest.assertSuccessStatus() {
     assertStatus("0 OK")
 }

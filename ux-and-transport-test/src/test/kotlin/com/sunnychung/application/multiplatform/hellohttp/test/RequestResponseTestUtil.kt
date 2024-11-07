@@ -2,12 +2,14 @@
 
 package com.sunnychung.application.multiplatform.hellohttp.test
 
+import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
@@ -27,6 +29,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -60,16 +63,20 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.skia.EncodedImageFormat
+import org.jetbrains.skia.Image
+import org.jetbrains.skiko.toBufferedImage
+import org.jetbrains.skiko.toImage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.awt.Dimension
 import java.io.File
 import java.net.URL
 
-fun runTest(testBlock: suspend ComposeUiTest.() -> Unit) =
+fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
     executeWithTimeout(120.seconds()) {
         try {
-            runComposeUiTest {
+            runDesktopComposeUiTest {
                 setContent {
                     Window(
                         title = "Hello HTTP",
@@ -121,7 +128,7 @@ enum class TestEnvironment(val displayName: String) {
     LocalMTls("Local mTLS"),
 }
 
-suspend fun ComposeUiTest.createProjectIfNeeded() {
+suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
     if (onAllNodesWithTag(TestTag.FirstTimeCreateProjectButton.name).fetchSemanticsNodesWithRetry(this).isNotEmpty()) {
         // create first project
         onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
@@ -361,12 +368,12 @@ suspend fun ComposeUiTest.createProjectIfNeeded() {
 //    }
 }
 
-fun ComposeUiTest.mockChosenFile(file: File): File {
+fun DesktopComposeUiTest.mockChosenFile(file: File): File {
     testChooseFile = file
     return file
 }
 
-suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
+suspend fun DesktopComposeUiTest.selectEnvironment(environment: TestEnvironment) {
     if (onNodeWithTag(buildTestTag(TestTagPart.EnvironmentDropdown, TestTagPart.DropdownLabel)!!, useUnmergedTree = true)
         .assertIsDisplayedWithRetry(this)
         .fetchSemanticsNodeWithRetry(this)
@@ -384,7 +391,7 @@ suspend fun ComposeUiTest.selectEnvironment(environment: TestEnvironment) {
 /**
  * @param name A unique name.
  */
-suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
+suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
     println("createEnvironmentInEnvDialog start '$name'")
 
     var retryAttempt = 0
@@ -434,11 +441,17 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
     delayShort()
     waitForIdle()
 
-    waitUntil(30.seconds().millis) { // easy to fail
-        waitForIdle()
+    try {
+        waitUntil(30.seconds().millis) { // easy to fail
+            waitForIdle()
 
-        // one in list view and one in text field
-        onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodesWithRetry(this).size == 2
+            // one in list view and one in text field
+            onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodesWithRetry(this).size == 2
+        }
+    } catch (e: ComposeTimeoutException) {
+        val screenshot = captureToImage().asSkiaBitmap().toBufferedImage().toImage()
+        File("test-error.png").writeBytes(screenshot.encodeToData(EncodedImageFormat.PNG)!!.bytes)
+        throw e
     }
 
     waitForIdle()
@@ -447,12 +460,12 @@ suspend fun ComposeUiTest.createEnvironmentInEnvDialog(name: String) {
     println("createEnvironmentInEnvDialog '$name' list ${onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).joinToString("|") { it.config.toString() }}")
 }
 
-fun ComposeUiTest.selectRequestMethod(itemDisplayText: String) {
+fun DesktopComposeUiTest.selectRequestMethod(itemDisplayText: String) {
     // TODO support custom method
     selectDropdownItem(TestTagPart.RequestMethodDropdown.name, itemDisplayText)
 }
 
-fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String, assertDisplayText: String = itemDisplayText) {
+fun DesktopComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: String, assertDisplayText: String = itemDisplayText) {
     val itemTag = buildTestTag(testTagPart, TestTagPart.DropdownItem, itemDisplayText)!!
     // if drop down menu is expanded, click the item directly; otherwise, open the menu first.
     if (onAllNodesWithTag(itemTag, useUnmergedTree = true).fetchSemanticsNodesWithRetry(this).isEmpty()) {
@@ -498,7 +511,7 @@ fun ComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText: Strin
     }
 }
 
-suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment?) {
+suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, environment: TestEnvironment?) {
     createProjectIfNeeded()
     if (environment != null) {
         selectEnvironment(environment)
@@ -916,7 +929,7 @@ suspend fun ComposeUiTest.createRequest(request: UserRequestTemplate, environmen
     }
 }
 
-suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, isExpectResponseBody: Boolean = false, renderResponseTimeout: KDuration = 1500.milliseconds(), environment: TestEnvironment?) {
+suspend fun DesktopComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), isOneOffRequest: Boolean = true, isExpectResponseBody: Boolean = false, renderResponseTimeout: KDuration = 1500.milliseconds(), environment: TestEnvironment?) {
     createRequest(request = request, environment = environment)
 
     waitForIdle()
@@ -946,7 +959,7 @@ suspend fun ComposeUiTest.createAndSendHttpRequest(request: UserRequestTemplate,
     }
 }
 
-suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment?, ignoreAssertQueryParameters: Set<String> = emptySet()): RequestData {
+suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment?, ignoreAssertQueryParameters: Set<String> = emptySet()): RequestData {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
@@ -1025,7 +1038,7 @@ suspend fun ComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request:
     return resp
 }
 
-suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: Boolean = true) {
+suspend fun DesktopComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: Boolean = true) {
     fun getStreamPayloadLatestTimeString(): String {
         waitForIdle()
         return (onAllNodesWithTag(TestTag.ResponseStreamLogItemTime.name, useUnmergedTree = true)
@@ -1068,7 +1081,7 @@ suspend fun ComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: B
     waitUntil(600.milliseconds().millis) { getStreamPayloadLatestTimeString() != streamCountBeforeSend }
 }
 
-suspend fun ComposeUiTest.fireRequest(timeout: KDuration = 1.seconds(), isClientStreaming: Boolean = false, isServerStreaming: Boolean = false) {
+suspend fun DesktopComposeUiTest.fireRequest(timeout: KDuration = 1.seconds(), isClientStreaming: Boolean = false, isServerStreaming: Boolean = false) {
     onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
         .assertIsDisplayedWithRetry(this)
         .assertTextEquals(if (isClientStreaming) "Connect" else "Send")
@@ -1085,13 +1098,13 @@ suspend fun ComposeUiTest.fireRequest(timeout: KDuration = 1.seconds(), isClient
     }
 }
 
-suspend fun ComposeUiTest.completeRequest() {
+suspend fun DesktopComposeUiTest.completeRequest() {
     onNodeWithTag(TestTag.RequestCompleteStreamButton.name)
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
 }
 
-fun ComposeUiTest.disconnect() {
+fun DesktopComposeUiTest.disconnect() {
     onNodeWithTag(TestTag.RequestFireOrDisconnectButton.name)
         .assertIsDisplayedWithRetry(this)
         .assertTextEquals("Disconnect")
@@ -1105,28 +1118,28 @@ fun ComposeUiTest.disconnect() {
     }
 }
 
-suspend fun ComposeUiTest.delayShort() {
+suspend fun DesktopComposeUiTest.delayShort() {
     wait(250L)
 }
 
-suspend fun ComposeUiTest.wait(duration: KDuration) {
+suspend fun DesktopComposeUiTest.wait(duration: KDuration) {
     wait(duration.toMilliseconds())
 }
 
-suspend fun ComposeUiTest.wait(ms: Long) {
+suspend fun DesktopComposeUiTest.wait(ms: Long) {
     mainClock.advanceTimeBy(ms)
     delay(ms)
     waitForIdle()
 }
 
-fun ComposeUiTest.getResponseBody(): String? {
+fun DesktopComposeUiTest.getResponseBody(): String? {
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
         .getTexts()
         .singleOrNull()
     return responseBody
 }
 
-fun ComposeUiTest.retryForUnresponsiveBuggyComposeTest(testContent: () -> Unit) {
+fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(testContent: () -> Unit) {
     var retryAttempt = 0
     while (true) { // add this loop because the click is often not performed
         waitForIdle()

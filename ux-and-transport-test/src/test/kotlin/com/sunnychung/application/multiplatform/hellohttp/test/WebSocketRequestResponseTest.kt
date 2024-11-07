@@ -3,6 +3,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.test
 
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onAllNodesWithText
@@ -125,7 +126,7 @@ class WebSocketRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boo
         disconnect()
     }
 
-    suspend fun ComposeUiTest.createAndFireWebSocketRequest(
+    suspend fun DesktopComposeUiTest.createAndFireWebSocketRequest(
         environment: TestEnvironment,
         requestDecorator: (UserRequestTemplate) -> UserRequestTemplate = { it }
     ): UserRequestTemplate {
@@ -164,7 +165,7 @@ class WebSocketRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boo
     }
 }
 
-fun ComposeUiTest.assertHttpStatus() {
+fun DesktopComposeUiTest.assertHttpStatus() {
     onNodeWithTag(TestTag.ResponseStatus.name)
         .assertTextEquals("101 Switching Protocols")
 }

@@ -34,3 +34,8 @@ jobs:
           name: unit-test-result_${{ matrix.os }}
           path: build/reports/tests
         if: ${{ always() }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ux-test-error_${{ matrix.os }}
+          path: test-error.png
+        if: ${{ always() }}
