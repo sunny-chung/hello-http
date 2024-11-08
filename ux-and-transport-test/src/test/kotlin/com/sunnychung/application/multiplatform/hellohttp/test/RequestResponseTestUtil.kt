@@ -431,12 +431,25 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
         break
     }
 
-    onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-        .assertIsDisplayedWithRetry(this)
-        .performTextClearance()
+    do {
+        onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+            .assertIsDisplayedWithRetry(this)
+            .performTextClearance() // not always working
 
-    delayShort()
-    waitForIdle()
+        delayShort()
+        waitForIdle()
+//        println("Env Text: [${
+//            onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+//                .fetchSemanticsNodeWithRetry(this)
+//                .getTexts()
+//        }]")
+    } while(
+        onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+            .fetchSemanticsNodeWithRetry(this)
+            .getTexts()
+            .filter { it != "Environment Name" }
+            .isNotEmpty()
+    )
 
     onNodeWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
         .performTextInput(this, name)
