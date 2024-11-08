@@ -2,8 +2,6 @@ package com.sunnychung.application.multiplatform.hellohttp.test.util
 
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
@@ -26,10 +24,10 @@ class ChunkedLatestFlowTest {
                 flow<Int> {
                     (0..10).forEach {
                         emit(it)
-                        delay(145)
+                        delay(1450)
                     }
                 }
-                    .chunkedLatest(500.milliseconds())
+                    .chunkedLatest(5000.milliseconds())
                     .onEach { results += it }
                     .launchIn(this)
             }
@@ -47,12 +45,12 @@ class ChunkedLatestFlowTest {
                 flow<Int> {
                     (0..10).forEach {
                         emit(it)
-                        delay(145)
+                        delay(1450)
                     }
                     emit(11)
                     emit(12)
                 }
-                    .chunkedLatest(500.milliseconds())
+                    .chunkedLatest(5000.milliseconds())
                     .onEach { results += it }
                     .launchIn(this)
             }
@@ -70,10 +68,10 @@ class ChunkedLatestFlowTest {
                 flow<Int> {
                     (0..12).forEach {
                         emit(it)
-                        delay(145)
+                        delay(1450)
                     }
                 }
-                    .chunkedLatest(500.milliseconds())
+                    .chunkedLatest(5000.milliseconds())
                     .onEach { results += it }
                     .launchIn(this)
             }
