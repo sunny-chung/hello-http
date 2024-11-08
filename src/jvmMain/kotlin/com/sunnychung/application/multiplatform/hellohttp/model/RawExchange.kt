@@ -59,7 +59,7 @@ data class RawExchange(
                     consumePayloadBuilder(isComplete = true)
                 }
             }
-            log.d { "unsafe write ${bytes.size} => $payloadSize" }
+            log.v { "unsafe write ${bytes.size} => $payloadSize" }
         }
 
         override fun equals(other: Any?): Boolean {

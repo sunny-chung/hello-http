@@ -13,14 +13,14 @@ class SynchronizedListSerializer<E>(elementSerializer: KSerializer<E>) : KSerial
     override val descriptor: SerialDescriptor = listSerializer.descriptor
 
     override fun serialize(encoder: Encoder, value: MutableList<E>) {
-        log.d { "SynchronizedListSerializer serialize" }
+//        log.v { "SynchronizedListSerializer serialize" }
         synchronized(value) {
             listSerializer.serialize(encoder, value)
         }
     }
 
     override fun deserialize(decoder: Decoder): MutableList<E> {
-        log.d { "SynchronizedListSerializer deserialize" }
+//        log.v { "SynchronizedListSerializer deserialize" }
         return listSerializer.deserialize(decoder).toMutableList().let {
             Collections.synchronizedList(it)
         }
