@@ -70,28 +70,31 @@ import org.jetbrains.skiko.toImage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.awt.Dimension
+import java.awt.Rectangle
+import java.awt.Robot
+import java.awt.Toolkit
 import java.io.File
 import java.net.URL
 
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
     executeWithTimeout(120.seconds()) {
         try {
-            runDesktopComposeUiTest(1024, 560) {
+            runDesktopComposeUiTest {
                 setContent {
-//                    Window(
-//                        title = "Hello HTTP",
-//                        onCloseRequest = {},
-//                        state = rememberWindowState(width = 1024.dp, height = 560.dp)
-//                    ) {
-//                        with(LocalDensity.current) {
-//                            window.minimumSize = if (isMacOs()) {
-//                                Dimension(800, 450)
-//                            } else {
-//                                Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
-//                            }
-//                        }
+                    Window(
+                        title = "Hello HTTP",
+                        onCloseRequest = {},
+                        state = rememberWindowState(width = 1024.dp, height = 560.dp)
+                    ) {
+                        with(LocalDensity.current) {
+                            window.minimumSize = if (isMacOs()) {
+                                Dimension(800, 450)
+                            } else {
+                                Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                            }
+                        }
                         AppView()
-//                    }
+                    }
                 }
                 runBlocking { // don't use Dispatchers.Main, or most tests would fail with ComposeTimeoutException
                     testBlock()
@@ -449,8 +452,9 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
             onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodesWithRetry(this).size == 2
         }
     } catch (e: ComposeTimeoutException) {
-        val screenshot = captureToImage().asSkiaBitmap().toBufferedImage().toImage()
-        File("test-error.png").writeBytes(screenshot.encodeToData(EncodedImageFormat.PNG)!!.bytes)
+//        val screenshot = captureToImage().asSkiaBitmap().toBufferedImage().toImage()
+//        File("test-error.png").writeBytes(screenshot.encodeToData(EncodedImageFormat.PNG)!!.bytes)
+        captureScreenToFile()
         throw e
     }
 
@@ -1225,4 +1229,9 @@ fun SemanticsNodeInteraction.performTextInput(host: ComposeUiTest, s: String) {
     host.runOnUiThread {
         performTextInput(s)
     }
+}
+
+fun captureScreenToFile() {
+    val image = Robot().createScreenCapture(Rectangle(Toolkit.getDefaultToolkit().screenSize))
+    File("test-error.png").writeBytes(image.toImage().encodeToData(EncodedImageFormat.PNG)!!.bytes)
 }
