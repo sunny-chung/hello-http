@@ -76,22 +76,22 @@ import java.net.URL
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
     executeWithTimeout(120.seconds()) {
         try {
-            runDesktopComposeUiTest {
+            runDesktopComposeUiTest(1024, 560) {
                 setContent {
-                    Window(
-                        title = "Hello HTTP",
-                        onCloseRequest = {},
-                        state = rememberWindowState(width = 1024.dp, height = 560.dp)
-                    ) {
-                        with(LocalDensity.current) {
-                            window.minimumSize = if (isMacOs()) {
-                                Dimension(800, 450)
-                            } else {
-                                Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
-                            }
-                        }
+//                    Window(
+//                        title = "Hello HTTP",
+//                        onCloseRequest = {},
+//                        state = rememberWindowState(width = 1024.dp, height = 560.dp)
+//                    ) {
+//                        with(LocalDensity.current) {
+//                            window.minimumSize = if (isMacOs()) {
+//                                Dimension(800, 450)
+//                            } else {
+//                                Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+//                            }
+//                        }
                         AppView()
-                    }
+//                    }
                 }
                 runBlocking { // don't use Dispatchers.Main, or most tests would fail with ComposeTimeoutException
                     testBlock()
