@@ -22,12 +22,15 @@ class ChunkedLatestFlowTest {
 
             coroutineScope {
                 flow<Int> {
+                    val startTime = System.currentTimeMillis()
                     (0..10).forEach {
                         emit(it)
-                        delay(1450)
+                        val currTime = System.currentTimeMillis()
+                        println("t=${currTime - startTime}: $it")
+                        delay((it + 1) * 145 - (currTime - startTime))
                     }
                 }
-                    .chunkedLatest(5000.milliseconds())
+                    .chunkedLatest(500.milliseconds())
                     .onEach { results += it }
                     .launchIn(this)
             }
@@ -43,14 +46,17 @@ class ChunkedLatestFlowTest {
 
             coroutineScope {
                 flow<Int> {
+                    val startTime = System.currentTimeMillis()
                     (0..10).forEach {
                         emit(it)
-                        delay(1450)
+                        val currTime = System.currentTimeMillis()
+                        println("t=${currTime - startTime}: $it")
+                        delay((it + 1) * 145 - (currTime - startTime))
                     }
                     emit(11)
                     emit(12)
                 }
-                    .chunkedLatest(5000.milliseconds())
+                    .chunkedLatest(500.milliseconds())
                     .onEach { results += it }
                     .launchIn(this)
             }
@@ -66,12 +72,15 @@ class ChunkedLatestFlowTest {
 
             coroutineScope {
                 flow<Int> {
+                    val startTime = System.currentTimeMillis()
                     (0..12).forEach {
                         emit(it)
-                        delay(1450)
+                        val currTime = System.currentTimeMillis()
+                        println("t=${currTime - startTime}: $it")
+                        delay((it + 1) * 145 - (currTime - startTime))
                     }
                 }
-                    .chunkedLatest(5000.milliseconds())
+                    .chunkedLatest(500.milliseconds())
                     .onEach { results += it }
                     .launchIn(this)
             }
