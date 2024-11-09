@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+
+- Prettify button in JSON request editor. This includes GraphQL and gRPC.
 - Mouse hovering variable placeholders in Body Editor to show a tooltip for its value (if exists)
 
 ### Removed
