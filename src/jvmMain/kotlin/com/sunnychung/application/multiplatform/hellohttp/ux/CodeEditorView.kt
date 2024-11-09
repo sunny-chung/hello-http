@@ -117,6 +117,8 @@ fun CodeEditorView(
     knownVariables: Map<String, String> = mutableMapOf(),
     testTag: String? = null,
 ) {
+    log.d { "CodeEditorView start" }
+
     val themeColours = LocalColor.current
     val coroutineScope = rememberCoroutineScope()
 

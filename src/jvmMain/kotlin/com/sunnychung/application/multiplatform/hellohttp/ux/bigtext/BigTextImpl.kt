@@ -400,7 +400,8 @@ open class BigTextImpl(
     }
 
     private fun insertChunkAtPosition(position: Int, chunkedString: CharSequence) {
-        log.d { "$this insertChunkAtPosition($position, $chunkedString)" }
+        log.d { "$this insertChunkAtPosition($position, ${chunkedString.length})" }
+        log.v { "$this insertChunkAtPosition($position, $chunkedString)" }
         require(chunkedString.length <= chunkSize)
 //        if (position == 64) {
 //            log.d { inspect("$position") }

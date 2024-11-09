@@ -80,26 +80,31 @@ open class BigTextNodeValue : Comparable<BigTextNodeValue>, DebuggableNode<BigTe
 }
 
 abstract class TextBuffer {
+    private val mutableLineOffsetStarts = mutableListOf<Int>()
+
     /**
      * Line break positions in the domain of character indices of this buffer.
      */
-    var lineOffsetStarts: List<Int> = emptyList()
+    val lineOffsetStarts: List<Int> = mutableLineOffsetStarts
 //    var lineOffsetStarts: SortedSet<Int> = sortedSetOf()
 //    var rowOffsetStarts: List<Int> = emptyList()
 
     abstract val length: Int
 
     fun append(text: CharSequence): IntRange {
+        log.v { "append ${text.length} start" }
         val start = length
         bufferAppend(text)
+        log.v { "append ${text.length} after append" }
 //        text.forEachIndexed { index, c ->
 //            if (c == '\n') {
 //                lineOffsetStarts += start + index
 //            }
 //        }
         text.findAllIndicesOfChar('\n').forEach {
-            lineOffsetStarts += start + it
+            mutableLineOffsetStarts += start + it
         }
+        log.v { "append ${text.length} end" }
         return start until start + text.length
     }
 

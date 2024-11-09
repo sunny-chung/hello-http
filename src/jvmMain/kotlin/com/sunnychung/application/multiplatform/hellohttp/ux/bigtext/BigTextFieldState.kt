@@ -44,6 +44,7 @@ fun rememberAnnotatedBigTextFieldState(initialValue: AnnotatedString = Annotated
 
 @Composable
 fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableObjectRef<String>, MutableState<BigTextFieldState>> {
+    log.d { "rememberAnnotatedBigTextFieldState start" }
     val secondCacheKey by rememberSaveable { mutableStateOf(MutableObjectRef(initialValue)) }
     val state = rememberSaveable {
         log.i { "cache miss 1" }
@@ -56,6 +57,7 @@ fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableO
         state.value = BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState())
 //        log.i { "new view state = ${state.value.viewState}" }
     }
+    log.d { "rememberAnnotatedBigTextFieldState end" }
     return secondCacheKey to state
 }
 
