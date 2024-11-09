@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Prettify button in JSON request editor. This includes GraphQL and gRPC.
 - Mouse hovering variable placeholders in Body Editor to show a tooltip for its value (if exists)
 
+### Updated
+- Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)
+
 ### Removed
 - Text fields and response body viewer now do not trim content over 4 MB (but other limits still apply)
 

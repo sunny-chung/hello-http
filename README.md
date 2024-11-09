@@ -91,7 +91,7 @@ Watch the images and videos on the [website](https://sunny-chung.github.io/hello
 - Executing custom safe script to mutate a Request before firing it
 - Copying as verbose cURL commands
 - Copying as verbose [grpcurl](https://github.com/fullstorydev/grpcurl) commands
-- Copying as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)
+- Copying as PowerShell Invoke-WebRequest command (for Windows pwsh.exe version 6 or above)
 
 **Response**
 - Post flight actions

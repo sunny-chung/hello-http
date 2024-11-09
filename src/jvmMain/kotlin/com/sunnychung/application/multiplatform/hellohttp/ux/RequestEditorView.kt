@@ -1600,5 +1600,5 @@ private data class ProtocolMethod(val application: ProtocolApplication, val meth
 private enum class SendButtonDropdown(val displayText: String) {
     CurlForLinux("Copy as cURL command (for Linux / macOS)"),
     GrpcurlForLinux("Copy as grpcurl command (for Linux / macOS)"),
-    PowershellInvokeWebrequestForWindows("Copy as PowerShell Invoke-WebRequest command (for Windows pwsh.exe)")
+    PowershellInvokeWebrequestForWindows("Copy as PowerShell v6+ Invoke-WebRequest command (for Windows pwsh.exe)")
 }
