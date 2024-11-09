@@ -84,4 +84,17 @@ class GraphqlQuerySyntaxHighlightTransformation(val colours: AppColor) : VisualT
         return TransformedText(AnnotatedString(s, text.spanStyles + spans), OffsetMapping.Identity)
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is GraphqlQuerySyntaxHighlightTransformation) return false
+
+        if (colours !== other.colours) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return colours.hashCode()
+    }
+
 }

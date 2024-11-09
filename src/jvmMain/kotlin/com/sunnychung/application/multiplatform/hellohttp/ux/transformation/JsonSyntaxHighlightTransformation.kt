@@ -75,4 +75,17 @@ class JsonSyntaxHighlightTransformation(val colours: AppColor) : VisualTransform
         lastResult = TransformedText(AnnotatedString(s, text.spanStyles + spans), OffsetMapping.Identity)
         return lastResult!!
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is JsonSyntaxHighlightTransformation) return false
+
+        if (colours !== other.colours) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return colours.hashCode()
+    }
 }

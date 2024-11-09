@@ -21,4 +21,24 @@ class SearchHighlightTransformation(private val searchPattern: Regex, private va
         }
         return TransformedText(AnnotatedString(s, text.spanStyles + spans), OffsetMapping.Identity)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is SearchHighlightTransformation) return false
+
+        if (searchPattern != other.searchPattern) return false
+        if (currentIndex != other.currentIndex) return false
+        if (highlightStyle != other.highlightStyle) return false
+        if (currentHighlightStyle != other.currentHighlightStyle) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = searchPattern.hashCode()
+        result = 31 * result + (currentIndex ?: 0)
+        result = 31 * result + highlightStyle.hashCode()
+        result = 31 * result + currentHighlightStyle.hashCode()
+        return result
+    }
 }

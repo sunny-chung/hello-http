@@ -3,7 +3,6 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,23 +10,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.onClick
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +35,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -49,33 +48,58 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.sunnychung.application.multiplatform.hellohttp.extension.binarySearchForInsertionPoint
+import com.google.common.collect.TreeRangeMap
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
-import com.sunnychung.application.multiplatform.hellohttp.extension.insert
+import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
+import com.sunnychung.application.multiplatform.hellohttp.extension.length
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
+import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
+import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
-import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
+import com.sunnychung.application.multiplatform.hellohttp.ux.AppUX.ENV_VAR_VALUE_MAX_DISPLAY_LENGTH
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextInputFilter
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextKeyboardInputProcessor
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberAnnotatedBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.CollapseTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.CollapseTransformationOffsetMapping
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.SearchHighlightTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.CollapseIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.SearchHighlightDecorator
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
+import kotlin.random.Random
 
 val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024 // 4 MB
 
@@ -88,140 +112,99 @@ fun CodeEditorView(
     collapsableLines: List<IntRange> = emptyList(),
     collapsableChars: List<IntRange> = emptyList(),
     textColor: Color = LocalColor.current.text,
-    transformations: List<VisualTransformation> = emptyList(),
+    syntaxHighlight: SyntaxHighlight,
     isEnableVariables: Boolean = false,
-    knownVariables: Set<String> = setOf(),
+    knownVariables: Map<String, String> = mutableMapOf(),
     testTag: String? = null,
 ) {
-    val colors: TextFieldColors = TextFieldDefaults.textFieldColors(
-        textColor = textColor,
-        placeholderColor = LocalColor.current.placeholder,
-        cursorColor = LocalColor.current.cursor,
-        backgroundColor = LocalColor.current.backgroundInputField
-    )
     val themeColours = LocalColor.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Replace "\r\n" by "\n" because to workaround the issue:
-    // https://github.com/JetBrains/compose-multiplatform/issues/3877
-    fun String.filterForTextField() = replace("\r\n", "\n")
+    val inputFilter = BigTextInputFilter { it.replace("\r\n".toRegex(), "\n") }
 
-    var textValue by remember { mutableStateOf(TextFieldValue(text = text.filterForTextField())) }
-    var cursorDelta by remember { mutableStateOf(0) }
-    val newText = text.filterForTextField().let {
-        if (it.length > MAX_TEXT_FIELD_LENGTH) {
-            it.substring(0 .. MAX_TEXT_FIELD_LENGTH - 1) + "\n... (trimmed. total ${it.length} bytes)"
-        } else {
-            it
-        }
-    }
-    var textLayoutResult by rememberLast(newText) { mutableStateOf<TextLayoutResult?>(null) }
-    var lineTops by rememberLast(newText, textLayoutResult) { mutableStateOf<List<Float>?>(null) }
-    log.d { "len newText ${newText.length}, textValue.text ${textValue.text.length}, text ${text.length}" }
-    if (newText != textValue.text) {
-        log.d { "CodeEditorView replace text len ${textValue.text.length} -> ${newText.length}" }
-        textValue = textValue.copy(text = newText)
-        lineTops = null // recalculate
-        textLayoutResult = null
-    }
-    if (cursorDelta > 0) {
-        textValue = textValue.copy(
-            selection = TextRange(
-                textValue.selection.start + cursorDelta,
-                textValue.selection.end + cursorDelta
-            )
-        )
-        cursorDelta = 0
-    }
+    var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
-    var collapsedLines = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
-    var collapsedChars = rememberLast(newText) { mutableStateMapOf<IntRange, IntRange>() }
+    val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = text)
+    val bigTextFieldState: BigTextFieldState = bigTextFieldMutableState.value
+    val bigTextValue: BigTextImpl = bigTextFieldState.text
+    var bigTextValueId by remember(bigTextFieldState) { mutableStateOf<Long>(Random.nextLong()) }
+
+    var collapsedLines = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
+    var collapsedChars = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
 
     log.d { "CodeEditorView recompose" }
 
-    fun onPressEnterAddIndent() {
-        val cursorPos = textValue.selection.min
-        assert(textValue.selection.length == 0)
-
+    fun onPressEnterAddIndent(textManipulator: BigTextManipulator) {
         log.d { "onPressEnterAddIndent" }
 
-        val text = textValue.text
-        var lastLineStart = getLineStart(text, cursorPos)
-        var spacesMatch = "^(\\s+)".toRegex().matchAt(text.substring(lastLineStart, cursorPos), 0)
+        val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
+        val previousLineString = bigTextValue.findLineString(lineIndex) // as '\n' is not yet inputted, current line is the "previous line"
+        var spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
-        log.d { "onPressEnterAddIndent add ${newSpaces.length} spaces. current cursor $cursorPos" }
-//        textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length)) // no use
-        cursorDelta += newSpaces.length
-        onTextChange?.invoke(text.insert(cursorPos, newSpaces))
+        textManipulator.replaceAtCursor(newSpaces)
     }
 
-    log.v { "cursor at ${textValue.selection}" }
-    fun onPressTab(isShiftPressed: Boolean) {
-        val selection = textValue.selection
-        val text = textValue.text
-        if (selection.length == 0) {
-            val cursorPos = selection.min
+    fun onPressTab(textManipulator: BigTextManipulator, isShiftPressed: Boolean) {
+        val vs = bigTextFieldState.viewState
+        val text = bigTextFieldState.text
+        if (!isShiftPressed && !vs.hasSelection()) {
             val newSpaces = " ".repeat(4)
-            textValue = textValue.copy(selection = TextRange(cursorPos + newSpaces.length))
-            onTextChange?.invoke(text.insert(cursorPos, newSpaces))
-        } else if (!isShiftPressed) { // select text and press tab to insert 1-level indent to lines
-            val lineStarts = getAllLineStartsInRegion(
-                text = text,
-                from = selection.min,
-                to = selection.max - 1,
-            )
-            log.v { "lineStarts = $lineStarts" }
-            val newSpaces = " ".repeat(4)
-            var s = text
-            for (i in lineStarts.size - 1 downTo 0) {
-                val it = lineStarts[i]
-                s = s.insert(it, newSpaces)
-            }
+            textManipulator.replaceAtCursor(newSpaces)
+            return
+        }
 
-            val (minOffset, maxOffset) = Pair(newSpaces.length, newSpaces.length * lineStarts.size)
-            log.d { "off = $minOffset, $maxOffset" }
-            textValue = textValue.copy(
-                text = s,
-                selection = TextRange(
-                    start = selection.start + if (!selection.reversed) minOffset else maxOffset,
-                    end = selection.end + if (!selection.reversed) maxOffset else minOffset,
-                )
-            )
+        val lineRange = if (vs.hasSelection()) {
+            text.findLineAndColumnFromRenderPosition(vs.selection.start).first ..
+                text.findLineAndColumnFromRenderPosition(vs.selection.endInclusive).first
+        } else {
+            val currentLineIndex = text.findLineAndColumnFromRenderPosition(vs.cursorIndex).first
+            currentLineIndex .. currentLineIndex
+        }
 
-            onTextChange?.invoke(s)
-        } else { // select text and press shift+tab to remove 1-level indent from lines
-            val lineStarts = getAllLineStartsInRegion(
-                text = text,
-                from = selection.min,
-                to = selection.max - 1,
-            )
-            log.v { "lineStarts R = $lineStarts" }
-            var s = text
-            var firstLineSpaces = 0
-            var numSpaces = 0
-            for (i in lineStarts.size - 1 downTo 0) {
-                val it = lineStarts[i]
-                // at most remove 4 spaces
-                val spaceRange = "^ {1,4}".toRegex().matchAt(s.substring(it, minOf(it + 4, s.length)), 0)?.range
-                if (spaceRange != null) {
-                    s = s.removeRange(it + spaceRange.start..it + spaceRange.endInclusive)
-                    val spaceLength = spaceRange.endInclusive + 1 - spaceRange.start
-                    numSpaces += spaceLength
-                    if (i == 0) firstLineSpaces = spaceLength
+        val isCursorAtSelectionStart = !vs.hasSelection() || vs.cursorIndex == vs.selection.start
+        var selectionStartChange = 0
+        var selectionEndChange = 0
+
+        log.d { "tab line range = $lineRange" }
+
+        lineRange.reversed().forEach {
+            val linePosStart = text.findPositionStartOfLine(it)
+            log.d { "tab line $it pos $linePosStart" }
+            if (!isShiftPressed) { // increase indent
+                val newSpaces = " ".repeat(4)
+                selectionStartChange = newSpaces.length
+                selectionEndChange += newSpaces.length
+                textManipulator.insertAt(linePosStart, newSpaces)
+            } else { // decrease indent
+                val line = text.findLineString(it)
+                val textToBeDeleted = "^( {1,4}|\t)".toRegex().matchAt(line, 0) ?: return@forEach
+                val rangeToBeDeleted = linePosStart until linePosStart + textToBeDeleted.groups[1]!!.range.length
+                textManipulator.delete(rangeToBeDeleted)
+
+                if (it == lineRange.first) {
+                    selectionStartChange -= textToBeDeleted.groups[1]!!.range.length
+                } else {
+                    val intersectionWithSelectionRange = vs.selection intersect rangeToBeDeleted
+                    log.d { "tab selectionEndChange -= ${intersectionWithSelectionRange.length}" }
+                    selectionEndChange -= intersectionWithSelectionRange.length
                 }
             }
+        }
 
-            val (minOffset, maxOffset) = Pair(- firstLineSpaces, - numSpaces)
-            log.d { "off = $minOffset, $maxOffset" }
-            textValue = textValue.copy(
-                text = s,
-                selection = TextRange(
-                    start = maxOf(0, selection.start + if (!selection.reversed) minOffset else maxOffset),
-                    end = selection.end + if (!selection.reversed) maxOffset else minOffset,
-                )
-            )
+        if (isShiftPressed) {
+            selectionEndChange += selectionStartChange
+        }
 
-            onTextChange?.invoke(s)
+        log.d { "tab ∆sel = $selectionStartChange, $selectionEndChange" }
+        if (selectionStartChange != 0 || selectionEndChange != 0) {
+            if (vs.hasSelection()) {
+                textManipulator.setSelection(vs.selection.start + selectionStartChange..vs.selection.endInclusive + selectionEndChange)
+            }
+            if (isCursorAtSelectionStart) {
+                textManipulator.setCursorPosition(vs.cursorIndex + selectionStartChange)
+            } else {
+                textManipulator.setCursorPosition(vs.cursorIndex + selectionEndChange)
+            }
         }
     }
 
@@ -233,14 +216,24 @@ fun CodeEditorView(
         isWholeWord = false
     )) }
     var searchPattern by rememberLast(searchText, searchOptions) { mutableStateOf<Regex?>(null) }
+    val searchPatternLatest by rememberUpdatedState(searchPattern)
     val scrollState = rememberScrollState()
     val searchBarFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
 
-    var searchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
-    var lastSearchResultViewIndex by rememberLast(text) { mutableStateOf(0) }
-    var searchResultRanges by rememberLast(text, searchPattern) { mutableStateOf<List<IntRange>?>(null) }
+    var searchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
+    var lastSearchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
+    val searchResultRangesState = rememberLast(bigTextValue) { MutableStateFlow<List<IntRange>?>(null) } //= rememberLast(text, searchPattern) { mutableStateOf<List<IntRange>?>(null) }
+    val searchResultRanges by searchResultRangesState.collectAsState()
     var textFieldSize by remember { mutableStateOf<IntSize?>(null) }
+    val searchResultRangeTreeState = rememberLast(bigTextValue) { MutableStateFlow<TreeRangeMap<Int, Int>?>(null) } //= rememberLast(text, searchPattern) { mutableStateOf<TreeRangeMap<Int, Int>?>(null) }
+    val searchResultRangeTree by searchResultRangeTreeState.collectAsState()
+
+    val searchTrigger = remember { Channel<Unit>() }
+
+    remember(searchOptions) {
+        searchTrigger.trySend(Unit)
+    }
 
     if (searchText.isNotEmpty() && searchPattern == null) {
         val regexOption = if (searchOptions.isCaseSensitive) setOf() else setOf(RegexOption.IGNORE_CASE)
@@ -255,7 +248,36 @@ fun CodeEditorView(
             searchPattern = pattern
             searchResultViewIndex = 0
             lastSearchResultViewIndex = -1
+            log.d { "set search pattern ${searchPattern?.pattern}" }
         } catch (_: Throwable) {}
+    }
+    log.d { "get search pattern ${searchPattern?.pattern}" }
+
+    LaunchedEffect(bigTextValue) {
+        searchTrigger.receiveAsFlow()
+            .debounce(210L)
+            .filter { isSearchVisible }
+            .collectLatest {
+                log.d { "search triggered ${searchPatternLatest?.pattern}" }
+                if (searchPatternLatest != null) {
+                    try {
+                        val fullText = bigTextValue.buildString()
+                        val r = searchPatternLatest!!
+                            .findAll(fullText)
+                            .map { it.range }
+                            .sortedBy { it.start }
+                            .toList()
+                        searchResultRangesState.value = r
+                        searchResultRangeTreeState.value = TreeRangeMaps.from(r)
+                        log.d { "search r ${r.size}" }
+                    } catch (e: Throwable) {
+                        log.d(e) { "search error" }
+                    }
+                } else {
+                    searchResultRangesState.value = null
+                    searchResultRangeTreeState.value = null
+                }
+            }
     }
     var searchResultSummary = if (!searchResultRanges.isNullOrEmpty()) {
         "${searchResultViewIndex + 1}/${searchResultRanges?.size}"
@@ -263,64 +285,56 @@ fun CodeEditorView(
         ""
     }
 
-    var visualTransformations = transformations +
-            if (isEnableVariables) {
-                listOf(
-                    EnvironmentVariableTransformation(
-                        themeColors = themeColours,
-                        knownVariables = knownVariables
-                    ),
-                    FunctionTransformation(themeColours),
-                )
-            } else {
-                emptyList()
-            } +
-            if (isReadOnly) {
-                listOf(CollapseTransformation(themeColours, collapsedChars.values.toList()))
-            } else {
-                emptyList()
-            }
-
-    textLayoutResult?.let { tl ->
-        (0..minOf(10, tl.lineCount - 1)).forEach {
-            log.d { "> TL Line $it top=${tl.getLineTop(it)} bottom=${tl.getLineBottom(it)} h=${tl.getLineBottom(it) - tl.getLineTop(it)}" }
+    val variableTransformations = remember(bigTextFieldState, themeColours, isEnableVariables) {
+        if (isEnableVariables) {
+            listOf(
+                EnvironmentVariableIncrementalTransformation(),
+                FunctionIncrementalTransformation(themeColours)
+            )
+        } else {
+            emptyList()
         }
     }
 
-    if (isSearchVisible) {
-        if (!searchResultRanges.isNullOrEmpty() && searchPattern != null) {
-            visualTransformations += SearchHighlightTransformation(
-                searchPattern = searchPattern!!,
-                currentIndex = searchResultViewIndex,
-                colours = themeColours,
+    val variableDecorators = remember(bigTextFieldState, themeColours, isEnableVariables, knownVariables) {
+        if (isEnableVariables) {
+            listOf(
+                EnvironmentVariableDecorator(themeColours, knownVariables.keys),
             )
+        } else {
+            emptyList()
         }
+    }
 
-        if (searchPattern != null && searchResultRanges == null) {
-            try {
-                searchResultRanges = searchPattern!!
-                    .findAll(
-                        MultipleVisualTransformation(visualTransformations)
-                            .filter(AnnotatedString(textValue.text))
-                            .text.text
-                    )
-                    .map { it.range }
-                    .sortedBy { it.start }
-                    .toList()
-            } catch (_: Throwable) {}
+    val syntaxHighlightDecorators = rememberLast(bigTextFieldState, themeColours) {
+        when (syntaxHighlight) {
+            SyntaxHighlight.None -> emptyList()
+            SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightDecorator(themeColours))
+            SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
+            SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
         }
+    }
 
-        if (lastSearchResultViewIndex != searchResultViewIndex && textLayoutResult != null && textFieldSize != null && searchResultRanges != null) {
+    val searchDecorators = rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex) {
+        listOf(
+            SearchHighlightDecorator(searchResultRangeTree ?: TreeRangeMap.create(), searchResultViewIndex, themeColours),
+        )
+    }
+
+
+    if (isSearchVisible) {
+        if (lastSearchResultViewIndex != searchResultViewIndex && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
             lastSearchResultViewIndex = searchResultViewIndex
-            val index = searchResultRanges!!.getOrNull(searchResultViewIndex)?.start
-            index?.let {
+            searchResultRanges!!.getOrNull(searchResultViewIndex)?.start?.let { position ->
+                if (position > layoutResult!!.text.length) return@let
+
                 val visibleVerticalRange = scrollState.value .. scrollState.value + textFieldSize!!.height
-                val lineIndex = textLayoutResult!!.getLineForOffset(it)
-                val lineVerticalRange = textLayoutResult!!.getLineTop(lineIndex).toInt() .. textLayoutResult!!.getLineBottom(lineIndex).toInt()
-                if (lineVerticalRange !in visibleVerticalRange) {
+                val rowIndex = layoutResult!!.text.findRowIndexByPosition(position)
+                val rowVerticalRange = layoutResult!!.getTopOfRow(rowIndex).toInt()  .. layoutResult!!.getBottomOfRow(rowIndex).toInt()
+                if (rowVerticalRange !in visibleVerticalRange) {
                     coroutineScope.launch {
-                        log.d { "CEV scroll l=$lineIndex r=$lineVerticalRange v=$visibleVerticalRange" }
-                        scrollState.animateScrollTo(lineVerticalRange.start)
+                        log.d { "CEV scroll l=$rowIndex r=$rowVerticalRange v=$visibleVerticalRange" }
+                        scrollState.animateScrollTo(rowVerticalRange.start)
                     }
                 }
             }
@@ -337,32 +351,6 @@ fun CodeEditorView(
         val size = searchResultRanges?.size ?: 0
         if (size < 1) return
         searchResultViewIndex = (searchResultViewIndex - 1 + size) % size
-    }
-
-    val visualTransformationToUse = visualTransformations.let {
-        if (newText.length > 1 * 1024 * 1024 /* 1 MB */) {
-            // disable all styles to avoid hanging
-            return@let VisualTransformation.None
-        }
-        if (it.size > 1) {
-            MultipleVisualTransformation(it)
-        } else if (it.size == 1) {
-            it.first()
-        } else {
-            VisualTransformation.None
-        }
-    }
-
-    log.d { "lineTops ${lineTops != null}, textLayoutResult ${textLayoutResult != null}" }
-
-    if (lineTops == null && textLayoutResult != null) {
-        log.d { "lineTops recalc start" }
-        val charOffsetMapping = visualTransformationToUse.filter(AnnotatedString(textValue.text)).offsetMapping
-        val lineOffsets = listOf(0) + "\n".toRegex().findAll(textValue.text).map { charOffsetMapping.originalToTransformed(it.range.endInclusive + 1) }
-        log.v { "lineOffsets = $lineOffsets" }
-        lineTops = lineOffsets.map { textLayoutResult!!.getLineTop(textLayoutResult!!.getLineForOffset(it)) } + // O(l * L * 1)
-                (Float.POSITIVE_INFINITY)
-        log.d { "lineTops recalc end" }
     }
 
     Column(modifier = modifier.onPreviewKeyEvent {
@@ -386,7 +374,11 @@ fun CodeEditorView(
         if (isSearchVisible) {
             TextSearchBar(
                 text = searchText,
-                onTextChange = { searchText = it },
+                onTextChange = {
+                    searchText = it
+                    log.d { "searchTrigger send" }
+                    searchTrigger.trySend(Unit)
+                },
                 statusText = searchResultSummary,
                 searchOptions = searchOptions,
                 onToggleRegex = { searchOptions = searchOptions.copy(isRegex = it) },
@@ -417,55 +409,135 @@ fun CodeEditorView(
             }
         }
         Box(modifier = Modifier.weight(1f).onGloballyPositioned { textFieldSize = it.size }) {
-//        log.v { "CodeEditorView text=$text" }
             Row {
-                LineNumbersView(
+                val onCollapseLine = { i: Int ->
+                    val index = collapsableLines.indexOfFirst { it.start == i }
+                    collapsedLines[collapsableLines[index]] = collapsableLines[index]
+                    collapsedChars[collapsableChars[index]] = collapsableChars[index]
+                }
+                val onExpandLine = { i: Int ->
+                    val index = collapsableLines.indexOfFirst { it.start == i }
+                    collapsedLines -= collapsableLines[index]
+                    collapsedChars -= collapsableChars[index]
+                }
+
+                BigTextLineNumbersView(
                     scrollState = scrollState,
-                    textLayoutResult = textLayoutResult,
-                    lineTops = lineTops,
+                    bigTextViewState = bigTextFieldState.viewState,
+                    bigTextValueId = bigTextValueId,
+                    bigText = bigTextValue as BigTextImpl,
+                    layoutResult = layoutResult,
                     collapsableLines = collapsableLines,
                     collapsedLines = collapsedLines.values.toList(),
-                    onCollapseLine = { i ->
-                        val index = collapsableLines.indexOfFirst { it.start == i }
-                        collapsedLines[collapsableLines[index]] = collapsableLines[index]
-                        collapsedChars[collapsableChars[index]] = collapsableChars[index]
-                    },
-                    onExpandLine = { i ->
-                        val index = collapsableLines.indexOfFirst { it.start == i }
-                        collapsedLines -= collapsableLines[index]
-                        collapsedChars -= collapsableChars[index]
-                    },
+                    onCollapseLine = onCollapseLine,
+                    onExpandLine = onExpandLine,
                     modifier = Modifier.fillMaxHeight(),
                 )
-                AppTextField(
-                    value = textValue,
-                    onValueChange = {
-                        textValue = it
-                        log.d { "CEV sel ${textValue.selection.start}" }
-                        onTextChange?.invoke(it.text)
-                    },
-                    visualTransformation = visualTransformationToUse,
-                    readOnly = isReadOnly,
-                    textStyle = LocalTextStyle.current.copy(
-                        fontFamily = FontFamily.Monospace,
+
+                if (isReadOnly) {
+                    val collapseIncrementalTransformation = remember(bigTextFieldState) {
+                        CollapseIncrementalTransformation(themeColours, collapsedChars.values.toList())
+                    }
+                    var transformedText by remember(bigTextFieldState) { mutableStateOf<BigTextTransformed?>(null) }
+
+                    transformedText?.let { transformedText ->
+                        collapseIncrementalTransformation.update(collapsedChars.values.toList(), bigTextFieldState.viewState)
+                    }
+
+                    BigMonospaceText(
+                        text = bigTextValue as BigTextImpl,
+                        padding = PaddingValues(4.dp),
+                        inputFilter = inputFilter,
+                        textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
+                            MultipleIncrementalTransformation(listOf(
+                                collapseIncrementalTransformation,
+                            ))
+                        },
+                        textDecorator = //rememberLast(bigTextFieldState, syntaxHighlightDecorators, searchDecorators) {
+                            MultipleTextDecorator(syntaxHighlightDecorators + searchDecorators)
+                        //},
+                        ,
                         fontSize = LocalFont.current.codeEditorBodyFontSize,
-                    ),
-                    colors = colors,
-                    onTextLayout = { textLayoutResult = it },
-                    modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
-                        .focusRequester(textFieldFocusRequester)
-                        .run {
-                            if (!isReadOnly) {
-                                this.onPreviewKeyEvent {
-                                    if (it.type == KeyEventType.KeyDown) {
+                        isSelectable = true,
+                        scrollState = scrollState,
+                        viewState = bigTextFieldState.viewState,
+                        onTextLayout = { layoutResult = it },
+                        onTransformInit = { transformedText = it },
+                        modifier = Modifier.fillMaxSize()
+                            .focusRequester(textFieldFocusRequester)
+                            .run {
+                                if (testTag != null) {
+                                    testTag(testTag)
+                                } else {
+                                    this
+                                }
+                            }
+                    )
+//                    return@Row // compose bug: return here would crash
+                } else {
+                    LaunchedEffect(bigTextFieldState, onTextChange) {
+                        log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
+                        bigTextFieldState.valueChangesFlow
+                            .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
+                            .chunkedLatest(200.milliseconds())
+                            .collect {
+                                log.d { "bigTextFieldState change ${it.changeId} ${it.bigText.buildString()}" }
+                                onTextChange?.let { onTextChange ->
+                                    val string = it.bigText.buildCharSequence() as AnnotatedString
+                                    log.d { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
+                                    onTextChange(string.text)
+                                    secondCacheKey.value = string.text
+                                }
+                                bigTextValueId = it.changeId
+                                searchTrigger.trySend(Unit)
+
+                                bigTextFieldState.markConsumed(it.sequence)
+                            }
+                    }
+
+                    var mouseHoverVariable by remember(bigTextFieldState) { mutableStateOf<String?>(null) }
+                    AppTooltipArea(
+                        isVisible = mouseHoverVariable != null && mouseHoverVariable in knownVariables,
+                        tooltipText = mouseHoverVariable?.let {
+                            val s = knownVariables[it] ?: return@let null
+                            if (s.length > ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) {
+                                s.substring(0, ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) + " ..."
+                            } else {
+                                s
+                            }
+                        } ?: "",
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        BigMonospaceTextField(
+                            textFieldState = bigTextFieldState,
+                            inputFilter = inputFilter,
+                            textTransformation = remember(variableTransformations) {
+                                MultipleIncrementalTransformation(
+                                    variableTransformations
+                                )
+                            },
+                            textDecorator = //rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex, syntaxHighlightDecorator) {
+                            MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
+                            //},
+                            ,
+                            fontSize = LocalFont.current.codeEditorBodyFontSize,
+                            scrollState = scrollState,
+                            onTextLayout = { layoutResult = it },
+                            keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
+                                override fun beforeProcessInput(
+                                    it: KeyEvent,
+                                    viewState: BigTextViewState,
+                                    textManipulator: BigTextManipulator
+                                ): Boolean {
+                                    return if (it.type == KeyEventType.KeyDown) {
                                         when (it.key) {
                                             Key.Enter -> {
                                                 if (!it.isShiftPressed
                                                     && !it.isAltPressed
                                                     && !it.isCtrlPressed
                                                     && !it.isMetaPressed
-                                                    ) {
-                                                    onPressEnterAddIndent()
+                                                ) {
+                                                    onPressEnterAddIndent(textManipulator)
                                                     true
                                                 } else {
                                                     false
@@ -473,7 +545,7 @@ fun CodeEditorView(
                                             }
 
                                             Key.Tab -> {
-                                                onPressTab(it.isShiftPressed)
+                                                onPressTab(textManipulator, it.isShiftPressed)
                                                 true
                                             }
 
@@ -483,18 +555,27 @@ fun CodeEditorView(
                                         false
                                     }
                                 }
-                            } else {
-                                this
-                            }
-                        }
-                        .run {
-                            if (testTag != null) {
-                                testTag(testTag)
-                            } else {
-                                this
-                            }
-                        }
-                )
+                            },
+                            onPointerEvent = { event, tag ->
+                                log.v { "onPointerEventOnAnnotatedTag $tag $event" }
+                                mouseHoverVariable = if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
+                                    tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
+                                } else {
+                                    null
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                                .focusRequester(textFieldFocusRequester)
+                                .run {
+                                    if (testTag != null) {
+                                        testTag(testTag)
+                                    } else {
+                                        this
+                                    }
+                                }
+                        )
+                    }
+                }
             }
             VerticalScrollbar(
                 modifier = Modifier.align(Alignment.CenterEnd),
@@ -570,12 +651,23 @@ data class SearchOptions(
     val isWholeWord: Boolean, // ignore if isRegex is true
 )
 
+/**
+ * The purpose of this class is to avoid unnecessary heavy computations of cache keys.
+ * It must be wrapped by another @Composable with collapsableLines and collapsedLines as parameters.
+ */
+class CollapsedLinesState(val collapsableLines: List<IntRange>, collapsedLines: List<IntRange>) {
+    val collapsableLinesMap = collapsableLines.associateBy { it.start }
+    val collapsedLines = collapsedLines.associateBy { it.first }.toSortedMap() // TODO optimize using range tree
+}
+
 @Composable
-fun LineNumbersView(
+fun BigTextLineNumbersView(
     modifier: Modifier = Modifier,
+    bigTextViewState: BigTextViewState,
+    bigTextValueId: Long,
+    bigText: BigTextImpl,
+    layoutResult: BigTextSimpleLayoutResult?,
     scrollState: ScrollState,
-    textLayoutResult: TextLayoutResult?,
-    lineTops: List<Float>?,
     collapsableLines: List<IntRange>,
     collapsedLines: List<IntRange>,
     onCollapseLine: (Int) -> Unit,
@@ -583,110 +675,136 @@ fun LineNumbersView(
 ) = with(LocalDensity.current) {
     val colours = LocalColor.current
     val fonts = LocalFont.current
-    var size by remember { mutableStateOf<IntSize?>(null) }
-    val textMeasurer = rememberTextMeasurer()
+
     val textStyle = LocalTextStyle.current.copy(
         fontSize = fonts.codeEditorLineNumberFontSize,
         fontFamily = FontFamily.Monospace,
         color = colours.unimportant,
     )
-    log.v { "LineNumbersView ${size != null} && ${textLayoutResult != null} && ${lineTops != null}" }
-    var lastTextLayoutResult by remember { mutableStateOf(textLayoutResult) }
-    var lastLineTops by remember { mutableStateOf(lineTops) }
+    val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
 
-    val textLayoutResult = textLayoutResult ?: lastTextLayoutResult
-    val lineTops = lineTops ?: lastLineTops
+    // Note that layoutResult.text != bigText
+    val layoutText = layoutResult?.text as? BigTextTransformerImpl
 
-    lastTextLayoutResult = textLayoutResult
-    lastLineTops = lineTops
+    var prevHasLayouted by remember { mutableStateOf(false) }
+    prevHasLayouted = layoutText?.hasLayouted ?: false
+    prevHasLayouted
 
-    val lineNumDigits = lineTops?.let { "${it.lastIndex}".length } ?: 1
+    val viewportTop = scrollState.value
+    val firstLine = layoutText?.findOriginalLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
+    val lastLine = (layoutText?.findOriginalLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
+    log.d { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${layoutText?.numOfOriginalLines}" }
+    val rowHeight = layoutResult?.rowHeight ?: 0f
+    CoreLineNumbersView(
+        firstLine = firstLine,
+        lastLine = minOf(lastLine, layoutText?.numOfOriginalLines ?: 1),
+        totalLines = layoutText?.numOfOriginalLines ?: 1,
+        lineHeight = (rowHeight).toDp(),
+        getLineOffset = {
+            ((layoutText?.findFirstRowIndexByOriginalLineIndex(it).also { r ->
+                log.v { "layoutText.findFirstRowIndexOfLine($it) = $r" }
+            }
+                ?: 0) * rowHeight - viewportTop).toDp()
+        },
+        textStyle = textStyle,
+        collapsedLinesState = collapsedLinesState,
+        onCollapseLine = onCollapseLine,
+        onExpandLine = onExpandLine,
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun CoreLineNumbersView(
+    modifier: Modifier = Modifier,
+    firstLine: Int,
+    /* exclusive */ lastLine: Int,
+    totalLines: Int,
+    lineHeight: Dp,
+    getLineOffset: (Int) -> Dp,
+    textStyle: TextStyle,
+    collapsedLinesState: CollapsedLinesState,
+    onCollapseLine: (Int) -> Unit,
+    onExpandLine: (Int) -> Unit,
+) = with(LocalDensity.current) {
+    val colours = LocalColor.current
+    val fonts = LocalFont.current
+
+    val collapsableLines = collapsedLinesState.collapsableLines
+    val collapsableLinesMap = collapsedLinesState.collapsableLinesMap
+    val collapsedLines = collapsedLinesState.collapsedLines
+
+    val textMeasurer = rememberTextMeasurer()
+    val lineNumDigits = "$totalLines".length
     val width = rememberLast(lineNumDigits, collapsableLines.isEmpty()) {
         maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
-            4.dp + (if (collapsableLines.isNotEmpty()) 24.dp else 0.dp) + 4.dp
+                4.dp + (if (collapsableLines.isNotEmpty()) 24.dp else 0.dp) + 4.dp
     }
-
-    val collapsableLinesMap = collapsableLines.associateBy { it.start }
-    val collapsedLines = collapsedLines.associateBy { it.first }.toSortedMap() // TODO optimize using range tree
 
     Box(
         modifier = modifier
             .width(width)
             .fillMaxHeight()
             .clipToBounds()
-            .onGloballyPositioned { size = it.size }
             .background(colours.backgroundLight)
             .padding(top = 6.dp, start = 4.dp, end = 4.dp), // see AppTextField
     ) {
-        if (size != null && textLayoutResult != null && lineTops != null) {
-            val viewportTop = scrollState.value.toFloat()
-            val viewportBottom = viewportTop + size!!.height
-            log.d { "LineNumbersView before calculation" }
-            // 0-based line index
-            // include the partially visible line before the first line that is entirely visible
-            val firstLine = maxOf(0, lineTops.binarySearchForInsertionPoint { if (it >= viewportTop) 1 else -1 } - 1)
-            val lastLine = lineTops.binarySearchForInsertionPoint { if (it > viewportBottom) 1 else -1 }
-            log.v { "LineNumbersView $firstLine ~ <$lastLine / $viewportTop ~ $viewportBottom" }
-            log.v { "lineTops = $lineTops" }
-            log.v { "collapsedLines = $collapsedLines" }
-            log.d { "LineNumbersView after calculation" }
-            val lineHeight = textLayoutResult.getLineBottom(0) - textLayoutResult.getLineTop(0)
 
-            var ii: Int = firstLine
-            while (ii < minOf(lastLine, lineTops.size - 1)) {
-                val i: Int = ii // `ii` is passed by ref
+        var ii: Int = firstLine
+        while (ii < lastLine) {
+            val i: Int = ii // `ii` is passed by ref
 
-                if (i > firstLine && lineTops[i] - lineTops[i-1] < 1) {
-                    // optimization: there is an instant that collapsedLines is empty but lineTops = [0, 0, ..., 0, 1234]
-                    // skip drawing if there are duplicated lineTops
-                } else {
-                    Row(
+            if (i > firstLine && getLineOffset(i).value - getLineOffset(i - 1).value < 1) {
+                // optimization: there is an instant that collapsedLines is empty but lineTops = [0, 0, ..., 0, 1234]
+                // skip drawing if there are duplicated lineTops
+            } else {
+                Row(
+                    modifier = Modifier
+                        .height(lineHeight)
+                        .offset(y = getLineOffset(i)),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.CenterEnd,
                         modifier = Modifier
-                            .height(lineHeight.toDp())
-                            .offset(y = (lineTops[i] - viewportTop).toDp()),
+                            .weight(1f)
                     ) {
-                        Box(
-                            contentAlignment = Alignment.CenterEnd,
+                        AppText(
+                            text = "${i + 1}",
+                            style = textStyle,
+                            fontSize = fonts.codeEditorLineNumberFontSize,
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
+                            color = colours.unimportant,
+                        )
+                    }
+                    if (collapsableLinesMap.contains(i)) {
+                        AppImageButton(
+                            resource = if (collapsedLines.containsKey(i)) "expand.svg" else "collapse.svg",
+                            size = 12.dp,
+                            innerPadding = PaddingValues(horizontal = 4.dp),
+                            onClick = {
+                                if (collapsedLines.containsKey(i)) {
+                                    onExpandLine(i)
+                                } else {
+                                    onCollapseLine(i)
+                                }
+                            },
                             modifier = Modifier
-                                .weight(1f)
-                        ) {
-                            AppText(
-                                text = "${i + 1}",
-                                style = textStyle,
-                                fontSize = fonts.codeEditorLineNumberFontSize,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1,
-                                color = colours.unimportant,
-                            )
-                        }
-                        if (collapsableLinesMap.contains(i)) {
-                            AppImageButton(
-                                resource = if (collapsedLines.containsKey(i)) "expand.svg" else "collapse.svg",
-                                size = 12.dp,
-                                innerPadding = PaddingValues(horizontal = 4.dp),
-                                onClick = {
-                                    if (collapsedLines.containsKey(i)) {
-                                        onExpandLine(i)
-                                    } else {
-                                        onCollapseLine(i)
-                                    }
-                                },
-                                modifier = modifier
-                                    .width(24.dp)
-                                    .padding(start = 4.dp),
-                            )
-                        } else if (collapsableLines.isNotEmpty()) {
-                            Spacer(modifier.width(24.dp))
-                        }
+                                .fillMaxHeight()
+                                .width(24.dp)
+                                .padding(start = 4.dp),
+                        )
+                    } else if (collapsableLines.isNotEmpty()) {
+                        Spacer(Modifier.fillMaxHeight().width(24.dp))
                     }
                 }
-                collapsedLines.headMap(i + 1).forEach {
-                    if (it.value.contains(i)) {
-                        ii = maxOf(ii, it.value.last)
-                    }
-                }
-                ++ii
             }
+            collapsedLines.headMap(i + 1).forEach {
+                if (it.value.contains(i)) {
+                    ii = maxOf(ii, it.value.last)
+                }
+            }
+            ++ii
         }
     }
 }

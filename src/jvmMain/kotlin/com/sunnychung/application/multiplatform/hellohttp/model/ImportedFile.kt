@@ -14,4 +14,8 @@ data class ImportedFile(
     val createdWhen: KInstant,
     val isEnabled: Boolean,
     val content: ByteArray,
-) : Identifiable
+) : Identifiable {
+    override fun toString(): String {
+        return "ImportedFile(id='$id', name='$name', originalFilename='$originalFilename', createdWhen=$createdWhen, isEnabled=$isEnabled, content={size=${content.size}})"
+    }
+}

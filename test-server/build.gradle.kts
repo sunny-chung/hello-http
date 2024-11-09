@@ -49,6 +49,10 @@ dependencies {
 	implementation("io.grpc:grpc-protobuf:$grpcVersion")
 	implementation("io.grpc:grpc-kotlin-stub:$grpcKotlinVersion")
 	implementation("com.google.protobuf:protobuf-kotlin:$protocVersion")
+
+	// for ssl/mtls
+	implementation("org.bouncycastle:bcprov-jdk18on:1.79")
+	implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
 }
 
 tasks.withType<KotlinCompile> {

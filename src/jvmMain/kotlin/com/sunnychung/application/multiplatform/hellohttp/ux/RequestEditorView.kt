@@ -50,7 +50,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +65,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
@@ -86,8 +86,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLas
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.GraphqlQuerySyntaxHighlightTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import graphql.language.OperationDefinition
@@ -131,7 +129,8 @@ fun RequestEditorView(
 
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
-    val environmentVariableKeys = environment?.variables?.filter { it.isEnabled }?.map { it.key }?.toSet() ?: emptySet()
+    val environmentVariables = environment?.variables?.filter { it.isEnabled }?.map { it.key to it.value }?.toMap() ?: emptyMap()
+    val environmentVariableKeys = environmentVariables.keys
 
     val currentGraphqlOperation = if (request.application == ProtocolApplication.Graphql) {
         (selectedExample.body as? GraphqlBody)?.getOperation(isThrowError = false)
@@ -570,7 +569,7 @@ fun RequestEditorView(
                     request = request,
                     onRequestModified = onRequestModified,
                     selectedExample = selectedExample,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     currentGraphqlOperation = currentGraphqlOperation,
                 )
 
@@ -601,7 +600,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         testTagPart = TestTagPart.RequestHeader,
                         modifier = Modifier.fillMaxWidth(),
@@ -634,7 +633,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         testTagPart = TestTagPart.RequestQueryParameter,
                         modifier = Modifier.fillMaxWidth(),
@@ -683,7 +682,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
@@ -722,7 +721,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariableKeys,
+                        knownVariables = environmentVariables,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
@@ -738,7 +737,7 @@ fun RequestEditorView(
                 selectedPayloadExampleId = selectedPayloadExampleId!!,
                 onSelectExample = { selectedPayloadExampleId = it.id },
                 hasCompleteButton = request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true,
-                knownVariables = environmentVariableKeys,
+                knownVariables = environmentVariables,
                 onClickSendPayload = onClickSendPayload,
                 onClickCompleteStream = onClickCompleteStream,
                 connectionStatus = connectionStatus,
@@ -921,7 +920,7 @@ private fun RequestKeyValueEditorView(
     value: List<UserKeyValuePair>?,
     baseValue: List<UserKeyValuePair>?,
     baseDisabledIds: Set<String>,
-    knownVariables: Set<String>,
+    knownVariables: Map<String, String>,
     onValueUpdate: (List<UserKeyValuePair>) -> Unit,
     onDisableUpdate: (Set<String>) -> Unit,
     isSupportFileValue: Boolean,
@@ -990,7 +989,7 @@ private fun RequestBodyEditor(
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
     selectedExample: UserRequestExample,
-    environmentVariableKeys: Set<String>,
+    environmentVariables: Map<String, String>,
     currentGraphqlOperation: OperationDefinition?,
 ) {
     val colors = LocalColor.current
@@ -1126,7 +1125,7 @@ private fun RequestBodyEditor(
                     request = request,
                     contentType = selectedContentType,
                     onRequestModified = onRequestModified,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     selectedExample = selectedExample,
                     overridePredicate = { it?.isOverrideBody != false },
                     translateToText = { (it.body as? StringBody)?.value },
@@ -1136,11 +1135,7 @@ private fun RequestBodyEditor(
                             body = StringBody(it)
                         )
                     },
-                    transformations = if (selectedContentType == ContentType.Json) {
-                        listOf(JsonSyntaxHighlightTransformation(colours = colors))
-                    } else {
-                        emptyList()
-                    },
+                    syntaxHighlight = if (selectedContentType == ContentType.Json) SyntaxHighlight.Json else SyntaxHighlight.None,
                     modifier = remainModifier,
                 )
             }
@@ -1173,7 +1168,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    knownVariables = environmentVariableKeys,
+                    knownVariables = environmentVariables,
                     isSupportFileValue = false,
                     testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm,
                     modifier = remainModifier,
@@ -1207,7 +1202,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    knownVariables = environmentVariableKeys,
+                    knownVariables = environmentVariables,
                     isSupportFileValue = true,
                     testTagPart = TestTagPart.RequestBodyMultipartForm,
                     modifier = remainModifier,
@@ -1239,7 +1234,7 @@ private fun RequestBodyEditor(
                     request = request,
                     contentType = selectedContentType,
                     onRequestModified = onRequestModified,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     selectedExample = selectedExample,
                     overridePredicate = { it?.isOverrideBodyContent != false },
                     translateToText = { (it.body as? GraphqlBody)?.document },
@@ -1250,7 +1245,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    transformations = listOf(GraphqlQuerySyntaxHighlightTransformation(colours = colors)),
+                    syntaxHighlight = SyntaxHighlight.Graphql,
                     testTag = TestTag.RequestGraphqlDocumentTextField.name,
                     modifier = Modifier.fillMaxWidth().weight(0.62f),
                 )
@@ -1274,7 +1269,7 @@ private fun RequestBodyEditor(
                     request = request,
                     contentType = ContentType.Json,
                     onRequestModified = onRequestModified,
-                    environmentVariableKeys = environmentVariableKeys,
+                    environmentVariables = environmentVariables,
                     selectedExample = selectedExample,
                     overridePredicate = { it?.isOverrideBodyVariables != false },
                     translateToText = { (it.body as? GraphqlBody)?.variables },
@@ -1285,7 +1280,7 @@ private fun RequestBodyEditor(
                             )
                         )
                     },
-                    transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)), // FIXME
+                    syntaxHighlight = SyntaxHighlight.Json,
                     testTag = TestTag.RequestGraphqlVariablesTextField.name,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 200.dp).weight(0.38f),
                 )
@@ -1331,12 +1326,12 @@ private fun RequestBodyTextEditor(
     contentType: ContentType,
     request: UserRequestTemplate,
     onRequestModified: (UserRequestTemplate?) -> Unit,
-    environmentVariableKeys: Set<String>,
+    environmentVariables: Map<String, String>,
     selectedExample: UserRequestExample,
     overridePredicate: (UserRequestExample.Overrides?) -> Boolean,
     translateToText: (UserRequestExample) -> String?,
     translateTextChangeToNewUserRequestExample: (String) -> UserRequestExample,
-    transformations: List<VisualTransformation>,
+    syntaxHighlight: SyntaxHighlight,
     testTag: String? = null,
 ) {
     val colors = LocalColor.current
@@ -1377,10 +1372,10 @@ private fun RequestBodyTextEditor(
             CodeEditorView(
                 isReadOnly = false,
                 isEnableVariables = true,
-                knownVariables = environmentVariableKeys,
+                knownVariables = environmentVariables,
                 text = content,
                 onTextChange = changeText,
-                transformations = transformations,
+                syntaxHighlight = syntaxHighlight,
                 testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
             )
         }
@@ -1389,10 +1384,11 @@ private fun RequestBodyTextEditor(
             modifier = modifier,
             isReadOnly = true,
             isEnableVariables = true,
-            knownVariables = environmentVariableKeys,
+            knownVariables = environmentVariables,
             text = translateToText(baseExample) ?: "",
             onTextChange = {},
-            textColor = colors.placeholder, // intended to have no syntax highlighting
+            textColor = colors.placeholder,
+            syntaxHighlight = SyntaxHighlight.None // intended to have no syntax highlighting
         )
     }
 }
@@ -1450,7 +1446,7 @@ fun StreamingPayloadEditorView(
     selectedPayloadExampleId: String,
     onSelectExample: (PayloadExample) -> Unit,
     hasCompleteButton: Boolean,
-    knownVariables: Set<String>,
+    knownVariables: Map<String, String>,
     onClickSendPayload: (String) -> Unit,
     onClickCompleteStream: () -> Unit,
     connectionStatus: ConnectionStatus,
@@ -1589,7 +1585,7 @@ fun StreamingPayloadEditorView(
                     )
                 )
             },
-            transformations = listOf(JsonSyntaxHighlightTransformation(colours = colors)),
+            syntaxHighlight = SyntaxHighlight.Json,
             testTag = TestTag.RequestPayloadTextField.name,
         )
     }

@@ -3,9 +3,8 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.VisualTransformation
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.KotlinSyntaxHighlightTransformation
 
 @Composable
 fun KotliteCodeEditorView(
@@ -14,7 +13,6 @@ fun KotliteCodeEditorView(
     isEnabled: Boolean = true,
     text: String,
     onTextChange: ((String) -> Unit)? = null,
-    transformations: List<VisualTransformation> = emptyList(),
     testTag: String? = null,
 ) {
     val textColor: Color = if (isEnabled) {
@@ -28,11 +26,7 @@ fun KotliteCodeEditorView(
         text = text,
         onTextChange = onTextChange,
         textColor = textColor,
-        transformations = transformations + if (isEnabled) {
-            listOf(KotlinSyntaxHighlightTransformation(LocalColor.current))
-        } else {
-            emptyList()
-        },
+        syntaxHighlight = if (isEnabled) SyntaxHighlight.Kotlin else SyntaxHighlight.None,
         testTag = testTag,
     )
 }

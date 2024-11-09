@@ -28,9 +28,14 @@ jobs:
         with:
           name: ux-test-result_${{ matrix.os }}
           path: ux-and-transport-test/build/reports/tests/test
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
       - uses: actions/upload-artifact@v3
         with:
           name: unit-test-result_${{ matrix.os }}
           path: build/reports/tests
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ux-test-error_${{ matrix.os }}
+          path: ux-and-transport-test/test-error.png
+        if: ${{ always() }}

@@ -82,6 +82,11 @@ kotlin {
 
 //                implementation("org.apache.logging.log4j:log4j-api:2.23.1")
 //                implementation("org.apache.logging.log4j:log4j-core:2.23.1")
+
+                // incremental parser
+                implementation("io.github.tree-sitter:ktreesitter:0.23.0")
+                implementation("io.github.sunny-chung:ktreesitter-json:0.23.0.1")
+                implementation("io.github.sunny-chung:ktreesitter-graphql:1.0.0.0")
             }
 
             resources.srcDir("$buildDir/resources")
@@ -152,10 +157,17 @@ tasks.getByName("jvmMainClasses") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    jvmArgs("-Xmx6144m")
     testLogging {
         events = setOf(TestLogEvent.STARTED, TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
         showStandardStreams = true
         exceptionFormat = TestExceptionFormat.FULL
+    }
+    if (project.hasProperty("isCI") && project.property("isCI").toString().toBoolean()) {
+        filter {
+            excludeTestsMatching("com.sunnychung.application.multiplatform.hellohttp.test.bigtext.**")
+            excludeTestsMatching("com.sunnychung.**.ChunkedLatestFlowTest") // The latencies of `delay()` are unstable on GitHub macOS runners
+        }
     }
 }
 

@@ -55,6 +55,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
 import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
@@ -64,7 +65,6 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.JsonSyntaxHighlightTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
@@ -463,7 +463,7 @@ private val jsonEncoder = jacksonObjectMapper().disable(DeserializationFeature.F
 @Composable
 fun BodyViewerView(
     modifier: Modifier = Modifier,
-    key: Any? = Unit,
+    key: String,
     content: ByteArray,
     errorMessage: String?,
     prettifiers: List<PrettifierDropDownValue>,
@@ -529,14 +529,16 @@ fun BodyViewerView(
             }
             isJsonPathError = hasError
 
-            val prettifyResult = try {
-                if (isRaw) {
-                    selectedView.prettifier!!.prettify(contentToUse)
-                } else {
-                    PrettifyResult(contentToUse.decodeToString())
+            val prettifyResult = remember(contentToUse) {
+                try {
+                    if (isRaw) {
+                        selectedView.prettifier!!.prettify(contentToUse)
+                    } else {
+                        PrettifyResult(contentToUse.decodeToString())
+                    }
+                } catch (e: Throwable) {
+                    PrettifyResult(contentToUse.decodeToString() ?: "")
                 }
-            } catch (e: Throwable) {
-                PrettifyResult(contentToUse.decodeToString() ?: "")
             }
 
             CopyableContentContainer(textToCopy = prettifyResult.prettyString, modifier = modifier) {
@@ -545,11 +547,7 @@ fun BodyViewerView(
                     text = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
                     collapsableChars = prettifyResult.collapsableCharRange,
-                    transformations = if (selectedView.prettifier!!.formatName.contains("JSON")) {
-                        listOf(JsonSyntaxHighlightTransformation(colours = colours))
-                    } else {
-                        emptyList()
-                    },
+                    syntaxHighlight = if (selectedView.prettifier!!.formatName.contains("JSON")) SyntaxHighlight.Json else SyntaxHighlight.None,
                     testTag = TestTag.ResponseBody.name,
                 )
             }
@@ -560,6 +558,7 @@ fun BodyViewerView(
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
+                    syntaxHighlight = SyntaxHighlight.None,
                     testTag = TestTag.ResponseError.name,
                 )
             }
@@ -613,7 +612,7 @@ fun ResponseBodyView(response: UserResponse) {
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
-            key = response.id,
+            key = "Response:${response.id}/Body",
             content = response.body ?: byteArrayOf(),
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
@@ -632,6 +631,7 @@ fun ResponseBodyView(response: UserResponse) {
                 isReadOnly = true,
                 text = response.postFlightErrorMessage ?: "",
                 textColor = LocalColor.current.warning,
+                syntaxHighlight = SyntaxHighlight.None,
                 modifier = Modifier.fillMaxWidth().height(100.dp),
             )
         }
@@ -707,6 +707,7 @@ fun ResponseStreamView(response: UserResponse) {
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
             modifier = Modifier.weight(0.6f),
+            key = "Response:${response.id}/Stream:${selectedMessage?.id}/Body",
             content = detailData ?: byteArrayOf(),
             prettifiers = prettifiers,
             selectedPrettifierState = remember(

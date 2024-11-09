@@ -108,4 +108,17 @@ class KotlinSyntaxHighlightTransformation(private val colours: AppColor) : Visua
         }
         return TransformedText(text = AnnotatedString(text = text.text, spanStyles = styles), offsetMapping = OffsetMapping.Identity)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is KotlinSyntaxHighlightTransformation) return false
+
+        if (colours !== other.colours) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return colours.hashCode()
+    }
 }
