@@ -1372,7 +1372,7 @@ private fun RequestBodyTextEditor(
             CodeEditorView(
                 isReadOnly = false,
                 isEnableVariables = true,
-                knownVariables = environmentVariableKeys,
+                knownVariables = environmentVariables,
                 text = content,
                 onTextChange = changeText,
                 syntaxHighlight = syntaxHighlight,
