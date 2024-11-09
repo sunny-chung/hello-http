@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.test.util
 
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
@@ -17,7 +18,7 @@ class ChunkedLatestFlowTest {
 
     @Test
     fun receiveOnlyLatestValues() {
-        runBlocking {
+        runBlocking(Dispatchers.IO) {
             val results = Collections.synchronizedList(mutableListOf<Int>())
 
             coroutineScope {
@@ -41,7 +42,7 @@ class ChunkedLatestFlowTest {
 
     @Test
     fun receiveValuesEmittedAtCompletion1() {
-        runBlocking {
+        runBlocking(Dispatchers.IO) {
             val results = Collections.synchronizedList(mutableListOf<Int>())
 
             coroutineScope {
@@ -67,7 +68,7 @@ class ChunkedLatestFlowTest {
 
     @Test
     fun receiveValuesEmittedAtCompletion2() {
-        runBlocking {
+        runBlocking(Dispatchers.IO) {
             val results = Collections.synchronizedList(mutableListOf<Int>())
 
             coroutineScope {
