@@ -62,6 +62,7 @@ import io.grpc.stub.ClientCalls
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
@@ -498,6 +499,12 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         )
 
         CoroutineScope(Dispatchers.IO).launch {
+            call.cancel = {
+                this.cancel()
+                call.status = ConnectionStatus.DISCONNECTED
+                emitEvent(call.id, "Cancelled")
+            }
+
             call.status = ConnectionStatus.CONNECTING
 
             try {

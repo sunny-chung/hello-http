@@ -83,7 +83,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
     log.d { "ResponseViewerView recompose ${response.requestExampleId} $connectionStatus ${response.errorMessage}" }
 
     val responseViewModel = AppContext.ResponseViewModel
-    responseViewModel.setEnabled(connectionStatus.isConnectionActive())
+    responseViewModel.setEnabled(connectionStatus.isNotIdle())
     val updateTime by responseViewModel.subscribe()
 
     Column {
@@ -318,7 +318,7 @@ fun DataLabel(
 @Composable
 fun StatusLabel(modifier: Modifier = Modifier, response: UserResponse, connectionStatus: ConnectionStatus) {
     val colors = LocalColor.current
-    val (text, backgroundColor) = if (connectionStatus.isConnectionActive() && response.statusCode == null) {
+    val (text, backgroundColor) = if (connectionStatus.isNotIdle() && response.statusCode == null) {
         Pair("Communicating", colors.pendingResponseBackground)
     } else if (response.statusCode != null || !response.statusText.isNullOrEmpty()) {
         val colour = when (response.application) {

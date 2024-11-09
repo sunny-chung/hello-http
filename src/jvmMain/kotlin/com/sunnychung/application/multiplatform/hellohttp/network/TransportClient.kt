@@ -95,6 +95,7 @@ enum class ConnectionStatus {
     PREPARING, CONNECTING, CONNECTED, OPEN_FOR_STREAMING, DISCONNECTED;
 
     fun isConnectionActive() = this >= CONNECTING && this < DISCONNECTED
+    fun isNotIdle() = this != DISCONNECTED
 }
 
 data class Http1Payload(override val instant: KInstant, override val payload: ByteArray) : RawPayload

@@ -112,6 +112,13 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         val sentRequestHeaders: MutableList<Pair<String, String>> = mutableListOf()
 
         CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
+            data.cancel = {
+                log.i { "Cancel call #$callId" }
+                this.cancel("Cancel", it)
+                data.status = ConnectionStatus.DISCONNECTED
+                emitEvent(callId, "Cancelled")
+            }
+
             val client = buildWebClient(
                 callId = callId,
                 callData = data,

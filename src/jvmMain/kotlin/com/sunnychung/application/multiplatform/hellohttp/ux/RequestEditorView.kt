@@ -319,7 +319,7 @@ fun RequestEditorView(
                 ProtocolApplication.Grpc -> listOf(SendButtonDropdown.GrpcurlForLinux)
                 else -> listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows)
             }
-            val (label, backgroundColour) = if (!connectionStatus.isConnectionActive()) {
+            val (label, backgroundColour) = if (!connectionStatus.isNotIdle()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
             } else {
                 Pair(if (isOneOffRequest) "Cancel" else "Disconnect", colors.backgroundStopButton)

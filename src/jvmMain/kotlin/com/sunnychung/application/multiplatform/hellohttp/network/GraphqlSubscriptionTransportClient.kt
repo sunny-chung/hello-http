@@ -23,6 +23,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.java_websocket.handshake.ServerHandshake
@@ -73,6 +75,12 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
 
         val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
+            data.cancel = {
+                this.cancel()
+                data.status = ConnectionStatus.DISCONNECTED
+                emitEvent(data.id, "Cancelled")
+            }
+
             val jsonMapper = jacksonObjectMapper()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
 
@@ -143,6 +151,10 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
             data.cancel = { client.close() }
 
             try {
+                if (!isActive) {
+                    return@launch
+                }
+
                 out.startAt = KInstant.now()
                 out.isCommunicating = true
                 data.status = ConnectionStatus.CONNECTING
@@ -212,11 +224,12 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
             } catch (e: Throwable) {
                 log.d(e) { "Got error in GraphQL subscription communication" }
                 emitEvent(callId, "Error: ${e.message}")
+            } finally {
+                out.isCommunicating = false
+                data.status = ConnectionStatus.DISCONNECTED
+                client.close()
+                data.end()
             }
-            out.isCommunicating = false
-            data.status = ConnectionStatus.DISCONNECTED
-            client.close()
-            data.end()
         }
 
         return data
