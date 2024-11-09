@@ -166,6 +166,7 @@ tasks.withType<Test> {
     if (project.hasProperty("isCI") && project.property("isCI").toString().toBoolean()) {
         filter {
             excludeTestsMatching("com.sunnychung.application.multiplatform.hellohttp.test.bigtext.**")
+            excludeTestsMatching("com.sunnychung.**.ChunkedLatestFlowTest") // The latencies of `delay()` are unstable on GitHub macOS runners
         }
     }
 }

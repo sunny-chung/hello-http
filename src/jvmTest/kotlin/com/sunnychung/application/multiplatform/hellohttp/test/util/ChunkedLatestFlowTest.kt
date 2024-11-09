@@ -2,7 +2,6 @@ package com.sunnychung.application.multiplatform.hellohttp.test.util
 
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
@@ -11,7 +10,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.Collections
-import java.util.concurrent.Executors
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -19,7 +17,7 @@ class ChunkedLatestFlowTest {
 
     @Test
     fun receiveOnlyLatestValues() {
-        runBlocking(Executors.newSingleThreadExecutor().asCoroutineDispatcher()) {
+        runBlocking {
             val results = Collections.synchronizedList(mutableListOf<Int>())
 
             coroutineScope {
@@ -43,7 +41,7 @@ class ChunkedLatestFlowTest {
 
     @Test
     fun receiveValuesEmittedAtCompletion1() {
-        runBlocking(Executors.newSingleThreadExecutor().asCoroutineDispatcher()) {
+        runBlocking {
             val results = Collections.synchronizedList(mutableListOf<Int>())
 
             coroutineScope {
@@ -69,7 +67,7 @@ class ChunkedLatestFlowTest {
 
     @Test
     fun receiveValuesEmittedAtCompletion2() {
-        runBlocking(Executors.newSingleThreadExecutor().asCoroutineDispatcher()) {
+        runBlocking {
             val results = Collections.synchronizedList(mutableListOf<Int>())
 
             coroutineScope {
@@ -129,7 +127,7 @@ class ChunkedLatestFlowTest {
 
     @Test
     fun collectAfterCancel() {
-        runBlocking(Executors.newSingleThreadExecutor().asCoroutineDispatcher()) {
+        runBlocking {
             val results = Collections.synchronizedList(mutableListOf<Int>())
 
             coroutineScope {
