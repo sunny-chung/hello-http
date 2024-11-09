@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Removed
 - Text fields and response body viewer now do not trim content over 4 MB (but other limits still apply)
+- Most of debug logs
 
 ### Fixed
 - Request body editor, payload body editor and response body viewer are reimplemented. This fixes many of the issues or weird behavior known in Jetpack Compose text fields.

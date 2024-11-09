@@ -9,13 +9,13 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 
 val log = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
-    override var minSeverity: Severity = Severity.Debug
+    override var minSeverity: Severity = Severity.Warn
 }, tag = "Hello")
 val llog = log
 
 val logR = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
-    override var minSeverity: Severity = Severity.Info
+    override var minSeverity: Severity = Severity.Warn
 }, tag = "Hello.Repository")
 
 class JvmLogger : LogWriter() {

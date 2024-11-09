@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -59,7 +60,7 @@ fun <T: DropDownable> DropDownView(
             modifier = (if (isLabelFillMaxWidth) Modifier.weight(1f) else Modifier.weight(1f, fill = false))
                 .run {
                     if (isLabel && testTagParts != null) {
-                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownLabel)!!.also { println(">>> Dropdown Use TTag: $it") })
+                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownLabel)!!.also { log.d { ">>> Dropdown Use TTag: $it" } })
                     } else {
                         this
                     }
@@ -144,7 +145,7 @@ fun <T : DropDownable> ContextMenuView(
                 .padding(horizontal = 2.dp)
                 .run {
                     if (isLabel && testTagParts != null) {
-                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownLabel)!!.also { println(">>> Dropdown Use TTag: $it") })
+                        testTag(buildTestTag(*testTagParts, TestTagPart.DropdownLabel)!!.also { log.d { ">>> Dropdown Use TTag: $it" } })
                     } else {
                         this
                     }

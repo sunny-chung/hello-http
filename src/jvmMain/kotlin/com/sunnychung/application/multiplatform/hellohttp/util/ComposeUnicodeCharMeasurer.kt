@@ -64,7 +64,7 @@ class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val
         measureExactWidthOf(chars).forEachIndexed { index, r ->
             charWidth[chars[index]] = r
             if (r < 1f) {
-                log.w { "measure '${chars[index]}' width = $r" }
+                log.i { "measure '${chars[index]}' width = $r" }
             }
         }
     }

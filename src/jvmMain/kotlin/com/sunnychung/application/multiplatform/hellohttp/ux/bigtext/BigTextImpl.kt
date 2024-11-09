@@ -15,22 +15,22 @@ import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 
 val log = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
-    override var minSeverity: Severity = Severity.Info
+    override var minSeverity: Severity = Severity.Warn
 }, tag = "BigText")
 
 val logQ = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
-    override var minSeverity: Severity = Severity.Info
+    override var minSeverity: Severity = Severity.Warn
 }, tag = "BigText.Query")
 
 val logL = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
-    override var minSeverity: Severity = Severity.Info
+    override var minSeverity: Severity = Severity.Warn
 }, tag = "BigText.Layout")
 
 val logV = Logger(object : MutableLoggerConfig {
     override var logWriterList: List<LogWriter> = listOf(JvmLogger())
-    override var minSeverity: Severity = Severity.Info
+    override var minSeverity: Severity = Severity.Warn
 }, tag = "BigText.View")
 
 internal var isD = false

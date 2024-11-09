@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 
@@ -90,13 +91,13 @@ fun AppText(
         onTextLayout = { textLayoutResult ->
             if (isFitContent) {
                 if (textLayoutResult.hasVisualOverflow) {
-                    println("> t = ${textStyle.fontSize}")
+                    log.v { "> t = ${textStyle.fontSize}" }
                     textStyle = textStyle.copy(fontSize = textStyle.fontSize * 0.8)
-                    println("> t2 = ${textStyle.fontSize}")
+                    log.v { "> t2 = ${textStyle.fontSize}" }
                 } else {
                     isReadyToRender = true
                 }
-                println("hasVisualOverflow=${textLayoutResult.hasVisualOverflow} isReadyToRender=$isReadyToRender")
+                log.v { "hasVisualOverflow=${textLayoutResult.hasVisualOverflow} isReadyToRender=$isReadyToRender" }
             }
             onTextLayout?.invoke(textLayoutResult)
         },

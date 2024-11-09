@@ -272,6 +272,7 @@ fun AppContentView() {
             log.d { "callDataUpdates no flow" }
             mutableStateOf(null)
         }
+    callDataUpdates // this line forces UI subscribing to call updates
     val activeResponse = selectedRequestExampleId?.let { networkClientManager.getResponseByRequestExampleId(it) }
 //    var response by remember { mutableStateOf<UserResponse?>(null) }
 //    if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
@@ -605,7 +606,7 @@ fun AppContentView() {
                                         }
                                     },
                                     onRequestModified = {
-                                        log.d { "onRequestModified" }
+                                        log.d { "onRequestModified $it" }
                                         it?.let { update ->
                                             requestCollectionRepository.updateRequest(requestCollection!!.id, update)
                                         }
