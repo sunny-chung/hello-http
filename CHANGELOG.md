@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Optimized
 - Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without noticeable performance issues.
+- Clicking the "Send" button now never freeze for a short while.
 
 ## [1.6.0] - 2024-07-22
 

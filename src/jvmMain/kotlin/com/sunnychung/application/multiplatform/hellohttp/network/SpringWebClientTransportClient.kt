@@ -111,27 +111,28 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
 
         val sentRequestHeaders: MutableList<Pair<String, String>> = mutableListOf()
 
-        val client = buildWebClient(
-            callId = callId,
-            callData = data,
-            isSsl = uri.scheme !in setOf("http", "ws"),
-            httpConfig = httpConfig,
-            sslConfig = sslConfig,
-            outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
-            incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
-            http2AccumulatedOutboundDataSerializeLimit = (subprojectConfig.accumulatedOutboundDataStorageLimitPerCall.takeIf { it >= 0 }
-                ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
-            http2AccumulatedInboundDataSerializeLimit = (subprojectConfig.accumulatedInboundDataStorageLimitPerCall.takeIf { it >= 0 }
-                ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
-            doOnRequestSent = { req ->
-                log.d { "Req header = ${req.requestHeaders()}" }
-                sentRequestHeaders += req.requestHeaders().map { e ->
-                    e.toPair()
-                }
-            },
-        )
-
         CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
+            val client = buildWebClient(
+                callId = callId,
+                callData = data,
+                isSsl = uri.scheme !in setOf("http", "ws"),
+                httpConfig = httpConfig,
+                sslConfig = sslConfig,
+                outgoingBytesFlow = data.outgoingBytes as MutableSharedFlow<RawPayload>,
+                incomingBytesFlow = data.incomingBytes as MutableSharedFlow<RawPayload>,
+                http2AccumulatedOutboundDataSerializeLimit = (subprojectConfig.accumulatedOutboundDataStorageLimitPerCall.takeIf { it >= 0 }
+                    ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
+                http2AccumulatedInboundDataSerializeLimit = (subprojectConfig.accumulatedInboundDataStorageLimitPerCall.takeIf { it >= 0 }
+                    ?: DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT).toInt(),
+                doOnRequestSent = { req ->
+                    log.d { "Req header = ${req.requestHeaders()}" }
+                    sentRequestHeaders += req.requestHeaders().map { e ->
+                        e.toPair()
+                    }
+                },
+            )
+            log.d { "prepared client" }
+
             data.waitForPreparation()
             log.d { "Call $callId is prepared" }
 

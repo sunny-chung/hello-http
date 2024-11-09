@@ -273,15 +273,15 @@ fun AppContentView() {
             mutableStateOf(null)
         }
     callDataUpdates // this line forces UI subscribing to call updates
-    val activeResponse = selectedRequestExampleId?.let { networkClientManager.getResponseByRequestExampleId(it) }
+//    val activeResponse = selectedRequestExampleId?.let { networkClientManager.getResponseByRequestExampleId(it) }
 //    var response by remember { mutableStateOf<UserResponse?>(null) }
 //    if (activeResponse != null && activeResponse.requestId == request?.id && activeResponse.requestExampleId == selectedRequestExampleId) {
 //        response = activeResponse
 //    }
-    val response = runBlocking { // should be fast as it is retrieved from memory
-        if (selectedSubproject == null || selectedRequestExampleId == null) return@runBlocking null
+    val response = run {
+        if (selectedSubproject == null || selectedRequestExampleId == null) return@run null
         val di = ResponsesDI(subprojectId = selectedSubproject!!.id)
-        val resp = responseCollectionRepository.read(di)
+        val resp = responseCollectionRepository.readCache(di)
             ?.responsesByRequestExampleId?.get(selectedRequestExampleId)
         log.d { "updateResponseView $selectedRequestExampleId" }
         resp
@@ -695,6 +695,8 @@ fun AppContentView() {
         }
         StatusBarView()
     }
+
+    log.d { "AppContentView compose end" }
 }
 
 fun Modifier.clearFocusOnTap(): Modifier = composed {

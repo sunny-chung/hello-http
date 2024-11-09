@@ -142,6 +142,10 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
+    open fun readCache(identifier: ID): T? {
+        return persistenceManager.documentCaches[identifier] as T?
+    }
+
     private suspend fun readWithoutLock(identifier: ID): T? {
         return with(persistenceManager) {
             val cache = documentCaches[identifier]
