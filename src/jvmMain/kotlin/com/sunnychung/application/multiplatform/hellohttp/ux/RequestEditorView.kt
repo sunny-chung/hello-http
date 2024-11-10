@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
+import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
@@ -130,7 +131,8 @@ fun RequestEditorView(
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
     val environmentVariables = environment?.variables?.filter { it.isEnabled }?.map { it.key to it.value }?.toMap() ?: emptyMap()
-    val environmentVariableKeys = environmentVariables.keys
+    val exampleVariables = request.getExampleVariablesOnly(selectedExample.id)
+    val mergedVariables = request.getAllVariables(selectedExample.id, environment)
 
     val currentGraphqlOperation = if (request.application == ProtocolApplication.Graphql) {
         (selectedExample.body as? GraphqlBody)?.getOperation(isThrowError = false)
@@ -297,7 +299,7 @@ fun RequestEditorView(
                 },
                 visualTransformation = EnvironmentVariableTransformation(
                     themeColors = colors,
-                    knownVariables = environmentVariableKeys
+                    knownVariables = mergedVariables.keys
                 ),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
@@ -540,12 +542,12 @@ fun RequestEditorView(
         }
 
         val tabs = when (request.application) {
-            ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header)
+            ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header, RequestTab.Variable)
             ProtocolApplication.Grpc -> listOfNotNull(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
-                RequestTab.Header, RequestTab.PostFlight
+                RequestTab.Header, RequestTab.Variable, RequestTab.PostFlight
             )
-            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.PreFlight, RequestTab.PostFlight)
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
         }
 
         TabsView(
@@ -569,7 +571,7 @@ fun RequestEditorView(
                     request = request,
                     onRequestModified = onRequestModified,
                     selectedExample = selectedExample,
-                    environmentVariables = environmentVariables,
+                    environmentVariables = mergedVariables,
                     currentGraphqlOperation = currentGraphqlOperation,
                 )
 
@@ -600,7 +602,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariables,
+                        knownVariables = mergedVariables,
                         isSupportFileValue = false,
                         testTagPart = TestTagPart.RequestHeader,
                         modifier = Modifier.fillMaxWidth(),
@@ -633,11 +635,124 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariables,
+                        knownVariables = mergedVariables,
                         isSupportFileValue = false,
                         testTagPart = TestTagPart.RequestQueryParameter,
                         modifier = Modifier.fillMaxWidth(),
                     )
+
+                RequestTab.Variable -> {
+                    val testTagPart = TestTagPart.ExampleVariable
+                    val baseDisabledIds = selectedExample.overrides?.disabledVariables ?: emptySet()
+                    val onDisableUpdate: (Set<String>) -> Unit = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.run {
+                                        copy(overrides = overrides!!.copy(disabledVariables = it))
+                                    }
+                                )
+                            )
+                        )
+                    }
+                    val onValueUpdate: (List<UserKeyValuePair>) -> Unit = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.copy(
+                                        variables = it
+                                    )
+                                )
+                            )
+                        )
+                    }
+
+                    val data = selectedExample.variables
+                    val activeValueKeys = data.filter { it.isEnabled }.map { it.key }.toSet()
+                    val baseValues = if (selectedExample.id != baseExample.id) baseExample.variables else emptyList()
+                    val activeBaseValues = baseValues.filter { it.isEnabled }
+                    Column(modifier = Modifier.fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
+                        if (environmentVariables.isNotEmpty() || activeBaseValues.isNotEmpty()) {
+                            InputFormHeader(text = "This Example")
+                        }
+
+                        KeyValueEditorView(
+                            keyValues = data,
+                            isSupportVariables = true,
+                            knownVariables = environmentVariables,
+                            isInheritedView = false,
+                            disabledIds = emptySet(),
+                            onItemChange = { index, item ->
+                                log.d { "onItemChange" }
+                                onValueUpdate(data.copyWithIndexedChange(index, item))
+                            },
+                            onItemAddLast = { item ->
+                                log.d { "onItemAddLast" }
+                                onValueUpdate(data + item)
+                            },
+                            onItemDelete = { index ->
+                                log.d { "onItemDelete" }
+                                onValueUpdate(data.copyWithRemovedIndex(index))
+                            },
+                            onDisableChange = {_ ->},
+                            testTagPart1 = testTagPart,
+                            testTagPart2 = TestTagPart.Current,
+                        )
+
+                        if (activeBaseValues.isNotEmpty()) {
+                            InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
+                            KeyValueEditorView(
+                                keyValues = activeBaseValues.map {
+                                    it.copy(isEnabled = it.isEnabled && it.key !in activeValueKeys)
+                                },
+                                isSupportVariables = true,
+                                isSupportDisable = false,
+                                knownVariables = environmentVariables,
+                                disabledIds = baseDisabledIds,
+                                isInheritedView = true,
+                                onItemChange = {_, _ ->},
+                                onItemAddLast = {_ ->},
+                                onItemDelete = {_ ->},
+                                onDisableChange = onDisableUpdate,
+                                testTagPart1 = testTagPart,
+                                testTagPart2 = TestTagPart.Inherited,
+                            )
+                        }
+
+                        if (environmentVariables.isNotEmpty()) {
+                            InputFormHeader(
+                                text = "Inherited from Environment",
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
+
+                            KeyValueEditorView(
+                                keyValues = environmentVariables.map {
+                                    UserKeyValuePair(
+                                        uuidString(),
+                                        it.key,
+                                        it.value,
+                                        FieldValueType.String,
+                                        it.key !in exampleVariables
+                                    )
+                                },
+                                keyPlaceholder = "",
+                                valuePlaceholder = "",
+                                isSupportFileValue = false,
+                                isSupportVariables = false,
+                                isSupportDisable = false,
+                                knownVariables = emptyMap(),
+                                disabledIds = emptySet(),
+                                isInheritedView = true,
+                                onItemChange = { _, _ -> },
+                                onItemAddLast = { _ -> },
+                                onItemDelete = { _ -> },
+                                onDisableChange = { _ -> },
+                                testTagPart1 = TestTagPart.ExampleVariable,
+                                testTagPart2 = TestTagPart.InheritedFromEnvironment,
+                            )
+                        }
+                    }
+                }
 
                 RequestTab.PreFlight ->
                     PreFlightEditorView(
@@ -682,7 +797,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariables,
+                        knownVariables = mergedVariables,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
@@ -721,7 +836,7 @@ fun RequestEditorView(
                                 )
                             )
                         },
-                        knownVariables = environmentVariables,
+                        knownVariables = mergedVariables,
                         isSupportFileValue = false,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
@@ -737,7 +852,7 @@ fun RequestEditorView(
                 selectedPayloadExampleId = selectedPayloadExampleId!!,
                 onSelectExample = { selectedPayloadExampleId = it.id },
                 hasCompleteButton = request.application == ProtocolApplication.Grpc && currentGrpcMethod?.isClientStreaming == true,
-                knownVariables = environmentVariables,
+                knownVariables = mergedVariables,
                 onClickSendPayload = onClickSendPayload,
                 onClickCompleteStream = onClickCompleteStream,
                 connectionStatus = connectionStatus,
@@ -1592,7 +1707,7 @@ fun StreamingPayloadEditorView(
 }
 
 private enum class RequestTab(val displayText: String) {
-    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PreFlight("Pre Flight"), PostFlight("Post Flight")
+    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PreFlight("Pre Flight"), PostFlight("Post Flight"), Variable("Variable")
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)

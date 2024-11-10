@@ -188,7 +188,7 @@ data class UserRequestTemplate(
         val baseExample = examples.first()
         val selectedExample = examples.first { it.id == exampleId }
 
-        return Scope(baseExample, selectedExample, VariableResolver(environment, resolveVariableMode)).action()
+        return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode)).action()
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
@@ -205,6 +205,22 @@ data class UserRequestTemplate(
             .filter { it.key.isNotBlank() }
 
         Pair(headerVariables, bodyVariables)
+    }
+
+    fun getExampleVariablesOnly(exampleId: String): Map<String, String> {
+        val baseExample = examples.first()
+        val selectedExample = examples.first { it.id == exampleId }
+        return (
+                baseExample.variables
+                    .filter { it.isEnabled && it.id !in (selectedExample.overrides?.disabledVariables ?: emptySet()) }
+                    .map { it.key to it.value } +
+                        selectedExample.variables.filter { it.isEnabled }.map { it.key to it.value }
+                ).toMap()
+    }
+
+    fun getAllVariables(exampleId: String, environment: Environment?): Map<String, String> {
+        val environmentVariables = environment?.variables?.filter { it.isEnabled }?.associate { it.key to it.value } ?: emptyMap()
+        return environmentVariables + getExampleVariablesOnly(exampleId)
     }
 }
 
@@ -229,6 +245,7 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
+    val variables: List<UserKeyValuePair> = mutableListOf(),
     val preFlight: PreFlightSpec = PreFlightSpec(),
     val postFlight: PostFlightSpec = PostFlightSpec(),
     val overrides: Overrides? = null, // only the Base example can be null
@@ -239,6 +256,7 @@ data class UserRequestExample(
     data class Overrides(
         val disabledHeaderIds: Set<String> = emptySet(),
         val disabledQueryParameterIds: Set<String> = emptySet(),
+        val disabledVariables: Set<String> = emptySet(),
 
         /**
          * Only for raw body and JSON body

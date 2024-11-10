@@ -47,6 +47,7 @@ fun KeyValueEditorView(
     disabledIds: Set<String>,
     isSupportFileValue: Boolean = false,
     isSupportVariables: Boolean = false,
+    isSupportDisable: Boolean = true,
     knownVariables: Map<String, String> = emptyMap(),
     onItemChange: (index: Int, item: UserKeyValuePair) -> Unit,
     onItemAddLast: (item: UserKeyValuePair) -> Unit,
@@ -104,7 +105,7 @@ fun KeyValueEditorView(
         Column {
             (0 until keyValues.size + if (!isInheritedView) 1 else 0).forEach { index ->
                 val it = if (index < keyValues.size) keyValues[index] else null
-                val isEnabled = it?.let { if (!isInheritedView) it.isEnabled else !disabledIds.contains(it.id) } ?: true
+                val isEnabled = it?.let { if (!isInheritedView) it.isEnabled else it.isEnabled && !disabledIds.contains(it.id) } ?: true
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppTextFieldWithPlaceholder(
                         placeholder = { AppText(text = keyPlaceholder, color = colors.placeholder) },
@@ -220,25 +221,27 @@ fun KeyValueEditorView(
                                 modifier = Modifier.padding(horizontal = 4.dp)
                             )
                         }
-                        AppCheckbox(
-                            checked = isEnabled,
-                            onCheckedChange = { v ->
-                                if (!isInheritedView) {
-                                    onItemChange(index, it.copy(isEnabled = v))
-                                } else {
-                                    val newSet = if (!v) {
-                                        disabledIds + it.id
+                        if (isSupportDisable) {
+                            AppCheckbox(
+                                checked = isEnabled,
+                                onCheckedChange = { v ->
+                                    if (!isInheritedView) {
+                                        onItemChange(index, it.copy(isEnabled = v))
                                     } else {
-                                        disabledIds - it.id
+                                        val newSet = if (!v) {
+                                            disabledIds + it.id
+                                        } else {
+                                            disabledIds - it.id
+                                        }
+                                        onDisableChange(newSet)
                                     }
-                                    onDisableChange(newSet)
-                                }
-                            },
-                            isFocusable = false,
-                            size = 16.dp,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                                .focusProperties { canFocus = false }
-                        )
+                                },
+                                isFocusable = false,
+                                size = 16.dp,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                                    .focusProperties { canFocus = false }
+                            )
+                        }
                         if (!isInheritedView) {
                             AppDeleteButton(
                                 onClickDelete = { onItemDelete(index) },

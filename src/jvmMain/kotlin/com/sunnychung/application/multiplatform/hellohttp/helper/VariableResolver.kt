@@ -9,18 +9,17 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
  */
 class VariableResolver(
     environment: Environment?,
+    userRequestTemplate: UserRequestTemplate,
+    requestExampleId: String,
     private val resolveVariableMode: UserRequestTemplate.ResolveVariableMode = UserRequestTemplate.ExpandByEnvironment
 ) {
-    private val environmentVariables = environment?.variables
-        ?.filter { it.isEnabled }
-        ?.associate { it.key to it.value }
-        ?: emptyMap()
+    private val variables = userRequestTemplate.getAllVariables(requestExampleId, environment)
 
     fun resolve(subject: String): String {
         var s = subject
         when (resolveVariableMode) {
             is UserRequestTemplate.ExpandByEnvironment -> {
-                environmentVariables.forEach {
+                variables.forEach {
                     s = s.replace("\${{${it.key}}}", it.value)
                 }
                 UserFunctions.forEach {
