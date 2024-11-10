@@ -620,6 +620,7 @@ fun AppContentView() {
                                     },
                                     onClickSendPayload = { payload ->
                                         networkClientManager.sendPayload(
+                                            request = requestNonNull,
                                             selectedRequestExampleId = selectedRequestExampleId!!,
                                             payload = payload,
                                             environment = selectedEnvironment,
@@ -634,7 +635,8 @@ fun AppContentView() {
                                         if (requestNonNull.application == ProtocolApplication.Grpc) {
                                             try {
                                                 networkClientManager.fetchGrpcApiSpec(
-                                                    url = requestNonNull.url,
+                                                    request = requestNonNull,
+                                                    exampleId = selectedRequestExampleId!!,
                                                     environment = selectedEnvironment,
                                                     projectId = selectedProject!!.id,
                                                     subprojectId = selectedSubprojectId!!
@@ -648,7 +650,8 @@ fun AppContentView() {
                                     onClickCancelFetchApiSpec = {
                                         if (requestNonNull.application == ProtocolApplication.Grpc) {
                                             networkClientManager.cancelFetchingGrpcApiSpec(
-                                                url = requestNonNull.url,
+                                                request = requestNonNull,
+                                                exampleId = selectedRequestExampleId!!,
                                                 environment = selectedEnvironment,
                                                 subprojectId = selectedSubprojectId!!
                                             )
@@ -658,7 +661,8 @@ fun AppContentView() {
                                         val selectedSubprojectId = selectedSubprojectId ?: return@run false
                                         val r = if (requestNonNull.application == ProtocolApplication.Grpc) {
                                             networkClientManager.subscribeGrpcApiSpecFetchingStatus(
-                                                url = requestNonNull.url,
+                                                request = requestNonNull,
+                                                exampleId = selectedRequestExampleId!!,
                                                 environment = selectedEnvironment,
                                                 subprojectId = selectedSubprojectId
                                             ).collectAsState().value

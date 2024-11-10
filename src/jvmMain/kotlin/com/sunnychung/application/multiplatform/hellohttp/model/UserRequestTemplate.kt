@@ -130,6 +130,7 @@ data class UserRequestTemplate(
                     headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    variables = it.variables.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     preFlight = it.preFlight.copy(),
                     postFlight = with (it.postFlight) {
                         copy(
@@ -143,6 +144,7 @@ data class UserRequestTemplate(
                             disabledQueryParameterIds = o.disabledQueryParameterIds.map { idMapping[it]!! }.toSet(),
                             disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { idMapping[it]!! }.toSet(),
                             disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
+                            disabledVariables = o.disabledVariables.map { idMapping[it]!! }.toSet(),
                         )
                     },
                 )
@@ -188,7 +190,7 @@ data class UserRequestTemplate(
         val baseExample = examples.first()
         val selectedExample = examples.first { it.id == exampleId }
 
-        return Scope(baseExample, selectedExample, VariableResolver(environment, resolveVariableMode)).action()
+        return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode)).action()
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
@@ -205,6 +207,22 @@ data class UserRequestTemplate(
             .filter { it.key.isNotBlank() }
 
         Pair(headerVariables, bodyVariables)
+    }
+
+    fun getExampleVariablesOnly(exampleId: String): Map<String, String> {
+        val baseExample = examples.first()
+        val selectedExample = examples.first { it.id == exampleId }
+        return (
+                baseExample.variables
+                    .filter { it.isEnabled && it.id !in (selectedExample.overrides?.disabledVariables ?: emptySet()) }
+                    .map { it.key to it.value } +
+                        selectedExample.variables.filter { it.isEnabled }.map { it.key to it.value }
+                ).toMap()
+    }
+
+    fun getAllVariables(exampleId: String, environment: Environment?): Map<String, String> {
+        val environmentVariables = environment?.variables?.filter { it.isEnabled }?.associate { it.key to it.value } ?: emptyMap()
+        return environmentVariables + getExampleVariablesOnly(exampleId)
     }
 }
 
@@ -229,6 +247,7 @@ data class UserRequestExample(
     val headers: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
+    val variables: List<UserKeyValuePair> = mutableListOf(),
     val preFlight: PreFlightSpec = PreFlightSpec(),
     val postFlight: PostFlightSpec = PostFlightSpec(),
     val overrides: Overrides? = null, // only the Base example can be null
@@ -239,6 +258,7 @@ data class UserRequestExample(
     data class Overrides(
         val disabledHeaderIds: Set<String> = emptySet(),
         val disabledQueryParameterIds: Set<String> = emptySet(),
+        val disabledVariables: Set<String> = emptySet(),
 
         /**
          * Only for raw body and JSON body
@@ -290,6 +310,7 @@ data class UserRequestExample(
             headers = headers.deepCopyWithNewId(),
             queryParameters = queryParameters.deepCopyWithNewId(),
             body = body?.deepCopyWithNewId(),
+            variables = variables.deepCopyWithNewId(),
             preFlight = preFlight.copy(),
             postFlight = with (postFlight) {
                 copy(
@@ -303,6 +324,7 @@ data class UserRequestExample(
                     disabledQueryParameterIds = o.disabledQueryParameterIds.map { it }.toSet(),
                     disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { it }.toSet(),
                     disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { it }.toSet(),
+                    disabledVariables = o.disabledVariables.map { it }.toSet(),
                 )
             } ?: if (isCreateOverridesIfMissing) {
                 Overrides()

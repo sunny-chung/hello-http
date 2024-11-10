@@ -25,6 +25,16 @@ Body with content type "None" or "Binary File" cannot be inherited.
 Body with remaining content types can be changed to inherit from the Base Example, by unselecting the
 "Is Override Base?" checkbox.
 
+### Variables
+
+Variables can be defined in Request Example level to override [Environment Variables](environments). Variables defined in the Base Example are inherited and can be overridden.
+
+Similar to Environment Variables, variables can be used anywhere in the request with the syntax `${{variable-name}}`.
+
+Overridden variables are displayed in a dimmed color.
+
+![Example-level Variables](../variables.png)
+
 ### Other Stuffs
 
 By default, following items are inherited from the "Base Example" of the same Request.

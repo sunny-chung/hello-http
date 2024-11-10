@@ -241,8 +241,8 @@ class NetworkClientManager : CallDataStore {
         }
     }
 
-    fun sendPayload(selectedRequestExampleId: String, payload: String, environment: Environment?) {
-        val resolvedPayload = VariableResolver(environment).resolve(payload)
+    fun sendPayload(request: UserRequestTemplate, selectedRequestExampleId: String, payload: String, environment: Environment?) {
+        val resolvedPayload = VariableResolver(environment, request, selectedRequestExampleId).resolve(payload)
         getCallDataByRequestExampleId(selectedRequestExampleId)?.let { it.sendPayload(resolvedPayload) }
     }
 
@@ -317,8 +317,9 @@ class NetworkClientManager : CallDataStore {
 
     private fun liteCallKey(url: String, subprojectId: String) = "$subprojectId|${hostFromUrl(url)}"
 
-    fun fetchGrpcApiSpec(url: String, environment: Environment?, projectId: String, subprojectId: String): LiteCallData {
-        val url0 = VariableResolver(environment, UserRequestTemplate.ExpandByEnvironment).resolve(url)
+    fun fetchGrpcApiSpec(request: UserRequestTemplate, exampleId: String, environment: Environment?, projectId: String, subprojectId: String): LiteCallData {
+        val url0 = VariableResolver(environment, request, exampleId, UserRequestTemplate.ExpandByEnvironment)
+            .resolve(request.url)
         val call = createLiteCallData()
         call.cancel = { call.isConnecting.value = false }
         liteCallDataMap[call.id] = call
@@ -384,28 +385,30 @@ class NetworkClientManager : CallDataStore {
         return call
     }
 
-    fun isFetchingGrpcApiSpec(url: String, environment: Environment?, subprojectId: String) =
-        subprojectHostToLiteCallMapping[liteCallKey(
-            url = VariableResolver(environment, UserRequestTemplate.ExpandByEnvironment).resolve(url),
-            subprojectId = subprojectId
-        )]
-            ?.let { liteCallDataMap[it] }
-            ?.isConnecting
-            ?.value
-            ?: false
+//    fun isFetchingGrpcApiSpec(url: String, environment: Environment?, subprojectId: String) =
+//        subprojectHostToLiteCallMapping[liteCallKey(
+//            url = VariableResolver(environment, UserRequestTemplate.ExpandByEnvironment).resolve(url),
+//            subprojectId = subprojectId
+//        )]
+//            ?.let { liteCallDataMap[it] }
+//            ?.isConnecting
+//            ?.value
+//            ?: false
 
-    fun subscribeGrpcApiSpecFetchingStatus(url: String, environment: Environment?, subprojectId: String): StateFlow<Boolean> =
+    fun subscribeGrpcApiSpecFetchingStatus(request: UserRequestTemplate, exampleId: String, environment: Environment?, subprojectId: String): StateFlow<Boolean> =
         subprojectHostToLiteCallMapping[liteCallKey(
-            url = VariableResolver(environment, UserRequestTemplate.ExpandByEnvironment).resolve(url),
+            url = VariableResolver(environment, request, exampleId, UserRequestTemplate.ExpandByEnvironment)
+                .resolve(request.url),
             subprojectId = subprojectId
         )]
             ?.let { liteCallDataMap[it] }
             ?.isConnecting
             ?: MutableStateFlow(false)
 
-    fun cancelFetchingGrpcApiSpec(url: String, environment: Environment?, subprojectId: String) {
+    fun cancelFetchingGrpcApiSpec(request: UserRequestTemplate, exampleId: String, environment: Environment?, subprojectId: String) {
         subprojectHostToLiteCallMapping[liteCallKey(
-            url = VariableResolver(environment, UserRequestTemplate.ExpandByEnvironment).resolve(url),
+            url = VariableResolver(environment, request, exampleId, UserRequestTemplate.ExpandByEnvironment)
+                .resolve(request.url),
             subprojectId = subprojectId
         )]
             ?.let { liteCallDataMap[it] }

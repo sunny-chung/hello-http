@@ -90,6 +90,7 @@ fun UserRequestTemplate.toHttpRequest(
         },
         contentType = selectedExample.contentType,
         application = application,
+        applicableVariables = getAllVariables(selectedExample.id, environment),
     )
 
     if (req.headers.none { "content-type".equals(it.first, ignoreCase = true) } && req.contentType.headerValue != null && req.contentType != com.sunnychung.application.multiplatform.hellohttp.model.ContentType.Multipart) {

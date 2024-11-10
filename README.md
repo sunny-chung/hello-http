@@ -155,7 +155,6 @@ express your desired priorities in the issue tracker.
 - Binary response view
 - Binary request editor
 - Overriding default headers
-- Example-level variables
 - Checking for version updates
 - Establish release builds (minified and without debug logs and symbols)
 

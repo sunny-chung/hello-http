@@ -11,7 +11,12 @@ class HttpRequest(
     val body: UserRequestBody? = null,
     val contentType: ContentType,
     val application: ProtocolApplication,
-    val extra: Any? = null
+    val extra: Any? = null,
+
+    /**
+     * Not used in transmission.
+     */
+    val applicableVariables: Map<String, String> = emptyMap(),
 ) {
     private val initialHeaders = headers
     private val newHeaders: MutableList<Pair<String, String>> = mutableListOf()
@@ -51,6 +56,7 @@ class HttpRequest(
         contentType: ContentType = this.contentType,
         application: ProtocolApplication = this.application,
         extra: Any? = this.extra,
+        applicableVariables: Map<String, String> = this.applicableVariables,
     ): HttpRequest {
         return HttpRequest(
             method = method,
@@ -61,6 +67,7 @@ class HttpRequest(
             contentType = contentType,
             application = application,
             extra = extra,
+            applicableVariables = applicableVariables,
         )
     }
 }
