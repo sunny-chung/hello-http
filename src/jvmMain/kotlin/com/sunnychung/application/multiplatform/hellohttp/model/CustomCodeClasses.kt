@@ -154,6 +154,23 @@ object CustomCodeClasses {
                         interpreter.symbolTable(),
                     )
                 }
+            ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "Request<*>",
+                functionName = "getApplicableVariables",
+                returnType = "Map<String, String>",
+                parameterTypes = emptyList(),
+                executable = { interpreter, receiver, args, typeArgs ->
+                    MapValue(
+                        (receiver as DelegatedValue<HttpRequest>).value.applicableVariables.map {
+                            interpreter.StringValue(it.key) to interpreter.StringValue(it.value)
+                        }.toMap(),
+                        interpreter.symbolTable().StringType,
+                        interpreter.symbolTable().StringType,
+                        interpreter.symbolTable(),
+                    )
+                }
             )
         )
 
