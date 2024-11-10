@@ -213,7 +213,7 @@ class NetworkClientManager : CallDataStore {
                     isError = true,
                     errorMessage = error.message
                 ),
-
+                status = ConnectionStatus.DISCONNECTED,
                 events = emptySharedFlow(),
                 eventsStateFlow = MutableStateFlow(null),
                 outgoingBytes = emptySharedFlow(),
