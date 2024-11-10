@@ -1047,26 +1047,7 @@ private fun RequestKeyValueEditorView(
     val activeBaseValues = baseValue?.filter { it.isEnabled }
     Column(modifier = modifier.padding(8.dp).verticalScroll(rememberScrollState())) {
         if (activeBaseValues?.isNotEmpty() == true) {
-            val isShowInheritedValues by remember { mutableStateOf(true) }
-            InputFormHeader(text = "Inherited from Base")
-            KeyValueEditorView(
-                keyValues = activeBaseValues,
-                keyPlaceholder = keyPlaceholder,
-                valuePlaceholder = valuePlaceholder,
-                isSupportFileValue = isSupportFileValue,
-                isSupportVariables = true,
-                knownVariables = knownVariables,
-                disabledIds = baseDisabledIds,
-                isInheritedView = true,
-                onItemChange = {_, _ ->},
-                onItemAddLast = {_ ->},
-                onItemDelete = {_ ->},
-                onDisableChange = onDisableUpdate,
-                testTagPart1 = testTagPart,
-                testTagPart2 = TestTagPart.Inherited,
-            )
-
-            InputFormHeader(text = "This Example", modifier = Modifier.padding(top = 12.dp))
+            InputFormHeader(text = "This Example")
         }
 
         KeyValueEditorView(
@@ -1091,10 +1072,30 @@ private fun RequestKeyValueEditorView(
                 onValueUpdate(data.copyWithRemovedIndex(index))
             },
             onDisableChange = {_ ->},
-//                modifier = modifier,
             testTagPart1 = testTagPart,
             testTagPart2 = TestTagPart.Current,
         )
+
+        if (activeBaseValues?.isNotEmpty() == true) {
+            val isShowInheritedValues by remember { mutableStateOf(true) }
+            InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
+            KeyValueEditorView(
+                keyValues = activeBaseValues,
+                keyPlaceholder = keyPlaceholder,
+                valuePlaceholder = valuePlaceholder,
+                isSupportFileValue = isSupportFileValue,
+                isSupportVariables = true,
+                knownVariables = knownVariables,
+                disabledIds = baseDisabledIds,
+                isInheritedView = true,
+                onItemChange = {_, _ ->},
+                onItemAddLast = {_ ->},
+                onItemDelete = {_ ->},
+                onDisableChange = onDisableUpdate,
+                testTagPart1 = testTagPart,
+                testTagPart2 = TestTagPart.Inherited,
+            )
+        }
     }
 }
 
