@@ -541,24 +541,36 @@ fun BodyViewerView(
                 }
             }
 
-            CopyableContentContainer(textToCopy = prettifyResult.prettyString, modifier = modifier) {
+            var isSearchBarVisible by remember { mutableStateOf(false) }
+            CopyableContentContainer(
+                textToCopy = prettifyResult.prettyString,
+                outerPadding = PaddingValues(top = if (isSearchBarVisible) 28.dp else 6.dp, end = 12.dp),
+                modifier = modifier
+            ) {
                 CodeEditorView(
                     isReadOnly = true,
                     text = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
                     collapsableChars = prettifyResult.collapsableCharRange,
                     syntaxHighlight = if (selectedView.prettifier!!.formatName.contains("JSON")) SyntaxHighlight.Json else SyntaxHighlight.None,
+                    onSearchBarVisibilityChange = { isSearchBarVisible = it },
                     testTag = TestTag.ResponseBody.name,
                 )
             }
         } else {
             val text = errorMessage ?: content.decodeToString()
-            CopyableContentContainer(textToCopy = text, modifier = modifier) {
+            var isSearchBarVisible by remember { mutableStateOf(false) }
+            CopyableContentContainer(
+                textToCopy = text,
+                outerPadding = PaddingValues(top = if (isSearchBarVisible) 28.dp else 6.dp, end = 12.dp),
+                modifier = modifier
+            ) {
                 CodeEditorView(
                     isReadOnly = true,
                     text = text,
                     textColor = colours.warning,
                     syntaxHighlight = SyntaxHighlight.None,
+                    onSearchBarVisibilityChange = { isSearchBarVisible = it },
                     testTag = TestTag.ResponseError.name,
                 )
             }

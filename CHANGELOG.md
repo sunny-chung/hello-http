@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Request body editor, payload body editor and response body viewer are reimplemented. This fixes many of the issues or weird behavior known in Jetpack Compose text fields.
+- The copy button overlapped with the search bar in the response body viewer.
 
 ### Optimized
 - Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without noticeable performance issues.

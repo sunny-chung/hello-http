@@ -115,6 +115,7 @@ fun CodeEditorView(
     syntaxHighlight: SyntaxHighlight,
     isEnableVariables: Boolean = false,
     knownVariables: Map<String, String> = mutableMapOf(),
+    onSearchBarVisibilityChange: ((isVisible: Boolean) -> Unit)? = null,
     testTag: String? = null,
 ) {
     log.d { "CodeEditorView start" }
@@ -359,6 +360,7 @@ fun CodeEditorView(
         if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         if (it.key == Key.F && (it.isMetaPressed || it.isCtrlPressed)) {
             isSearchVisible = !isSearchVisible
+            onSearchBarVisibilityChange?.invoke(isSearchVisible)
             if (!isSearchVisible) {
                 textFieldFocusRequester.requestFocus()
             } else {
@@ -367,6 +369,7 @@ fun CodeEditorView(
             true
         } else if (it.key == Key.Escape) {
             isSearchVisible = false
+            onSearchBarVisibilityChange?.invoke(isSearchVisible)
             textFieldFocusRequester.requestFocus()
             true
         } else {
