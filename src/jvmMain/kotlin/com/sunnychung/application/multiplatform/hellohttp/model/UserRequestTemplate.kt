@@ -130,6 +130,7 @@ data class UserRequestTemplate(
                     headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    variables = it.variables.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     preFlight = it.preFlight.copy(),
                     postFlight = with (it.postFlight) {
                         copy(
@@ -143,6 +144,7 @@ data class UserRequestTemplate(
                             disabledQueryParameterIds = o.disabledQueryParameterIds.map { idMapping[it]!! }.toSet(),
                             disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { idMapping[it]!! }.toSet(),
                             disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
+                            disabledVariables = o.disabledVariables.map { idMapping[it]!! }.toSet(),
                         )
                     },
                 )
@@ -308,6 +310,7 @@ data class UserRequestExample(
             headers = headers.deepCopyWithNewId(),
             queryParameters = queryParameters.deepCopyWithNewId(),
             body = body?.deepCopyWithNewId(),
+            variables = variables.deepCopyWithNewId(),
             preFlight = preFlight.copy(),
             postFlight = with (postFlight) {
                 copy(
@@ -321,6 +324,7 @@ data class UserRequestExample(
                     disabledQueryParameterIds = o.disabledQueryParameterIds.map { it }.toSet(),
                     disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { it }.toSet(),
                     disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { it }.toSet(),
+                    disabledVariables = o.disabledVariables.map { it }.toSet(),
                 )
             } ?: if (isCreateOverridesIfMissing) {
                 Overrides()
