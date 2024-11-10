@@ -101,6 +101,7 @@ class ComposeUnicodeCharMeasurer(private val measurer: TextMeasurer, private val
         measureAndIndex(COMPULSORY_MEASURES)
         // hardcode, because calling TextMeasurer#measure() against below characters returns zero width
         charWidth[" "] = charWidth["_"]!!
+        charWidth["\t"] = charWidth[" "]!!
         charWidth["?"] = charWidth["!"]!!
         charWidth["’"] = charWidth["'"]!!
     }
