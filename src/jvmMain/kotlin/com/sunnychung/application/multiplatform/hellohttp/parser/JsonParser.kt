@@ -1,11 +1,14 @@
 package com.sunnychung.application.multiplatform.hellohttp.parser
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 
 class JsonParser(jsonBytes: ByteArray) {
-    val tree = jacksonObjectMapper().readTree(jsonBytes)
+    private val tree = jacksonObjectMapper().apply {
+        enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+    }.readTree(jsonBytes)
 
     constructor(json: String) : this(json.encodeToByteArray())
 
