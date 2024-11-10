@@ -364,6 +364,13 @@ private fun CoreBigMonospaceText(
                 )
                 setter.call(scrollState, scrollableHeight.roundToInt())
             }
+
+        scrollState::class.declaredMemberProperties.first { it.name == "viewportSize" }
+            .apply {
+                (this as KMutableProperty<Int>)
+                setter.isAccessible = true
+                setter.call(scrollState, height)
+            }
     }
 
     val transformedState = remember(text, textTransformation) {
