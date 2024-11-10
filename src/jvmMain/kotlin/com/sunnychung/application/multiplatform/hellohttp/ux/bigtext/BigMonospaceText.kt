@@ -557,7 +557,7 @@ private fun CoreBigMonospaceText(
     }
 
     fun onType(textInput: CharSequence, isSaveUndoSnapshot: Boolean = true) {
-        log.i { "$text key in '$textInput' ${viewState.hasSelection()}" }
+        log.i { "$text key in '$textInput' ${viewState.hasSelection()} ${viewState.selection} ${viewState.transformedSelection}" }
         if (viewState.hasSelection()) {
             deleteSelection(isSaveUndoSnapshot = false)
         }
@@ -1073,6 +1073,13 @@ private fun CoreBigMonospaceText(
                 onDrag = { // onDragStart happens before onDrag
                     log.v { "onDrag ${it.x} ${it.y}" }
                     draggedPoint += it
+                    if (transformedText.isEmpty) {
+                        viewState.transformedSelection = IntRange.EMPTY
+                        viewState.selection = EMPTY_SELECTION_RANGE
+                        viewState.transformedCursorIndex = 0
+                        viewState.cursorIndex = 0
+                        return@onDrag
+                    }
                     val selectionStart = viewState.transformedSelectionStart
                     val selectedCharIndex = getTransformedCharIndex(x = draggedPoint.x, y = draggedPoint.y, mode = ResolveCharPositionMode.Selection)
                         .let {
@@ -1084,6 +1091,7 @@ private fun CoreBigMonospaceText(
                         }
                     selectionEnd = selectedCharIndex
                     viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
+                    log.d { "t sel = ${viewState.transformedSelection}" }
                     viewState.updateSelectionByTransformedSelection(transformedText)
                     viewState.transformedCursorIndex = minOf(
                         transformedText.length,
