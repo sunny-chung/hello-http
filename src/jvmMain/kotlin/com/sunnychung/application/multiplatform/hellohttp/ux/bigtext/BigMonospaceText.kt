@@ -5,6 +5,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.onDrag
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollBy
@@ -707,11 +708,12 @@ private fun CoreBigMonospaceText(
         }
     }
 
-    fun findPreviousWordBoundaryPositionFromCursor(): Int {
+    fun findPreviousWordBoundaryPositionFromCursor(isIncludeCursorPosition: Boolean = false): Int {
         val currentRowIndex = transformedText.findRowIndexByPosition(viewState.transformedCursorIndex)
         val transformedRowStart = transformedText.findRowPositionStartIndexByRowIndex(currentRowIndex)
         val rowStart = transformedText.findOriginalPositionByTransformedPosition(transformedRowStart)
-        val substringFromRowStartToCursor = text.substring(rowStart, viewState.cursorIndex)
+        val end = minOf(text.length, viewState.cursorIndex + if (isIncludeCursorPosition) 1 else 0)
+        val substringFromRowStartToCursor = text.substring(rowStart, end)
         if (substringFromRowStartToCursor.isEmpty()) {
             return maxOf(0, rowStart - 1)
         }
@@ -1154,6 +1156,16 @@ private fun CoreBigMonospaceText(
                         }
                     }
                 }
+            }
+            .pointerInput(transformedText, transformedText.hasLayouted, viewportTop, lineHeight, contentWidth, viewState) {
+                detectTapGestures(onDoubleTap = {
+                    val wordStart = findPreviousWordBoundaryPositionFromCursor(isIncludeCursorPosition = true)
+                    val wordEndExclusive = findNextWordBoundaryPositionFromCursor()
+                    viewState.selection = wordStart until wordEndExclusive
+                    viewState.updateTransformedSelectionBySelection(transformedText)
+                    viewState.cursorIndex = wordEndExclusive
+                    viewState.updateTransformedCursorIndexByOriginal(transformedText)
+                })
             }
             .onFocusChanged {
                 log.v { "BigMonospaceText onFocusChanged ${it.isFocused} ${it.hasFocus} ${it.isCaptured}" }
