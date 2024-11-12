@@ -1123,7 +1123,7 @@ private fun CoreBigMonospaceText(
                             }
                         }
                     selectionEnd = selectedCharIndex
-                    viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
+                    viewState.transformedSelection = minOf(selectionStart, selectionEnd) until maxOf(selectionStart, selectionEnd)
                     log.d { "t sel = ${viewState.transformedSelection}" }
                     viewState.updateSelectionByTransformedSelection(transformedText)
                     viewState.transformedCursorIndex = minOf(
