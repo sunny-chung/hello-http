@@ -36,7 +36,7 @@ fun CharSequence.abbr(): CharSequence {
     }
 }
 
-class BigTextFieldState(val text: BigTextImpl, val viewState: BigTextViewState) {
+class BigTextFieldState(val text: BigText, val viewState: BigTextViewState) {
     private var lastSequence = -1
     private var lastConsumedSequence = -1
 
@@ -63,4 +63,4 @@ class BigTextFieldState(val text: BigTextImpl, val viewState: BigTextViewState) 
     }
 }
 
-class BigTextChangeWithoutDetail(val changeId: Long, val bigText: BigTextImpl, val sequence: Int)
+class BigTextChangeWithoutDetail(val changeId: Long, val bigText: BigText, val sequence: Int)

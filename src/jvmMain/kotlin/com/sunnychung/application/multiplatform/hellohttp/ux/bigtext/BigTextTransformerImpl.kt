@@ -16,7 +16,7 @@ val logT = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Transform")
 
-class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
+class BigTextTransformerImpl(internal val delegate: BigText) : BigTextImpl(
     chunkSize = delegate.chunkSize,
     textBufferFactory = delegate.textBufferFactory,
     charSequenceBuilderFactory = delegate.charSequenceBuilderFactory,

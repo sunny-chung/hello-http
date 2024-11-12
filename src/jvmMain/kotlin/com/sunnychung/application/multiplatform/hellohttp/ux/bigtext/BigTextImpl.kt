@@ -38,13 +38,13 @@ internal var isD = false
 private const val EPS = 1e-4f
 
 open class BigTextImpl(
-    val chunkSize: Int = 2 * 1024 * 1024, // 2 MB
-    val undoHistoryCapacity: Int = 1000,
-    val textBufferFactory: ((capacity: Int) -> TextBuffer) = { StringTextBuffer(it) },
-    val charSequenceBuilderFactory: ((capacity: Int) -> Appendable) = { StringBuilder(it) },
-    val charSequenceFactory: ((Appendable) -> CharSequence) = { it: Appendable -> it.toString() },
+    override val chunkSize: Int = 2 * 1024 * 1024, // 2 MB
+    override val undoHistoryCapacity: Int = 1000,
+    override val textBufferFactory: ((capacity: Int) -> TextBuffer) = { StringTextBuffer(it) },
+    override val charSequenceBuilderFactory: ((capacity: Int) -> Appendable) = { StringBuilder(it) },
+    override val charSequenceFactory: ((Appendable) -> CharSequence) = { it: Appendable -> it.toString() },
 ) : BigText, BigTextLayoutable {
-    open val tree: LengthTree<BigTextNodeValue> = LengthTree<BigTextNodeValue>(
+    override val tree: LengthTree<BigTextNodeValue> = LengthTree<BigTextNodeValue>(
         object : RedBlackTreeComputations<BigTextNodeValue> {
             override fun recomputeFromLeaf(it: RedBlackTree<BigTextNodeValue>.Node) = recomputeAggregatedValues(it)
             override fun computeWhenLeftRotate(x: BigTextNodeValue, y: BigTextNodeValue) = computeWhenLeftRotate0(x, y)
@@ -54,13 +54,13 @@ open class BigTextImpl(
     )
     val buffers = mutableListOf<TextBuffer>()
 
-    var layouter: TextLayouter? = null
+    final override var layouter: TextLayouter? = null
         @JvmName("_setLayouter")
         protected set
 
     internal var isLayoutEnabled: Boolean = true
 
-    internal var contentWidth: Float? = null
+    override var contentWidth: Float? = null
 
     override var onLayoutCallback: (() -> Unit)? = null
 
@@ -71,7 +71,7 @@ open class BigTextImpl(
 
     var decorator: BigTextDecorator? = null
 
-    var undoMetadataSupplier: (() -> Any?)? = null
+    override var undoMetadataSupplier: (() -> Any?)? = null
 
     private var currentUndoMetadata: Any? = null
     private var currentRedoMetadata: Any? = null
@@ -80,7 +80,7 @@ open class BigTextImpl(
     val undoHistory = CircularList<BigTextInputOperation>(undoHistoryCapacity)
     val redoHistory = CircularList<BigTextInputOperation>(undoHistoryCapacity)
 
-    internal var changeHook: BigTextChangeHook? = null
+    override var changeHook: BigTextChangeHook? = null
 
     init {
         require(chunkSize > 0) { "chunkSize must be positive" }
@@ -200,7 +200,7 @@ open class BigTextImpl(
         }
     }
 
-    fun findPositionStartOfLine(lineIndex: Int): Int {
+    override fun findPositionStartOfLine(lineIndex: Int): Int {
         val (node, lineIndexStart) = tree.findNodeByLineBreaksExact(lineIndex)
             ?: throw IndexOutOfBoundsException("Cannot find node for line $lineIndex")
         val positionStart = findPositionStart(node)
@@ -310,7 +310,7 @@ open class BigTextImpl(
      * @param lineIndex 0-based line index
      * @return 0-based row index
      */
-    fun findFirstRowIndexOfLine(lineIndex: Int): Int {
+    override fun findFirstRowIndexOfLine(lineIndex: Int): Int {
         if (!hasLayouted) {
             return 0
         }
@@ -669,13 +669,13 @@ open class BigTextImpl(
     override val length: Int
         get() = tree.getRoot().length()
 
-    val lastIndex: Int
+    override val lastIndex: Int
         get() = length - 1
 
-    val isEmpty: Boolean
+    override val isEmpty: Boolean
         get() = length <= 0
 
-    val isNotEmpty: Boolean
+    override val isNotEmpty: Boolean
         get() = length > 0
 
     override fun buildString(): String {
@@ -793,7 +793,7 @@ open class BigTextImpl(
         return findPositionStart(node) + (charOffsetInBuffer - node.value!!.renderBufferStart)
     }
 
-    fun findLineString(lineIndex: Int): CharSequence {
+    override fun findLineString(lineIndex: Int): CharSequence {
         require(0 <= lineIndex) { "lineIndex $lineIndex must be non-negative." }
         require(lineIndex <= numOfLines) { "lineIndex $lineIndex out of bound, numOfLines = $numOfLines." }
 
@@ -1033,7 +1033,7 @@ open class BigTextImpl(
         return -(endExclusive - start)
     }
 
-    fun recordCurrentChangeSequenceIntoUndoHistory() {
+    override fun recordCurrentChangeSequenceIntoUndoHistory() {
         if (!isUndoEnabled) {
             return
         }
@@ -1127,7 +1127,7 @@ open class BigTextImpl(
         }
     }
 
-    fun undo(callback: BigTextChangeCallback? = null): Pair<Boolean, Any?> {
+    override fun undo(callback: BigTextChangeCallback?): Pair<Boolean, Any?> {
         if (!isUndoEnabled) {
             return false to null
         }
@@ -1149,7 +1149,7 @@ open class BigTextImpl(
         return true to lastOperation.undoMetadata
     }
 
-    fun redo(callback: BigTextChangeCallback? = null): Pair<Boolean, Any?> {
+    override fun redo(callback: BigTextChangeCallback?): Pair<Boolean, Any?> {
         if (!isUndoEnabled) {
             return false to null
         }
@@ -1165,9 +1165,9 @@ open class BigTextImpl(
         return true to lastOperation.redoMetadata
     }
 
-    fun isUndoable(): Boolean = isUndoEnabled && (currentChanges.isNotEmpty() || undoHistory.isNotEmpty)
+    override fun isUndoable(): Boolean = isUndoEnabled && (currentChanges.isNotEmpty() || undoHistory.isNotEmpty)
 
-    fun isRedoable(): Boolean = isUndoEnabled && currentChanges.isEmpty() && redoHistory.isNotEmpty
+    override fun isRedoable(): Boolean = isUndoEnabled && currentChanges.isEmpty() && redoHistory.isNotEmpty
 
     fun charIndexRangeOfNode(node: RedBlackTree<BigTextNodeValue>.Node): IntRange {
         val start = findPositionStart(node)
@@ -1239,7 +1239,7 @@ open class BigTextImpl(
         return super.equals(other)
     }
 
-    fun inspect(label: String = "") = buildString {
+    override fun inspect(label: String) = buildString {
         appendLine("[$label] Buffer:\n${buffers.mapIndexed { i, it -> "    $i:\t$it\n" }.joinToString("")}")
         appendLine("[$label] Buffer Line Breaks:\n${buffers.mapIndexed { i, it -> "    $i:\t${it.lineOffsetStarts}\n" }.joinToString("")}")
         appendLine("[$label] Tree:\nflowchart TD\n${tree.debugTree()}")
@@ -1255,7 +1255,7 @@ open class BigTextImpl(
         }
     }
 
-    fun printDebug(label: String = "") {
+    override fun printDebug(label: String) {
         println(inspect(label))
     }
 
@@ -1287,7 +1287,7 @@ open class BigTextImpl(
         layout()
     }
 
-    fun layout() {
+    override fun layout() {
         val layouter = this.layouter ?: return
         val contentWidth = this.contentWidth ?: return
 

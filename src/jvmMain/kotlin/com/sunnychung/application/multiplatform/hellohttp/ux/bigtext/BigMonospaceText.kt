@@ -122,7 +122,7 @@ fun BigMonospaceText(
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
-    text = text as BigTextImpl,
+    text = text,
     padding = padding,
     fontSize = fontSize,
     color = color,
@@ -195,7 +195,7 @@ fun BigMonospaceTextField(
     onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
-    text = text as BigTextImpl,
+    text = text,
     padding = padding,
     fontSize = fontSize,
     color = color,
@@ -217,7 +217,7 @@ fun BigMonospaceTextField(
 @Composable
 private fun CoreBigMonospaceText(
     modifier: Modifier = Modifier,
-    text: BigTextImpl,
+    text: BigText,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,

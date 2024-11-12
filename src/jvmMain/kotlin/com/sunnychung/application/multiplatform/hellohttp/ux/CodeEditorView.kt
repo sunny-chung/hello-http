@@ -65,8 +65,8 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppUX.ENV_VAR_VALUE_MAX_DISPLAY_LENGTH
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextInputFilter
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextKeyboardInputProcessor
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
@@ -134,7 +134,7 @@ fun CodeEditorView(
     var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
     val bigTextFieldState: BigTextFieldState by rememberLargeAnnotatedBigTextFieldState(initialValue = initialText, cacheKey)
-    val bigTextValue: BigTextImpl = bigTextFieldState.text
+    val bigTextValue: BigText = bigTextFieldState.text
     var bigTextValueId by remember(bigTextFieldState) { mutableStateOf<Long>(Random.nextLong()) }
 
     var collapsedLines = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
@@ -435,7 +435,7 @@ fun CodeEditorView(
                     scrollState = scrollState,
                     bigTextViewState = bigTextFieldState.viewState,
                     bigTextValueId = bigTextValueId,
-                    bigText = bigTextValue as BigTextImpl,
+                    bigText = bigTextValue,
                     layoutResult = layoutResult,
                     collapsableLines = collapsableLines,
                     collapsedLines = collapsedLines.values.toList(),
@@ -455,7 +455,7 @@ fun CodeEditorView(
                     }
 
                     BigMonospaceText(
-                        text = bigTextValue as BigTextImpl,
+                        text = bigTextValue,
                         color = textColor,
                         padding = PaddingValues(4.dp),
                         inputFilter = inputFilter,
@@ -677,7 +677,7 @@ fun BigTextLineNumbersView(
     modifier: Modifier = Modifier,
     bigTextViewState: BigTextViewState,
     bigTextValueId: Long,
-    bigText: BigTextImpl,
+    bigText: BigText,
     layoutResult: BigTextSimpleLayoutResult?,
     scrollState: ScrollState,
     collapsableLines: List<IntRange>,
