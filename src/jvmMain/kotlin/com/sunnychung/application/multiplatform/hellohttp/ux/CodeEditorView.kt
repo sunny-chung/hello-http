@@ -137,8 +137,8 @@ fun CodeEditorView(
     val bigTextValue: BigText = bigTextFieldState.text
     var bigTextValueId by remember(bigTextFieldState) { mutableStateOf<Long>(Random.nextLong()) }
 
-    var collapsedLines = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
-    var collapsedChars = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
+    val collapsedLines = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
+    val collapsedChars = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
 
     log.d { "CodeEditorView recompose" }
 
@@ -147,7 +147,7 @@ fun CodeEditorView(
 
         val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
         val previousLineString = bigTextValue.findLineString(lineIndex) // as '\n' is not yet inputted, current line is the "previous line"
-        var spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
+        val spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
         textManipulator.replaceAtCursor(newSpaces)
     }
