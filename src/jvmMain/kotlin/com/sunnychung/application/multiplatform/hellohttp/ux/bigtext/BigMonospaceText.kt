@@ -107,36 +107,7 @@ import kotlin.reflect.jvm.isAccessible
 @Composable
 fun BigMonospaceText(
     modifier: Modifier = Modifier,
-    text: String,
-    padding: PaddingValues = PaddingValues(4.dp),
-    fontSize: TextUnit = LocalFont.current.bodyFontSize,
-    color: Color = LocalColor.current.text,
-    isSelectable: Boolean = false,
-    inputFilter: BigTextInputFilter? = null,
-    textTransformation: IncrementalTextTransformation<*>? = null,
-    scrollState: ScrollState = rememberScrollState(),
-    viewState: BigTextViewState = remember { BigTextViewState() },
-    onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
-) = CoreBigMonospaceText(
-    modifier = modifier,
-    text = BigText.createFromLargeString(text), //InefficientBigText(text),
-    padding = padding,
-    fontSize = fontSize,
-    color = color,
-    isSelectable = isSelectable,
-    isEditable = false,
-    onTextChange = {},
-    inputFilter = inputFilter,
-    textTransformation = textTransformation,
-    scrollState = scrollState,
-    viewState = viewState,
-    onTextLayout = onTextLayout,
-)
-
-@Composable
-fun BigMonospaceText(
-    modifier: Modifier = Modifier,
-    text: BigTextImpl,
+    text: BigText,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
@@ -151,7 +122,7 @@ fun BigMonospaceText(
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
-    text = text,
+    text = text as BigTextImpl,
     padding = padding,
     fontSize = fontSize,
     color = color,
