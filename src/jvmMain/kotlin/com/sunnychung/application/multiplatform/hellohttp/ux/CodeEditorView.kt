@@ -121,6 +121,7 @@ fun CodeEditorView(
     isEnableVariables: Boolean = false,
     knownVariables: Map<String, String> = mutableMapOf(),
     onSearchBarVisibilityChange: ((isVisible: Boolean) -> Unit)? = null,
+    onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
     testTag: String? = null,
 ) {
     log.d { "CodeEditorView start" }
@@ -533,6 +534,7 @@ fun CodeEditorView(
                             fontSize = LocalFont.current.codeEditorBodyFontSize,
                             scrollState = scrollState,
                             onTextLayout = { layoutResult = it },
+                            onTextManipulatorReady = onTextManipulatorReady,
                             keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
                                 override fun beforeProcessInput(
                                     it: KeyEvent,

@@ -182,6 +182,7 @@ fun BigMonospaceTextField(
     keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
+    onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
 ) {
     BigMonospaceTextField(
         modifier = modifier,
@@ -199,7 +200,8 @@ fun BigMonospaceTextField(
         viewState = textFieldState.viewState,
         keyboardInputProcessor = keyboardInputProcessor,
         onPointerEvent = onPointerEvent,
-        onTextLayout = onTextLayout
+        onTextLayout = onTextLayout,
+        onTextManipulatorReady = onTextManipulatorReady,
     )
 }
 
@@ -219,6 +221,7 @@ fun BigMonospaceTextField(
     keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
+    onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
     text = text as BigTextImpl,
@@ -236,6 +239,7 @@ fun BigMonospaceTextField(
     keyboardInputProcessor = keyboardInputProcessor,
     onPointerEvent = onPointerEvent,
     onTextLayout = onTextLayout,
+    onTextManipulatorReady = onTextManipulatorReady,
 )
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
@@ -257,6 +261,7 @@ private fun CoreBigMonospaceText(
     keyboardInputProcessor: BigTextKeyboardInputProcessor? = null,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onTextLayout: ((BigTextSimpleLayoutResult) -> Unit)? = null,
+    onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) {
     log.d { "CoreBigMonospaceText recompose" }
@@ -534,6 +539,9 @@ private fun CoreBigMonospaceText(
     }
 
     fun delete(start: Int, endExclusive: Int) {
+        if (start >= endExclusive) {
+            return
+        }
         onValuePreChange(BigTextChangeEventType.Delete, start, endExclusive)
         text.delete(start, endExclusive)
         onValuePostChange(BigTextChangeEventType.Delete, start, endExclusive)
@@ -972,51 +980,60 @@ private fun CoreBigMonospaceText(
         }
     }
 
-    fun onProcessKeyboardInput(keyEvent: KeyEvent): Boolean {
+    class BigTextManipulatorImpl(val onTextManipulated: (() -> Unit)? = null) : BigTextManipulator {
         var hasManipulatedText = false
-        val textManipulator = object : BigTextManipulator {
-            override fun append(text: CharSequence) {
-                hasManipulatedText = true
-                insertAt(text.length, text)
-            }
+            private set
 
-            override fun insertAt(pos: Int, text: CharSequence) {
-                hasManipulatedText = true
-                insertAt(pos, text)
-            }
-
-            override fun replaceAtCursor(text: CharSequence) {
-                hasManipulatedText = true
-                onType(text, isSaveUndoSnapshot = false) // save undo snapshot at the end
-            }
-
-            override fun delete(range: IntRange) {
-                hasManipulatedText = true
-                delete(range.start, range.endInclusive + 1)
-            }
-
-            override fun replace(range: IntRange, text: CharSequence) {
-                hasManipulatedText = true
-                delete(range.start, range.endInclusive + 1)
-                insertAt(range.start, text)
-            }
-
-            override fun setCursorPosition(position: Int) {
-                require(position in 0 .. text.length) { "Cursor position $position is out of range. Text length: ${text.length}" }
-                viewState.cursorIndex = position
-                viewState.updateTransformedCursorIndexByOriginal(transformedText)
-                viewState.transformedSelectionStart = viewState.transformedCursorIndex
-                scrollToCursor()
-            }
-
-            override fun setSelection(range: IntRange) {
-                require(range.start in 0 .. text.length) { "Range start ${range.start} is out of range. Text length: ${text.length}" }
-                require(range.endInclusive + 1 in 0 .. text.length) { "Range end ${range.endInclusive} is out of range. Text length: ${text.length}" }
-
-                viewState.selection = range
-                viewState.updateTransformedSelectionBySelection(transformedText)
-            }
+        override fun append(text: CharSequence) {
+            hasManipulatedText = true
+            insertAt(text.length, text)
+            onTextManipulated?.invoke()
         }
+
+        override fun insertAt(pos: Int, text: CharSequence) {
+            hasManipulatedText = true
+            insertAt(pos, text)
+            onTextManipulated?.invoke()
+        }
+
+        override fun replaceAtCursor(text: CharSequence) {
+            hasManipulatedText = true
+            onType(text, isSaveUndoSnapshot = false) // save undo snapshot at the end
+            onTextManipulated?.invoke()
+        }
+
+        override fun delete(range: IntRange) {
+            hasManipulatedText = true
+            delete(range.start, range.endInclusive + 1)
+            onTextManipulated?.invoke()
+        }
+
+        override fun replace(range: IntRange, text: CharSequence) {
+            hasManipulatedText = true
+            delete(range.start, range.endInclusive + 1)
+            insertAt(range.start, text)
+            onTextManipulated?.invoke()
+        }
+
+        override fun setCursorPosition(position: Int) {
+            require(position in 0 .. text.length) { "Cursor position $position is out of range. Text length: ${text.length}" }
+            viewState.cursorIndex = position
+            viewState.updateTransformedCursorIndexByOriginal(transformedText)
+            viewState.transformedSelectionStart = viewState.transformedCursorIndex
+            scrollToCursor()
+        }
+
+        override fun setSelection(range: IntRange) {
+            require(range.start in 0 .. text.length) { "Range start ${range.start} is out of range. Text length: ${text.length}" }
+            require(range.endInclusive + 1 in 0 .. text.length) { "Range end ${range.endInclusive} is out of range. Text length: ${text.length}" }
+
+            viewState.selection = range
+            viewState.updateTransformedSelectionBySelection(transformedText)
+        }
+    }
+
+    fun onProcessKeyboardInput(keyEvent: KeyEvent): Boolean {
+        val textManipulator = BigTextManipulatorImpl()
 
         try {
             if (keyboardInputProcessor?.beforeProcessInput(keyEvent, viewState, textManipulator) == true) {
@@ -1029,11 +1046,18 @@ private fun CoreBigMonospaceText(
             return result
 
         } finally {
-            if (hasManipulatedText) {
+            if (textManipulator.hasManipulatedText) {
                 updateViewState()
                 text.recordCurrentChangeSequenceIntoUndoHistory()
             }
         }
+    }
+
+    remember(text, onTextManipulatorReady) {
+        onTextManipulatorReady?.invoke(BigTextManipulatorImpl {
+            updateViewState()
+            text.recordCurrentChangeSequenceIntoUndoHistory()
+        })
     }
 
     val tv = remember { TextFieldValue() } // this value is not used

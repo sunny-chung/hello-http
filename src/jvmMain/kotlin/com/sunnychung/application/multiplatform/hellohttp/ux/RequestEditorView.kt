@@ -83,6 +83,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIn
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -1458,6 +1459,7 @@ private fun RequestBodyTextEditor(
     val colors = LocalColor.current
     val baseExample = request.examples.first()
 
+    var textManipulator by remember(cacheKey) { mutableStateOf<BigTextManipulator?>(null) }
     val changeText = { it: String ->
         onRequestModified(
             request.copy(
@@ -1466,6 +1468,7 @@ private fun RequestBodyTextEditor(
                 )
             )
         )
+        Unit
     }
 
     val prettifyHandler = when (contentType) {
@@ -1473,6 +1476,7 @@ private fun RequestBodyTextEditor(
             try {
                 val prettified = JsonParser(code).prettify().prettyString
                 changeText(prettified)
+                textManipulator?.replace(0 until code.length, prettified)
             } catch (e: Throwable) {
                 AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: "Error while prettifying as JSON")
             }
@@ -1497,6 +1501,7 @@ private fun RequestBodyTextEditor(
                 knownVariables = environmentVariables,
                 initialText = content,
                 onTextChange = changeText,
+                onTextManipulatorReady = { textManipulator = it },
                 syntaxHighlight = syntaxHighlight,
                 testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
             )
