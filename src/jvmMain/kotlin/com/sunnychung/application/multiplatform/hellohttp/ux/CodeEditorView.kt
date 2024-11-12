@@ -75,7 +75,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTran
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberAnnotatedBigTextFieldState
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberLargeAnnotatedBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -106,8 +106,13 @@ val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024 // 4 MB
 @Composable
 fun CodeEditorView(
     modifier: Modifier = Modifier,
+    cacheKey: String,
     isReadOnly: Boolean = false,
-    text: String,
+
+    /**
+     * This argument is only used when there is a cache miss using the cache key {@param cacheKey}.
+     */
+    initialText: String,
     onTextChange: ((String) -> Unit)? = null,
     collapsableLines: List<IntRange> = emptyList(),
     collapsableChars: List<IntRange> = emptyList(),
@@ -127,8 +132,7 @@ fun CodeEditorView(
 
     var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
-    val (secondCacheKey, bigTextFieldMutableState) = rememberAnnotatedBigTextFieldState(initialValue = text)
-    val bigTextFieldState: BigTextFieldState = bigTextFieldMutableState.value
+    val bigTextFieldState: BigTextFieldState by rememberLargeAnnotatedBigTextFieldState(initialValue = initialText, cacheKey)
     val bigTextValue: BigTextImpl = bigTextFieldState.text
     var bigTextValueId by remember(bigTextFieldState) { mutableStateOf<Long>(Random.nextLong()) }
 
@@ -480,18 +484,17 @@ fun CodeEditorView(
                     )
 //                    return@Row // compose bug: return here would crash
                 } else {
-                    LaunchedEffect(bigTextFieldState, onTextChange) {
+                    LaunchedEffect(bigTextFieldState, onTextChange) { // FIXME the flow is frequently recreated
                         log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
                         bigTextFieldState.valueChangesFlow
                             .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
                             .chunkedLatest(200.milliseconds())
                             .collect {
-                                log.d { "bigTextFieldState change ${it.changeId} ${it.bigText.buildString()}" }
+                                log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
                                 onTextChange?.let { onTextChange ->
                                     val string = it.bigText.buildCharSequence() as AnnotatedString
                                     log.d { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
                                     onTextChange(string.text)
-                                    secondCacheKey.value = string.text
                                 }
                                 bigTextValueId = it.changeId
                                 searchTrigger.trySend(Unit)

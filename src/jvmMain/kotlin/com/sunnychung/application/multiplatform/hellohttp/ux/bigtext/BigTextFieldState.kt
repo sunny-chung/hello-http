@@ -2,63 +2,30 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.AnnotatedString
-import com.sunnychung.application.multiplatform.hellohttp.util.MutableObjectRef
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
 
+/**
+ * Create a BigTextFieldState with a large text buffer.
+ *
+ * The argument `initialValue` is only used when there is a cache miss using the cache key `cacheKey`.
+ */
 @Composable
-fun rememberBigTextFieldState(initialValue: String = ""): Pair<MutableState<String>, MutableState<BigTextFieldState>> {
-    val secondCacheKey = rememberSaveable { mutableStateOf(initialValue) }
-    val state = rememberSaveable {
-        log.d { "cache miss 1" }
-        mutableStateOf(BigTextFieldState(BigText.createFromLargeString(initialValue), BigTextViewState()))
-    }
-    if (initialValue !== secondCacheKey.value) {
-        log.d { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
-        secondCacheKey.value = initialValue
-        state.value = BigTextFieldState(BigText.createFromLargeString(initialValue), BigTextViewState())
-    }
-    return secondCacheKey to state
-}
-
-@Composable
-fun rememberAnnotatedBigTextFieldState(initialValue: AnnotatedString = AnnotatedString("")): Pair<MutableState<AnnotatedString>, MutableState<BigTextFieldState>> {
-    val secondCacheKey = rememberSaveable { mutableStateOf(initialValue) }
-    val state = rememberSaveable {
-        log.d { "cache miss 1" }
-        mutableStateOf(BigTextFieldState(BigText.createFromLargeAnnotatedString(initialValue), BigTextViewState()))
-    }
-    if (initialValue !== secondCacheKey.value) {
-        log.d { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
-        secondCacheKey.value = initialValue
-        state.value = BigTextFieldState(BigText.createFromLargeAnnotatedString(initialValue), BigTextViewState())
-    }
-    return secondCacheKey to state
-}
-
-@Composable
-fun rememberAnnotatedBigTextFieldState(initialValue: String = ""): Pair<MutableObjectRef<String>, MutableState<BigTextFieldState>> {
-    log.d { "rememberAnnotatedBigTextFieldState start" }
-    val secondCacheKey by rememberSaveable { mutableStateOf(MutableObjectRef(initialValue)) }
-    val state = rememberSaveable {
+fun rememberLargeAnnotatedBigTextFieldState(initialValue: String = "", vararg cacheKeys: Any?): MutableState<BigTextFieldState> {
+    return rememberSaveable(*cacheKeys) {
         log.i { "cache miss 1" }
-        mutableStateOf(BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState()))
+        mutableStateOf(
+            BigTextFieldState(
+                BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)),
+                BigTextViewState()
+            )
+        )
     }
-    if (initialValue !== secondCacheKey.value) {
-        log.i { "cache miss. old key2 = ${secondCacheKey.value.abbr()}; new key2 = ${initialValue.abbr()}" }
-
-        secondCacheKey.value = initialValue
-        state.value = BigTextFieldState(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue)), BigTextViewState())
-//        log.i { "new view state = ${state.value.viewState}" }
-    }
-    log.d { "rememberAnnotatedBigTextFieldState end" }
-    return secondCacheKey to state
 }
 
 fun CharSequence.abbr(): CharSequence {

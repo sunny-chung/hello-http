@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 @Composable
 fun KotliteCodeEditorView(
     modifier: Modifier = Modifier,
+    cacheKey: String,
     isReadOnly: Boolean = false,
     isEnabled: Boolean = true,
     text: String,
@@ -22,8 +23,9 @@ fun KotliteCodeEditorView(
     }
     CodeEditorView(
         modifier = modifier,
+        cacheKey = cacheKey,
         isReadOnly = isReadOnly,
-        text = text,
+        initialText = text,
         onTextChange = onTextChange,
         textColor = textColor,
         syntaxHighlight = if (isEnabled) SyntaxHighlight.Kotlin else SyntaxHighlight.None,

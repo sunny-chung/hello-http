@@ -137,7 +137,7 @@ abstract class AbstractSyntaxHighlightDecorator(language: Language) : CacheableB
             } else {
                 "" // the doc is wrong. null would result in crash
             }.also {
-                println("parse $byte = '$it'")
+                log.v { "parse $byte = '$it'" }
             }
         }
 

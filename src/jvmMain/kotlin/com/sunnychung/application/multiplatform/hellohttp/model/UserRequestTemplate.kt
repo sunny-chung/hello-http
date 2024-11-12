@@ -449,6 +449,10 @@ class StringBody(val value: String) : UserRequestBody {
     override fun hashCode(): Int {
         return value.hashCode()
     }
+
+    override fun toString(): String {
+        return "${super.toString()}:${value.length}"
+    }
 }
 
 interface RequestBodyWithKeyValuePairs {

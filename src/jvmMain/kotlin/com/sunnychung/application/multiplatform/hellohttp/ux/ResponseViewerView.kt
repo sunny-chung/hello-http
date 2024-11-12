@@ -548,8 +548,9 @@ fun BodyViewerView(
                 modifier = modifier
             ) {
                 CodeEditorView(
+                    cacheKey = "$key/View:${selectedView.key}",
                     isReadOnly = true,
-                    text = prettifyResult.prettyString,
+                    initialText = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
                     collapsableChars = prettifyResult.collapsableCharRange,
                     syntaxHighlight = if (selectedView.prettifier!!.formatName.contains("JSON")) SyntaxHighlight.Json else SyntaxHighlight.None,
@@ -566,8 +567,9 @@ fun BodyViewerView(
                 modifier = modifier
             ) {
                 CodeEditorView(
+                    cacheKey = "$key/Error",
                     isReadOnly = true,
-                    text = text,
+                    initialText = text,
                     textColor = colours.warning,
                     syntaxHighlight = SyntaxHighlight.None,
                     onSearchBarVisibilityChange = { isSearchBarVisible = it },
@@ -640,8 +642,9 @@ fun ResponseBodyView(response: UserResponse) {
         if (response.postFlightErrorMessage?.isNotEmpty() == true) {
             AppText(text = "Post-flight Error", modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
             CodeEditorView(
+                cacheKey = "Response:${response.id}/PostflightError",
                 isReadOnly = true,
-                text = response.postFlightErrorMessage ?: "",
+                initialText = response.postFlightErrorMessage ?: "",
                 textColor = LocalColor.current.warning,
                 syntaxHighlight = SyntaxHighlight.None,
                 modifier = Modifier.fillMaxWidth().height(100.dp),
@@ -719,7 +722,7 @@ fun ResponseStreamView(response: UserResponse) {
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         BodyViewerView(
             modifier = Modifier.weight(0.6f),
-            key = "Response:${response.id}/Stream:${selectedMessage?.id}/Body",
+            key = "Response:${response.id}/Stream:${displayMessage?.id}/Body",
             content = detailData ?: byteArrayOf(),
             prettifiers = prettifiers,
             selectedPrettifierState = remember(
