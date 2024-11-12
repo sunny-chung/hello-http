@@ -455,6 +455,7 @@ fun CodeEditorView(
 
                     BigMonospaceText(
                         text = bigTextValue as BigTextImpl,
+                        color = textColor,
                         padding = PaddingValues(4.dp),
                         inputFilter = inputFilter,
                         textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
@@ -528,6 +529,7 @@ fun CodeEditorView(
                             MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
                             //},
                             ,
+                            color = textColor,
                             fontSize = LocalFont.current.codeEditorBodyFontSize,
                             scrollState = scrollState,
                             onTextLayout = { layoutResult = it },
