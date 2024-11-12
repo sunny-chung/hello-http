@@ -529,7 +529,7 @@ fun BodyViewerView(
             }
             isJsonPathError = hasError
 
-            val prettifyResult = remember(contentToUse) {
+            val prettifyResult = remember(contentToUse, selectedView) {
                 try {
                     if (isRaw) {
                         selectedView.prettifier!!.prettify(contentToUse)
