@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
@@ -46,14 +48,18 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.extension.countNotBlank
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
@@ -551,12 +557,65 @@ fun RequestEditorView(
             else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
         }
 
+        fun isApplicable(property: (UserRequestExample) -> Boolean?): Int {
+            return if (selectedExample.id == baseExample.id) {
+                1
+            } else if (property(selectedExample) == true) {
+                1
+            } else {
+                0
+            }
+        }
+
+        fun List<UserKeyValuePair>.countActive() = count { it.isEnabled }
+
+        val tabBadgeNum = { tab: RequestTab -> when (tab) {
+            RequestTab.Body -> when (val body = selectedExample.body) {
+                is FileBody -> isApplicable { it.overrides?.isOverrideBody } * body.filePath.countNotBlank()
+                is FormUrlEncodedBody -> body.value.countActive()
+                is MultipartBody -> body.value.countActive()
+                is GraphqlBody -> isApplicable { it.overrides?.isOverrideBodyContent } * body.document.countNotBlank() +
+                        isApplicable { it.overrides?.isOverrideBodyVariables } * body.variables.countNotBlank()
+                is StringBody -> isApplicable { it.overrides?.isOverrideBody } * body.value.countNotBlank()
+                null -> 0
+            }
+            RequestTab.Query -> selectedExample.queryParameters.countActive()
+            RequestTab.Header -> selectedExample.headers.countActive()
+            RequestTab.PreFlight -> isApplicable { it.overrides?.isOverridePreFlightScript } *
+                selectedExample.preFlight.executeCode.countNotBlank()
+            RequestTab.PostFlight -> selectedExample.postFlight.updateVariablesFromHeader.countActive() +
+                selectedExample.postFlight.updateVariablesFromBody.countActive()
+            RequestTab.Variable -> selectedExample.variables.countActive()
+        } }
+
         TabsView(
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
             selectedIndex = selectedRequestTabIndex,
             onSelectTab = { selectedRequestTabIndex = it },
             contents = tabs.map {
-                { AppTabLabel(text = it.displayText) }
+                {
+                    val badgeNum = tabBadgeNum(it)
+                    Row(Modifier.padding(8.dp)) {
+                        AppTabLabel(text = it.displayText, isIncludePadding = false)
+                        if (badgeNum != 0) {
+                            var size by remember { mutableStateOf(IntSize(0, 0)) }
+                            val longerEdgeLengthDp = with (LocalDensity.current) {
+                                maxOf(size.width, size.height).toDp()
+                            }
+                            Box(modifier = Modifier.padding(start = 1.dp)
+                                .background(colors.backgroundTooltip, CircleShape)
+                                .align(Alignment.Top)
+                                .onGloballyPositioned { size = it.size }
+                                .sizeIn(minWidth = longerEdgeLengthDp, minHeight = longerEdgeLengthDp)) {
+                                AppText(
+                                    text = badgeNum.toString(),
+                                    fontSize = fonts.badgeFontSize,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
+                    }
+                }
             },
             testTag = TestTag.RequestParameterTypeTab.name,
         )

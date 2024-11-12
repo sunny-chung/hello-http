@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - New API for user scripting: `fun Request<*>.getApplicableVariables(): Map<String, String>`
 - Prettify button in JSON request editor. This includes GraphQL and gRPC.
 - Mouse hovering variable placeholders in Body Editor to show a tooltip for its value (if exists)
+- Number badges in Request Parameter Type tabs to indicate the number of active entries declared in the selected example, e.g. the number of active key-value pairs of a multipart request body declared in the selected Request Example.
 
 ### Updated
 - Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)

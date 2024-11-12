@@ -6,6 +6,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun AppTabLabel(modifier: Modifier = Modifier, text: String) {
-    AppText(text = text, modifier = modifier.padding(8.dp))
+fun AppTabLabel(modifier: Modifier = Modifier, text: String, isIncludePadding: Boolean = true) {
+    AppText(text = text, modifier = modifier.run {
+        if (isIncludePadding) {
+            this.padding(8.dp)
+        } else {
+            this
+        }
+    })
 }

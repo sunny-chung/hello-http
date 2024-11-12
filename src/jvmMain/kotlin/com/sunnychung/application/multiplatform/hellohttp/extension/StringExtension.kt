@@ -18,3 +18,5 @@ fun String.endWithNewLine() =
     } else {
         this + '\n'
     }
+
+fun String?.countNotBlank(): Int = if (isNullOrBlank()) 0 else 1
