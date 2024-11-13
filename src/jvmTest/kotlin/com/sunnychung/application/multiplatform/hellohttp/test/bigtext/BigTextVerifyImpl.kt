@@ -4,6 +4,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeCallback
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeHook
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextNodeValue
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
@@ -32,6 +33,9 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         get() = bigTextImpl.tree
     override val contentWidth: Float?
         get() = TODO("Not yet implemented")
+    override var decorator: BigTextDecorator?
+        get() = TODO("Not yet implemented")
+        set(value) {}
     override var undoMetadataSupplier: (() -> Any?)?
         get() = TODO("Not yet implemented")
         set(value) {}
@@ -245,7 +249,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         if (isDebug) {
             println(
                 "             ${
-                    (0 until maxOf(t.delegate.length, t.length)).joinToString("") {
+                    (0 until maxOf(t.originalText.length, t.length)).joinToString("") {
                         if (it % 10 != 0) {
                             (it % 10).toString()
                         } else {
@@ -254,7 +258,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
                     }
                 }"
             )
-            println("Original:    ${t.delegate.buildString()}")
+            println("Original:    ${t.originalText.buildString()}")
             println("Transformed: ${t.buildString()}")
         }
         val transformedLength = t.length

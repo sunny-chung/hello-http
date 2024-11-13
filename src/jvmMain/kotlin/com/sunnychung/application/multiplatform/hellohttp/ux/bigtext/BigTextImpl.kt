@@ -69,7 +69,7 @@ open class BigTextImpl(
      */
     var isUndoEnabled: Boolean = false
 
-    var decorator: BigTextDecorator? = null
+    override var decorator: BigTextDecorator? = null
 
     override var undoMetadataSupplier: (() -> Any?)? = null
 
@@ -468,7 +468,7 @@ open class BigTextImpl(
             position = if (isInsertAtRightmost) position + 1 else position,
             isThrowErrorIfMissing = !isInsertAtRightmost
         )
-        if (node == null && isInsertAtRightmost) {
+        if (node == null && isInsertAtRightmost && isNotEmpty) {
             log.w { "Node $position not found. Find ${position - 1} instead" }
             val r = findNodeJustBeforePosition(position = position, isThrowErrorIfMissing = true)
             node = r.first
@@ -893,7 +893,7 @@ open class BigTextImpl(
     override fun delete(start: Int, endExclusive: Int): Int {
         require(start <= endExclusive) { "start should be <= endExclusive" }
         require(0 <= start) { "Invalid start ($start)" }
-        require(endExclusive <= length) { "endExclusive is out of bound ($endExclusive)" }
+        require(endExclusive <= length) { "endExclusive is out of bound. Given endExclusive = $endExclusive). Length = $length" }
 
         return deleteUnchecked(start, endExclusive).also {
             changeHook?.afterDelete(this, start until endExclusive)

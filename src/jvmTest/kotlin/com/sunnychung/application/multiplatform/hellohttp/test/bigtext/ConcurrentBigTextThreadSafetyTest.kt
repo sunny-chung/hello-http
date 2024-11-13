@@ -97,7 +97,7 @@ class ConcurrentBigTextThreadSafetyTest {
         val NUM_ITERATIONS_PER_THREAD = 100000
         val NUM_THREADS = 10
         val random = Random(12345)
-        val initialText = (0 until 1200000).joinToString { (it % 10).toString() }
+        val initialText = (0 until 1200000).joinToString("") { (it % 10).toString() }
 
         fun CoroutineScope.testOp(text: BigText) {
             (0 until NUM_THREADS).forEach {

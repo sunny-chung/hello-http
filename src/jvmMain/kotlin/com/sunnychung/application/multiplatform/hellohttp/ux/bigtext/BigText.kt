@@ -1,7 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 /**
- * Manipulates large String. This is NOT thread-safe.
+ * Manipulates large String.
  */
 interface BigText {
 
@@ -32,6 +32,8 @@ interface BigText {
     val charSequenceFactory: ((Appendable) -> CharSequence)
     val tree: LengthTree<BigTextNodeValue>
     val contentWidth: Float?
+
+    var decorator: BigTextDecorator?
 
     var undoMetadataSupplier: (() -> Any?)?
     var changeHook: BigTextChangeHook?

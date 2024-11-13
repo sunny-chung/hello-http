@@ -4,9 +4,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-class ConcurrentBigText(private val delegate: BigText) : BigText {
+open class ConcurrentBigText(private val delegate: BigText) : BigText {
 
-    private val lock = ReentrantReadWriteLock()
+    protected val lock = ReentrantReadWriteLock()
 
     override val length: Int
         get() = lock.read { delegate.length }
@@ -42,6 +42,9 @@ class ConcurrentBigText(private val delegate: BigText) : BigText {
         get() = lock.read { delegate.tree }
     override val contentWidth: Float?
         get() = lock.read { delegate.contentWidth }
+    override var decorator: BigTextDecorator?
+        get() = lock.read { delegate.decorator }
+        set(value) { lock.write { delegate.decorator = value } }
     override var undoMetadataSupplier: (() -> Any?)?
         get() = lock.read { delegate.undoMetadataSupplier }
         set(value) { lock.write { delegate.undoMetadataSupplier = value } }

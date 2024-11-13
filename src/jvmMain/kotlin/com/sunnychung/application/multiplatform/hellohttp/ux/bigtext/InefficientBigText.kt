@@ -41,6 +41,9 @@ class InefficientBigText(text: String) : BigText {
         get() = TODO("Not yet implemented")
     override val contentWidth: Float?
         get() = TODO("Not yet implemented")
+    override var decorator: BigTextDecorator?
+        get() = TODO("Not yet implemented")
+        set(value) {}
     override var undoMetadataSupplier: (() -> Any?)?
         get() = TODO("Not yet implemented")
         set(value) {}
