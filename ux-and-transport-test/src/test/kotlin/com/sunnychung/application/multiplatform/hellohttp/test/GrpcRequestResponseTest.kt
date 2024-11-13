@@ -256,7 +256,14 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
                 {
                   "data": ${it + 100}
                 }
-            """.trimIndent(), getResponseBody())
+            """.trimIndent(),
+                try {
+                    getResponseBody()
+                } catch (e: AssertionError) {
+                    captureScreenToFile("bidirectionalStreaming")
+                    throw e
+                }
+            )
             assertStatus("Communicating")
         }
         completeRequest()

@@ -467,7 +467,7 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
     } catch (e: ComposeTimeoutException) {
 //        val screenshot = captureToImage().asSkiaBitmap().toBufferedImage().toImage()
 //        File("test-error.png").writeBytes(screenshot.encodeToData(EncodedImageFormat.PNG)!!.bytes)
-        captureScreenToFile()
+        captureScreenToFile("createEnvironmentInEnvDialog")
         throw e
     }
 
@@ -1245,7 +1245,9 @@ fun SemanticsNodeInteraction.performTextInput(host: ComposeUiTest, s: String) {
     }
 }
 
-fun captureScreenToFile() {
+fun captureScreenToFile(filename: String) {
     val image = Robot().createScreenCapture(Rectangle(Toolkit.getDefaultToolkit().screenSize))
-    File("test-error.png").writeBytes(image.toImage().encodeToData(EncodedImageFormat.PNG)!!.bytes)
+    val parent = File("test-error-screenshot")
+        .also { it.mkdirs() }
+    File(parent, "$filename.png").writeBytes(image.toImage().encodeToData(EncodedImageFormat.PNG)!!.bytes)
 }
