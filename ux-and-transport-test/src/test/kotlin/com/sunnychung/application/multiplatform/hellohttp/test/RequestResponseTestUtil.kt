@@ -1152,7 +1152,8 @@ suspend fun DesktopComposeUiTest.wait(ms: Long) {
 fun DesktopComposeUiTest.getResponseBody(): String? {
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
         .getTexts()
-        .singleOrNull()
+        .joinToString("")
+        .ifEmpty { null }
     return responseBody
 }
 

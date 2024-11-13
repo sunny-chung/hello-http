@@ -154,6 +154,7 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
             )
         }
         fireRequest(isClientStreaming = true)
+        wait(500.milliseconds())
         input.forEachIndexed { index, it ->
             sendPayload("""
                 {
@@ -246,6 +247,7 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
             )
         }
         fireRequest(isClientStreaming = true, isServerStreaming = true)
+        wait(500.milliseconds())
         input.forEachIndexed { index, it ->
             assertStatus("Communicating")
             sendPayload("""{"data":$it}""", index > 0)
