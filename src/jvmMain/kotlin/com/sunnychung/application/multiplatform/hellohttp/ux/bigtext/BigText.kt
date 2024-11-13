@@ -36,6 +36,9 @@ interface BigText {
     var undoMetadataSupplier: (() -> Any?)?
     var changeHook: BigTextChangeHook?
 
+    val isThreadSafe: Boolean
+        get() = false
+
     fun buildString(): String
 
     fun buildCharSequence(): CharSequence

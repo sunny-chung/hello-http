@@ -36,4 +36,17 @@ class MultipleIncrementalTransformation(val transformations: List<IncrementalTex
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is MultipleIncrementalTransformation) return false
+
+        if (transformations != other.transformations) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return transformations.hashCode()
+    }
+
 }
