@@ -109,6 +109,10 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         return r
     }
 
+    override fun subSequence(startIndex: Int, endIndex: Int): CharSequence {
+        return substring(startIndex, endIndex)
+    }
+
     override fun findLineString(lineIndex: Int): CharSequence {
         TODO("Not yet implemented")
     }
