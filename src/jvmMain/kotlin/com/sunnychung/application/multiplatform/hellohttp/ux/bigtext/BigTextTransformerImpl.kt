@@ -16,11 +16,11 @@ val logT = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigText.Transform")
 
-class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
-    chunkSize = delegate.chunkSize,
-    textBufferFactory = delegate.textBufferFactory,
-    charSequenceBuilderFactory = delegate.charSequenceBuilderFactory,
-    charSequenceFactory = delegate.charSequenceFactory,
+class BigTextTransformerImpl(override val originalText: BigText) : BigTextImpl(
+    chunkSize = originalText.chunkSize,
+    textBufferFactory = originalText.textBufferFactory,
+    charSequenceBuilderFactory = originalText.charSequenceBuilderFactory,
+    charSequenceFactory = originalText.charSequenceFactory,
 ), BigTextTransformed {
 
     private var hasReachedExtensiveSearch: Boolean = false
@@ -54,7 +54,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
     }
 
     fun RedBlackTree<BigTextNodeValue>.Node.toBigTextTransformNode(parentNode: RedBlackTree<BigTextTransformNodeValue>.Node) : RedBlackTree<BigTextTransformNodeValue>.Node {
-        if (this === delegate.tree.NIL) {
+        if (this === originalText.tree.NIL) {
             return (tree as LengthTree<BigTextTransformNodeValue>).NIL
         }
 
@@ -73,13 +73,13 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
     }
 
     init {
-        (tree as LengthTree<BigTextTransformNodeValue>).setRoot(delegate.tree.getRoot().toBigTextTransformNode(tree.NIL))
+        (tree as LengthTree<BigTextTransformNodeValue>).setRoot(originalText.tree.getRoot().toBigTextTransformNode(tree.NIL))
 //        tree.visitInPostOrder {
 //            recomputeAggregatedValues(it as RedBlackTree<BigTextNodeValue>.Node)
 //        }
-        delegate.layouter?.let { setLayouter(it) }
-        delegate.contentWidth?.let { setContentWidth(it) }
-        delegate.changeHook = object : BigTextChangeHook {
+        originalText.layouter?.let { setLayouter(it) }
+        originalText.contentWidth?.let { setContentWidth(it) }
+        originalText.changeHook = object : BigTextChangeHook {
             override fun afterInsertChunk(modifiedText: BigText, position: Int, newValue: BigTextNodeValue) {
                 insertOriginal(position, newValue)
             }
@@ -92,11 +92,11 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
     override val length: Int
         get() = (tree as LengthTree<BigTextTransformNodeValue>).getRoot().renderLength()
 
-    val originalLength: Int
+    override val originalLength: Int
         get() = tree.getRoot().length()
 
     override val numOfOriginalLines: Int
-        get() = delegate.numOfOriginalLines
+        get() = originalText.numOfOriginalLines
 
     // not thread-safe
     val charRangesToReapplyTransforms = mutableSetOf<IntRange>()
@@ -105,11 +105,11 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         return BigTextTransformNodeValue()
     }
 
-    fun insertOriginal(
+    override fun insertOriginal(
         pos: Int,
         nodeValue: BigTextNodeValue,
-        bufferOffsetStart: Int = nodeValue.bufferOffsetStart,
-        bufferOffsetEndExclusive: Int = nodeValue.bufferOffsetEndExclusive,
+        bufferOffsetStart: Int,
+        bufferOffsetEndExclusive: Int,
     ) {
         require(pos in 0..originalLength) { "Out of bound. pos = $pos, originalLength = $originalLength" }
 
@@ -280,7 +280,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
 
     fun transformInsertAtOriginalEnd(text: CharSequence): Int = transformInsert(originalLength, text)
 
-    fun deleteOriginal(originalRange: IntRange, isReMapPositionNeeded: Boolean = true) {
+    override fun deleteOriginal(originalRange: IntRange, isReMapPositionNeeded: Boolean) {
         require(0 <= originalRange.start) { "Invalid start" }
         require((originalRange.endInclusive + 1) in 0 .. originalLength) { "Out of bound. endExclusive = ${originalRange.endInclusive + 1}, originalLength = $originalLength" }
         val renderPositionStart = findTransformedPositionByOriginalPosition(originalRange.start)
@@ -314,7 +314,7 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         logT.d { "transformDelete($originalRange)" }
         require(originalRange.start <= originalRange.endInclusive + 1) { "start should be <= endExclusive" }
         require(0 <= originalRange.start) { "Invalid start" }
-        require(originalRange.endInclusive + 1 <= originalLength) { "endExclusive is out of bound" }
+        require(originalRange.endInclusive + 1 <= originalLength) { "endExclusive is out of bound. Length = $originalLength. Given end exclusive = ${originalRange.endInclusive + 1}" }
 
         if (originalRange.start == originalRange.endInclusive + 1) {
             return 0
@@ -738,14 +738,14 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         return nodeStart + minOf(node.value.bufferLength, indexFromNodeStart)
     }
 
-    fun findFirstRowIndexByOriginalLineIndex(originalLineIndex: Int): Int {
-        require(originalLineIndex in 0 .. delegate.numOfLines) { "Original line index $originalLineIndex is out of range." }
-        if (delegate.tree.isEmpty && originalLineIndex == 0) {
+    override fun findFirstRowIndexByOriginalLineIndex(originalLineIndex: Int): Int {
+        require(originalLineIndex in 0 .. originalText.numOfLines) { "Original line index $originalLineIndex is out of range." }
+        if (originalText.tree.isEmpty && originalLineIndex == 0) {
             return 0
         }
-        val (originalNode, originalNodeLineStart) = delegate.tree.findNodeByLineBreaksExact(originalLineIndex)
+        val (originalNode, originalNodeLineStart) = originalText.tree.findNodeByLineBreaksExact(originalLineIndex)
             ?: throw IllegalStateException("Node of line index $originalLineIndex is not found")
-        val originalNodePositionStart = delegate.tree.findPositionStart(originalNode)
+        val originalNodePositionStart = originalText.tree.findPositionStart(originalNode)
         val lineBreakIndex = originalLineIndex - originalNodeLineStart - 1
         val lineOriginalPositionStart = originalNodePositionStart + if (lineBreakIndex >= 0) {
             val lineOffsets = originalNode.value.buffer.lineOffsetStarts
@@ -760,10 +760,10 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         return findRowIndexByPosition(transformedPosition)
     }
 
-    fun findOriginalLineIndexByRowIndex(rowIndex: Int): Int {
+    override fun findOriginalLineIndexByRowIndex(rowIndex: Int): Int {
         val rowPositionStart = findRowPositionStartIndexByRowIndex(rowIndex)
         val originalPosition = findOriginalPositionByTransformedPosition(rowPositionStart)
-        val (originalLine, originalCol) = delegate.findLineAndColumnFromRenderPosition(originalPosition)
+        val (originalLine, originalCol) = originalText.findLineAndColumnFromRenderPosition(originalPosition)
         return originalLine
     }
 
@@ -785,9 +785,9 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
         deleteOriginal(range, isReMapPositionNeeded = false)
 
         // insert the original text from `delegate`
-        val originalNodeStart = delegate.tree.findNodeByCharIndex(range.start)
+        val originalNodeStart = originalText.tree.findNodeByCharIndex(range.start)
             ?: throw IndexOutOfBoundsException("Original node at position ${range.start} not found")
-        var nodePositionStart = delegate.tree.findPositionStart(originalNodeStart)
+        var nodePositionStart = originalText.tree.findPositionStart(originalNodeStart)
         var insertPoint = range.start
         var node = originalNodeStart
         var insertOffsetStart = node.value.bufferOffsetStart + (range.start - nodePositionStart)
@@ -803,8 +803,8 @@ class BigTextTransformerImpl(internal val delegate: BigTextImpl) : BigTextImpl(
                 break
             }
 
-            node = delegate.tree.nextNode(node)!!
-            nodePositionStart = delegate.tree.findPositionStart(node)
+            node = originalText.tree.nextNode(node)!!
+            nodePositionStart = originalText.tree.findPositionStart(node)
             insertPoint += insertOffsetEndExclusive - insertOffsetStart
             insertOffsetStart = node.value.bufferOffsetStart
         } while (nodePositionStart <= range.endInclusive)

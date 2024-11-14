@@ -2,6 +2,7 @@
 
 package com.sunnychung.application.multiplatform.hellohttp.test
 
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -69,23 +70,32 @@ class WebSocketRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boo
     @Test
     fun sendAndReceivePayloads() = runTest {
         val request = createAndFireWebSocketRequest(environment = environment)
+        wait(500.milliseconds())
         assertHttpStatus()
 
-        sendPayload("abc", isCreatePayloadExample = false)
-        waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello abc" }
-        sendPayload("defg\nhi")
-        waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello defg\nhi" }
-        sendPayload("中文字")
-        waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello 中文字" }
-        sendPayload("Yeah 😎🍣✌🏽!!")
-        waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello Yeah \uD83D\uDE0E\uD83C\uDF63✌\uD83C\uDFFD!!" }
+        try {
+            sendPayload("abc", isCreatePayloadExample = false)
+            waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello abc" }
+            sendPayload("defg\nhi")
+            waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello defg\nhi" }
+            sendPayload("中文字")
+            waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello 中文字" }
+            sendPayload("Yeah 😎🍣✌🏽!!")
+            waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello Yeah \uD83D\uDE0E\uD83C\uDF63✌\uD83C\uDFFD!!" }
 
-        sendPayload("!echo")
-        waitUntil(400.milliseconds().millis) { getResponseBody() != "Hello Yeah \uD83D\uDE0E\uD83C\uDF63✌\uD83C\uDFFD!!" }
-        verifyEchoResponse(request, getResponseBody()!!)
+            sendPayload("!echo")
+            waitUntil(400.milliseconds().millis) { getResponseBody() != "Hello Yeah \uD83D\uDE0E\uD83C\uDF63✌\uD83C\uDFFD!!" }
+            verifyEchoResponse(request, getResponseBody()!!)
 
-        sendPayload("aaaaa")
-        waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello aaaaa" }
+            sendPayload("aaaaa")
+            waitUntil(400.milliseconds().millis) { getResponseBody() == "Hello aaaaa" }
+        } catch (e: AssertionError) {
+            captureScreenToFile("sendAndReceivePayloads")
+            throw e
+        } catch (e: ComposeTimeoutException) {
+            captureScreenToFile("sendAndReceivePayloads")
+            throw e
+        }
 
         disconnect()
     }

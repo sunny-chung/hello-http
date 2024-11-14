@@ -154,6 +154,7 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
             )
         }
         fireRequest(isClientStreaming = true)
+        wait(500.milliseconds())
         input.forEachIndexed { index, it ->
             sendPayload("""
                 {
@@ -235,6 +236,8 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
 
     @Test
     fun bidirectionalStreaming() = runTest {
+        println("GrpcRequestResponseTest.bidirectionalStreaming start")
+
         val random = Random
         val input = (0 until 6).map { random.nextInt(0..20) }
         createGrpcRequest(environment = environment) { req ->
@@ -246,6 +249,7 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
             )
         }
         fireRequest(isClientStreaming = true, isServerStreaming = true)
+        wait(500.milliseconds())
         input.forEachIndexed { index, it ->
             assertStatus("Communicating")
             sendPayload("""{"data":$it}""", index > 0)
@@ -254,7 +258,14 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
                 {
                   "data": ${it + 100}
                 }
-            """.trimIndent(), getResponseBody())
+            """.trimIndent(),
+                try {
+                    getResponseBody()
+                } catch (e: AssertionError) {
+                    captureScreenToFile("bidirectionalStreaming")
+                    throw e
+                }
+            )
             assertStatus("Communicating")
         }
         completeRequest()

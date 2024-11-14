@@ -38,4 +38,17 @@ class MultipleTextDecorator(val decorators: List<BigTextDecorator>): BigTextDeco
         }
         return text
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is MultipleTextDecorator) return false
+
+        if (decorators != other.decorators) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return decorators.hashCode()
+    }
 }

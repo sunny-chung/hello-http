@@ -65,8 +65,8 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppUX.ENV_VAR_VALUE_MAX_DISPLAY_LENGTH
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextInputFilter
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextKeyboardInputProcessor
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
@@ -75,7 +75,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTran
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberLargeAnnotatedBigTextFieldState
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberConcurrentLargeAnnotatedBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -90,6 +90,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.SearchHighlightDecorator
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -98,6 +100,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.regex.Pattern
 import kotlin.random.Random
 
@@ -133,12 +136,12 @@ fun CodeEditorView(
 
     var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
-    val bigTextFieldState: BigTextFieldState by rememberLargeAnnotatedBigTextFieldState(initialValue = initialText, cacheKey)
-    val bigTextValue: BigTextImpl = bigTextFieldState.text
+    val bigTextFieldState: BigTextFieldState by rememberConcurrentLargeAnnotatedBigTextFieldState(initialValue = initialText, cacheKey)
+    val bigTextValue: BigText = bigTextFieldState.text
     var bigTextValueId by remember(bigTextFieldState) { mutableStateOf<Long>(Random.nextLong()) }
 
-    var collapsedLines = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
-    var collapsedChars = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
+    val collapsedLines = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
+    val collapsedChars = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
 
     log.d { "CodeEditorView recompose" }
 
@@ -147,7 +150,7 @@ fun CodeEditorView(
 
         val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
         val previousLineString = bigTextValue.findLineString(lineIndex) // as '\n' is not yet inputted, current line is the "previous line"
-        var spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
+        val spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
         textManipulator.replaceAtCursor(newSpaces)
     }
@@ -262,30 +265,37 @@ fun CodeEditorView(
     log.d { "get search pattern ${searchPattern?.pattern}" }
 
     LaunchedEffect(bigTextValue) {
-        searchTrigger.receiveAsFlow()
-            .debounce(210L)
-            .filter { isSearchVisible }
-            .collectLatest {
-                log.d { "search triggered ${searchPatternLatest?.pattern}" }
-                if (searchPatternLatest != null) {
-                    try {
-                        val fullText = bigTextValue.buildString()
-                        val r = searchPatternLatest!!
-                            .findAll(fullText)
-                            .map { it.range }
-                            .sortedBy { it.start }
-                            .toList()
-                        searchResultRangesState.value = r
-                        searchResultRangeTreeState.value = TreeRangeMaps.from(r)
-                        log.d { "search r ${r.size}" }
-                    } catch (e: Throwable) {
-                        log.d(e) { "search error" }
+        withContext(Dispatchers.IO) {
+            searchTrigger.receiveAsFlow()
+                .debounce(210L)
+                .filter { isSearchVisible }
+                .collectLatest {
+                    log.d { "search triggered ${searchPatternLatest?.pattern}" }
+                    if (searchPatternLatest != null) {
+                        try {
+                            val fullText = bigTextValue.buildString()
+                            val r = searchPatternLatest!!
+                                .findAll(fullText)
+                                .map { it.range }
+                                .sortedBy { it.start }
+                                .toList()
+                            val treeRangeMap = TreeRangeMaps.from(r)
+                            withContext(Dispatchers.Main) {
+                                searchResultRangesState.value = r
+                                searchResultRangeTreeState.value = treeRangeMap
+                                log.d { "search r ${r.size}" }
+                            }
+                        } catch (e: Throwable) {
+                            log.d(e) { "search error" }
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            searchResultRangesState.value = null
+                            searchResultRangeTreeState.value = null
+                        }
                     }
-                } else {
-                    searchResultRangesState.value = null
-                    searchResultRangeTreeState.value = null
                 }
-            }
+        }
     }
     var searchResultSummary = if (!searchResultRanges.isNullOrEmpty()) {
         "${searchResultViewIndex + 1}/${searchResultRanges?.size}"
@@ -435,7 +445,7 @@ fun CodeEditorView(
                     scrollState = scrollState,
                     bigTextViewState = bigTextFieldState.viewState,
                     bigTextValueId = bigTextValueId,
-                    bigText = bigTextValue as BigTextImpl,
+                    bigText = bigTextValue,
                     layoutResult = layoutResult,
                     collapsableLines = collapsableLines,
                     collapsedLines = collapsedLines.values.toList(),
@@ -455,7 +465,7 @@ fun CodeEditorView(
                     }
 
                     BigMonospaceText(
-                        text = bigTextValue as BigTextImpl,
+                        text = bigTextValue,
                         color = textColor,
                         padding = PaddingValues(4.dp),
                         inputFilter = inputFilter,
@@ -488,21 +498,28 @@ fun CodeEditorView(
                 } else {
                     LaunchedEffect(bigTextFieldState, onTextChange) { // FIXME the flow is frequently recreated
                         log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
-                        bigTextFieldState.valueChangesFlow
-                            .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
-                            .chunkedLatest(200.milliseconds())
-                            .collect {
-                                log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
-                                onTextChange?.let { onTextChange ->
-                                    val string = it.bigText.buildCharSequence() as AnnotatedString
-                                    log.d { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
-                                    onTextChange(string.text)
-                                }
-                                bigTextValueId = it.changeId
-                                searchTrigger.trySend(Unit)
+                        withContext(Dispatchers.IO) {
+                            bigTextFieldState.valueChangesFlow
+                                .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
+                                .chunkedLatest(200.milliseconds())
+                                .collect {
+                                    log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
+                                    withContext(NonCancellable) { // continue to complete the current collect block even the flow is cancelled
+                                        onTextChange?.let { onTextChange ->
+                                            val string = it.bigText.buildCharSequence() as AnnotatedString
+                                            withContext(Dispatchers.Main) {
+                                                log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                                onTextChange(string.text)
+                                                log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                            }
+                                        }
+                                        bigTextValueId = it.changeId
+                                        searchTrigger.trySend(Unit)
 
-                                bigTextFieldState.markConsumed(it.sequence)
-                            }
+                                        bigTextFieldState.markConsumed(it.sequence)
+                                    }
+                                }
+                        }
                     }
 
                     var mouseHoverVariable by remember(bigTextFieldState) { mutableStateOf<String?>(null) }
@@ -677,7 +694,7 @@ fun BigTextLineNumbersView(
     modifier: Modifier = Modifier,
     bigTextViewState: BigTextViewState,
     bigTextValueId: Long,
-    bigText: BigTextImpl,
+    bigText: BigText,
     layoutResult: BigTextSimpleLayoutResult?,
     scrollState: ScrollState,
     collapsableLines: List<IntRange>,

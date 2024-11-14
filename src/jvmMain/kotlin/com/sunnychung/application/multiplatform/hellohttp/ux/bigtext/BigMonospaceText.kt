@@ -122,7 +122,7 @@ fun BigMonospaceText(
     onTransformInit: ((BigTextTransformed) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
-    text = text as BigTextImpl,
+    text = text,
     padding = padding,
     fontSize = fontSize,
     color = color,
@@ -195,7 +195,7 @@ fun BigMonospaceTextField(
     onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
 ) = CoreBigMonospaceText(
     modifier = modifier,
-    text = text as BigTextImpl,
+    text = text,
     padding = padding,
     fontSize = fontSize,
     color = color,
@@ -217,7 +217,7 @@ fun BigMonospaceTextField(
 @Composable
 private fun CoreBigMonospaceText(
     modifier: Modifier = Modifier,
-    text: BigTextImpl,
+    text: BigText,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
     color: Color = LocalColor.current.text,
@@ -271,15 +271,23 @@ private fun CoreBigMonospaceText(
     var layoutResult by remember(textLayouter, width) { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
     val transformedText: BigTextTransformed = remember(text, textTransformation) {
-        log.d { "CoreBigMonospaceText recreate BigTextTransformed" }
-        BigTextTransformerImpl(text).also {
-//            log.d { "transformedText = |${it.buildString()}|" }
-            if (log.config.minSeverity <= Severity.Verbose) {
-                it.printDebug("transformedText")
+        log.d { "CoreBigMonospaceText recreate BigTextTransformed $text $textTransformation" }
+        BigTextTransformerImpl(text)
+            .let {
+                if (text.isThreadSafe) {
+                    ConcurrentBigTextTransformed(it)
+                } else {
+                    it
+                }
             }
-        }
+            .also {
+//                log.d { "transformedText = |${it.buildString()}|" }
+                if (log.config.minSeverity <= Severity.Verbose) {
+                    it.printDebug("transformedText")
+                }
+            }
     }
-    (transformedText as BigTextTransformerImpl).decorator = textDecorator
+    transformedText.decorator = textDecorator
 
 //    log.v { "text = |${text.buildString()}|" }
 //    log.v { "transformedText = |${transformedText.buildString()}|" }

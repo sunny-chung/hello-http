@@ -2,6 +2,9 @@ package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeCallback
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeHook
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextNodeValue
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
@@ -9,6 +12,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTran
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.InefficientBigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.LengthTree
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.TextBuffer
+import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.TextLayouter
 import java.util.TreeMap
 import kotlin.test.assertEquals
 
@@ -25,8 +29,19 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         if (chunkSize > 0) BigTextImpl(chunkSize) else BigTextImpl()
     )
 
-    val tree: LengthTree<BigTextNodeValue>
+    override val tree: LengthTree<BigTextNodeValue>
         get() = bigTextImpl.tree
+    override val contentWidth: Float?
+        get() = TODO("Not yet implemented")
+    override var decorator: BigTextDecorator?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var undoMetadataSupplier: (() -> Any?)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var changeHook: BigTextChangeHook?
+        get() = TODO("Not yet implemented")
+        set(value) {}
     val buffers: MutableList<TextBuffer>
         get() = bigTextImpl.buffers
 
@@ -42,6 +57,34 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
             assert(l == tl) { "length expected $tl, actual $l" }
             return l
         }
+    override val lastIndex: Int
+        get() = TODO("Not yet implemented")
+    override val isEmpty: Boolean
+        get() = TODO("Not yet implemented")
+    override val isNotEmpty: Boolean
+        get() = TODO("Not yet implemented")
+    override val hasLayouted: Boolean
+        get() = TODO("Not yet implemented")
+    override val layouter: TextLayouter?
+        get() = TODO("Not yet implemented")
+    override val numOfLines: Int
+        get() = TODO("Not yet implemented")
+    override val numOfRows: Int
+        get() = TODO("Not yet implemented")
+    override val lastRowIndex: Int
+        get() = TODO("Not yet implemented")
+    override val numOfOriginalLines: Int
+        get() = TODO("Not yet implemented")
+    override val chunkSize: Int
+        get() = TODO("Not yet implemented")
+    override val undoHistoryCapacity: Int
+        get() = TODO("Not yet implemented")
+    override val textBufferFactory: (capacity: Int) -> TextBuffer
+        get() = TODO("Not yet implemented")
+    override val charSequenceBuilderFactory: (capacity: Int) -> Appendable
+        get() = TODO("Not yet implemented")
+    override val charSequenceFactory: (Appendable) -> CharSequence
+        get() = TODO("Not yet implemented")
 
     val originalLength: Int
         get() = length - transformOffsetsByPosition.values.sum()
@@ -64,6 +107,14 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         val tr = stringImpl.substring(start, endExclusive)
         assertEquals(tr, r, "substring mismatch")
         return r
+    }
+
+    override fun findLineString(lineIndex: Int): CharSequence {
+        TODO("Not yet implemented")
+    }
+
+    override fun findRowString(rowIndex: Int): CharSequence {
+        TODO("Not yet implemented")
     }
 
     override fun append(text: CharSequence): Int {
@@ -119,6 +170,26 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
 
     override fun replace(range: IntRange, text: CharSequence) {
         replace(range, text, BigTextTransformOffsetMapping.Incremental)
+    }
+
+    override fun recordCurrentChangeSequenceIntoUndoHistory() {
+        TODO("Not yet implemented")
+    }
+
+    override fun undo(callback: BigTextChangeCallback?): Pair<Boolean, Any?> {
+        TODO("Not yet implemented")
+    }
+
+    override fun redo(callback: BigTextChangeCallback?): Pair<Boolean, Any?> {
+        TODO("Not yet implemented")
+    }
+
+    override fun isUndoable(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isRedoable(): Boolean {
+        TODO("Not yet implemented")
     }
 
     fun replace(range: IntRange, text: CharSequence, offsetMapping: BigTextTransformOffsetMapping) {
@@ -178,7 +249,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         if (isDebug) {
             println(
                 "             ${
-                    (0 until maxOf(t.delegate.length, t.length)).joinToString("") {
+                    (0 until maxOf(t.originalText.length, t.length)).joinToString("") {
                         if (it % 10 != 0) {
                             (it % 10).toString()
                         } else {
@@ -187,7 +258,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
                     }
                 }"
             )
-            println("Original:    ${t.delegate.buildString()}")
+            println("Original:    ${t.originalText.buildString()}")
             println("Transformed: ${t.buildString()}")
         }
         val transformedLength = t.length
@@ -265,6 +336,30 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         TODO("Not yet implemented")
     }
 
+    override fun findPositionStartOfLine(lineIndex: Int): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun findLineIndexByRowIndex(rowIndex: Int): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun findFirstRowIndexOfLine(lineIndex: Int): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun setLayouter(layouter: TextLayouter) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setContentWidth(contentWidth: Float) {
+        TODO("Not yet implemented")
+    }
+
+    override fun layout() {
+        TODO("Not yet implemented")
+    }
+
     override fun hashCode(): Int {
         val r = bigTextImpl.hashCode()
         val tr = stringImpl.hashCode()
@@ -295,7 +390,7 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         }
     }
 
-    fun printDebug(label: String = "") = bigTextImpl.printDebug(label)
+    override fun printDebug(label: String) = bigTextImpl.printDebug(label)
 
-    fun inspect(label: String = "") = bigTextImpl.inspect(label)
+    override fun inspect(label: String) = bigTextImpl.inspect(label)
 }
