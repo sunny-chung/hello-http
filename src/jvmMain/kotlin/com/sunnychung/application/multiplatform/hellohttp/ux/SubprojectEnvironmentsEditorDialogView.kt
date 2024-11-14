@@ -45,8 +45,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.importCaCertificates
-import com.sunnychung.application.multiplatform.hellohttp.model.importFrom
+import com.sunnychung.application.multiplatform.hellohttp.util.importCaCertificates
+import com.sunnychung.application.multiplatform.hellohttp.util.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval

@@ -3,7 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.ClientCertificateKeyPair
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
-import com.sunnychung.application.multiplatform.hellohttp.model.importFrom
+import com.sunnychung.application.multiplatform.hellohttp.util.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
 import java.io.File
 import java.io.IOException
