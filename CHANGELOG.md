@@ -12,8 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Prettify button in JSON request editor. This includes GraphQL and gRPC.
 - Mouse hovering variable placeholders in Body Editor to show a tooltip for its value (if exists)
 - Number badges in Request Parameter Type tabs to indicate the number of active entries declared in the selected example, e.g. the number of active key-value pairs of a multipart request body declared in the selected Request Example.
+- Certificates in P7B (PKCS#7) format can now be imported
 
-### Updated
+### Changed
+- Importing CA certificates now imports all the certificates from an input file
 - Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)
 - Inherited values in Request Editor are now showing at the bottom rather than the top
 

@@ -17,12 +17,8 @@ doing exports.
 Additional to the default trusted CA certificates, custom ones can be imported to verify the server identities.
 Currently, the accepted formats are:
 - DER
-- PEM containing only one certificate
-
-A DER certificate can be converted from a PEM certificate using OpenSSL:
-```
-openssl x509 -in cert.pem -out cert.der -outform DER
-```
+- PEM (also known as CER or CRT)
+- P7B
 
 Imported certificates can be disabled by unchecking the corresponding green tick box, or deleted. Changes to the
 original file would not affect imported ones.
@@ -42,7 +38,8 @@ At most one client certificate and private key pair can be imported per environm
 
 Accepted formats for a client certificate are:
 - DER
-- PEM containing only one certificate
+- PEM (also known as CER or CRT) containing only one certificate
+- P7B containing only one certificate
 
 Accepted formats for a private key are:
 - Unencrypted PKCS #8 DER

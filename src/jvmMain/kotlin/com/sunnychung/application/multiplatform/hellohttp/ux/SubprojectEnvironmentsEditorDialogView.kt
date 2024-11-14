@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,7 +45,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.model.importCaCertificate
+import com.sunnychung.application.multiplatform.hellohttp.model.importCaCertificates
 import com.sunnychung.application.multiplatform.hellohttp.model.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
@@ -60,8 +58,6 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
-import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
-import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import java.io.File
 
 @Composable
@@ -346,7 +342,7 @@ fun EnvironmentSslTabContent(
             title = "Additional Trusted CA Certificates",
             certificates = sslConfig.trustedCaCertificates,
             isShowAddButton = true,
-            onAddCertificate = { new ->
+            onAddCertificates = { new ->
                 onUpdateEnvironment(
                     environment.copy(sslConfig = sslConfig.copy(
                         trustedCaCertificates = sslConfig.trustedCaCertificates + new
@@ -396,7 +392,7 @@ fun EnvironmentSslTabContent(
                 title = "Client Certificate",
                 certificates = sslConfig.clientCertificateKeyPairs.map { it.certificate },
                 isShowAddButton = false,
-                onAddCertificate = { throw NotImplementedError("Unimplemented as intended") },
+                onAddCertificates = { throw NotImplementedError("Unimplemented as intended") },
                 onUpdateCertificate = { update ->
                     onUpdateEnvironment(
                         environment.copy(
@@ -457,7 +453,7 @@ fun CertificateEditorView(
     title: String,
     certificates: List<ImportedFile>,
     isShowAddButton: Boolean,
-    onAddCertificate: (ImportedFile) -> Unit,
+    onAddCertificates: (List<ImportedFile>) -> Unit,
     onUpdateCertificate: (ImportedFile) -> Unit,
     onDeleteCertificate: (ImportedFile) -> Unit,
 ) {
@@ -468,14 +464,19 @@ fun CertificateEditorView(
 
     fun parseAndAddCertificate(path: String) {
         val file = File(path)
-        val import = try {
-            importCaCertificate(file)
+        val imports = try {
+            importCaCertificates(file)
         } catch (e: Throwable) {
             AppContext.ErrorMessagePromptViewModel.showErrorMessage("Error while reading the certificate -- ${e.message ?: e::class.simpleName}")
             return
         }
 
-        onAddCertificate(import)
+        if (imports.isEmpty()) {
+            AppContext.ErrorMessagePromptViewModel.showErrorMessage("No certificate is found")
+            return
+        }
+
+        onAddCertificates(imports)
     }
 
     Column(modifier) {
@@ -483,7 +484,7 @@ fun CertificateEditorView(
             AppText(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(bottom = 6.dp))
             if (isShowAddButton) {
                 AppTooltipArea(
-                    tooltipText = "Import a certificate in DER format",
+                    tooltipText = "Import a certificate in DER/PEM/P7B/CER/CRT format",
                     modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
                 ) {
                     AppImageButton(
@@ -559,7 +560,7 @@ fun CertificateEditorView(
     }
 
     if (isShowFileDialog) {
-        FileDialog(state = fileDialogState, title = "Choose a DER file") {
+        FileDialog(state = fileDialogState, title = "Choose a DER/PEM/P7B/CER/CRT file") {
             isShowFileDialog = false
             if (it != null && it.isNotEmpty()) {
                 parseAndAddCertificate(it.first().absolutePath)
@@ -581,7 +582,7 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Certificate", modifier = Modifier.width(headerColumnWidth))
             AppTextButton(
-                text = certFile?.name ?: "Choose a File in DER format",
+                text = certFile?.name ?: "Choose a File in DER/PEM/P7B/CER/CRT format",
                 onClick = { fileChooser = CertificateKeyPairFileChooserType.Certificate },
                 modifier = Modifier.testTag(buildTestTag(
                     TestTagPart.EnvironmentSslClientCertificates,

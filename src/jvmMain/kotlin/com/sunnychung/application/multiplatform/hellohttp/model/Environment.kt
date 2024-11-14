@@ -10,13 +10,16 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.serialization.Serializable
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.security.KeyFactory
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.InvalidKeySpecException
 import java.security.spec.PKCS8EncodedKeySpec
+import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.EncryptedPrivateKeyInfo
 import javax.crypto.SecretKeyFactory
@@ -132,9 +135,15 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
         }
     }
 
-    val certBytes = certFile.readBytes()
     val cert: X509Certificate = try {
-        CertificateFactory.getInstance("X.509").generateCertificate(certBytes.inputStream()) as X509Certificate
+        val certBytes = certFile.readBytes()
+        parseCaCertificates(certBytes).also {
+            if (it.size > 1) {
+                throw RuntimeException("There should be only one certificate but ${it.size} were found.")
+            } else if (it.isEmpty()) {
+                throw RuntimeException("No certificate was found.")
+            }
+        }.single()
     } catch (e: Throwable) {
         throw RuntimeException("Error while parsing the certificate file -- ${e.message}", e)
     }
@@ -182,7 +191,7 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
             originalFilename = certFile.name,
             createdWhen = now,
             isEnabled = true,
-            content = certBytes,
+            content = cert.encoded,
         ),
         privateKey = ImportedFile(
             id = uuidString(),
@@ -199,23 +208,43 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
 
 // ----------- TODO refactor to a separate file -----------
 
-fun parseCaCertificate(contentStream: InputStream) : X509Certificate {
-    return CertificateFactory.getInstance("X.509").generateCertificate(contentStream) as X509Certificate
+fun parseCaCertificates(bytes: ByteArray) : List<X509Certificate> {
+    InputStreamReader(ByteArrayInputStream(bytes)).buffered().use { reader ->
+        val firstLine = reader.readLine()
+        val certBytes = if (firstLine == "-----BEGIN PKCS7-----") { // p7b
+            val base64Encoded = buildString {
+                while (reader.ready()) {
+                    val line = reader.readLine()
+                    if (line != "-----END PKCS7-----") {
+                        append(line)
+                    } else {
+                        break
+                    }
+                }
+            }
+            Base64.getDecoder().decode(base64Encoded)
+        } else { // der / pem
+            bytes
+        }
+        return CertificateFactory.getInstance("X.509").generateCertificates(ByteArrayInputStream(certBytes)).map { it as X509Certificate }
+    }
 }
 
-fun importCaCertificate(file: File): ImportedFile {
+fun importCaCertificates(file: File): List<ImportedFile> {
     val content = file.readBytes()
-    val cert = parseCaCertificate(content.inputStream())
+    val certs = parseCaCertificates(content)
 
-    return ImportedFile(
-        id = uuidString(),
-        name = cert.subjectX500Principal.getName(X500Principal.RFC1779) +
-                "\nExpiry: ${KZonedInstant(cert.notAfter.time, KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern)}" +
-                if (cert.keyUsage?.get(5) != true || cert.basicConstraints < 0) "\n⚠️ Not a CA certificate!" else ""
-        ,
-        originalFilename = file.name,
-        createdWhen = KInstant.now(),
-        isEnabled = true,
-        content = content,
-    )
+    return certs.map { cert ->
+        ImportedFile(
+            id = uuidString(),
+            name = cert.subjectX500Principal.getName(X500Principal.RFC1779) +
+                    "\nExpiry: ${KZonedInstant(cert.notAfter.time, KZoneOffset.local()).format(KDateTimeFormat.ISO8601_DATETIME.pattern)}" +
+                    if (cert.keyUsage?.get(5) != true || cert.basicConstraints < 0) "\n⚠️ Not a CA certificate!" else ""
+            ,
+            originalFilename = file.name,
+            createdWhen = KInstant.now(),
+            isEnabled = true,
+            content = cert.encoded,
+        )
+    }
 }

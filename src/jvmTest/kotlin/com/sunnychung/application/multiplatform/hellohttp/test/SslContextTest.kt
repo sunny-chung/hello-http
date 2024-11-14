@@ -3,9 +3,9 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.ClientCertificateKeyPair
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
-import com.sunnychung.application.multiplatform.hellohttp.model.importCaCertificate
+import com.sunnychung.application.multiplatform.hellohttp.model.importCaCertificates
 import com.sunnychung.application.multiplatform.hellohttp.model.importFrom
-import com.sunnychung.application.multiplatform.hellohttp.model.parseCaCertificate
+import com.sunnychung.application.multiplatform.hellohttp.model.parseCaCertificates
 import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
@@ -22,9 +22,9 @@ class SslContextTest {
     private fun verifyGoogleCertificates(trustManager: X509TrustManager) {
         trustManager.checkServerTrusted(
             arrayOf(
-                parseCaCertificate(javaClass.classLoader.getResource("ssl/google-com-cert-3.pem")!!.readBytes().inputStream()),
-                parseCaCertificate(javaClass.classLoader.getResource("ssl/google-com-cert-2.pem")!!.readBytes().inputStream()),
-                parseCaCertificate(javaClass.classLoader.getResource("ssl/google-com-cert-1.pem")!!.readBytes().inputStream()),
+                parseCaCertificates(javaClass.classLoader.getResource("ssl/google-com-cert-3.pem")!!.readBytes()).single(),
+                parseCaCertificates(javaClass.classLoader.getResource("ssl/google-com-cert-2.pem")!!.readBytes()).single(),
+                parseCaCertificates(javaClass.classLoader.getResource("ssl/google-com-cert-1.pem")!!.readBytes()).single(),
             ),
             "RSA"
         )
@@ -33,8 +33,8 @@ class SslContextTest {
     private fun verifyCustomServerCertificate(trustManager: X509TrustManager) {
         trustManager.checkServerTrusted(
             arrayOf(
-                parseCaCertificate(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.readBytes().inputStream()),
-                parseCaCertificate(javaClass.classLoader.getResource("ssl/serverCert.pem")!!.readBytes().inputStream()),
+                parseCaCertificates(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.readBytes()).single(),
+                parseCaCertificates(javaClass.classLoader.getResource("ssl/serverCert.pem")!!.readBytes()).single(),
             ),
             "RSA"
         )
@@ -66,9 +66,8 @@ class SslContextTest {
                     keyPassword = ""
                 )
             ),
-            trustedCaCertificates = listOf(
-                importCaCertificate(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
-            )
+            trustedCaCertificates =
+                importCaCertificates(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
         )
         val ssl = httpClient.createSslContext(sslConfig)
         assert(ssl.keyManager != null)
@@ -91,9 +90,8 @@ class SslContextTest {
                 )
             ),
             isDisableSystemCaCertificates = true,
-            trustedCaCertificates = listOf(
-                importCaCertificate(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
-            )
+            trustedCaCertificates =
+                importCaCertificates(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
         )
         val ssl = httpClient.createSslContext(sslConfig)
         assert(ssl.keyManager != null)
@@ -112,9 +110,8 @@ class SslContextTest {
     @Test
     fun `verifying server certificate against CA certificate should succeed`() {
         val sslConfig = SslConfig(
-            trustedCaCertificates = listOf(
-                importCaCertificate(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
-            )
+            trustedCaCertificates =
+                importCaCertificates(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
         )
         val ssl = httpClient.createSslContext(sslConfig)
         assert(ssl.trustManager is MultipleTrustCertificateManager)
@@ -129,9 +126,8 @@ class SslContextTest {
     fun `verifying server certificate against CA certificate with system certificates disabled should succeed`() {
         val sslConfig = SslConfig(
             isDisableSystemCaCertificates = true,
-            trustedCaCertificates = listOf(
-                importCaCertificate(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
-            )
+            trustedCaCertificates =
+                importCaCertificates(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
         )
         val ssl = httpClient.createSslContext(sslConfig)
         assert(ssl.trustManager is MultipleTrustCertificateManager)
@@ -149,9 +145,8 @@ class SslContextTest {
     @Test
     fun `verifying a certificate signed by another CA against a CA certificate should fail`() {
         val sslConfig = SslConfig(
-            trustedCaCertificates = listOf(
-                importCaCertificate(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
-            )
+            trustedCaCertificates =
+                importCaCertificates(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
         )
         val ssl = httpClient.createSslContext(sslConfig)
         assert(ssl.trustManager is MultipleTrustCertificateManager)
@@ -161,12 +156,12 @@ class SslContextTest {
         assertFailsWith<CertificateException> {
             ssl.trustManager!!.checkServerTrusted(
                 arrayOf(
-                    parseCaCertificate(
-                        javaClass.classLoader.getResource("ssl/anotherServerCert.pem")!!.readBytes().inputStream()
-                    ),
-                    parseCaCertificate(
-                        javaClass.classLoader.getResource("ssl/anotherServerCACert.pem")!!.readBytes().inputStream()
-                    ),
+                    parseCaCertificates(
+                        javaClass.classLoader.getResource("ssl/anotherServerCert.pem")!!.readBytes()
+                    ).single(),
+                    parseCaCertificates(
+                        javaClass.classLoader.getResource("ssl/anotherServerCACert.pem")!!.readBytes()
+                    ).single(),
                 ),
                 "RSA"
             )
@@ -176,9 +171,8 @@ class SslContextTest {
     @Test
     fun `with custom CA certificates enabled, verifying publicly trusted server certificate should succeed`() {
         val sslConfig = SslConfig(
-            trustedCaCertificates = listOf(
-                importCaCertificate(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
-            )
+            trustedCaCertificates =
+                importCaCertificates(File(javaClass.classLoader.getResource("ssl/serverCACert.pem")!!.file))
         )
         val ssl = httpClient.createSslContext(sslConfig)
         assert(ssl.trustManager != null)
@@ -213,12 +207,12 @@ class SslContextTest {
         assertFailsWith<CertificateException> {
             ssl.trustManager!!.checkServerTrusted(
                 arrayOf(
-                    parseCaCertificate(
-                        javaClass.classLoader.getResource("ssl/anotherServerCert.pem")!!.readBytes().inputStream()
-                    ),
-                    parseCaCertificate(
-                        javaClass.classLoader.getResource("ssl/anotherServerCACert.pem")!!.readBytes().inputStream()
-                    ),
+                    parseCaCertificates(
+                        javaClass.classLoader.getResource("ssl/anotherServerCert.pem")!!.readBytes()
+                    ).single(),
+                    parseCaCertificates(
+                        javaClass.classLoader.getResource("ssl/anotherServerCACert.pem")!!.readBytes()
+                    ).single(),
                 ),
                 "RSA"
             )
