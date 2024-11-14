@@ -506,8 +506,9 @@ fun CodeEditorView(
                                     onTextChange?.let { onTextChange ->
                                         val string = it.bigText.buildCharSequence() as AnnotatedString
                                         withContext(Dispatchers.Main) {
-                                            log.d { "${bigTextFieldState.text} : ${it.bigText} onTextChange(${string.text.abbr()})" }
+                                            log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
                                             onTextChange(string.text)
+                                            log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
                                         }
                                     }
                                     bigTextValueId = it.changeId

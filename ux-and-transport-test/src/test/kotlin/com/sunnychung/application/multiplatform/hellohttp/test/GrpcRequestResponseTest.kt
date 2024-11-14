@@ -236,6 +236,8 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
 
     @Test
     fun bidirectionalStreaming() = runTest {
+        println("GrpcRequestResponseTest.bidirectionalStreaming start")
+
         val random = Random
         val input = (0 until 6).map { random.nextInt(0..20) }
         createGrpcRequest(environment = environment) { req ->

@@ -619,6 +619,7 @@ fun AppContentView() {
                                         networkClientManager.cancel(selectedRequestExampleId!!)
                                     },
                                     onClickSendPayload = { payload ->
+                                        log.d { "send payload ${payload.length}" }
                                         networkClientManager.sendPayload(
                                             request = requestNonNull,
                                             selectedRequestExampleId = selectedRequestExampleId!!,
