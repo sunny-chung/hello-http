@@ -20,6 +20,8 @@ Currently, the accepted formats are:
 - PEM (also known as CER or CRT)
 - P7B
 
+The formats are detected automatically.
+
 Imported certificates can be disabled by unchecking the corresponding green tick box, or deleted. Changes to the
 original file would not affect imported ones.
 
@@ -44,16 +46,12 @@ Accepted formats for a client certificate are:
 Accepted formats for a private key are:
 - Unencrypted PKCS #8 DER
 - Password-encrypted PKCS #8 DER
+- PKCS #1 DER
+- Unencrypted PKCS #8 PEM
+- Password-encrypted PKCS #8 PEM
+- PKCS #1 PEM
 
-An unencrypted PKCS #8 DER key file can be converted from a PEM file using OpenSSL.
-```
-openssl pkcs8 -topk8 -in clientKey.pem -out clientKey.pkcs8.der -outform DER -nocrypt
-```
-
-A password-encrypted PKCS #8 DER key file can be converted from a PEM file using OpenSSL.
-```
-openssl pkcs8 -topk8 -in clientKey.pem -out clientKey.pkcs8.encrypted.der -outform DER
-```
+The formats are detected automatically. Files with the `.key` file extension are usually in PEM or DER formats.
 
 
 ## Disable SSL Verification

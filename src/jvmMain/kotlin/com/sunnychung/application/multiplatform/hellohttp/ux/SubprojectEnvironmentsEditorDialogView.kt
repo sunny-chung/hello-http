@@ -594,7 +594,7 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Private Key", modifier = Modifier.width(headerColumnWidth))
             AppTextButton(
-                text = keyFile?.name ?: "Choose a File in PKCS #8 DER format",
+                text = keyFile?.name ?: "Choose a File in PKCS#1/PKCS#8 DER/PEM format",
                 onClick = { fileChooser = CertificateKeyPairFileChooserType.PrivateKey },
                 modifier = Modifier.testTag(buildTestTag(
                     TestTagPart.EnvironmentSslClientCertificates,

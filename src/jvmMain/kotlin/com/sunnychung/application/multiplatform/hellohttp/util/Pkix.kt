@@ -6,6 +6,13 @@ import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
+import org.bouncycastle.asn1.ASN1Sequence
+import org.bouncycastle.asn1.DERNull
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStreamReader
@@ -79,15 +86,62 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
     )
 }
 
-private fun parsePrivateKey(keyBytes: ByteArray, keyPassword: String): PrivateKey = if (keyPassword.isEmpty()) {
-    // try without password. if it's fail, try with empty password
-    try {
-        decodeUnencryptedPrivateKey(keyBytes)
-    } catch (e: InvalidKeySpecException) {
+private fun parsePrivateKey(keyBytes: ByteArray, keyPassword: String): PrivateKey {
+    val securityProvider = BouncyCastleProvider()
+    val keyConverter = JcaPEMKeyConverter().setProvider(securityProvider)
+
+    val parsePkcs8AnyUnencryptedPrivateKey = { keyBytes: ByteArray ->
+        val keyInfo = PrivateKeyInfo.getInstance(keyBytes)
+        keyConverter.getPrivateKey(keyInfo).also {
+            // this is an unencrypted key. there should be no password given.
+            if (keyPassword.isNotEmpty()) {
+                throw InvalidKeySpecException("Parse fail")
+            }
+        }
+    }
+
+    val parsePkcs8AnyEncryptedPrivateKey = { keyBytes: ByteArray ->
         decryptAsPrivateKey(keyBytes = keyBytes, keyPassword)
     }
-} else {
-    decryptAsPrivateKey(keyBytes = keyBytes, keyPassword)
+
+    val parsePkcs1RsaPrivateKey = { keyBytes: ByteArray ->
+        println("parsePkcs1RsaPrivateKey")
+
+        // this implementation does not throw exception for invalid keys
+//        val spec: KeySpec = PKCS8EncodedKeySpec(keyBytes)
+//        KeyFactory.getInstance("RSA", securityProvider).generatePrivate(spec)
+
+        // this does throw
+        val pkcs8 = pkcs1PrivateKeyToPkcs8Encoded(keyBytes)
+        parsePkcs8AnyUnencryptedPrivateKey(pkcs8)
+    }
+
+    // convert PEM to DER if applicable
+    val keyBytes = keyBytes
+        .tryToConvertPemToDer("-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----")
+        .tryToConvertPemToDer("-----BEGIN ENCRYPTED PRIVATE KEY-----", "-----END ENCRYPTED PRIVATE KEY-----")
+        .tryToConvertPemToDer("-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----")
+
+    val tryInOrder = listOf(
+        parsePkcs8AnyUnencryptedPrivateKey,
+        parsePkcs8AnyEncryptedPrivateKey,
+        parsePkcs1RsaPrivateKey
+    )
+    tryInOrder.forEach { proc ->
+        try {
+            return proc(keyBytes)
+        } catch (_: Throwable) { }
+    }
+
+    throw InvalidKeySpecException("Cannot parse given private key")
+}
+
+fun pkcs1PrivateKeyToPkcs8Encoded(pkcs1Encoded: ByteArray): ByteArray {
+    val algId: AlgorithmIdentifier = AlgorithmIdentifier(PKCSObjectIdentifiers.rsaEncryption, DERNull.INSTANCE)
+    val privateKeyInfo = PrivateKeyInfo(algId, ASN1Sequence.getInstance(pkcs1Encoded))
+
+    val pkcs8Encoded = privateKeyInfo.encoded
+    return pkcs8Encoded
 }
 
 fun decodeUnencryptedPrivateKey(keyBytes: ByteArray): PrivateKey {
@@ -109,14 +163,18 @@ fun decryptAsPrivateKey(keyBytes: ByteArray, password: String): PrivateKey {
         }
 }
 
-fun parseCaCertificates(bytes: ByteArray) : List<X509Certificate> {
-    InputStreamReader(ByteArrayInputStream(bytes)).buffered().use { reader ->
+private fun ByteArray.tryToConvertPemToDer(startLine: String, endLine: String): ByteArray {
+    val startBytes = startLine.toByteArray()
+    if (size <= startBytes.size || !copyOfRange(0, startBytes.size).contentEquals(startBytes)) {
+        return this
+    }
+    InputStreamReader(ByteArrayInputStream(this)).buffered().use { reader ->
         val firstLine = reader.readLine()
-        val certBytes = if (firstLine == "-----BEGIN PKCS7-----") { // p7b
+        return if (firstLine == startLine) {
             val base64Encoded = buildString {
                 while (reader.ready()) {
                     val line = reader.readLine()
-                    if (line != "-----END PKCS7-----") {
+                    if (line != endLine) {
                         append(line)
                     } else {
                         break
@@ -125,11 +183,15 @@ fun parseCaCertificates(bytes: ByteArray) : List<X509Certificate> {
             }
             Base64.getDecoder().decode(base64Encoded)
         } else { // der / pem
-            bytes
+            this
         }
-        return CertificateFactory.getInstance("X.509")
-            .generateCertificates(ByteArrayInputStream(certBytes)).map { it as X509Certificate }
     }
+}
+
+fun parseCaCertificates(bytes: ByteArray) : List<X509Certificate> {
+    val certBytes = bytes.tryToConvertPemToDer(startLine = "-----BEGIN PKCS7-----", endLine = "-----END PKCS7-----")
+    return CertificateFactory.getInstance("X.509")
+        .generateCertificates(ByteArrayInputStream(certBytes)).map { it as X509Certificate }
 }
 
 fun importCaCertificates(file: File): List<ImportedFile> {
