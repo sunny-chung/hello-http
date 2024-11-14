@@ -91,6 +91,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.SearchHighlightDecorator
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -503,18 +504,20 @@ fun CodeEditorView(
                                 .chunkedLatest(200.milliseconds())
                                 .collect {
                                     log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
-                                    onTextChange?.let { onTextChange ->
-                                        val string = it.bigText.buildCharSequence() as AnnotatedString
-                                        withContext(Dispatchers.Main) {
-                                            log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
-                                            onTextChange(string.text)
-                                            log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                    withContext(NonCancellable) { // continue to complete the current collect block even the flow is cancelled
+                                        onTextChange?.let { onTextChange ->
+                                            val string = it.bigText.buildCharSequence() as AnnotatedString
+                                            withContext(Dispatchers.Main) {
+                                                log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                                onTextChange(string.text)
+                                                log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                            }
                                         }
-                                    }
-                                    bigTextValueId = it.changeId
-                                    searchTrigger.trySend(Unit)
+                                        bigTextValueId = it.changeId
+                                        searchTrigger.trySend(Unit)
 
-                                    bigTextFieldState.markConsumed(it.sequence)
+                                        bigTextFieldState.markConsumed(it.sequence)
+                                    }
                                 }
                         }
                     }
