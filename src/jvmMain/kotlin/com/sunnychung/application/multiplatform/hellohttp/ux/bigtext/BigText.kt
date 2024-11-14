@@ -49,7 +49,7 @@ interface BigText {
 
     fun substring(range: IntRange): CharSequence = substring(range.start, range.endInclusive + 1)
 
-    fun subSequence(startIndex: Int, endIndex: Int) = substring(startIndex, endIndex)
+    fun subSequence(startIndex: Int, endIndex: Int): CharSequence
 
     fun findLineString(lineIndex: Int): CharSequence
 
