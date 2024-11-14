@@ -713,7 +713,7 @@ fun BigTextLineNumbersView(
     val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
 
     // Note that layoutResult.text != bigText
-    val layoutText = layoutResult?.text as? BigTextTransformerImpl
+    val layoutText = layoutResult?.text as? BigTextTransformed
 
     var prevHasLayouted by remember { mutableStateOf(false) }
     prevHasLayouted = layoutText?.hasLayouted ?: false
