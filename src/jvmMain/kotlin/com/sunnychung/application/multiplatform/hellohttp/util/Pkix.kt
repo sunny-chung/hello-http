@@ -10,6 +10,7 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStreamReader
 import java.security.KeyFactory
+import java.security.PrivateKey
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.InvalidKeySpecException
@@ -41,36 +42,9 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
         throw RuntimeException("Error while parsing the certificate file -- ${e.message}", e)
     }
 
-    fun decryptAsRsaKeySpec(keyBytes: ByteArray, password: String): PKCS8EncodedKeySpec {
-        return EncryptedPrivateKeyInfo(keyBytes)
-            .let {
-                val secretKey = SecretKeyFactory.getInstance(it.algName)
-                    .generateSecret(PBEKeySpec(password.toCharArray()))
-                val cipher = Cipher.getInstance(it.algName)
-                cipher.init(Cipher.DECRYPT_MODE, secretKey, it.algParameters)
-                val keySpec = it.getKeySpec(cipher)
-
-                // try if all these work
-                KeyFactory.getInstance("RSA").generatePrivate(keySpec)
-
-                keySpec
-            }
-    }
-
     val keyBytes = keyFile.readBytes()
-    val keySpec = try {
-        if (keyPassword.isEmpty()) {
-            // try without password. if it's fail, try with empty password
-            try {
-                val keySpec = PKCS8EncodedKeySpec(keyBytes)
-                KeyFactory.getInstance("RSA").generatePrivate(keySpec)
-                keySpec
-            } catch (e: InvalidKeySpecException) {
-                decryptAsRsaKeySpec(keyBytes = keyBytes, keyPassword)
-            }
-        } else {
-            decryptAsRsaKeySpec(keyBytes = keyBytes, keyPassword)
-        }
+    val privateKey = try {
+        parsePrivateKey(keyBytes = keyBytes, keyPassword = keyPassword)
     } catch (e: Throwable) {
         throw RuntimeException("Error while parsing the private key file -- ${e.message}", e)
     }
@@ -98,11 +72,41 @@ fun ClientCertificateKeyPair.Companion.importFrom(certFile: File, keyFile: File,
             originalFilename = keyFile.name,
             createdWhen = now,
             isEnabled = true,
-            content = keySpec.encoded, // store decrypted bytes
+            content = privateKey.encoded, // store decrypted bytes
         ),
         createdWhen = now,
         isEnabled = true,
     )
+}
+
+private fun parsePrivateKey(keyBytes: ByteArray, keyPassword: String): PrivateKey = if (keyPassword.isEmpty()) {
+    // try without password. if it's fail, try with empty password
+    try {
+        decodeUnencryptedPrivateKey(keyBytes)
+    } catch (e: InvalidKeySpecException) {
+        decryptAsPrivateKey(keyBytes = keyBytes, keyPassword)
+    }
+} else {
+    decryptAsPrivateKey(keyBytes = keyBytes, keyPassword)
+}
+
+fun decodeUnencryptedPrivateKey(keyBytes: ByteArray): PrivateKey {
+    val keySpec = PKCS8EncodedKeySpec(keyBytes)
+    return KeyFactory.getInstance("RSA").generatePrivate(keySpec)
+}
+
+fun decryptAsPrivateKey(keyBytes: ByteArray, password: String): PrivateKey {
+    return EncryptedPrivateKeyInfo(keyBytes)
+        .let {
+            val secretKey = SecretKeyFactory.getInstance(it.algName)
+                .generateSecret(PBEKeySpec(password.toCharArray()))
+            val cipher = Cipher.getInstance(it.algName)
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, it.algParameters)
+            val keySpec = it.getKeySpec(cipher)
+
+            // try if all these work
+            KeyFactory.getInstance("RSA").generatePrivate(keySpec)
+        }
 }
 
 fun parseCaCertificates(bytes: ByteArray) : List<X509Certificate> {
