@@ -35,8 +35,12 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.DataLossWarningDialogWindow
 import io.github.dralletje.ktreesitter.graphql.TreeSitterGraphql
 import io.github.treesitter.ktreesitter.json.TreeSitterJson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import net.harawata.appdirs.AppDirsFactory
 import java.awt.Dimension
 import java.io.File
@@ -72,10 +76,25 @@ fun main() {
         }
         loadNativeLibraries()
         println("Preparing to start")
-        AppContext.PersistenceManager.initialize()
 
-        val dataVersion = AppContext.OperationalRepository.read(OperationalDI())!!.data.appVersion.let { Version(it) }
-        val appVersion = AppContext.MetadataManager.version.let { Version(it) }
+        var dataVersion: Version? = null
+        var appVersion: Version? = null
+
+        coroutineScope {
+            withContext(Dispatchers.IO) {
+                launch {
+                    AppContext.PersistenceManager.initialize()
+
+                    dataVersion =
+                        AppContext.OperationalRepository.read(OperationalDI())!!.data.appVersion.let { Version(it) }
+                    appVersion = AppContext.MetadataManager.version.let { Version(it) }
+                }
+
+                launch {
+                    AppContext.ResourceManager.loadAllResources()
+                }
+            }
+        }
 
         val prepareCounter = AtomicInteger(0)
 
@@ -83,10 +102,10 @@ fun main() {
             var isContinue by remember { mutableStateOf<Boolean?>(null) }
             var isPrepared by remember { mutableStateOf(false) }
             if (isContinue == null) {
-                if (dataVersion > appVersion) {
+                if (dataVersion!! > appVersion!!) {
                     DataLossWarningDialogWindow(
-                        dataVersion = dataVersion.versionName,
-                        appVersion = appVersion.versionName
+                        dataVersion = dataVersion!!.versionName,
+                        appVersion = appVersion!!.versionName
                     ) {
                         isContinue = it
                     }
@@ -106,7 +125,7 @@ fun main() {
 
                     AppContext.OperationalRepository.read(OperationalDI())
                         .also {
-                            it!!.data.appVersion = appVersion.versionName
+                            it!!.data.appVersion = appVersion!!.versionName
                             AppContext.OperationalRepository.awaitUpdate(OperationalDI())
                         }
                     AppContext.AutoBackupManager.backupNow()

@@ -130,6 +130,7 @@ fun CodeEditorView(
     log.d { "CodeEditorView start" }
 
     val themeColours = LocalColor.current
+    val fonts = LocalFont.current
     val coroutineScope = rememberCoroutineScope()
 
     val inputFilter = BigTextInputFilter { it.replace("\r\n".toRegex(), "\n") }
@@ -307,7 +308,7 @@ fun CodeEditorView(
         if (isEnableVariables) {
             listOf(
                 EnvironmentVariableIncrementalTransformation(),
-                FunctionIncrementalTransformation(themeColours)
+                FunctionIncrementalTransformation(themeColours, fonts)
             )
         } else {
             emptyList()
@@ -317,7 +318,7 @@ fun CodeEditorView(
     val variableDecorators = remember(bigTextFieldState, themeColours, isEnableVariables, knownVariables) {
         if (isEnableVariables) {
             listOf(
-                EnvironmentVariableDecorator(themeColours, knownVariables.keys),
+                EnvironmentVariableDecorator(themeColours, fonts, knownVariables.keys),
             )
         } else {
             emptyList()
@@ -478,7 +479,8 @@ fun CodeEditorView(
                             MultipleTextDecorator(syntaxHighlightDecorators + searchDecorators)
                         //},
                         ,
-                        fontSize = LocalFont.current.codeEditorBodyFontSize,
+                        fontSize = fonts.codeEditorBodyFontSize,
+                        fontFamily = fonts.monospaceFontFamily,
                         isSelectable = true,
                         scrollState = scrollState,
                         viewState = bigTextFieldState.viewState,
@@ -548,7 +550,8 @@ fun CodeEditorView(
                             //},
                             ,
                             color = textColor,
-                            fontSize = LocalFont.current.codeEditorBodyFontSize,
+                            fontSize = fonts.codeEditorBodyFontSize,
+                            fontFamily = fonts.monospaceFontFamily,
                             scrollState = scrollState,
                             onTextLayout = { layoutResult = it },
                             onTextManipulatorReady = onTextManipulatorReady,
@@ -707,7 +710,7 @@ fun BigTextLineNumbersView(
 
     val textStyle = LocalTextStyle.current.copy(
         fontSize = fonts.codeEditorLineNumberFontSize,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = LocalFont.current.monospaceFontFamily,
         color = colours.unimportant,
     )
     val collapsedLinesState = CollapsedLinesState(collapsableLines = collapsableLines, collapsedLines = collapsedLines)
@@ -801,7 +804,6 @@ private fun CoreLineNumbersView(
                             text = "${i + 1}",
                             style = textStyle,
                             fontSize = fonts.codeEditorLineNumberFontSize,
-                            fontFamily = FontFamily.Monospace,
                             maxLines = 1,
                             color = colours.unimportant,
                         )

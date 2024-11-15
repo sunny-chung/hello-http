@@ -5,17 +5,18 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
 
-class EnvironmentVariableDecorator(themeColors: AppColor, val knownVariables: Set<String>) : BigTextDecorator {
+class EnvironmentVariableDecorator(themeColors: AppColor, font: AppFont, val knownVariables: Set<String>) : BigTextDecorator {
     val knownVariableStyle = SpanStyle(
         color = themeColors.variableTextColor,
         background = themeColors.variableBackgroundColor,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = font.monospaceFontFamily,
     )
     val unknownVariableStyle = SpanStyle(
         color = themeColors.variableTextColor,
         background = themeColors.variableErrorBackgroundColor,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = font.monospaceFontFamily,
     )
 
     override fun onApplyDecorationOnTransformation(text: CharSequence, transformedRange: IntRange): CharSequence {

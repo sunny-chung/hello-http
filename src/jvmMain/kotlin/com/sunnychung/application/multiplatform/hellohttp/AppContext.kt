@@ -10,6 +10,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.TransportClien
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistResponseManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PersistenceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierManager
+import com.sunnychung.application.multiplatform.hellohttp.manager.ResourceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
 import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.ReactorNettyHttpTransportClient
@@ -27,7 +28,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ResponseV
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.UserPreferenceViewModel
 import java.io.File
 
-class AppContext {
+internal class AppContext {
     val MetadataManager = MetadataManager()
     val SingleInstanceProcessService = SingleInstanceProcessService()
     val NetworkClientManager = NetworkClientManager()
@@ -40,6 +41,7 @@ class AppContext {
     val PrettifierManager = PrettifierManager()
     val PersistResponseManager = PersistResponseManager()
     val AutoBackupManager = AutoBackupManager()
+    val ResourceManager = ResourceManager()
 
     val RequestCollectionRepository = RequestCollectionRepository()
     val ProjectCollectionRepository = ProjectCollectionRepository()
@@ -91,6 +93,8 @@ class AppContext {
             get() = instance.PersistResponseManager
         val AutoBackupManager: AutoBackupManager
             get() = instance.AutoBackupManager
+        val ResourceManager: ResourceManager
+            get() = instance.ResourceManager
         val RequestCollectionRepository: RequestCollectionRepository
             get() = instance.RequestCollectionRepository
         val ProjectCollectionRepository: ProjectCollectionRepository

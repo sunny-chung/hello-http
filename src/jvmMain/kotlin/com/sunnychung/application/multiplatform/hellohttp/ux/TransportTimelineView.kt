@@ -261,7 +261,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
             var contentWidthInPx by remember { mutableStateOf<Int?>(null) }
             val textStyle = LocalTextStyle.current.copy(
                 fontSize = LocalFont.current.codeEditorBodyFontSize,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = LocalFont.current.monospaceFontFamily,
             )
             val fontFamilyResolver = LocalFontFamilyResolver.current
 
@@ -470,7 +470,7 @@ private fun TransportTimelineContentView(
                                     RawExchange.Direction.Incoming -> "< "
                                     else -> "= "
                                 },
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = LocalFont.current.monospaceFontFamily,
                                 fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 modifier = Modifier.padding(start = 4.dp)
                             )
@@ -482,7 +482,7 @@ private fun TransportTimelineContentView(
                                         2 + streamDigits,
                                         ' '
                                     ) + " ",
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = LocalFont.current.monospaceFontFamily,
                                     fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 )
                             }
@@ -493,7 +493,7 @@ private fun TransportTimelineContentView(
                             )
                             AppText(
                                 text = "  ",
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = LocalFont.current.monospaceFontFamily,
                                 fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 modifier = Modifier.padding(start = 4.dp)
                             )
@@ -502,7 +502,7 @@ private fun TransportTimelineContentView(
                             if (protocol?.isHttp2() == true) {
                                 AppText(
                                     text = " ".repeat("{} ".length + streamDigits),
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = LocalFont.current.monospaceFontFamily,
                                     fontSize = LocalFont.current.transportTimelineBodyFontSize,
                                 )
                             }
@@ -510,7 +510,7 @@ private fun TransportTimelineContentView(
                     }
                     AppText(
                         text = textChunk,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = LocalFont.current.monospaceFontFamily,
                         fontSize = LocalFont.current.transportTimelineBodyFontSize,
                         maxLines = numTextLines[textIndex],
                         softWrap = false, // since maxLines is always 1
@@ -594,7 +594,7 @@ fun TimestampColumn(modifier: Modifier = Modifier, createTime: KInstant, lastUpd
     ) {
         AppText(
             text = text,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalFont.current.monospaceFontFamily,
             fontSize = LocalFont.current.transportTimelineBodyFontSize,
             textAlign = TextAlign.Right,
             modifier = modifier.padding(end = 4.dp)

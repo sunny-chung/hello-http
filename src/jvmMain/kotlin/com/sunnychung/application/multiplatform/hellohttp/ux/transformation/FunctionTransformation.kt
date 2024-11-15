@@ -9,9 +9,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import com.sunnychung.application.multiplatform.hellohttp.constant.UserFunctions
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
 import java.util.*
 
-class FunctionTransformation(val themeColors: AppColor) : VisualTransformation {
+class FunctionTransformation(val themeColors: AppColor, val font: AppFont) : VisualTransformation {
     private val functionRegex =
         ("\\$\\(\\((" + UserFunctions.keys.joinToString("|") { Regex.escape(it) } + ")\\)\\)").toRegex()
 
@@ -47,7 +48,7 @@ class FunctionTransformation(val themeColors: AppColor) : VisualTransformation {
                 withStyle(SpanStyle(
                     color = themeColors.functionTextColor,
                     background = themeColors.functionBackgroundColor,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = font.monospaceFontFamily,
                 )) {
                     append(variableName)
                 }

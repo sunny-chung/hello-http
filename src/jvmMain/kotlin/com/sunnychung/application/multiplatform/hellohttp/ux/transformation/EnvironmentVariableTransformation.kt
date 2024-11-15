@@ -9,9 +9,10 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
 import java.util.*
 
-class EnvironmentVariableTransformation(val themeColors: AppColor, val knownVariables: Set<String>) : VisualTransformation {
+class EnvironmentVariableTransformation(val themeColors: AppColor, val font: AppFont, val knownVariables: Set<String>) : VisualTransformation {
     private val variableRegex = "\\$\\{\\{([^{}]+)\\}\\}".toRegex()
 
     override fun filter(text: AnnotatedString): TransformedText {
@@ -46,7 +47,7 @@ class EnvironmentVariableTransformation(val themeColors: AppColor, val knownVari
                 withStyle(SpanStyle(
                     color = themeColors.variableTextColor,
                     background = if (variableName in knownVariables) themeColors.variableBackgroundColor else themeColors.variableErrorBackgroundColor,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = font.monospaceFontFamily,
                 )) {
                     append(variableName)
                 }

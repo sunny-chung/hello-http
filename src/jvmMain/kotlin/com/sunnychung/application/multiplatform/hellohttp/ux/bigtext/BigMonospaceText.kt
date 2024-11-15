@@ -110,6 +110,7 @@ fun BigMonospaceText(
     text: BigText,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
+    fontFamily: FontFamily = FontFamily.Monospace,
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
     inputFilter: BigTextInputFilter? = null,
@@ -125,6 +126,7 @@ fun BigMonospaceText(
     text = text,
     padding = padding,
     fontSize = fontSize,
+    fontFamily = fontFamily,
     color = color,
     isSelectable = isSelectable,
     isEditable = false,
@@ -145,6 +147,7 @@ fun BigMonospaceTextField(
     textFieldState: BigTextFieldState,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
+    fontFamily: FontFamily = FontFamily.Monospace,
     color: Color = LocalColor.current.text,
     inputFilter: BigTextInputFilter? = null,
     textTransformation: IncrementalTextTransformation<*>? = null,
@@ -160,6 +163,7 @@ fun BigMonospaceTextField(
         text = textFieldState.text,
         padding = padding,
         fontSize = fontSize,
+        fontFamily = fontFamily,
         color = color,
         onTextChange = {
             textFieldState.emitValueChange(it.changeId)
@@ -182,6 +186,7 @@ fun BigMonospaceTextField(
     text: BigText,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
+    fontFamily: FontFamily = FontFamily.Monospace,
     color: Color = LocalColor.current.text,
     onTextChange: (BigTextChangeEvent) -> Unit,
     inputFilter: BigTextInputFilter? = null,
@@ -198,6 +203,7 @@ fun BigMonospaceTextField(
     text = text,
     padding = padding,
     fontSize = fontSize,
+    fontFamily = fontFamily,
     color = color,
     isSelectable = true,
     isEditable = true,
@@ -220,6 +226,7 @@ private fun CoreBigMonospaceText(
     text: BigText,
     padding: PaddingValues = PaddingValues(4.dp),
     fontSize: TextUnit = LocalFont.current.bodyFontSize,
+    fontFamily: FontFamily = FontFamily.Monospace,
     color: Color = LocalColor.current.text,
     isSelectable: Boolean = false,
     isEditable: Boolean = false,
@@ -246,7 +253,7 @@ private fun CoreBigMonospaceText(
 
     val textStyle = LocalTextStyle.current.copy(
         fontSize = fontSize,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = fontFamily,
         color = color,
     )
 

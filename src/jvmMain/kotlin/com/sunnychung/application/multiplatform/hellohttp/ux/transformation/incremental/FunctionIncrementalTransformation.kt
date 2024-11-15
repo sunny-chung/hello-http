@@ -13,8 +13,9 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTran
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformer
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.IncrementalTextTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
 
-class FunctionIncrementalTransformation(private val themeColors: AppColor) : IncrementalTextTransformation<Unit> {
+class FunctionIncrementalTransformation(private val themeColors: AppColor, font: AppFont) : IncrementalTextTransformation<Unit> {
     val processLengthLimit = 30
 
     private val functionRegex =
@@ -23,7 +24,7 @@ class FunctionIncrementalTransformation(private val themeColors: AppColor) : Inc
     private val style = SpanStyle(
         color = themeColors.functionTextColor,
         background = themeColors.functionBackgroundColor,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = font.monospaceFontFamily,
     )
 
     override fun initialize(text: BigText, transformer: BigTextTransformer) {

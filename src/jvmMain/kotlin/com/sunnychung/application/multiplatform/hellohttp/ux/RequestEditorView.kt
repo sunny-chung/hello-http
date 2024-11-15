@@ -306,6 +306,7 @@ fun RequestEditorView(
                 },
                 visualTransformation = EnvironmentVariableTransformation(
                     themeColors = colors,
+                    font = fonts,
                     knownVariables = mergedVariables.keys
                 ),
                 singleLine = true,

@@ -31,6 +31,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
@@ -129,9 +130,10 @@ fun KeyValueEditorView(
                             MultipleVisualTransformation(listOf(
                                 EnvironmentVariableTransformation(
                                     themeColors = colors,
+                                    font = LocalFont.current,
                                     knownVariables = knownVariables.keys
                                 ),
-                                FunctionTransformation(themeColors = colors),
+                                FunctionTransformation(themeColors = colors, font = LocalFont.current),
                             ))
                         } else {
                             VisualTransformation.None
@@ -170,9 +172,10 @@ fun KeyValueEditorView(
                                 MultipleVisualTransformation(listOf(
                                     EnvironmentVariableTransformation(
                                         themeColors = colors,
+                                        font = LocalFont.current,
                                         knownVariables = knownVariables.keys
                                     ),
-                                    FunctionTransformation(themeColors = colors),
+                                    FunctionTransformation(themeColors = colors, font = LocalFont.current),
                                 ))
                             } else {
                                 VisualTransformation.None

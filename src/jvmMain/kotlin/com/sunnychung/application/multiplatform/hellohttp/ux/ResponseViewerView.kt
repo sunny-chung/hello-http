@@ -585,13 +585,13 @@ fun BodyViewerView(
                 placeholder = {
                     AppText(
                         text = "JSON Path, e.g. $.items.length()",
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = fonts.monospaceFontFamily,
                         fontSize = fonts.codeEditorBodyFontSize,
                         color = colours.placeholder
                     )
                 },
                 textStyle = LocalTextStyle.current.copy(
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = fonts.monospaceFontFamily,
                     fontSize = fonts.codeEditorBodyFontSize,
                 ),
                 singleLine = true,
@@ -773,7 +773,7 @@ fun ResponseStreamView(response: UserResponse) {
                             AppText(
                                 text = DATE_TIME_FORMAT.format(it.instant.atZoneOffset(KZoneOffset.local())),
                                 color = textColour,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = fonts.monospaceFontFamily,
                                 fontSize = fonts.streamFontSize,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.width(TIMESTAMP_COLUMN_WIDTH_DP)
@@ -788,7 +788,7 @@ fun ResponseStreamView(response: UserResponse) {
                                     PayloadMessage.Type.Error -> "x"
                                 },
                                 color = textColour,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = fonts.monospaceFontFamily,
                                 fontSize = fonts.streamFontSize,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.width(TYPE_COLUMN_WIDTH_DP)
@@ -799,7 +799,7 @@ fun ResponseStreamView(response: UserResponse) {
                                 isDisableWordWrap = true,
                                 softWrap = false,
                                 maxLines = 1,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = fonts.monospaceFontFamily,
                                 fontSize = fonts.streamFontSize,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
