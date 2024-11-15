@@ -35,6 +35,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(kotlin("reflect"))
                 implementation(kotlin("stdlib"))
+                implementation(compose.components.resources)
 
                 implementation("co.touchlab:kermit:1.0.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.0")
@@ -169,6 +170,10 @@ tasks.withType<Test> {
             excludeTestsMatching("com.sunnychung.**.ChunkedLatestFlowTest") // The latencies of `delay()` are unstable on GitHub macOS runners
         }
     }
+}
+
+compose.resources {
+    generateResClass = always
 }
 
 compose.desktop {

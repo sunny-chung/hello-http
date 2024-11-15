@@ -2,7 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 
 import com.williamfiset.algorithms.datastructures.balancedtree.RedBlackTree
 
-open class LengthTree<out V>(computations: RedBlackTreeComputations<V>) : RedBlackTree2<@UnsafeVariance V>(computations)
+open class LengthTree<V>(computations: RedBlackTreeComputations<V>) : RedBlackTree2<@UnsafeVariance V>(computations)
         where V : LengthNodeValue, V : Comparable<@UnsafeVariance V>, V : DebuggableNode<in @UnsafeVariance V> {
 
     fun findNodeByCharIndex(index: Int, isIncludeMarkerNodes: Boolean = true, isExact: Boolean = false): RedBlackTree<V>.Node? {

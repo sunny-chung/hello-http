@@ -45,6 +45,7 @@ fun <T: DropDownable> DropDownView(
     maxLines: Int = 1,
     isLabelFillMaxWidth: Boolean = false,
     isShowLabel: Boolean = true,
+    testTagParts: Array<Any?>? = null,
     contentView: @Composable (RowScope.(it: T?, isLabel: Boolean, isSelected: Boolean, isClickable: Boolean) -> Unit) = {it, isLabel, isSelected, isClickable ->
         AppText(
             text = it?.displayText.emptyToNull() ?: "--",
@@ -68,7 +69,6 @@ fun <T: DropDownable> DropDownView(
         )
     },
     arrowPadding: PaddingValues = PaddingValues(0.dp),
-    testTagParts: Array<Any?>? = null,
     selectedItem: T? = null,
     onClickItem: (T) -> Boolean,
 ) {

@@ -31,7 +31,7 @@ class BigTextTransformerImpl(override val originalText: BigText) : BigTextImpl(
             override fun computeWhenLeftRotate(x: BigTextTransformNodeValue, y: BigTextTransformNodeValue) {}
             override fun computeWhenRightRotate(x: BigTextTransformNodeValue, y: BigTextTransformNodeValue) {}
         }
-    )
+    ) as LengthTree<BigTextNodeValue>
 
     private fun BigTextNodeValue.toBigTextTransformNodeValue() : BigTextTransformNodeValue {
         return BigTextTransformNodeValue().also {
