@@ -45,14 +45,14 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
-import com.sunnychung.application.multiplatform.hellohttp.util.importCaCertificates
-import com.sunnychung.application.multiplatform.hellohttp.util.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIndex
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithout
 import com.sunnychung.application.multiplatform.hellohttp.util.formatByteSize
+import com.sunnychung.application.multiplatform.hellohttp.util.importCaCertificates
+import com.sunnychung.application.multiplatform.hellohttp.util.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -572,36 +572,93 @@ fun CertificateEditorView(
 @Composable
 fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (ClientCertificateKeyPair) -> Unit) {
     val headerColumnWidth = 160.dp
+    val colours = LocalColor.current
 
     var certFile by remember { mutableStateOf<File?>(null) }
     var keyFile by remember { mutableStateOf<File?>(null) }
+    var bundleFile by remember { mutableStateOf<File?>(null) }
+    var bundleFilePassword by remember { mutableStateOf("") }
     var keyFilePassword by remember { mutableStateOf("") }
     var fileChooser by remember { mutableStateOf(CertificateKeyPairFileChooserType.None) }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AppText(text = "Certificate", modifier = Modifier.width(headerColumnWidth))
-            AppTextButton(
-                text = certFile?.name ?: "Choose a File in DER/PEM/P7B/CER/CRT format",
-                onClick = { fileChooser = CertificateKeyPairFileChooserType.Certificate },
-                modifier = Modifier.testTag(buildTestTag(
-                    TestTagPart.EnvironmentSslClientCertificates,
-                    TestTagPart.ClientCertificate,
-                    TestTagPart.FileButton,
-                )!!)
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AppText(text = "Private Key", modifier = Modifier.width(headerColumnWidth))
-            AppTextButton(
-                text = keyFile?.name ?: "Choose a File in PKCS#1/PKCS#8 DER/PEM format",
-                onClick = { fileChooser = CertificateKeyPairFileChooserType.PrivateKey },
-                modifier = Modifier.testTag(buildTestTag(
-                    TestTagPart.EnvironmentSslClientCertificates,
-                    TestTagPart.PrivateKey,
-                    TestTagPart.FileButton,
-                )!!)
-            )
+        Box(modifier = Modifier.height(IntrinsicSize.Max)) {
+            val headerColumnWidth = headerColumnWidth - 25.dp
+            Box(
+                modifier = Modifier
+                    .padding(12.dp)
+                    .border(width = 1.dp, color = colours.placeholder, RectangleShape)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+            ) {}
+            Column {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(start = 25.dp, end = 25.dp, top = 25.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppText(text = "Certificate", modifier = Modifier.width(headerColumnWidth))
+                        AppTextButton(
+                            text = certFile?.name ?: "Choose a File in DER/PEM/P7B/CER/CRT format",
+                            onClick = { fileChooser = CertificateKeyPairFileChooserType.Certificate },
+                            modifier = Modifier.testTag(
+                                buildTestTag(
+                                    TestTagPart.EnvironmentSslClientCertificates,
+                                    TestTagPart.ClientCertificate,
+                                    TestTagPart.FileButton,
+                                )!!
+                            )
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppText(text = "Private Key", modifier = Modifier.width(headerColumnWidth))
+                        AppTextButton(
+                            text = keyFile?.name ?: "Choose a File in PKCS#1/PKCS#8 DER/PEM format",
+                            onClick = { fileChooser = CertificateKeyPairFileChooserType.PrivateKey },
+                            modifier = Modifier.testTag(
+                                buildTestTag(
+                                    TestTagPart.EnvironmentSslClientCertificates,
+                                    TestTagPart.PrivateKey,
+                                    TestTagPart.FileButton,
+                                )!!
+                            )
+                        )
+                    }
+                }
+                Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp)
+                            .height(1.dp)
+                            .fillMaxWidth()
+                            .background(colours.placeholder)
+                    ) {}
+                    AppText("or", modifier = Modifier.background(colours.background).padding(horizontal = 12.dp, vertical = 4.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(start = 25.dp, end = 25.dp, bottom = 25.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppText(text = "Bundle", modifier = Modifier.width(headerColumnWidth))
+                        AppTextButton(
+                            text = bundleFile?.name ?: "Choose a File in PKCS#12/P12/PFX format",
+                            onClick = { fileChooser = CertificateKeyPairFileChooserType.Bundle },
+                            modifier = Modifier.testTag(
+                                buildTestTag(
+                                    TestTagPart.EnvironmentSslClientCertificates,
+                                    TestTagPart.Bundle,
+                                    TestTagPart.FileButton,
+                                )!!
+                            )
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppText(text = "Key Store Password", modifier = Modifier.width(headerColumnWidth))
+                        AppTextField(
+                            value = bundleFilePassword,
+                            onValueChange = { bundleFilePassword = it },
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.defaultMinSize(minWidth = 200.dp)
+                        )
+                    }
+                }
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Private Key Password", modifier = Modifier.width(headerColumnWidth))
@@ -612,17 +669,24 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                 modifier = Modifier.defaultMinSize(minWidth = 200.dp)
             )
         }
-        Row {
-            Spacer(modifier = Modifier.width(4.dp))
+        Row(modifier = Modifier.align(Alignment.End).padding(top = 4.dp, start = 4.dp, end = 4.dp)) {
             AppTextButton(
                 text = "Import this Certificate-Key Pair",
                 onClick = {
                     val parsed = try {
-                        if (certFile == null) throw IllegalArgumentException("Please select a certificate file.")
-                        if (keyFile == null) throw IllegalArgumentException("Please select a private key file.")
+                        if (bundleFile == null) {
+                            if (certFile == null && keyFile != null) throw IllegalArgumentException("Please select a certificate file.")
+                            if (keyFile == null && certFile != null) throw IllegalArgumentException("Please select a private key file.")
+                            if (keyFile == null && certFile == null) throw IllegalArgumentException("Please select a bundle file or a certificate and private key file.")
+                            ClientCertificateKeyPair.importFrom(
+                                certFile = certFile!!,
+                                keyFile = keyFile!!,
+                                keyPassword = keyFilePassword
+                            )
+                        }
                         ClientCertificateKeyPair.importFrom(
-                            certFile = certFile!!,
-                            keyFile = keyFile!!,
+                            bundleFile = bundleFile!!,
+                            keyStorePassword = bundleFilePassword,
                             keyPassword = keyFilePassword
                         )
                     } catch (e: Throwable) {
@@ -640,7 +704,7 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
     }
 
     if (fileChooser != CertificateKeyPairFileChooserType.None) {
-        FileDialog(state = rememberFileDialogState(), title = "Choose a DER file") {
+        FileDialog(state = rememberFileDialogState(), title = "Choose a file") {
             val currentFileChooser = fileChooser
             fileChooser = CertificateKeyPairFileChooserType.None
             if (!it.isNullOrEmpty()) {
@@ -648,8 +712,19 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                     CertificateKeyPairFileChooserType.None -> {
                         log.w { "currentFileChooser is '$currentFileChooser' for result file ${it.first().absolutePath}" }
                     }
-                    CertificateKeyPairFileChooserType.Certificate -> certFile = it.first()
-                    CertificateKeyPairFileChooserType.PrivateKey -> keyFile = it.first()
+                    CertificateKeyPairFileChooserType.Certificate -> {
+                        certFile = it.first()
+                        bundleFile = null
+                    }
+                    CertificateKeyPairFileChooserType.PrivateKey -> {
+                        keyFile = it.first()
+                        bundleFile = null
+                    }
+                    CertificateKeyPairFileChooserType.Bundle -> {
+                        bundleFile = it.first()
+                        certFile = null
+                        keyFile = null
+                    }
                 }
             }
         }
@@ -860,7 +935,7 @@ fun ImportUserFileForm(modifier: Modifier = Modifier, onImportFile: (ImportedFil
 }
 
 private enum class CertificateKeyPairFileChooserType {
-    None, Certificate, PrivateKey
+    None, Certificate, PrivateKey, Bundle
 }
 
 private enum class EnvironmentEditorTab {

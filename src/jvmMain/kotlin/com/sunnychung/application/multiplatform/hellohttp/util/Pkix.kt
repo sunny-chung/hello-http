@@ -15,8 +15,10 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.InputStreamReader
 import java.security.KeyFactory
+import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
@@ -186,6 +188,70 @@ private fun ByteArray.tryToConvertPemToDer(startLine: String, endLine: String): 
             this
         }
     }
+}
+
+fun ClientCertificateKeyPair.Companion.importFrom(bundleFile: File, keyStorePassword: String, keyPassword: String): ClientCertificateKeyPair {
+    if (!bundleFile.canRead()) {
+        throw IllegalArgumentException("File ${bundleFile.name} cannot be read.")
+    }
+
+    val store = KeyStore.getInstance("PKCS12")
+    store.load(FileInputStream(bundleFile), keyStorePassword.toCharArray())
+
+    var cert: X509Certificate? = null
+    var privateKey: PrivateKey? = null
+
+    val e = store.aliases()
+    while (e.hasMoreElements() && (cert == null || privateKey == null)) {
+        val alias = e.nextElement()
+        if (store.isCertificateEntry(alias) && cert == null) {
+            cert = store.getCertificate(alias) as? X509Certificate
+        } else if (store.isKeyEntry(alias) && privateKey == null) {
+            cert = store.getCertificate(alias) as? X509Certificate
+            privateKey = try {
+                store.getKey(alias, keyPassword.toCharArray()) as? PrivateKey
+            } catch (e: Throwable) {
+                log.w(e) { "The key with alias $alias cannot be retrieved." }
+                null
+            }
+        }
+    }
+
+    if (cert == null) {
+        throw RuntimeException("No certificate was found.")
+    }
+    if (privateKey == null) {
+        throw RuntimeException("No key was retrieved.")
+    }
+
+    val now = KInstant.now()
+    return ClientCertificateKeyPair(
+        id = uuidString(),
+        certificate = ImportedFile(
+            id = uuidString(),
+            name = cert.subjectX500Principal.getName(X500Principal.RFC1779) +
+                    "\nExpiry: ${
+                        KZonedInstant(
+                            cert.notAfter.time,
+                            KZoneOffset.local()
+                        ).format(KDateTimeFormat.ISO8601_DATETIME.pattern)
+                    }",
+            originalFilename = bundleFile.name,
+            createdWhen = now,
+            isEnabled = true,
+            content = cert.encoded,
+        ),
+        privateKey = ImportedFile(
+            id = uuidString(),
+            name = "Private Key",
+            originalFilename = bundleFile.name,
+            createdWhen = now,
+            isEnabled = true,
+            content = privateKey.encoded, // store decrypted bytes
+        ),
+        createdWhen = now,
+        isEnabled = true,
+    )
 }
 
 fun parseCaCertificates(bytes: ByteArray) : List<X509Certificate> {

@@ -56,6 +56,7 @@ enum class TestTagPart {
     EnvironmentDisableSystemCaCertificates,
     ClientCertificate,
     PrivateKey,
+    Bundle,
     CreateButton,
     ListItemLabel,
     Inherited,

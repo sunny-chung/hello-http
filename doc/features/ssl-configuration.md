@@ -51,6 +51,8 @@ Accepted formats for a private key are:
 - Password-encrypted PKCS #8 PEM
 - PKCS #1 PEM
 
+Alternatively, a PKCS#12 or P12 or PFX bundle containing exactly one certificate and one private key can be imported. If multiple entries of the same kind are found, only the first one would be imported.
+
 The formats are detected automatically. Files with the `.key` file extension are usually in PEM or DER formats.
 
 
