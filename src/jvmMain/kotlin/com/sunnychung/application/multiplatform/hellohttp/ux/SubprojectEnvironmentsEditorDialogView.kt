@@ -606,6 +606,9 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                                 )!!
                             )
                         )
+                        AppDeleteButton(modifier = Modifier.padding(horizontal = 6.dp)) {
+                            certFile = null
+                        }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AppText(text = "Private Key", modifier = Modifier.width(headerColumnWidth))
@@ -620,6 +623,9 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                                 )!!
                             )
                         )
+                        AppDeleteButton(modifier = Modifier.padding(horizontal = 6.dp)) {
+                            keyFile = null
+                        }
                     }
                 }
                 Box(contentAlignment = Alignment.Center) {
@@ -646,6 +652,9 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                                 )!!
                             )
                         )
+                        AppDeleteButton(modifier = Modifier.padding(horizontal = 6.dp)) {
+                            bundleFile = null
+                        }
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
