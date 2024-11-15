@@ -28,7 +28,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.ResponseV
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.UserPreferenceViewModel
 import java.io.File
 
-internal class AppContext {
+class AppContext {
     val MetadataManager = MetadataManager()
     val SingleInstanceProcessService = SingleInstanceProcessService()
     val NetworkClientManager = NetworkClientManager()
