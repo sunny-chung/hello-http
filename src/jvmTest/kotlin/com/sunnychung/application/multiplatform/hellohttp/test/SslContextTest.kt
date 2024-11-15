@@ -3,9 +3,9 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.ClientCertificateKeyPair
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
-import com.sunnychung.application.multiplatform.hellohttp.model.importCaCertificates
-import com.sunnychung.application.multiplatform.hellohttp.model.importFrom
-import com.sunnychung.application.multiplatform.hellohttp.model.parseCaCertificates
+import com.sunnychung.application.multiplatform.hellohttp.util.importCaCertificates
+import com.sunnychung.application.multiplatform.hellohttp.util.importFrom
+import com.sunnychung.application.multiplatform.hellohttp.util.parseCaCertificates
 import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager

@@ -88,6 +88,9 @@ kotlin {
                 implementation("io.github.tree-sitter:ktreesitter:0.23.0")
                 implementation("io.github.sunny-chung:ktreesitter-json:0.23.0.1")
                 implementation("io.github.sunny-chung:ktreesitter-graphql:1.0.0.0")
+
+                // public/private key decoding
+                implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
             }
 
             resources.srcDir("$buildDir/resources")
@@ -97,6 +100,7 @@ kotlin {
                 implementation(kotlin("test"))
                 implementation("org.junit.jupiter:junit-jupiter-params")
                 implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.2")
+                implementation(project(":test-common"))
             }
         }
     }

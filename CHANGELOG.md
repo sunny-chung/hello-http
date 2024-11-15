@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Mouse hovering variable placeholders in Body Editor to show a tooltip for its value (if exists)
 - Number badges in Request Parameter Type tabs to indicate the number of active entries declared in the selected example, e.g. the number of active key-value pairs of a multipart request body declared in the selected Request Example.
 - Certificates in P7B (PKCS#7) format can now be imported
+- Private keys in PEM or PKCS#1 formats can now be imported, and does not limit to RSA keys anymore.
+- PKCS#12 (known as p12) and PFX files can now be imported as client certificates
 
 ### Changed
 - The main monospace font has been changed to Pitagon Sans Mono and unified among all platforms
@@ -29,7 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The copy button overlapped with the search bar in the response body viewer.
 
 ### Optimized
-- Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without noticeable performance issues.
+- Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without significant performance issues.
 - Clicking the "Send" button now never freeze for a short while.
 
 ## [1.6.0] - 2024-07-22
