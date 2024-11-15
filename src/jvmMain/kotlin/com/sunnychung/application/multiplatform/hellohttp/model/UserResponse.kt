@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
+import com.sunnychung.application.multiplatform.hellohttp.document.KInstantAsLongCompat
 import com.sunnychung.application.multiplatform.hellohttp.extension.endWithNewLine
 import com.sunnychung.application.multiplatform.hellohttp.serializer.SynchronizedListSerializer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -27,8 +28,8 @@ data class UserResponse(
     var protocol: ProtocolVersion? = null,
     var application: ProtocolApplication = ProtocolApplication.Http,
 
-    var startAt: KInstantAsLong? = null,
-    var endAt: KInstantAsLong? = null,
+    var startAt: KInstantAsLongCompat? = null,
+    var endAt: KInstantAsLongCompat? = null,
     @Transient @Deprecated("Use CallData#status") var isCommunicating: Boolean = false,
     var isError: Boolean = false,
     var statusCode: Int? = null,

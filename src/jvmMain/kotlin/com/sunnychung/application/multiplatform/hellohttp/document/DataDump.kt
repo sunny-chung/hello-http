@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DataDump(
     val schemaVersion: Int,
-    val createdAt: KInstantAsLong,
+    val createdAt: KInstantAsLongCompat,
     val data: Data,
 ) {
 
