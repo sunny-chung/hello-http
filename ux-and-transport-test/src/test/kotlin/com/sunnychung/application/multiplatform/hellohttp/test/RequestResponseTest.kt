@@ -61,6 +61,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
             loadNativeLibraries()
             runBlocking {
                 AppContext.PersistenceManager.initialize()
+                AppContext.ResourceManager.loadAllResources()
             }
 
             bigDataFile = File("build/testrun/resources/bigfile.dat").apply {
