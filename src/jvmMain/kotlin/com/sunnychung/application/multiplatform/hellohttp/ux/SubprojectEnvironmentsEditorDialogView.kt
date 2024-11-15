@@ -683,13 +683,15 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                                 keyFile = keyFile!!,
                                 keyPassword = keyFilePassword
                             )
+                        } else {
+                            ClientCertificateKeyPair.importFrom(
+                                bundleFile = bundleFile!!,
+                                keyStorePassword = bundleFilePassword,
+                                keyPassword = keyFilePassword
+                            )
                         }
-                        ClientCertificateKeyPair.importFrom(
-                            bundleFile = bundleFile!!,
-                            keyStorePassword = bundleFilePassword,
-                            keyPassword = keyFilePassword
-                        )
                     } catch (e: Throwable) {
+                        log.w(e) { "Cannot import given certificate-key pair" }
                         AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: e::class.simpleName!!)
                         return@AppTextButton
                     }

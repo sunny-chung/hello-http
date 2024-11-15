@@ -261,12 +261,14 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
         onNodeWithTag(TestTag.EnvironmentEditorSslTabContent.name, useUnmergedTree = true)
             .performScrollToNode(hasTestTag(buildTestTag(
                 TestTagPart.EnvironmentSslClientCertificates,
-                TestTagPart.CreateButton,
+                TestTagPart.Bundle,
+                TestTagPart.FileButton,
             )!!))
         waitUntil {
             onNodeWithTag(buildTestTag(
                 TestTagPart.EnvironmentSslClientCertificates,
-                TestTagPart.CreateButton,
+                TestTagPart.Bundle,
+                TestTagPart.FileButton,
             )!!)
                 .isDisplayed()
         }
@@ -309,6 +311,19 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
                 .fetchSemanticsNodeWithRetry(this)
                 .getTexts()
                 .firstOrNull() == keyFile.name
+        }
+
+        onNodeWithTag(TestTag.EnvironmentEditorSslTabContent.name, useUnmergedTree = true)
+            .performScrollToNode(hasTestTag(buildTestTag(
+                TestTagPart.EnvironmentSslClientCertificates,
+                TestTagPart.CreateButton,
+            )!!))
+        waitUntil {
+            onNodeWithTag(buildTestTag(
+                TestTagPart.EnvironmentSslClientCertificates,
+                TestTagPart.CreateButton,
+            )!!)
+                .isDisplayed()
         }
 
         retryForUnresponsiveBuggyComposeTest {
