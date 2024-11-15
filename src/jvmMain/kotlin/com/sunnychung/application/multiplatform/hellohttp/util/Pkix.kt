@@ -255,7 +255,9 @@ fun ClientCertificateKeyPair.Companion.importFrom(bundleFile: File, keyStorePass
 }
 
 fun parseCaCertificates(bytes: ByteArray) : List<X509Certificate> {
-    val certBytes = bytes.tryToConvertPemToDer(startLine = "-----BEGIN PKCS7-----", endLine = "-----END PKCS7-----")
+    val certBytes = bytes
+        .tryToConvertPemToDer(startLine = "-----BEGIN CERTIFICATE-----", endLine = "-----END CERTIFICATE-----")
+        .tryToConvertPemToDer(startLine = "-----BEGIN PKCS7-----", endLine = "-----END PKCS7-----")
     return CertificateFactory.getInstance("X.509")
         .generateCertificates(ByteArrayInputStream(certBytes)).map { it as X509Certificate }
 }
