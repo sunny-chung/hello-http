@@ -25,7 +25,9 @@ import com.jayway.jsonpath.spi.mapper.MappingProvider
 import com.sunnychung.application.multiplatform.hellohttp.document.OperationalDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.error.MultipleProcessError
+import com.sunnychung.application.multiplatform.hellohttp.model.UserPreference
 import com.sunnychung.application.multiplatform.hellohttp.model.Version
+import com.sunnychung.application.multiplatform.hellohttp.model.getApplicableRenderingApiList
 import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
@@ -51,6 +53,8 @@ import kotlin.system.exitProcess
 
 fun main() {
     System.setProperty("apple.awt.application.appearance", "system")
+//    System.setProperty("skiko.renderApi", "OPENGL") // IllegalArgumentException: "MacOS does not support OPENGL rendering API."
+//    System.setProperty("skiko.renderApi", "SOFTWARE")
     val appDir = AppDirsFactory.getInstance().getUserDataDir("Hello HTTP", null, null)
     println("appDir = $appDir")
     AppContext.dataDir = File(appDir)
@@ -79,6 +83,7 @@ fun main() {
 
         var dataVersion: Version? = null
         var appVersion: Version? = null
+        var userPreference: UserPreference? = null
 
         coroutineScope {
             withContext(Dispatchers.IO) {
@@ -88,12 +93,20 @@ fun main() {
                     dataVersion =
                         AppContext.OperationalRepository.read(OperationalDI())!!.data.appVersion.let { Version(it) }
                     appVersion = AppContext.MetadataManager.version.let { Version(it) }
+
+                    userPreference = AppContext.UserPreferenceRepository.read(UserPreferenceDI())!!.preference
                 }
 
                 launch {
                     AppContext.ResourceManager.loadAllResources()
                 }
             }
+        }
+
+        val applicableRenderingApis = getApplicableRenderingApiList(currentOS()).toSet()
+        userPreference!!.preferredRenderingApi_Experimental?.takeIf { it in applicableRenderingApis }?.value?.let {
+            System.setProperty("skiko.renderApi", it)
+            println("Set skiko.renderApi = $it")
         }
 
         val prepareCounter = AtomicInteger(0)
@@ -150,6 +163,8 @@ fun main() {
                         icon = painterResource("image/appicon.svg"),
                         state = rememberWindowState(width = 1024.dp, height = 560.dp)
                     ) {
+                        AppContext.instance.renderingApi = this.window.renderApi.name
+
                         with(LocalDensity.current) {
                             window.minimumSize = if (isMacOs()) {
                                 Dimension(800, 450)

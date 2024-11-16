@@ -22,13 +22,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import com.sunnychung.application.multiplatform.hellohttp.util.annotatedString
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 
 @Composable
 fun AppText(
-    text: String,
+    text: CharSequence,
     modifier: Modifier = Modifier,
     isDisableWordWrap: Boolean = false,
     color: Color = LocalColor.current.text,
@@ -57,13 +58,13 @@ fun AppText(
     var isHover by remember { mutableStateOf(false) }
 
     val textToUse = if (isDisableWordWrap) {
-        text.replace(' ', '\u00A0') // disable breaking by words
+        text.replace(" ".toRegex(), "\u00A0") // disable breaking by words
     } else {
         text
     }
 
     Text(
-        text = textToUse,
+        text = textToUse.annotatedString(),
         modifier = modifier
             .run {
                 @OptIn(ExperimentalComposeUiApi::class)

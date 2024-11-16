@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -40,6 +44,9 @@ import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2Json
 import com.sunnychung.application.multiplatform.hellohttp.importer.PostmanV2ZipImporter
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_BACKUP_RETENTION_DAYS
+import com.sunnychung.application.multiplatform.hellohttp.model.RenderingApi
+import com.sunnychung.application.multiplatform.hellohttp.model.getApplicableRenderingApiList
+import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
@@ -80,7 +87,7 @@ private enum class SettingTab {
 private val COLUMN_HEADER_WIDTH = 140.dp
 
 @Composable
-private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun Section(title: CharSequence, content: @Composable ColumnScope.() -> Unit) {
     val colors = LocalColor.current
     Column(modifier = Modifier.padding(bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -336,26 +343,63 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
 fun AppearanceTab() {
     val currentColourTheme by AppContext.UserPreferenceViewModel.colourTheme.collectAsState()
 
+    val userPreferenceRepository = AppContext.UserPreferenceRepository
+    userPreferenceRepository.subscribeUpdates().collectAsState(null).value
+    val userPreference = runBlocking { // TODO don't use runBlocking
+        userPreferenceRepository.read(UserPreferenceDI())!!.preference
+    }
+
     Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AppText(text = "Colour Theme", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
-            DropDownView(
-                selectedItem = DropDownValue(currentColourTheme.name),
-                items = ColourTheme.values().map { DropDownValue(it.name) },
-                onClickItem = {
-                    val newColourTheme = ColourTheme.valueOf(it.displayText)
-                    AppContext.UserPreferenceViewModel.setColorTheme(newColourTheme)
+        Section("Theme") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppText(text = "Colour Theme", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
+                DropDownView(
+                    selectedItem = DropDownValue(currentColourTheme.name),
+                    items = ColourTheme.values().map { DropDownValue(it.name) },
+                    onClickItem = {
+                        val newColourTheme = ColourTheme.valueOf(it.displayText)
+                        AppContext.UserPreferenceViewModel.setColorTheme(newColourTheme)
 
-                    runBlocking {
-                        val userPreferenceRepository = AppContext.UserPreferenceRepository
-                        val userPreference = userPreferenceRepository.read(UserPreferenceDI())!!.preference
-                        userPreference.colourTheme = newColourTheme
-                        userPreferenceRepository.notifyUpdated(UserPreferenceDI())
-                    }
+                        runBlocking {
+                            val userPreferenceRepository = AppContext.UserPreferenceRepository
+                            val userPreference = userPreferenceRepository.read(UserPreferenceDI())!!.preference
+                            userPreference.colourTheme = newColourTheme
+                            userPreferenceRepository.notifyUpdated(UserPreferenceDI())
+                        }
 
-                    true
-                },
-            )
+                        true
+                    },
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Section(buildAnnotatedString {
+            append("Experimental ")
+            withStyle(SpanStyle(color = LocalColor.current.warning)) {
+                append("(Warning: Changing may cause something VERY BAD!)")
+            }
+        }) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppText(text = "Preferred Rendering (Requires restarting the app to change) (Current: ${AppContext.instance.renderingApi})", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
+                    DropDownView(
+                        selectedItem = run {
+                            val item = userPreference.preferredRenderingApi_Experimental ?: RenderingApi.Default
+                            DropDownKeyValue(item, item.name)
+                        },
+                        items = getApplicableRenderingApiList(currentOS()).map {
+                            DropDownKeyValue(it, it.name)
+                        },
+                        onClickItem = {
+                            userPreference.preferredRenderingApi_Experimental = it.key.takeIf { it != RenderingApi.Default }
+                            userPreferenceRepository.notifyUpdated(UserPreferenceDI())
+                            true
+                        },
+                    )
+                }
+            }
         }
     }
 }

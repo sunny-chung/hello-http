@@ -66,6 +66,8 @@ class AppContext {
 
     lateinit var dataDir: File
 
+    lateinit var renderingApi: String
+
     companion object {
         var instance = AppContext()
 

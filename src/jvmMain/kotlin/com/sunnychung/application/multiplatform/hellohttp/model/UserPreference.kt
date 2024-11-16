@@ -10,6 +10,7 @@ val DEFAULT_BACKUP_RETENTION_DAYS = 15
 data class UserPreference(
     var colourTheme: ColourTheme,
     var backupRetentionDays: Int? = null,
+    var preferredRenderingApi_Experimental: RenderingApi? = null,
 )
 
 enum class ColourTheme {

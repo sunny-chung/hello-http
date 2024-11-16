@@ -8,6 +8,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.JvmLogger
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import org.junit.jupiter.api.Disabled
 import kotlin.random.Random
 import kotlin.test.Test
 
@@ -16,6 +17,7 @@ private val log = Logger(object : MutableLoggerConfig {
     override var minSeverity: Severity = Severity.Info
 }, tag = "BigTextImplBenchmarkTest")
 
+@Disabled
 class BigTextImplBenchmarkTest {
 
     private fun chunkSizes() = listOf(64, 1024, 64 * 1024, 256 * 1024, 1024 * 1024, 2 * 1024 * 1024, 4 * 1024 * 1024)

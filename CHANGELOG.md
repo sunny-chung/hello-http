@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Certificates in P7B (PKCS#7) format can now be imported
 - Private keys in PEM or PKCS#1 formats can now be imported, and does not limit to RSA keys anymore.
 - PKCS#12 (known as p12) and PFX files can now be imported as client certificates
+- [Experimental] Options to change rendering APIs to work around display issues on some Windows devices. Hardware acceleration can be disabled via this setting.
 
 ### Changed
 - The main monospace font has been changed to Pitagon Sans Mono and unified among all platforms
