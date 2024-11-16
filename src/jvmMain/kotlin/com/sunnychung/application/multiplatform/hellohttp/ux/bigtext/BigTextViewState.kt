@@ -45,8 +45,12 @@ class BigTextViewState {
     }
 
     internal fun updateSelectionByTransformedSelection(transformedText: BigTextTransformed) {
-        selection = transformedText.findOriginalPositionByTransformedPosition(transformedSelection.first) ..
+        selection = if (transformedSelection.isEmpty()) {
+            EMPTY_SELECTION_RANGE
+        } else {
+            transformedText.findOriginalPositionByTransformedPosition(transformedSelection.first) ..
                 transformedText.findOriginalPositionByTransformedPosition(transformedSelection.last)
+        }
     }
 
     internal fun updateTransformedSelectionBySelection(transformedText: BigTextTransformed) {

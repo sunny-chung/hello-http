@@ -946,14 +946,14 @@ private fun CoreBigMonospaceText(
                             } else {
                                 transformedText.length
                             } - transformedText.findRowPositionStartIndexByRowIndex(newRow)
-                            if (col <= newRowLength) {
+                            val pos = if (col <= newRowLength) {
                                 transformedText.findRowPositionStartIndexByRowIndex(newRow) + col
                             } else {
                                 transformedText.findRowPositionStartIndexByRowIndex(newRow) + newRowLength
                             }
+                            viewState.roundedTransformedCursorIndex(pos, CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
                         }
                     }
-                    newTransformedPosition = viewState.roundedTransformedCursorIndex(newTransformedPosition, CursorAdjustDirection.Bidirectional, transformedText, viewState.transformedCursorIndex, true)
                     updateTransformedCursorOrSelection(
                         newTransformedPosition = newTransformedPosition,
                         isSelection = it.isShiftPressed,
