@@ -115,6 +115,10 @@ class BigTextViewState {
                 return transformedCursorIndex + delta - step
             }
             CursorAdjustDirection.Bidirectional -> {
+                if (transformedCursorIndex >= transformedText.length) {
+                    return transformedText.length
+                }
+
                 var delta = 0
                 while ((transformedCursorIndex + delta in possibleRange || transformedCursorIndex - delta in possibleRange)) {
                     if (transformedCursorIndex + delta + 1 in possibleRange && transformedText.findOriginalPositionByTransformedPosition(transformedCursorIndex + delta + 1) != previousMappedPosition) {

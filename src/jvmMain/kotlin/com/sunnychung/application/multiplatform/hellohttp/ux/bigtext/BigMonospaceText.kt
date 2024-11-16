@@ -429,7 +429,7 @@ private fun CoreBigMonospaceText(
 
     fun getTransformedCharIndex(x: Float, y: Float, mode: ResolveCharPositionMode): Int {
         val row = ((viewportTop + y) / lineHeight).toInt()
-        val maxIndex = maxOf(0, transformedText.length - if (mode == ResolveCharPositionMode.Selection) 1 else 0)
+        val maxIndex = maxOf(0, transformedText.length /*- if (mode == ResolveCharPositionMode.Selection) 1 else 0*/)
         if (row > transformedText.lastRowIndex) {
             return maxIndex
         } else if (row < 0) {
@@ -1079,6 +1079,7 @@ private fun CoreBigMonospaceText(
                     if (!isHoldingShiftKey) {
                         val selectedCharIndex = getTransformedCharIndex(x = it.x, y = it.y, mode = ResolveCharPositionMode.Selection)
                             .let {
+                                log.d { "getTransformedCharIndex = $it" }
                                 viewState.roundedTransformedCursorIndex(it, CursorAdjustDirection.Bidirectional, transformedText, it, true)
                             }
                             .also { log.d { "onDragStart selected=$it" } }
