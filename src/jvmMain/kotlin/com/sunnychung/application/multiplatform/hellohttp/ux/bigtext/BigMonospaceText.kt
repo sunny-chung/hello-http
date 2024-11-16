@@ -1149,10 +1149,11 @@ private fun CoreBigMonospaceText(
                                     val selectionStart = viewState.transformedSelectionStart
                                     selectionEnd = getTransformedCharIndex(x = position.x, y = position.y, mode = ResolveCharPositionMode.Selection)
                                         .let {
+                                            log.d { "getTransformedCharIndex = $it" }
                                             viewState.roundedTransformedCursorIndex(it, CursorAdjustDirection.Bidirectional, transformedText, it, true)
                                         }
-                                    log.v { "selectionEnd => $selectionEnd" }
-                                    viewState.transformedSelection = minOf(selectionStart, selectionEnd) .. maxOf(selectionStart, selectionEnd)
+                                    log.d { "shift press selectionStart = $selectionStart, selectionEnd = $selectionEnd" }
+                                    viewState.transformedSelection = minOf(selectionStart, selectionEnd) until maxOf(selectionStart, selectionEnd)
                                     viewState.updateSelectionByTransformedSelection(transformedText)
                                 } else {
                                     viewState.transformedSelection = IntRange.EMPTY
