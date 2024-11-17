@@ -7,7 +7,6 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersect
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformer
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
@@ -24,7 +23,7 @@ class CollapseIncrementalTransformation(colours: AppColor, collapsedCharRanges: 
     }
 
     fun update(newCollapsedCharRanges: List<IntRange>, viewState: BigTextViewState) {
-        val transformer: BigTextTransformer = viewState.transformText ?: return
+        val transformer: BigTextTransformer = viewState.transformedText ?: return
 //        val newCollapsedCharRanges = filterOverlappedIntervals(newCollapsedCharRanges)
         val old = collapsedCharRanges
         collapsedCharRanges = newCollapsedCharRanges

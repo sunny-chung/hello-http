@@ -314,7 +314,10 @@ private fun CoreBigMonospaceText(
             callback(BigTextSimpleLayoutResult(
                 text = transformedText, // layout is only performed in `transformedText`
                 rowHeight = lineHeight,
-            ).also { layoutResult = it })
+            ).also {
+                layoutResult = it
+                viewState.layoutResult = it
+            })
         }
     }
 
@@ -374,7 +377,7 @@ private fun CoreBigMonospaceText(
                 if (log.config.minSeverity <= Severity.Verbose) {
                     (transformedText as BigTextImpl).printDebug("init transformedState")
                 }
-                viewState.transformText = transformedText
+                viewState.transformedText = transformedText
                 onTransformInit?.invoke(transformedText)
             }
         } else {
@@ -1066,6 +1069,7 @@ private fun CoreBigMonospaceText(
                 width = it.size.width
                 height = it.size.height
                 layoutCoordinates = it
+                viewState.visibleSize = Size(width = width, height = height)
             }
             .clipToBounds()
             .padding(padding)
@@ -1256,8 +1260,11 @@ private fun CoreBigMonospaceText(
     ) {
         val viewportBottom = viewportTop + height
         if (lineHeight > 0 && transformedText.hasLayouted) {
-            val firstRowIndex = maxOf(0, (viewportTop / lineHeight).toInt())
-            val lastRowIndex = minOf(transformedText.lastRowIndex, (viewportBottom / lineHeight).toInt() + 1)
+//            val firstRowIndex = maxOf(0, (viewportTop / lineHeight).toInt())
+//            val lastRowIndex = minOf(transformedText.lastRowIndex, (viewportBottom / lineHeight).toInt() + 1)
+            val rowRange = viewState.calculateVisibleRowRange(viewportTop.toInt())
+            val firstRowIndex = rowRange.first
+            val lastRowIndex = rowRange.last
             log.v { "row index = [$firstRowIndex, $lastRowIndex]; scroll = $viewportTop ~ $viewportBottom; line h = $lineHeight" }
             viewState.firstVisibleRow = firstRowIndex
             viewState.lastVisibleRow = lastRowIndex

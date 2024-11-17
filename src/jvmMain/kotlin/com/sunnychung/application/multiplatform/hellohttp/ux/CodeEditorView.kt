@@ -325,6 +325,8 @@ fun CodeEditorView(
         }
     }
 
+    log.d { "before syntaxHighlightDecorators" }
+
     val syntaxHighlightDecorators = rememberLast(bigTextFieldState, themeColours) {
         when (syntaxHighlight) {
             SyntaxHighlight.None -> emptyList()
@@ -333,6 +335,8 @@ fun CodeEditorView(
             SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
         }
     }
+
+    log.d { "after syntaxHighlightDecorators" }
 
     val searchDecorators = rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex) {
         listOf(
@@ -723,9 +727,10 @@ fun BigTextLineNumbersView(
     prevHasLayouted
 
     val viewportTop = scrollState.value
-    val firstLine = layoutText?.findOriginalLineIndexByRowIndex(bigTextViewState.firstVisibleRow) ?: 0
-    val lastLine = (layoutText?.findOriginalLineIndexByRowIndex(bigTextViewState.lastVisibleRow) ?: -100) + 1
-    log.d { "firstVisibleRow = ${bigTextViewState.firstVisibleRow} (L $firstLine); lastVisibleRow = ${bigTextViewState.lastVisibleRow} (L $lastLine); totalLines = ${layoutText?.numOfOriginalLines}" }
+    val visibleRows = bigTextViewState.calculateVisibleRowRange(viewportTop)
+    val firstLine = layoutText?.findOriginalLineIndexByRowIndex(visibleRows.first) ?: 0
+    val lastLine = (layoutText?.findOriginalLineIndexByRowIndex(visibleRows.last) ?: -100) + 1
+    log.d { "scroll = $viewportTop; visibleRows = $visibleRows (L $firstLine .. L $lastLine); totalLines = ${layoutText?.numOfOriginalLines}" }
     val rowHeight = layoutResult?.rowHeight ?: 0f
     CoreLineNumbersView(
         firstLine = firstLine,

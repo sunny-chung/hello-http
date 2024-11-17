@@ -155,6 +155,53 @@ class BigTextViewState {
         return result
     }
 
-    var transformText: BigTextTransformed? = null
+    var transformedText: BigTextTransformed? = null
         internal set
+
+    var layoutResult: BigTextSimpleLayoutResult? = null
+    var visibleSize: Size = Size(0, 0)
+
+    /**
+     * The returned value of this function can be more recent or accurate than the `firstVisibleRow` and `lastVisibleRow` values.
+     *
+     * Note that if dependencies are not yet available, this function returns `0 .. 0`.
+     */
+    fun calculateVisibleRowRange(verticalScrollValue: Int): IntRange {
+        val transformedText = transformedText ?: return 0 .. 0
+        val viewportTop = verticalScrollValue.toFloat()
+        val height = visibleSize.height
+        val lineHeight = layoutResult?.rowHeight ?: return 0 .. 0
+        val viewportBottom = viewportTop + height
+        val firstRowIndex = maxOf(0, (viewportTop / lineHeight).toInt())
+        val lastRowIndex = minOf(transformedText.lastRowIndex, (viewportBottom / lineHeight).toInt() + 1)
+        return firstRowIndex .. lastRowIndex
+    }
+
+    fun toImmutable(): ImmutableBigTextViewState = ImmutableBigTextViewState(this)
+}
+
+data class Size(val width: Int, val height: Int)
+
+data class ImmutableBigTextViewState(
+    val version: Long = 0,
+    val firstVisibleRow: Int = 0,
+    val lastVisibleRow: Int = 0,
+    internal val transformedSelection: IntRange = 0 .. -1,
+    val transformedSelectionStart: Int = 0,
+    val selection: IntRange = 0 .. -1,
+    internal val transformedCursorIndex: Int = 0,
+    val cursorIndex: Int = 0,
+    val transformText: BigTextTransformed? = null,
+) {
+    constructor(s: BigTextViewState) : this(
+        version = s.version,
+        firstVisibleRow = s.firstVisibleRow,
+        lastVisibleRow = s.lastVisibleRow,
+        transformedSelection = s.transformedSelection,
+        transformedSelectionStart = s.transformedSelectionStart,
+        selection = s.selection,
+        transformedCursorIndex = s.transformedCursorIndex,
+        cursorIndex = s.cursorIndex,
+        transformText = s.transformedText,
+    )
 }
