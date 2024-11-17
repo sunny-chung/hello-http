@@ -25,6 +25,7 @@ import com.jayway.jsonpath.spi.mapper.MappingProvider
 import com.sunnychung.application.multiplatform.hellohttp.document.OperationalDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.error.MultipleProcessError
+import com.sunnychung.application.multiplatform.hellohttp.helper.InitNativeClasses
 import com.sunnychung.application.multiplatform.hellohttp.model.UserPreference
 import com.sunnychung.application.multiplatform.hellohttp.model.Version
 import com.sunnychung.application.multiplatform.hellohttp.model.getApplicableRenderingApiList
@@ -151,6 +152,10 @@ fun main() {
                         override fun options(): MutableSet<Option> = mutableSetOf()
                         override fun mappingProvider(): MappingProvider = JacksonMappingProvider()
                     })
+
+                    Thread {
+                        InitNativeClasses()
+                    }.start()
 
                     delay(500L)
                     isPrepared = true
