@@ -84,7 +84,7 @@ private enum class SettingTab {
     Data, Appearance
 }
 
-private val COLUMN_HEADER_WIDTH = 140.dp
+private val COLUMN_HEADER_WIDTH = 170.dp
 
 @Composable
 private fun Section(title: CharSequence, content: @Composable ColumnScope.() -> Unit) {
@@ -383,7 +383,7 @@ fun AppearanceTab() {
         }) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppText(text = "Preferred Rendering (Requires restarting the app to change) (Current: ${AppContext.instance.renderingApi})", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
+                    AppText(text = "Preferred Rendering (Requires restarting the app to change) (Current: ${AppContext.instance.renderingApi})", modifier = Modifier.width(COLUMN_HEADER_WIDTH).padding(6.dp))
                     DropDownView(
                         selectedItem = run {
                             val item = userPreference.preferredRenderingApi_Experimental ?: RenderingApi.Default
