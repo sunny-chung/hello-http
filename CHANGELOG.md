@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Importing CA certificates now imports all the certificates from an input file
 - Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)
 - Inherited values in Request Editor are now showing at the bottom rather than the top
+- Number of space characters to indent or unindent in Request Body and Payload editors are changed from 4 to 2
 
 ### Removed
 - Text fields and response body viewer now do not trim content over 4 MB (but other limits still apply)

@@ -105,6 +105,7 @@ import java.util.regex.Pattern
 import kotlin.random.Random
 
 val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024 // 4 MB
+val INDENT_SPACES = 2
 
 @Composable
 fun CodeEditorView(
@@ -160,7 +161,7 @@ fun CodeEditorView(
         val vs = bigTextFieldState.viewState
         val text = bigTextFieldState.text
         if (!isShiftPressed && !vs.hasSelection()) {
-            val newSpaces = " ".repeat(4)
+            val newSpaces = " ".repeat(INDENT_SPACES)
             textManipulator.replaceAtCursor(newSpaces)
             return
         }
@@ -183,13 +184,13 @@ fun CodeEditorView(
             val linePosStart = text.findPositionStartOfLine(it)
             log.d { "tab line $it pos $linePosStart" }
             if (!isShiftPressed) { // increase indent
-                val newSpaces = " ".repeat(4)
+                val newSpaces = " ".repeat(INDENT_SPACES)
                 selectionStartChange = newSpaces.length
                 selectionEndChange += newSpaces.length
                 textManipulator.insertAt(linePosStart, newSpaces)
             } else { // decrease indent
                 val line = text.findLineString(it)
-                val textToBeDeleted = "^( {1,4}|\t)".toRegex().matchAt(line, 0) ?: return@forEach
+                val textToBeDeleted = "^( {1,$INDENT_SPACES}|\t)".toRegex().matchAt(line, 0) ?: return@forEach
                 val rangeToBeDeleted = linePosStart until linePosStart + textToBeDeleted.groups[1]!!.range.length
                 textManipulator.delete(rangeToBeDeleted)
 
