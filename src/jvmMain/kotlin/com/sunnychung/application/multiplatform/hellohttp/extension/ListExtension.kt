@@ -11,6 +11,33 @@ fun <T> List<T>.binarySearchForInsertionPoint(comparison: (T) -> Int): Int {
     return -(r + 1)
 }
 
+fun binarySearchForInsertionPoint(searchRange: IntRange, comparison: (Int) -> Int): Int {
+    val r = binarySearch(searchRange = searchRange, comparison = comparison)
+    if (r >= 0) throw IllegalArgumentException("Parameter `comparison` should never return 0")
+    return -(r + 1)
+}
+
+/**
+ * Modified from Kotlin stdlib 1.9.25.
+ */
+fun binarySearch(searchRange: IntRange, comparison: (Int) -> Int): Int {
+    var low = searchRange.start
+    var high = searchRange.endInclusive
+
+    while (low <= high) {
+        val midIndex = (low + high).ushr(1) // safe from overflows
+        val cmp = comparison(midIndex)
+
+        if (cmp < 0)
+            low = midIndex + 1
+        else if (cmp > 0)
+            high = midIndex - 1
+        else
+            return midIndex // key found
+    }
+    return -(low + 1)  // key not found
+}
+
 /**
  * Can only be used on an **ascending** list.
  *
@@ -34,6 +61,17 @@ fun List<Int>.binarySearchForMaxIndexOfValueAtMost(searchValue: Int): Int {
     }
 }
 
+fun binarySearchForMaxIndexOfValueAtMost(searchRange: IntRange, searchValue: Int, mapValue: (Int) -> Int): Int {
+    val lastIndex = searchRange.endInclusive
+    val insertionPoint = binarySearchForInsertionPoint(searchRange) { if (mapValue(it) >= searchValue) 1 else -1 }
+    if (insertionPoint > lastIndex) return lastIndex
+    return if (searchValue < mapValue(insertionPoint)) {
+        insertionPoint - 1
+    } else {
+        insertionPoint
+    }
+}
+
 /**
  * Can only be used on an **ascending** list.
  *
@@ -51,6 +89,11 @@ fun List<Int>.binarySearchForMaxIndexOfValueAtMost(searchValue: Int): Int {
  */
 fun List<Int>.binarySearchForMinIndexOfValueAtLeast(searchValue: Int): Int {
     val insertionPoint = binarySearchForInsertionPoint { if (it >= searchValue) 1 else -1 }
+    return insertionPoint
+}
+
+fun binarySearchForMinIndexOfValueAtLeast(searchRange: IntRange, searchValue: Int, mapValue: (Int) -> Int): Int {
+    val insertionPoint = binarySearchForInsertionPoint(searchRange) { if (mapValue(it) >= searchValue) 1 else -1 }
     return insertionPoint
 }
 

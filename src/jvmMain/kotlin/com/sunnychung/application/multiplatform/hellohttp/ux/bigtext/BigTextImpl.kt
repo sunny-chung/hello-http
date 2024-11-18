@@ -736,11 +736,14 @@ open class BigTextImpl(
             return charSequenceFactory(charSequenceBuilderFactory(0))
         }
 
+        log.v { "subSequence start" }
+
         val result = charSequenceBuilderFactory(endExclusive - start)
         var node = tree.findNodeByRenderCharIndex(start) ?: throw IllegalStateException("Cannot find string node for position $start")
         var nodeStartPos = findRenderPositionStart(node)
         var numRemainCharsToCopy = endExclusive - start
         var copyFromBufferIndex = start - nodeStartPos + node.value.renderBufferStart
+        log.v { "subSequence before loop ($numRemainCharsToCopy)" }
         while (numRemainCharsToCopy > 0) {
             val copyEndExclusive = minOf(endExclusive, nodeStartPos + node.value.currentRenderLength)
             val copyStart = maxOf(start, nodeStartPos)
@@ -748,6 +751,7 @@ open class BigTextImpl(
             val copyUntilBufferIndex = copyFromBufferIndex + numCharsToCopy
             if (numCharsToCopy > 0) {
                 val bufferSubsequence = node.value.buffer.subSequence(copyFromBufferIndex, copyUntilBufferIndex)
+                log.v { "subSequence loop ($numRemainCharsToCopy) -- obtained sq" }
                 val subsequence = if (decorator != null) {
                     decorate(node.value, bufferSubsequence, copyStart until copyEndExclusive).also {
                         if (it.length != numCharsToCopy) {
@@ -757,7 +761,9 @@ open class BigTextImpl(
                 } else {
                     bufferSubsequence
                 }
+                log.v { "subSequence loop ($numRemainCharsToCopy) -- obtained sq dec" }
                 result.append(subsequence)
+                log.v { "subSequence loop ($numRemainCharsToCopy) -- appended" }
                 numRemainCharsToCopy -= numCharsToCopy
             } /*else {
                 break
@@ -766,10 +772,13 @@ open class BigTextImpl(
                 nodeStartPos += node.value.currentRenderLength
                 node = tree.nextNode(node) ?: throw IllegalStateException("Cannot find the next string node. Requested = $start ..< $endExclusive. Remain = $numRemainCharsToCopy")
                 copyFromBufferIndex = node.value.renderBufferStart
+                log.v { "subSequence loop ($numRemainCharsToCopy) -- next" }
             }
         }
 
-        return charSequenceFactory(result)
+        return charSequenceFactory(result).also {
+            log.v { "subSequence built" }
+        }
     }
 
     protected open fun decorate(nodeValue: BigTextNodeValue, text: CharSequence, renderPositions: IntRange) =
