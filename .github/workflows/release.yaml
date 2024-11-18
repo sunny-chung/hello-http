@@ -49,8 +49,8 @@ jobs:
   build-macos:
     strategy:
       matrix:
-        # macos-12 for Intel Mac, macos-14 for Apple Chips Mac
-        os: [macos-12, macos-14]
+        # macos-13 for Intel Mac, macos-14 for Apple Chips Mac
+        os: [macos-13, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
