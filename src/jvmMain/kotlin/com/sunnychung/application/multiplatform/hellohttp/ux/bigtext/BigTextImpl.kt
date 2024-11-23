@@ -193,7 +193,7 @@ open class BigTextImpl(
         val startPos = findRenderPositionStart(node)
         return startPos + if (index - 1 - rowStart == node.value.rowBreakOffsets.size && node.value.isEndWithForceRowBreak) {
             node.value.bufferLength
-        } else if (index - 1 - rowStart >= 0) {
+        } else if (index - 1 - rowStart >= 0) { /* TODO: In asynchronous layout, IndexOutOfBoundsException can be thrown when `rowBreakOffsets` is empty or has less elements than expected */
             node.value.rowBreakOffsets[index - 1 - rowStart] - node.value.renderBufferStart
         } else {
             0

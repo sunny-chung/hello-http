@@ -339,9 +339,9 @@ private fun CoreBigMonospaceText(
 
                 transformedText.onLayoutCallback = {
                     if (transformedText.isThreadSafe) {
-                        coroutineScope.launch(context = Dispatchers.Main) {
+//                        coroutineScope.launch(context = Dispatchers.Main) {
                             fireOnLayout()
-                        }
+//                        }
                     } else {
                         fireOnLayout()
                     }
@@ -359,9 +359,10 @@ private fun CoreBigMonospaceText(
                 transformedText.onLayoutCallback?.invoke()
             }
             if (transformedText.isThreadSafe) {
-                Thread {
+                // TODO: support asynchronous layout without illegal states / race conditions and blocking locks. consider query calls by BigText consumers.
+//                Thread {
                     layout()
-                }.start()
+//                }.start()
             } else {
                 layout()
             }
