@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -276,8 +277,12 @@ private fun CoreBigMonospaceText(
     var width by remember { mutableIntStateOf(0) }
     var height by remember { mutableIntStateOf(0) }
     var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val contentWidth = width - with(density) {
-        (padding.calculateStartPadding(LayoutDirection.Ltr) + padding.calculateEndPadding(LayoutDirection.Ltr)).toPx()
+    val contentWidth by remember {
+        derivedStateOf {
+            width - with(density) {
+                (padding.calculateStartPadding(LayoutDirection.Ltr) + padding.calculateEndPadding(LayoutDirection.Ltr)).toPx()
+            }
+        }
     }
     var lineHeight by remember { mutableStateOf(0f) }
     var layoutResult by remember(textLayouter, width) { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
