@@ -316,6 +316,7 @@ private fun CoreBigMonospaceText(
     }
 
     fun fireOnLayout() {
+        log.d { "fireOnLayout" }
         lineHeight = (textLayouter.charMeasurer as ComposeUnicodeCharMeasurer).getRowHeight()
         onTextLayout?.let { callback ->
             callback(BigTextSimpleLayoutResult(
@@ -339,7 +340,6 @@ private fun CoreBigMonospaceText(
                 transformedText.onLayoutCallback = {
                     if (transformedText.isThreadSafe) {
                         coroutineScope.launch(context = Dispatchers.Main) {
-                            log.w { "fireOnLayout" }
                             fireOnLayout()
                         }
                     } else {

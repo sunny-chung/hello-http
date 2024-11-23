@@ -810,14 +810,10 @@ private fun CoreLineNumbersView(
             .background(colours.backgroundLight)
             .padding(top = 6.dp, start = 4.dp, end = 4.dp), // see AppTextField
     ) {
-
         var ii: Int = firstRow
         var lastLineIndex = -1
         while (ii < lastRow) {
             val i: Int = ii // `ii` is passed by ref
-
-            log.i { "li $i" }
-
             val lineIndex = rowToLineIndex(i)
 
             if (lineIndex > lastLineIndex) {
