@@ -399,7 +399,7 @@ private fun CoreBigMonospaceText(
                 val endInstant = KInstant.now()
                 log.d { "CoreBigMonospaceText init transformedState ${it.hashCode()} took ${endInstant - startInstant}" }
                 if (log.config.minSeverity <= Severity.Verbose) {
-                    (transformedText as BigTextImpl).printDebug("init transformedState")
+                    transformedText.printDebug("init transformedState")
                 }
                 viewState.transformedText = transformedText
                 onTransformInit?.invoke(transformedText)
