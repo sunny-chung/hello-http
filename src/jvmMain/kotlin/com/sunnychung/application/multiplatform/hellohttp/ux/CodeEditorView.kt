@@ -330,7 +330,7 @@ fun CodeEditorView(
     log.d { "before syntaxHighlightDecorators" }
 
     val syntaxHighlightDecorators = if (
-        (isReadOnly && bigTextValue.length > 10 * 1024 * 1024)
+        (isReadOnly && bigTextValue.length > 100 * 1024 * 1024)
         || (!isReadOnly && bigTextValue.length > 1.5 * 1024 * 1024)
     ) {
         // data too large, syntax highlighter cannot handle quickly, so disable syntax highlighting.
