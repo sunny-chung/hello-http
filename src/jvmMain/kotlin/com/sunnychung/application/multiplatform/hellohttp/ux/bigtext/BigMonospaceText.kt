@@ -55,6 +55,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -1096,6 +1098,7 @@ private fun CoreBigMonospaceText(
             .padding(padding)
             .scrollable(scrollableState, orientation = Orientation.Vertical)
             .focusRequester(focusRequester)
+            .pointerHoverIcon(PointerIcon.Text)
             .onDrag(
                 enabled = isSelectable,
                 onDragStart = {
