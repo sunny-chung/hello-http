@@ -97,7 +97,9 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLas
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.reflect.KMutableProperty
@@ -257,6 +259,7 @@ private fun CoreBigMonospaceText(
         color = color,
     )
 
+    val coroutineScope = rememberCoroutineScope() // for scrolling
     val focusRequester = remember { FocusRequester() }
     val textLayouter = remember(density, fontFamilyResolver, textStyle) {
         MonospaceTextLayouter(
@@ -276,6 +279,8 @@ private fun CoreBigMonospaceText(
     }
     var lineHeight by remember { mutableStateOf(0f) }
     var layoutResult by remember(textLayouter, width) { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
+    var forceRecompose by remember { mutableStateOf(0L) }
+    forceRecompose
 
     val transformedText: BigTextTransformed = remember(text, textTransformation) {
         log.d { "CoreBigMonospaceText recreate BigTextTransformed $text $textTransformation" }
@@ -319,28 +324,41 @@ private fun CoreBigMonospaceText(
                 viewState.layoutResult = it
             })
         }
+        forceRecompose = Random.nextLong()
     }
 
-    if (width > 0) {
+    if (width > 0) remember(transformedText, textLayouter, contentWidth) {
         log.d { "CoreBigMonospaceText set contentWidth = $contentWidth" }
 
-        val startInstant = KInstant.now()
+        val layout = {
+            val startInstant = KInstant.now()
 
-        transformedText.onLayoutCallback = {
-            fireOnLayout()
+            transformedText.onLayoutCallback = {
+                if (transformedText.isThreadSafe) {
+                    coroutineScope.launch(context = Dispatchers.Main) {
+                        log.w { "fireOnLayout" }
+                        fireOnLayout()
+                    }
+                } else {
+                    fireOnLayout()
+                }
+            }
+            transformedText.setLayouter(textLayouter)
+            transformedText.setContentWidth(contentWidth)
+
+            val endInstant = KInstant.now()
+            log.d { "BigText layout took ${endInstant - startInstant}" }
+
+            if (log.config.minSeverity <= Severity.Verbose) {
+                (transformedText as BigTextImpl).printDebug("after init layout")
+            }
         }
-        transformedText.setLayouter(textLayouter)
-        transformedText.setContentWidth(contentWidth)
-
-        val endInstant = KInstant.now()
-        log.d { "BigText layout took ${endInstant - startInstant}" }
-
-        if (log.config.minSeverity <= Severity.Verbose) {
-            (transformedText as BigTextImpl).printDebug("after init layout")
-        }
-
-        LaunchedEffect(Unit) {
-            fireOnLayout()
+        if (transformedText.isThreadSafe) {
+            Thread {
+                layout()
+            }.start()
+        } else {
+            layout()
         }
     }
 
@@ -414,7 +432,6 @@ private fun CoreBigMonospaceText(
         }
     }
 
-    val coroutineScope = rememberCoroutineScope() // for scrolling
     val scrollableState = rememberScrollableState { delta ->
         coroutineScope.launch {
             scrollState.scrollBy(-delta)

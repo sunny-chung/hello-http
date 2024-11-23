@@ -3,7 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.bigtext
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-class ConcurrentBigTextTransformed(private val delegate: BigTextTransformed) : BigTextTransformed, ConcurrentBigText(delegate) {
+class ConcurrentBigTextTransformed(override val delegate: BigTextTransformed) : BigTextTransformed, ConcurrentBigText(delegate) {
 
     init {
         delegate.originalText.layouter?.let { setLayouter(it) }
