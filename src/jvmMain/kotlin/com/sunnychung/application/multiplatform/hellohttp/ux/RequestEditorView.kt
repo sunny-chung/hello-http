@@ -1545,6 +1545,8 @@ private fun RequestBodyTextEditor(
         else -> null
     }
 
+    var textFieldPositionTop by remember { mutableStateOf(0f) }
+
     if (overridePredicate(selectedExample.overrides)) {
         val content = translateToText(selectedExample) ?: ""
         FloatingButtonContainer(
@@ -1552,6 +1554,10 @@ private fun RequestBodyTextEditor(
             tooltip = "Prettify",
             isEnabled = prettifyHandler != null,
             onClickButton = { prettifyHandler!!(content) },
+            outerPadding = PaddingValues(
+                top = 4.dp + with(LocalDensity.current) { textFieldPositionTop.toDp() },
+                end = 8.dp,
+            ),
             modifier = modifier,
         ) {
             CodeEditorView(
@@ -1562,6 +1568,7 @@ private fun RequestBodyTextEditor(
                 initialText = content,
                 onTextChange = changeText,
                 onTextManipulatorReady = { textManipulator = it },
+                onMeasured = { textFieldPositionTop = it },
                 syntaxHighlight = syntaxHighlight,
                 testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
             )

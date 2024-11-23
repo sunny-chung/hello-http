@@ -37,9 +37,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -505,6 +505,7 @@ fun BodyViewerView(
             }
         }
 
+        var textFieldPositionTop by remember { mutableStateOf(0f) }
         val modifier = Modifier.fillMaxWidth().weight(1f).padding(top = if (hasTopCopyButton) 2.dp else 6.dp, bottom = 8.dp)
         if (selectedView.name != CLIENT_ERROR) {
             var hasError = false
@@ -541,10 +542,12 @@ fun BodyViewerView(
                 }
             }
 
-            var isSearchBarVisible by remember { mutableStateOf(false) }
             CopyableContentContainer(
                 textToCopy = prettifyResult.prettyString,
-                outerPadding = PaddingValues(top = if (isSearchBarVisible) 28.dp else 6.dp, end = 12.dp),
+                outerPadding = PaddingValues(
+                    top = 6.dp + with(LocalDensity.current) { textFieldPositionTop.toDp() },
+                    end = 12.dp
+                ),
                 modifier = modifier
             ) {
                 CodeEditorView(
@@ -554,16 +557,18 @@ fun BodyViewerView(
                     collapsableLines = prettifyResult.collapsableLineRange,
                     collapsableChars = prettifyResult.collapsableCharRange,
                     syntaxHighlight = if (selectedView.prettifier!!.formatName.contains("JSON")) SyntaxHighlight.Json else SyntaxHighlight.None,
-                    onSearchBarVisibilityChange = { isSearchBarVisible = it },
+                    onMeasured = { textFieldPositionTop = it },
                     testTag = TestTag.ResponseBody.name,
                 )
             }
         } else {
             val text = errorMessage ?: content.decodeToString()
-            var isSearchBarVisible by remember { mutableStateOf(false) }
             CopyableContentContainer(
                 textToCopy = text,
-                outerPadding = PaddingValues(top = if (isSearchBarVisible) 28.dp else 6.dp, end = 12.dp),
+                outerPadding = PaddingValues(
+                    top = 6.dp + with(LocalDensity.current) { textFieldPositionTop.toDp() },
+                    end = 12.dp
+                ),
                 modifier = modifier
             ) {
                 CodeEditorView(
@@ -572,7 +577,7 @@ fun BodyViewerView(
                     initialText = text,
                     textColor = colours.warning,
                     syntaxHighlight = SyntaxHighlight.None,
-                    onSearchBarVisibilityChange = { isSearchBarVisible = it },
+                    onMeasured = { textFieldPositionTop = it },
                     testTag = TestTag.ResponseError.name,
                 )
             }

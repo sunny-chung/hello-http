@@ -45,11 +45,11 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -72,7 +72,6 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextKeyb
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberConcurrentLargeAnnotatedBigTextFieldState
@@ -84,7 +83,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightDecorator
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
@@ -124,7 +123,7 @@ fun CodeEditorView(
     syntaxHighlight: SyntaxHighlight,
     isEnableVariables: Boolean = false,
     knownVariables: Map<String, String> = mutableMapOf(),
-    onSearchBarVisibilityChange: ((isVisible: Boolean) -> Unit)? = null,
+    onMeasured: ((textFieldPositionTop: Float) -> Unit)? = null,
     onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
     testTag: String? = null,
 ) {
@@ -244,6 +243,8 @@ fun CodeEditorView(
 
     val searchTrigger = remember { Channel<Unit>() }
 
+    var isSyntaxHighlightDisabled = false
+
     remember(searchOptions) {
         searchTrigger.trySend(Unit)
     }
@@ -328,12 +329,23 @@ fun CodeEditorView(
 
     log.d { "before syntaxHighlightDecorators" }
 
-    val syntaxHighlightDecorators = rememberLast(bigTextFieldState, themeColours) {
-        when (syntaxHighlight) {
-            SyntaxHighlight.None -> emptyList()
-            SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightDecorator(themeColours))
-            SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
-            SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
+    val syntaxHighlightDecorators = if (
+        (isReadOnly && bigTextValue.length > 10 * 1024 * 1024)
+        || (!isReadOnly && bigTextValue.length > 1.5 * 1024 * 1024)
+    ) {
+        // data too large, syntax highlighter cannot handle quickly, so disable syntax highlighting.
+        isSyntaxHighlightDisabled = syntaxHighlight != SyntaxHighlight.None
+
+        emptyList()
+    } else {
+        rememberLast(bigTextFieldState, themeColours) {
+            when (syntaxHighlight) {
+                SyntaxHighlight.None -> emptyList()
+//                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightDecorator(themeColours))
+                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightSlowDecorator(themeColours))
+                SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
+                SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
+            }
         }
     }
 
@@ -381,7 +393,6 @@ fun CodeEditorView(
         if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         if (it.key == Key.F && (it.isMetaPressed || it.isCtrlPressed)) {
             isSearchVisible = !isSearchVisible
-            onSearchBarVisibilityChange?.invoke(isSearchVisible)
             if (!isSearchVisible) {
                 textFieldFocusRequester.requestFocus()
             } else {
@@ -390,7 +401,6 @@ fun CodeEditorView(
             true
         } else if (it.key == Key.Escape) {
             isSearchVisible = false
-            onSearchBarVisibilityChange?.invoke(isSearchVisible)
             textFieldFocusRequester.requestFocus()
             true
         } else {
@@ -434,7 +444,21 @@ fun CodeEditorView(
                 searchBarFocusRequester.requestFocus()
             }
         }
-        Box(modifier = Modifier.weight(1f).onGloballyPositioned { textFieldSize = it.size }) {
+
+        if (isSyntaxHighlightDisabled) {
+            AppText("Syntax highlighting has been disabled for better performance due to large content size.",
+                color = themeColours.primary,
+                modifier = Modifier
+                .background(themeColours.backgroundTooltip)
+                .padding(4.dp)
+            )
+        }
+
+        Box(modifier = Modifier.weight(1f).onGloballyPositioned {
+            textFieldSize = it.size
+            log.v { "text field pos = ${it.positionInParent().y}" }
+            onMeasured?.invoke(it.positionInParent().y)
+        }) {
             Row {
                 val onCollapseLine = { i: Int ->
                     val index = collapsableLines.indexOfFirst { it.start == i }
