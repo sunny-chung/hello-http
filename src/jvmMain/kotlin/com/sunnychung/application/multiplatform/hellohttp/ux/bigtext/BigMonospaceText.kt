@@ -327,38 +327,42 @@ private fun CoreBigMonospaceText(
         forceRecompose = Random.nextLong()
     }
 
-    if (width > 0) remember(transformedText, textLayouter, contentWidth) {
-        log.d { "CoreBigMonospaceText set contentWidth = $contentWidth" }
+    if (width > 0) {
+        remember(transformedText, textLayouter, contentWidth) {
+            log.d { "CoreBigMonospaceText set contentWidth = $contentWidth" }
 
-        val layout = {
-            val startInstant = KInstant.now()
+            val layout = {
+                val startInstant = KInstant.now()
 
-            transformedText.onLayoutCallback = {
-                if (transformedText.isThreadSafe) {
-                    coroutineScope.launch(context = Dispatchers.Main) {
-                        log.w { "fireOnLayout" }
+                transformedText.onLayoutCallback = {
+                    if (transformedText.isThreadSafe) {
+                        coroutineScope.launch(context = Dispatchers.Main) {
+                            log.w { "fireOnLayout" }
+                            fireOnLayout()
+                        }
+                    } else {
                         fireOnLayout()
                     }
-                } else {
-                    fireOnLayout()
                 }
-            }
-            transformedText.setLayouter(textLayouter)
-            transformedText.setContentWidth(contentWidth)
+                transformedText.setLayouter(textLayouter)
+                transformedText.setContentWidth(contentWidth)
 
-            val endInstant = KInstant.now()
-            log.d { "BigText layout took ${endInstant - startInstant}" }
+                val endInstant = KInstant.now()
+                log.d { "BigText layout took ${endInstant - startInstant}" }
 
-            if (log.config.minSeverity <= Severity.Verbose) {
-                (transformedText as BigTextImpl).printDebug("after init layout")
+                if (log.config.minSeverity <= Severity.Verbose) {
+                    (transformedText as BigTextImpl).printDebug("after init layout")
+                }
+
+                transformedText.onLayoutCallback?.invoke()
             }
-        }
-        if (transformedText.isThreadSafe) {
-            Thread {
+            if (transformedText.isThreadSafe) {
+                Thread {
+                    layout()
+                }.start()
+            } else {
                 layout()
-            }.start()
-        } else {
-            layout()
+            }
         }
     }
 
