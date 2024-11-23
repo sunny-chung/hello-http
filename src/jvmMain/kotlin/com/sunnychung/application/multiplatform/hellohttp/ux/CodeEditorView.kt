@@ -758,15 +758,13 @@ fun BigTextLineNumbersView(
     log.d { "scroll = $viewportTop; visibleRows = $visibleRows (L $firstLine .. L $lastLine); totalLines = ${layoutText?.numOfOriginalLines}" }
     val rowHeight = layoutResult?.rowHeight ?: 0f
     CoreLineNumbersView(
-        firstLine = firstLine,
-        lastLine = minOf(lastLine, layoutText?.numOfOriginalLines ?: 1),
+        firstRow = visibleRows.first,
+        lastRow = visibleRows.endInclusive + 1,
+        rowToLineIndex = { layoutText?.findOriginalLineIndexByRowIndex(it) ?: 0 },
         totalLines = layoutText?.numOfOriginalLines ?: 1,
         lineHeight = (rowHeight).toDp(),
-        getLineOffset = {
-            ((layoutText?.findFirstRowIndexByOriginalLineIndex(it).also { r ->
-                log.v { "layoutText.findFirstRowIndexOfLine($it) = $r" }
-            }
-                ?: 0) * rowHeight - viewportTop).toDp()
+        getRowOffset = {
+            (it * rowHeight - viewportTop).toDp()
         },
         textStyle = textStyle,
         collapsedLinesState = collapsedLinesState,
@@ -779,11 +777,12 @@ fun BigTextLineNumbersView(
 @Composable
 private fun CoreLineNumbersView(
     modifier: Modifier = Modifier,
-    firstLine: Int,
-    /* exclusive */ lastLine: Int,
+    firstRow: Int,
+    /* exclusive */ lastRow: Int,
+    rowToLineIndex: (Int) -> Int,
     totalLines: Int,
     lineHeight: Dp,
-    getLineOffset: (Int) -> Dp,
+    getRowOffset: (Int) -> Dp,
     textStyle: TextStyle,
     collapsedLinesState: CollapsedLinesState,
     onCollapseLine: (Int) -> Unit,
@@ -812,18 +811,20 @@ private fun CoreLineNumbersView(
             .padding(top = 6.dp, start = 4.dp, end = 4.dp), // see AppTextField
     ) {
 
-        var ii: Int = firstLine
-        while (ii < lastLine) {
+        var ii: Int = firstRow
+        var lastLineIndex = -1
+        while (ii < lastRow) {
             val i: Int = ii // `ii` is passed by ref
 
-            if (i > firstLine && getLineOffset(i).value - getLineOffset(i - 1).value < 1) {
-                // optimization: there is an instant that collapsedLines is empty but lineTops = [0, 0, ..., 0, 1234]
-                // skip drawing if there are duplicated lineTops
-            } else {
+            log.i { "li $i" }
+
+            val lineIndex = rowToLineIndex(i)
+
+            if (lineIndex > lastLineIndex) {
                 Row(
                     modifier = Modifier
                         .height(lineHeight)
-                        .offset(y = getLineOffset(i)),
+                        .offset(y = getRowOffset(i)),
                 ) {
                     Box(
                         contentAlignment = Alignment.CenterEnd,
@@ -831,23 +832,23 @@ private fun CoreLineNumbersView(
                             .weight(1f)
                     ) {
                         AppText(
-                            text = "${i + 1}",
+                            text = (rowToLineIndex(i) + 1).toString(),
                             style = textStyle,
                             fontSize = fonts.codeEditorLineNumberFontSize,
                             maxLines = 1,
                             color = colours.unimportant,
                         )
                     }
-                    if (collapsableLinesMap.contains(i)) {
+                    if (collapsableLinesMap.contains(lineIndex)) {
                         AppImageButton(
-                            resource = if (collapsedLines.containsKey(i)) "expand.svg" else "collapse.svg",
+                            resource = if (collapsedLines.containsKey(lineIndex)) "expand.svg" else "collapse.svg",
                             size = 12.dp,
                             innerPadding = PaddingValues(horizontal = 4.dp),
                             onClick = {
-                                if (collapsedLines.containsKey(i)) {
-                                    onExpandLine(i)
+                                if (collapsedLines.containsKey(lineIndex)) {
+                                    onExpandLine(lineIndex)
                                 } else {
-                                    onCollapseLine(i)
+                                    onCollapseLine(lineIndex)
                                 }
                             },
                             modifier = Modifier
@@ -860,11 +861,7 @@ private fun CoreLineNumbersView(
                     }
                 }
             }
-            collapsedLines.headMap(i + 1).forEach {
-                if (it.value.contains(i)) {
-                    ii = maxOf(ii, it.value.last)
-                }
-            }
+            lastLineIndex = lineIndex
             ++ii
         }
     }
