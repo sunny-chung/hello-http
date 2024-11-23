@@ -599,7 +599,7 @@ fun RequestEditorView(
                     Row(Modifier.padding(8.dp)) {
                         AppTabLabel(text = it.displayText, isIncludePadding = false)
                         if (badgeNum != 0) {
-                            var size by remember { mutableStateOf(IntSize(0, 0)) }
+                            var size by remember(LocalDensity.current) { mutableStateOf(IntSize(0, 0)) }
                             val longerEdgeLengthDp = with (LocalDensity.current) {
                                 maxOf(size.width, size.height).toDp()
                             }
