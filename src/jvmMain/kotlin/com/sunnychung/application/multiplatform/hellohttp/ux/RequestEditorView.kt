@@ -111,7 +111,7 @@ fun RequestEditorView(
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
     onClickCancel: () -> Unit,
-    onClickCopyCurl: () -> Boolean,
+    onClickCopyCurl: (isVerbose: Boolean) -> Boolean,
     onClickCopyGrpcurl: (selectedPayloadExampleId: String, method: GrpcMethod) -> Boolean,
     onClickCopyPowershellInvokeWebrequest: () -> Boolean,
     onRequestModified: (UserRequestTemplate?) -> Unit,
@@ -326,9 +326,9 @@ fun RequestEditorView(
             }
             val dropdownItems: List<SendButtonDropdown> = when (request.application) {
                 ProtocolApplication.WebSocket -> emptyList()
-                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows) else emptyList()
+                ProtocolApplication.Graphql -> if (isOneOffRequest) listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.CurlVerboseForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows) else emptyList()
                 ProtocolApplication.Grpc -> listOf(SendButtonDropdown.GrpcurlForLinux)
-                else -> listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows)
+                else -> listOf(SendButtonDropdown.CurlForLinux, SendButtonDropdown.CurlVerboseForLinux, SendButtonDropdown.PowershellInvokeWebrequestForWindows)
             }
             val (label, backgroundColour) = if (!connectionStatus.isNotIdle()) {
                 Pair(if (isOneOffRequest) "Send" else "Connect", colors.backgroundButton)
@@ -373,7 +373,10 @@ fun RequestEditorView(
                             var isSuccess = true
                             when (it.displayText) {
                                 SendButtonDropdown.CurlForLinux.displayText -> {
-                                    isSuccess = onClickCopyCurl()
+                                    isSuccess = onClickCopyCurl(false)
+                                }
+                                SendButtonDropdown.CurlVerboseForLinux.displayText -> {
+                                    isSuccess = onClickCopyCurl(true)
                                 }
                                 SendButtonDropdown.PowershellInvokeWebrequestForWindows.displayText -> {
                                     isSuccess = onClickCopyPowershellInvokeWebrequest()
@@ -1801,6 +1804,7 @@ private data class ProtocolMethod(val application: ProtocolApplication, val meth
 
 private enum class SendButtonDropdown(val displayText: String) {
     CurlForLinux("Copy as cURL command (for Linux / macOS)"),
+    CurlVerboseForLinux("Copy as cURL verbose command (for Linux / macOS)"),
     GrpcurlForLinux("Copy as grpcurl command (for Linux / macOS)"),
     PowershellInvokeWebrequestForWindows("Copy as PowerShell v6+ Invoke-WebRequest command (for Windows pwsh.exe)")
 }

@@ -557,12 +557,13 @@ fun AppContentView() {
                                     onClickCancel = {
                                         networkClientManager.cancel(selectedRequestExampleId!!)
                                     },
-                                    onClickCopyCurl = {
+                                    onClickCopyCurl = { isVerbose ->
                                         try {
                                             val curl = with (CommandGenerator(LinuxOS)) {
                                                 requestNonNull.toCurlCommand(
                                                     exampleId = selectedRequestExampleId!!,
-                                                    environment = selectedEnvironment
+                                                    environment = selectedEnvironment,
+                                                    isVerbose = isVerbose,
                                                 )
                                             }
                                             log.d { "curl: $curl" }

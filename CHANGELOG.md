@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The main UI font has been changed to [Comme](https://github.com/googlefonts/comme) and unified among all platforms
 - The main monospace font has been changed to [Pitagon Sans Mono](https://github.com/ThePitagon/pitagon-sans-mono) and unified among all platforms
 - Importing CA certificates now imports all the certificates from an input file
+- "Copy as cURL command" is now **non-verbose**, i.e. without `time` and `--verbose`. There is a new option "Copy as cURL verbose command" for verbose.
 - Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)
 - Inherited values in Request Editor are now showing at the bottom rather than the top
 - Number of space characters to indent or unindent in Request Body and Payload editors are changed from 4 to 2

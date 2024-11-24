@@ -270,7 +270,7 @@ class CommandGenerator(val os: OS) {
         return URLEncoder.encode(this, StandardCharsets.UTF_8)
     }
 
-    fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?): String {
+    fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?, isVerbose: Boolean): String {
         val request = toHttpRequest(exampleId, environment)
 
         val url = request.getResolvedUri().toString()
@@ -279,10 +279,13 @@ class CommandGenerator(val os: OS) {
         val newLine = " ${currentOS.commandLineEscapeNewLine}\n  "
 
         var curl = ""
-        if (currentOS in setOf(MacOS, LinuxOS)) {
+        if (isVerbose) {
             curl += "time "
         }
-        curl += "curl --verbose"
+        curl += "curl"
+        if (isVerbose) {
+            curl += " --verbose"
+        }
         if (environment?.sslConfig?.isInsecure == true) {
             curl += "${newLine}--insecure"
         }
