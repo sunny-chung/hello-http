@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -77,6 +79,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.replaceIf
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.darkColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.lightColorScheme
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
@@ -105,105 +108,109 @@ fun AppView() {
             unhoverColor = colors.scrollBarUnhover,
             hoverColor = colors.scrollBarHover,
         )) {
-            val dialogViewModel = AppContext.DialogViewModel
-            val dialogState = dialogViewModel.state.collectAsState().value // needed for updating UI by flow
-            log.d { "Dialog State = $dialogState" }
-            Box(modifier = Modifier.background(colors.background).fillMaxSize().testTag(TestTag.ContainerView.name)) {
-                AppContentView()
-
-                dialogState?.let { dialog ->
-                    val focusRequester = remember { FocusRequester() }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(colors.backgroundDialogOverlay)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                dialogViewModel.updateState(null) // close the dialog
-                            }
-                    )
-                    Box(
-                        modifier = Modifier
-                            .padding(60.dp)
-                            .border(1.dp, color = colors.highlight)
-                            .background(colors.background)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                // no-op
-                            }
-                            .onKeyEvent {
-                                log.d { "Dialog key ${it.type} ${it.key}" }
-                                if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
-                                    dialogViewModel.updateState(null) // close the dialog
-                                    true
-                                } else {
-                                    false
-                                }
-                            }
-                            .focusRequester(focusRequester)
-                            .padding(40.dp)
-                            .align(
-                                Alignment.Center
-                            )
-                            .testTag(TestTag.DialogContainerView.name)
-                    ) {
-                        LaunchedEffect(Unit) {
-                            focusRequester.requestFocus()
-                        }
-
-                        dialog.content()
-                        AppImageButton(
-                            resource = "close.svg",
-                            size = 24.dp,
-                            onClick = { dialogViewModel.updateState(null) },
-                            modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = -28.dp)
-                                .testTag(TestTag.DialogCloseButton.name)
-                        )
-                    }
-                }
-
+            ProvideTextStyle(TextStyle(fontFamily = LocalFont.current.normalFontFamily)) {
+                val dialogViewModel = AppContext.DialogViewModel
+                val dialogState = dialogViewModel.state.collectAsState().value // needed for updating UI by flow
+                log.d { "Dialog State = $dialogState" }
                 Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(all = 40.dp)
-                        .width(IntrinsicSize.Max)
-                        .height(IntrinsicSize.Max)
+                    modifier = Modifier.background(colors.background).fillMaxSize().testTag(TestTag.ContainerView.name)
                 ) {
-                    val errorMessageVM = AppContext.ErrorMessagePromptViewModel
-                    val errorMessageState = errorMessageVM.state.collectAsState().value
-                    val visible = errorMessageVM.isVisible()
-                    AnimatedVisibility(
-                        visible,
-                        enter = fadeIn(tween(200)),
-                        exit = fadeOut(tween(1000))
-                    ) {
-                        AppText(
-                            text = errorMessageState.message,
-                            textAlign = TextAlign.Center,
+                    AppContentView()
+
+                    dialogState?.let { dialog ->
+                        val focusRequester = remember { FocusRequester() }
+                        Box(
                             modifier = Modifier
-                                .background(
-                                    when (errorMessageState.type) {
-                                        ErrorMessagePromptViewModel.MessageType.Error -> colors.errorResponseBackground
-                                        ErrorMessagePromptViewModel.MessageType.Success -> colors.successfulResponseBackground
-                                    }
-                                )
-                                .widthIn(min = 200.dp, max = 600.dp)
-                                .onPointerEvent(PointerEventType.Enter) {
-                                    errorMessageVM.lockDismissTime()
-                                }
-                                .onPointerEvent(PointerEventType.Exit) {
-                                    errorMessageVM.unlockDismissTime(1.seconds())
-                                }
+                                .fillMaxSize()
+                                .background(colors.backgroundDialogOverlay)
                                 .clickable(
                                     indication = null,
-                                    interactionSource = remember { MutableInteractionSource() },
-                                ) { errorMessageVM.dismiss() }
-                                .padding(12.dp),
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    dialogViewModel.updateState(null) // close the dialog
+                                }
                         )
+                        Box(
+                            modifier = Modifier
+                                .padding(60.dp)
+                                .border(1.dp, color = colors.highlight)
+                                .background(colors.background)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    // no-op
+                                }
+                                .onKeyEvent {
+                                    log.d { "Dialog key ${it.type} ${it.key}" }
+                                    if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
+                                        dialogViewModel.updateState(null) // close the dialog
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
+                                .focusRequester(focusRequester)
+                                .padding(40.dp)
+                                .align(
+                                    Alignment.Center
+                                )
+                                .testTag(TestTag.DialogContainerView.name)
+                        ) {
+                            LaunchedEffect(Unit) {
+                                focusRequester.requestFocus()
+                            }
+
+                            dialog.content()
+                            AppImageButton(
+                                resource = "close.svg",
+                                size = 24.dp,
+                                onClick = { dialogViewModel.updateState(null) },
+                                modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = -28.dp)
+                                    .testTag(TestTag.DialogCloseButton.name)
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(all = 40.dp)
+                            .width(IntrinsicSize.Max)
+                            .height(IntrinsicSize.Max)
+                    ) {
+                        val errorMessageVM = AppContext.ErrorMessagePromptViewModel
+                        val errorMessageState = errorMessageVM.state.collectAsState().value
+                        val visible = errorMessageVM.isVisible()
+                        AnimatedVisibility(
+                            visible,
+                            enter = fadeIn(tween(200)),
+                            exit = fadeOut(tween(1000))
+                        ) {
+                            AppText(
+                                text = errorMessageState.message,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .background(
+                                        when (errorMessageState.type) {
+                                            ErrorMessagePromptViewModel.MessageType.Error -> colors.errorResponseBackground
+                                            ErrorMessagePromptViewModel.MessageType.Success -> colors.successfulResponseBackground
+                                        }
+                                    )
+                                    .widthIn(min = 200.dp, max = 600.dp)
+                                    .onPointerEvent(PointerEventType.Enter) {
+                                        errorMessageVM.lockDismissTime()
+                                    }
+                                    .onPointerEvent(PointerEventType.Exit) {
+                                        errorMessageVM.unlockDismissTime(1.seconds())
+                                    }
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    ) { errorMessageVM.dismiss() }
+                                    .padding(12.dp),
+                            )
+                        }
                     }
                 }
             }

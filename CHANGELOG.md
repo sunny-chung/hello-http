@@ -18,7 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - [Experimental] Options to change rendering APIs to work around display issues on some Windows devices. Hardware acceleration can be disabled via this setting.
 
 ### Changed
-- The main monospace font has been changed to Pitagon Sans Mono and unified among all platforms
+- The main UI font has been changed to [Comme](https://github.com/googlefonts/comme) and unified among all platforms
+- The main monospace font has been changed to [Pitagon Sans Mono](https://github.com/ThePitagon/pitagon-sans-mono) and unified among all platforms
 - Importing CA certificates now imports all the certificates from an input file
 - Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)
 - Inherited values in Request Editor are now showing at the bottom rather than the top

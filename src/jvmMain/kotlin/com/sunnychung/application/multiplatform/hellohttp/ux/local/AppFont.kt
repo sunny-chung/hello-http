@@ -25,6 +25,7 @@ data class AppFont(
 
     val contextMenuFontSize: TextUnit,
 
+    val normalFontFamily: FontFamily,
     val monospaceFontFamily: FontFamily,
 )
 
@@ -44,6 +45,23 @@ internal fun regularFont() = AppFont(
 
     contextMenuFontSize = 13.sp,
 
+    normalFontFamily = FontFamily(
+        Font(
+            identity = "Comme-Light",
+            getData = { AppContext.ResourceManager.getResource(AppRes.Font.CommeLight) },
+            weight = FontWeight.Normal,
+        ),
+        Font(
+            identity = "Comme-CommeRegular",
+            getData = { AppContext.ResourceManager.getResource(AppRes.Font.CommeRegular) },
+            weight = FontWeight.SemiBold,
+        ),
+        Font(
+            identity = "Comme-SemiBold",
+            getData = { AppContext.ResourceManager.getResource(AppRes.Font.CommeSemiBold) },
+            weight = FontWeight.Bold,
+        ),
+    ),
     monospaceFontFamily = FontFamily(
         Font(
             identity = "PitagonSansMono-Regular",

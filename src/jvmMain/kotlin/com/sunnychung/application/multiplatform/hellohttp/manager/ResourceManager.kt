@@ -30,7 +30,7 @@ class ResourceManager {
 
     @OptIn(ExperimentalResourceApi::class)
     suspend fun loadAllResources() {
-        val resources = listOf(AppRes.Font.PitagonSansMonoRegular, AppRes.Font.PitagonSansMonoBold)
+        val resources = listOf(AppRes.Font.PitagonSansMonoRegular, AppRes.Font.PitagonSansMonoBold, AppRes.Font.CommeLight, AppRes.Font.CommeRegular, AppRes.Font.CommeSemiBold)
         withContext(Dispatchers.IO) {
             resources.forEach {
                 launch {
@@ -49,6 +49,9 @@ object AppRes {
     object Font {
         val PitagonSansMonoRegular = Resource("font:PitagonSansMonoRegular", "font/pitagon_sans_mono/PitagonSansMono-Regular.ttf")
         val PitagonSansMonoBold = Resource("font:PitagonSansMonoBold", "font/pitagon_sans_mono/PitagonSansMono-Bold.ttf")
+        val CommeLight = Resource("font:CommeLight", "font/comme/Comme-Light.ttf")
+        val CommeRegular = Resource("font:CommeRegular", "font/comme/Comme-Regular.ttf")
+        val CommeSemiBold = Resource("font:CommeSemiBold", "font/comme/Comme-SemiBold.ttf")
     }
 
     data class Resource(val key: String, val path: String)
