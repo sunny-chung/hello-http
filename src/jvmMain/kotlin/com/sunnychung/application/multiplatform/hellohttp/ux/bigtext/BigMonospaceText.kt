@@ -91,6 +91,7 @@ import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.util.ComposeUnicodeCharMeasurer
 import com.sunnychung.application.multiplatform.hellohttp.util.annotatedString
+import com.sunnychung.application.multiplatform.hellohttp.util.debouncedStateOf
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.string
 import com.sunnychung.application.multiplatform.hellohttp.ux.ContextMenuView
@@ -100,6 +101,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLas
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -277,11 +279,9 @@ private fun CoreBigMonospaceText(
     var width by remember { mutableIntStateOf(0) }
     var height by remember { mutableIntStateOf(0) }
     var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val contentWidth by remember {
-        derivedStateOf {
-            width - with(density) {
-                (padding.calculateStartPadding(LayoutDirection.Ltr) + padding.calculateEndPadding(LayoutDirection.Ltr)).toPx()
-            }
+    val contentWidth = debouncedStateOf(200.milliseconds()) {
+        width - with(density) {
+            (padding.calculateStartPadding(LayoutDirection.Ltr) + padding.calculateEndPadding(LayoutDirection.Ltr)).toPx()
         }
     }
     var lineHeight by remember { mutableStateOf(0f) }
@@ -335,7 +335,7 @@ private fun CoreBigMonospaceText(
         forceRecompose = Random.nextLong()
     }
 
-    if (width > 0) {
+    if (contentWidth > 0) {
         remember(transformedText, textLayouter, contentWidth) {
             log.d { "CoreBigMonospaceText set contentWidth = $contentWidth" }
 
