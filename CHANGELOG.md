@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+_Changes since 1.6.0_
+
+I must be crazy -- the text fields for request body and response body have been reinvented to optimize performance and fix known issues, since I am too unhappy with what the UI framework provides. Now a 4 MB JSON can be loaded and manipulated instantly, and it is still working good beyond 100 MB with millions of lines. The text fields would be further optimized and extended to replace all text fields in next minor versions.
+
+The TODO list on README is also gradually being shortened as I am fulfilling the promises.
+
+Note: For large request/response bodies, v1.7.0 has a higher memory usage than v1.6.0 as a trade-off for fast performance. It would be improved in upcoming versions. Users with large concerns on memory usage may stay at v1.6.
+
 ### Added
 - Example-level variables
 - New API for user scripting: `fun Request<*>.getApplicableVariables(): Map<String, String>`
@@ -15,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Certificates in P7B (PKCS#7) format can now be imported
 - Private keys in PEM or PKCS#1 formats can now be imported, and does not limit to RSA keys anymore.
 - PKCS#12 (known as p12) and PFX files can now be imported as client certificates
-- [Experimental] Options to change rendering APIs to work around display issues on some Windows devices. Hardware acceleration can be disabled via this setting.
+- [Experimental] Options to switch between hardware acceleration or software rendering. This is to work around display issues on some Windows devices.
 
 ### Changed
 - The main UI font has been changed to [Comme](https://github.com/googlefonts/comme) and unified among all platforms
@@ -33,11 +41,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Request body editor, payload body editor and response body viewer are reimplemented. This fixes many of the issues or weird behavior known in Jetpack Compose text fields.
-- The copy button overlapped with the search bar in the response body viewer.
+- The copy button should not overlap with the search bar in the response body viewer.
 
 ### Optimized
 - Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without significant performance issues.
 - Clicking the "Send" button now never freeze for a short while.
+
+## [1.7.0-beta.1] - 2024-11-24
+
+_Changes since 1.6.0_
+
+**WARNING: Please [make a backup](https://sunny-chung.github.io/hello-http/features/data-import-export) before start using a pre-release version!**
+
+I must be crazy -- the text fields for request body and response body have been reinvented to optimize performance and fix known issues, since I am too unhappy with what the UI framework provides. Now a 4 MB JSON can be loaded and manipulated instantly, and it is still working good beyond 100 MB with millions of lines. The text fields would be further optimized and extended to replace all text fields in next minor versions.
+
+The TODO list on README is also gradually being shortened as I am fulfilling the promises.
+
+Note: For large request/response bodies, v1.7.0 has a higher memory usage than v1.6.0 as a trade-off for fast performance. It would be improved in upcoming versions. Users with large concerns on memory usage may stay at v1.6.
+
+### Added
+- Example-level variables
+- New API for user scripting: `fun Request<*>.getApplicableVariables(): Map<String, String>`
+- Prettify button in JSON request editor. This includes GraphQL and gRPC.
+- Mouse hovering variable placeholders in Body Editor to show a tooltip for its value (if exists)
+- Number badges in Request Parameter Type tabs to indicate the number of active entries declared in the selected example, e.g. the number of active key-value pairs of a multipart request body declared in the selected Request Example.
+- Certificates in P7B (PKCS#7) format can now be imported
+- Private keys in PEM or PKCS#1 formats can now be imported, and does not limit to RSA keys anymore.
+- PKCS#12 (known as p12) and PFX files can now be imported as client certificates
+- [Experimental] Options to switch between hardware acceleration or software rendering. This is to work around display issues on some Windows devices.
+
+### Changed
+- The main UI font has been changed to [Comme](https://github.com/googlefonts/comme) and unified among all platforms
+- The main monospace font has been changed to [Pitagon Sans Mono](https://github.com/ThePitagon/pitagon-sans-mono) and unified among all platforms
+- Importing CA certificates now imports all the certificates from an input file
+- "Copy as cURL command" is now **non-verbose**, i.e. without `time` and `--verbose`. There is a new option "Copy as cURL verbose command" for verbose.
+- Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)
+- Inherited values in Request Editor are now showing at the bottom rather than the top
+- Number of space characters to indent or unindent in Request Body and Payload editors are changed from 4 to 2
+- Syntax highlighting would be disabled for Request/Payload text fields that exceeding 1.5 MB size
+
+### Removed
+- Text fields and response body viewer now do not trim content over 4 MB (but other limits still apply)
+- Most of debug logs
+
+### Fixed
+- Request body editor, payload body editor and response body viewer are reimplemented. This fixes many of the issues or weird behavior known in Jetpack Compose text fields.
+- The copy button should not overlap with the search bar in the response body viewer.
+
+### Optimized
+- Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without significant performance issues.
+- Clicking the "Send" button now never freeze for a short while.
+
 
 ## [1.6.0] - 2024-07-22
 
