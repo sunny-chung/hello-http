@@ -30,6 +30,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
@@ -192,7 +193,7 @@ fun ProjectAndEnvironmentViewV2(
 
     Column(modifier = modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AppText(text = "Project", modifier = Modifier.weight(1f))
+            AppText(text = "Project", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             AppImageButton(resource = "add.svg", size = 24.dp, onClick = {
                 showDialogType = EditDialogType.Project
                 dialogTextFieldValue = ""
@@ -269,7 +270,7 @@ fun ProjectAndEnvironmentViewV2(
 
         if (selectedProject != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AppText(text = "Subproject", modifier = Modifier.weight(1f))
+                AppText(text = "Subproject", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 AppImageButton(
                     resource = "add.svg",
                     size = 24.dp,
@@ -366,7 +367,7 @@ fun ProjectAndEnvironmentViewV2(
 
         if (selectedSubproject != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AppText(text = "Environment", modifier = Modifier.weight(1f))
+                AppText(text = "Environment", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 AppImageButton(
                     resource = "edit.svg",
                     size = 20.dp,
