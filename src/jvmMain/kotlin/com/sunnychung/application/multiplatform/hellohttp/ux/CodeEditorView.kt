@@ -127,7 +127,7 @@ fun CodeEditorView(
     onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
     testTag: String? = null,
 ) {
-    log.d { "CodeEditorView start" }
+    log.d { "CodeEditorView start. cache key = '$cacheKey'" }
 
     val themeColours = LocalColor.current
     val fonts = LocalFont.current

@@ -60,6 +60,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
 import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
+import com.sunnychung.application.multiplatform.hellohttp.util.debouncedStateOf
+import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.formatByteSize
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -484,6 +486,7 @@ fun BodyViewerView(
     val isEnableJsonPath = selectedView.name.contains("json", ignoreCase = true)
     var jsonPathExpression by rememberLast(key) { mutableStateOf("") }
     var isJsonPathError by rememberLast(key) { mutableStateOf(false) }
+    val debouncedJsonPathExpression = debouncedStateOf(400.milliseconds()) { jsonPathExpression }
 
     Column(modifier = modifier) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -510,10 +513,11 @@ fun BodyViewerView(
         if (selectedView.name != CLIENT_ERROR) {
             var hasError = false
             var isRaw = true
-            val contentToUse = if (isEnableJsonPath && jsonPathExpression.isNotEmpty()) {
+            val contentToUse = if (isEnableJsonPath && debouncedJsonPathExpression.isNotEmpty()) {
                 try {
-                    val data = JsonPath.read<Any?>(ByteArrayInputStream(content), jsonPathExpression)
-                    log.d { "jsonpath data type ${data.javaClass.name} $data" }
+                    log.d { "jsonpath exp = $debouncedJsonPathExpression" }
+                    val data = JsonPath.read<Any?>(ByteArrayInputStream(content), debouncedJsonPathExpression)
+                    log.v { "jsonpath data type ${data.javaClass.name} $data" }
                     when (data) {
                         is Map<*, *>, is List<*>, is Set<*> -> { jsonEncoder.writeValueAsBytes(data) }
                         else -> {
@@ -521,7 +525,8 @@ fun BodyViewerView(
                             data.toString().encodeToByteArray()
                         }
                     }
-                } catch (_: Throwable) {
+                } catch (e: Throwable) {
+                    log.d { "jsonpath err = ${e.message}" }
                     hasError = true
                     content
                 }
@@ -551,7 +556,12 @@ fun BodyViewerView(
                 modifier = modifier
             ) {
                 CodeEditorView(
-                    cacheKey = "$key/View:${selectedView.key}",
+                    cacheKey = "$key/View:${selectedView.key};Query:${
+                        debouncedJsonPathExpression
+                            .emptyToNull()
+                            ?.takeIf { !isJsonPathError }
+                            ?: ""
+                    }",
                     isReadOnly = true,
                     initialText = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
