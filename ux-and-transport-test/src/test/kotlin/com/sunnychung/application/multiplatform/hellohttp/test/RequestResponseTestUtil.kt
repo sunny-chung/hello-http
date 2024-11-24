@@ -2,7 +2,6 @@
 
 package com.sunnychung.application.multiplatform.hellohttp.test
 
-import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -11,6 +10,7 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.assertIsDisplayed
@@ -28,7 +28,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.compose.ui.unit.dp
@@ -64,8 +63,6 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
-import org.jetbrains.skia.Image
-import org.jetbrains.skiko.toBufferedImage
 import org.jetbrains.skiko.toImage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -136,7 +133,7 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
         // create first project
         onNodeWithTag(TestTag.FirstTimeCreateProjectButton.name)
             .performClickWithRetry(this)
-        waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
+        waitUntilExactlyOneExists(this, hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
             .performTextInput(this, "Test Project ${KZonedInstant.nowAtLocalZoneOffset().format("HH:mm:ss")}")
         waitForIdle()
@@ -146,10 +143,10 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
         // create first subproject
         delayShort()
         waitForIdle()
-        waitUntilExactlyOneExists(hasTestTag(TestTag.FirstTimeCreateSubprojectButton.name), 1500L)
+        waitUntilExactlyOneExists(this, hasTestTag(TestTag.FirstTimeCreateSubprojectButton.name), 1500L)
         onNodeWithTag(TestTag.FirstTimeCreateSubprojectButton.name)
             .performClickWithRetry(this)
-        waitUntilExactlyOneExists(hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
+        waitUntilExactlyOneExists(this, hasTestTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name), 1500L)
         onNodeWithTag(TestTag.ProjectNameAndSubprojectNameDialogTextField.name)
             .performTextInput(this, "Test Subproject")
         waitForIdle()
@@ -170,7 +167,7 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
         onNodeWithTag(TestTag.EditEnvironmentsButton.name)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
-        waitUntilExactlyOneExists(hasTestTag(TestTag.EnvironmentDialogCreateButton.name))
+        waitUntilExactlyOneExists(this, hasTestTag(TestTag.EnvironmentDialogCreateButton.name))
 
         createEnvironmentInEnvDialog(TestEnvironment.LocalDefault.displayName)
 
@@ -378,7 +375,7 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
     }
 //    while (true) {
 //        try {
-            waitUntilExactlyOneExists(hasTestTag(TestTag.CreateRequestOrFolderButton.name), 5000L)
+            waitUntilExactlyOneExists(this, hasTestTag(TestTag.CreateRequestOrFolderButton.name), 5000L)
 //        } catch (_: IllegalArgumentException) {
 //            println("waiting")
 //            waitForIdle()
@@ -555,11 +552,11 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
     delayShort()
-    waitUntilExactlyOneExists(hasTextExactly("Request", includeEditableText = false))
+    waitUntilExactlyOneExists(this, hasTextExactly("Request", includeEditableText = false))
     onNodeWithText("Request")
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
-    waitUntilExactlyOneExists(hasTestTag(TestTag.RequestUrlTextField.name), 1000L)
+    waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestUrlTextField.name), 1000L)
 
     delayShort()
 
@@ -586,7 +583,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             TestTagPart.DropdownItem,
             baseExample.contentType.displayText
         )!!
-        waitUntilExactlyOneExists(hasTestTag(nextTag))
+        waitUntilExactlyOneExists(this, hasTestTag(nextTag))
         onNodeWithTag(nextTag)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
@@ -607,7 +604,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             ContentType.Multipart -> {
                 val body = (baseExample.body as MultipartBody).value
                 body.forEachIndexed { index, it ->
-                    waitUntilExactlyOneExists(
+                    waitUntilExactlyOneExists(this,
                         hasTestTag(
                             buildTestTag(
                                 TestTagPart.RequestBodyMultipartForm,
@@ -617,7 +614,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
                             )!!
                         )
                     )
-                    waitUntilExactlyOneExists(
+                    waitUntilExactlyOneExists(this,
                         hasTestTag(
                             buildTestTag(
                                 TestTagPart.RequestBodyMultipartForm,
@@ -756,7 +753,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             ContentType.FormUrlEncoded -> {
                 val body = (baseExample.body as FormUrlEncodedBody).value
                 body.forEachIndexed { index, it ->
-                    waitUntilExactlyOneExists(
+                    waitUntilExactlyOneExists(this,
                         hasTestTag(
                             buildTestTag(
                                 TestTagPart.RequestBodyFormUrlEncodedForm,
@@ -766,7 +763,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
                             )!!
                         )
                     )
-                    waitUntilExactlyOneExists(
+                    waitUntilExactlyOneExists(this,
                         hasTestTag(
                             buildTestTag(
                                 TestTagPart.RequestBodyFormUrlEncodedForm,
@@ -844,7 +841,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             .performClickWithRetry(this)
 
         baseExample.queryParameters.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(
+            waitUntilExactlyOneExists(this,
                 hasTestTag(
                     buildTestTag(
                         TestTagPart.RequestQueryParameter,
@@ -854,7 +851,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
                     )!!
                 )
             )
-            waitUntilExactlyOneExists(
+            waitUntilExactlyOneExists(this,
                 hasTestTag(
                     buildTestTag(
                         TestTagPart.RequestQueryParameter,
@@ -910,7 +907,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
         baseExample.headers.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(
+            waitUntilExactlyOneExists(this,
                 hasTestTag(
                     buildTestTag(
                         TestTagPart.RequestHeader,
@@ -920,7 +917,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
                     )!!
                 )
             )
-            waitUntilExactlyOneExists(
+            waitUntilExactlyOneExists(this,
                 hasTestTag(
                     buildTestTag(
                         TestTagPart.RequestHeader,
@@ -946,7 +943,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
-        waitUntilExactlyOneExists(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
+        waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
 
         onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
             .assertIsDisplayedWithRetry(this)
@@ -1257,6 +1254,23 @@ fun SemanticsNodeInteractionCollection.fetchSemanticsNodesWithRetry(host: Compos
 fun SemanticsNodeInteraction.performTextInput(host: ComposeUiTest, s: String) {
     host.runOnUiThread {
         performTextInput(s)
+    }
+}
+
+fun waitUntilExactlyOneExists(
+    host: ComposeUiTest,
+    matcher: SemanticsMatcher,
+    timeoutMillis: Long = 1_000L
+) {
+    // this would cause deadlock
+//    host.runOnUiThread {
+//        host.waitUntilExactlyOneExists(matcher, timeoutMillis)
+//    }
+
+    host.waitUntil(timeoutMillis) {
+        host.runOnUiThread {
+            host.onAllNodes(matcher).fetchSemanticsNodes().size == 1
+        }
     }
 }
 
