@@ -1549,11 +1549,15 @@ private fun RequestBodyTextEditor(
 
     if (overridePredicate(selectedExample.overrides)) {
         val content = translateToText(selectedExample) ?: ""
+        val focusRequester = remember { FocusRequester() }
         FloatingButtonContainer(
             buttonImage = "prettier.svg",
             tooltip = "Prettify",
             isEnabled = prettifyHandler != null,
-            onClickButton = { prettifyHandler!!(content) },
+            onClickButton = {
+                prettifyHandler!!(content)
+                focusRequester.requestFocus()
+            },
             outerPadding = PaddingValues(
                 top = 4.dp + with(LocalDensity.current) { textFieldPositionTop.toDp() },
                 end = 8.dp,
@@ -1571,6 +1575,7 @@ private fun RequestBodyTextEditor(
                 onMeasured = { textFieldPositionTop = it },
                 syntaxHighlight = syntaxHighlight,
                 testTag = testTag ?: TestTag.RequestStringBodyTextField.name,
+                modifier = Modifier.focusRequester(focusRequester)
             )
         }
     } else {
