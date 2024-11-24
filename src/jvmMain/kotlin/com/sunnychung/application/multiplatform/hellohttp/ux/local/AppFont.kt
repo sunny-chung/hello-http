@@ -52,8 +52,8 @@ internal fun regularFont() = AppFont(
             weight = FontWeight.Normal,
         ),
         Font(
-            identity = "Comme-CommeRegular",
-            getData = { AppContext.ResourceManager.getResource(AppRes.Font.CommeRegular) },
+            identity = "Comme-CommeMedium",
+            getData = { AppContext.ResourceManager.getResource(AppRes.Font.CommeMedium) },
             weight = FontWeight.SemiBold,
         ),
         Font(
