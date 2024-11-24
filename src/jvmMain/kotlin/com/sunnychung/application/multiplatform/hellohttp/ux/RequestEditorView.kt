@@ -304,6 +304,7 @@ fun RequestEditorView(
                 onValueChange = {
                     onRequestModified(request.copy(url = it))
                 },
+                placeholder = { AppText(text = "URL", color = colors.placeholder) },
                 visualTransformation = EnvironmentVariableTransformation(
                     themeColors = colors,
                     font = fonts,
