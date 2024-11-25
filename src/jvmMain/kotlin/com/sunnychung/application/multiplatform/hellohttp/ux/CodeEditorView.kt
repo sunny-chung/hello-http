@@ -761,7 +761,7 @@ fun BigTextLineNumbersView(
         firstRow = visibleRows.first,
         lastRow = visibleRows.endInclusive + 1,
         rowToLineIndex = { layoutText?.findOriginalLineIndexByRowIndex(it) ?: 0 },
-        totalLines = layoutText?.numOfOriginalLines ?: 1,
+        totalLines = layoutText?.numOfOriginalLines ?: bigText.numOfLines,
         lineHeight = (rowHeight).toDp(),
         getRowOffset = {
             (it * rowHeight - viewportTop).toDp()
