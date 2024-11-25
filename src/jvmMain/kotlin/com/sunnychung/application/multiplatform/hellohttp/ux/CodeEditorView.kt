@@ -101,6 +101,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.regex.Pattern
+import kotlin.math.abs
 import kotlin.random.Random
 
 val MAX_TEXT_FIELD_LENGTH = 4 * 1024 * 1024 // 4 MB
@@ -137,7 +138,10 @@ fun CodeEditorView(
 
     var layoutResult by remember { mutableStateOf<BigTextSimpleLayoutResult?>(null) }
 
-    val bigTextFieldState: BigTextFieldState by rememberConcurrentLargeAnnotatedBigTextFieldState(initialValue = initialText, cacheKey)
+    val bigTextFieldState: BigTextFieldState by rememberConcurrentLargeAnnotatedBigTextFieldState(initialValue = initialText, cacheKey) {
+        log.d { "init BigText disable layout. lines = ${it.text.numOfLines}" }
+        it.viewState.isLayoutDisabled = true
+    }
     val bigTextValue: BigText = bigTextFieldState.text
     var bigTextValueId by remember(bigTextFieldState) { mutableStateOf<Long>(Random.nextLong()) }
 
@@ -481,7 +485,11 @@ fun CodeEditorView(
                     collapsedLines = collapsedLines.values.toList(),
                     onCollapseLine = onCollapseLine,
                     onExpandLine = onExpandLine,
-                    modifier = Modifier.fillMaxHeight(),
+                    onCorrectMeasured = {
+                        log.v { "change isLayoutDisabled from ${bigTextFieldState.viewState.isLayoutDisabled} to false" }
+                        bigTextFieldState.viewState.isLayoutDisabled = false
+                    },
+                    modifier = Modifier.fillMaxHeight()
                 )
 
                 if (isReadOnly) {
@@ -733,6 +741,7 @@ fun BigTextLineNumbersView(
     collapsedLines: List<IntRange>,
     onCollapseLine: (Int) -> Unit,
     onExpandLine: (Int) -> Unit,
+    onCorrectMeasured: () -> Unit,
 ) = with(LocalDensity.current) {
     val colours = LocalColor.current
     val fonts = LocalFont.current
@@ -761,7 +770,7 @@ fun BigTextLineNumbersView(
         firstRow = visibleRows.first,
         lastRow = visibleRows.endInclusive + 1,
         rowToLineIndex = { layoutText?.findOriginalLineIndexByRowIndex(it) ?: 0 },
-        totalLines = layoutText?.numOfOriginalLines ?: bigText.numOfLines,
+        totalLines = bigText.numOfLines,
         lineHeight = (rowHeight).toDp(),
         getRowOffset = {
             (it * rowHeight - viewportTop).toDp()
@@ -770,6 +779,7 @@ fun BigTextLineNumbersView(
         collapsedLinesState = collapsedLinesState,
         onCollapseLine = onCollapseLine,
         onExpandLine = onExpandLine,
+        onCorrectMeasured = onCorrectMeasured,
         modifier = modifier
     )
 }
@@ -787,6 +797,7 @@ private fun CoreLineNumbersView(
     collapsedLinesState: CollapsedLinesState,
     onCollapseLine: (Int) -> Unit,
     onExpandLine: (Int) -> Unit,
+    onCorrectMeasured: () -> Unit,
 ) = with(LocalDensity.current) {
     val colours = LocalColor.current
     val fonts = LocalFont.current
@@ -801,6 +812,7 @@ private fun CoreLineNumbersView(
         maxOf(textMeasurer.measure("8".repeat(lineNumDigits), textStyle, maxLines = 1).size.width.toDp(), 20.dp) +
                 4.dp + (if (collapsableLines.isNotEmpty()) 24.dp else 0.dp) + 4.dp
     }
+    log.v { "totalLines = $totalLines, width = ${width.toPx()}" }
 
     Box(
         modifier = modifier
@@ -808,7 +820,15 @@ private fun CoreLineNumbersView(
             .fillMaxHeight()
             .clipToBounds()
             .background(colours.backgroundLight)
-            .padding(top = 6.dp, start = 4.dp, end = 4.dp), // see AppTextField
+            .onGloballyPositioned { // need to be put before padding modifiers so that measured size includes padding
+                if (abs(it.size.width - width.toPx()) < 0.1 /* equivalent to it.size.width == width.toPx() */) {
+                    log.v { "correct width ${it.size.width}. expected = ${width.toPx()}" }
+                    onCorrectMeasured()
+                } else {
+                    log.v { "reject width ${it.size.width}. expected = ${width.toPx()}" }
+                }
+            }
+            .padding(top = 6.dp, start = 4.dp, end = 4.dp) // see AppTextField
     ) {
         var ii: Int = firstRow
         var lastLineIndex = -1

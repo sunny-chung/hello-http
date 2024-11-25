@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.TransformedText
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 val EMPTY_SELECTION_RANGE = 0 .. -1
 
@@ -157,6 +159,16 @@ class BigTextViewState {
 
     var transformedText: BigTextTransformed? = null
         internal set
+
+    private val isLayoutDisabledMutableStateFlow = MutableStateFlow(false)
+
+    val isLayoutDisabledFlow: Flow<Boolean> = isLayoutDisabledMutableStateFlow
+
+    var isLayoutDisabled: Boolean
+        get() = isLayoutDisabledMutableStateFlow.value
+        set(value) {
+            isLayoutDisabledMutableStateFlow.value = value
+        }
 
     var layoutResult: BigTextSimpleLayoutResult? = null
     var visibleSize: Size = Size(0, 0)

@@ -486,7 +486,7 @@ fun BodyViewerView(
     val isEnableJsonPath = selectedView.name.contains("json", ignoreCase = true)
     var jsonPathExpression by rememberLast(key) { mutableStateOf("") }
     var isJsonPathError by rememberLast(key) { mutableStateOf(false) }
-    val debouncedJsonPathExpression = debouncedStateOf(400.milliseconds()) { jsonPathExpression }
+    val (debouncedJsonPathExpression, _) = debouncedStateOf(400.milliseconds()) { jsonPathExpression }
 
     Column(modifier = modifier) {
         Box(modifier = Modifier.fillMaxWidth()) {

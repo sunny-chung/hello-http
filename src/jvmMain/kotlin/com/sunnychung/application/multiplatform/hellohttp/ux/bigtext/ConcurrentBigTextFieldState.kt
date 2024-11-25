@@ -14,14 +14,14 @@ import androidx.compose.ui.text.AnnotatedString
  * The argument `initialValue` is only used when there is a cache miss using the cache key `cacheKey`.
  */
 @Composable
-fun rememberConcurrentLargeAnnotatedBigTextFieldState(initialValue: String = "", vararg cacheKeys: Any?): MutableState<BigTextFieldState> {
+fun rememberConcurrentLargeAnnotatedBigTextFieldState(initialValue: String = "", vararg cacheKeys: Any?, initialize: (BigTextFieldState) -> Unit = {}): MutableState<BigTextFieldState> {
     return rememberSaveable(*cacheKeys) {
         log.i { "cache miss concurrent 1" }
         mutableStateOf(
             BigTextFieldState(
                 ConcurrentBigText(BigText.createFromLargeAnnotatedString(AnnotatedString(initialValue))),
                 BigTextViewState()
-            )
+            ).apply(initialize)
         )
     }
 }

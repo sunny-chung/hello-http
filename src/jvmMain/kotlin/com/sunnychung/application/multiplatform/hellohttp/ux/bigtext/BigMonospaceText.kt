@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -105,6 +106,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.reflect.KMutableProperty
@@ -275,11 +277,14 @@ private fun CoreBigMonospaceText(
             ), textStyle
         )
     }
+    // if the value of `viewState.isLayoutDisabled` is changed, trigger a recomposition
+    viewState.isLayoutDisabledFlow.collectAsState(initial = false).value
+    val isLayoutEnabled = !viewState.isLayoutDisabled // not using the value from flow because it is not instantly updated
 
     var width by remember { mutableIntStateOf(0) }
     var height by remember { mutableIntStateOf(0) }
     var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val contentWidth = debouncedStateOf(200.milliseconds()) {
+    val (contentWidth, isContentWidthLatest) = debouncedStateOf(200.milliseconds(), tolerateCount = 1, text) { /* handle the first non-zero width instantly */
         width - with(density) {
             (padding.calculateStartPadding(LayoutDirection.Ltr) + padding.calculateEndPadding(LayoutDirection.Ltr)).toPx()
         }
@@ -335,7 +340,7 @@ private fun CoreBigMonospaceText(
         forceRecompose = Random.nextLong()
     }
 
-    if (contentWidth > 0) {
+    if (isLayoutEnabled && contentWidth > 0 && isContentWidthLatest) {
         remember(transformedText, textLayouter, contentWidth) {
             log.d { "CoreBigMonospaceText set contentWidth = $contentWidth" }
 
@@ -1099,6 +1104,7 @@ private fun CoreBigMonospaceText(
                 height = it.size.height
                 layoutCoordinates = it
                 viewState.visibleSize = Size(width = width, height = height)
+                log.v { "BigMonospaceText set width = $width" }
             }
             .clipToBounds()
             .padding(padding)
