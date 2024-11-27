@@ -425,7 +425,7 @@ private fun CoreBigMonospaceText(
             val startInstant = KInstant.now()
             textDecorator.initialize(text).also {
                 val endInstant = KInstant.now()
-                log.d { "CoreBigMonospaceText init textDecorator took ${endInstant - startInstant}" }
+                log.i { "CoreBigMonospaceText init textDecorator took ${endInstant - startInstant}" }
             }
         }
     }
@@ -596,7 +596,7 @@ private fun CoreBigMonospaceText(
     }
 
     fun onType(textInput: CharSequence, isSaveUndoSnapshot: Boolean = true) {
-        log.i { "$text key in '$textInput' ${viewState.hasSelection()} ${viewState.selection} ${viewState.transformedSelection}" }
+        log.v { "$text key in '$textInput' ${viewState.hasSelection()} ${viewState.selection} ${viewState.transformedSelection}" }
         if (viewState.hasSelection()) {
             deleteSelection(isSaveUndoSnapshot = false)
         }

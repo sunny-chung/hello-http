@@ -47,6 +47,19 @@ Note: For large request/response bodies, v1.7.0 has a higher memory usage than v
 - Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without significant performance issues.
 - Clicking the "Send" button now never freeze for a short while.
 
+## [Unreleased -- 1.7.0-beta.2]
+
+_Changes since 1.7.0-beta.1_
+
+### Changed
+- The size threshold of disabling syntax highlighting in Request/Payload text fields has been raised from 1.5 MB to 32 MB
+- JSON syntax highlighting does not tolerate syntax error now
+
+### Optimized
+- Performance of large text fields
+- Performance of JSON syntax highlighting -- processing a 30 MB JSON takes less than 0.1s now
+- Memory use of JSON syntax highlighting
+
 ## [1.7.0-beta.1] - 2024-11-24
 
 _Changes since 1.6.0_

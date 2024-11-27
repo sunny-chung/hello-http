@@ -83,6 +83,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightLinearDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
@@ -334,8 +336,8 @@ fun CodeEditorView(
     log.d { "before syntaxHighlightDecorators" }
 
     val syntaxHighlightDecorators = if (
-        (isReadOnly && bigTextValue.length > 100 * 1024 * 1024)
-        || (!isReadOnly && bigTextValue.length > 1.5 * 1024 * 1024)
+        (isReadOnly && bigTextValue.length > 200 * 1024 * 1024)
+        || (!isReadOnly && bigTextValue.length > 32 * 1024 * 1024)
     ) {
         // data too large, syntax highlighter cannot handle quickly, so disable syntax highlighting.
         isSyntaxHighlightDisabled = syntaxHighlight != SyntaxHighlight.None
@@ -346,8 +348,9 @@ fun CodeEditorView(
             when (syntaxHighlight) {
                 SyntaxHighlight.None -> emptyList()
 //                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightDecorator(themeColours))
-                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightSlowDecorator(themeColours))
                 SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
+//                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightSlowDecorator(themeColours))
+                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightLinearDecorator(themeColours))
                 SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
             }
         }

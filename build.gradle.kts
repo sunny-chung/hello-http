@@ -70,6 +70,7 @@ kotlin {
                 implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
                 implementation("com.jayway.jsonpath:json-path:2.8.0")
+                implementation("com.dslplatform:dsl-json:2.0.2")
 
                 implementation("io.github.sunny-chung:kdatetime-multiplatform:1.0.0")
 
