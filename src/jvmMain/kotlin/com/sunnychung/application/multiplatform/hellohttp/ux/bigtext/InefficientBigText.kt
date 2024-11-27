@@ -64,6 +64,10 @@ class InefficientBigText(text: String) : BigText {
     override fun subSequence(startIndex: Int, endIndex: Int): CharSequence =
         substring(startIndex, endIndex)
 
+    override fun chunkAt(start: Int): String {
+        TODO("Not yet implemented")
+    }
+
     override fun findLineString(lineIndex: Int): CharSequence {
         TODO("Not yet implemented")
     }

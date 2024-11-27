@@ -113,6 +113,10 @@ internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
         return substring(startIndex, endIndex)
     }
 
+    override fun chunkAt(start: Int): String {
+        TODO("Not yet implemented")
+    }
+
     override fun findLineString(lineIndex: Int): CharSequence {
         TODO("Not yet implemented")
     }

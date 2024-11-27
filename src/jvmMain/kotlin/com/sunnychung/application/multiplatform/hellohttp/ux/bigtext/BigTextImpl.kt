@@ -692,6 +692,20 @@ open class BigTextImpl(
         return charSequenceFactory(builder)
     }
 
+    override fun chunkAt(start: Int): String {
+        require(0 <= start) { "Invalid start" }
+        require(start <= length) { "start $start is out of bound. length = $length" }
+
+        if (start >= length) {
+            return ""
+        }
+
+        val node = tree.findNodeByRenderCharIndex(start) ?: throw IllegalStateException("Cannot find string node for position $start")
+        val nodeStart = findRenderPositionStart(node)
+        val subsequence = node.value.buffer.subSequence(node.value.renderBufferStart + (start - nodeStart), node.value.renderBufferEndExclusive)
+        return subsequence.toString()
+    }
+
     override fun substring(start: Int, endExclusive: Int): CharSequence { // O(lg L + (e - s))
         require(start <= endExclusive) { "start should be <= endExclusive" }
         require(0 <= start) { "Invalid start" }

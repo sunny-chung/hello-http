@@ -28,7 +28,7 @@ abstract class AbstractSyntaxHighlightDecorator(language: Language) : CacheableB
     protected var oldEndPoint: Point? = null
 
     override fun doInitialize(text: BigText) {
-        val s = text.buildString()
+//        val s = text.buildString()
 
 //        val singleByteCharSequence = s.map { // buggy
 //            if (it.code > 255) {
@@ -40,20 +40,26 @@ abstract class AbstractSyntaxHighlightDecorator(language: Language) : CacheableB
 //        ast = parser.parse(singleByteCharSequence)
 
         ast = parser.parse { byte, point ->
-            if (byte in 0u until text.length.toUInt()) {
-                s.substring(byte.toInt() ..byte.toInt()).let {
-                    val codePoints = it.codePoints().toArray()
-                    if (codePoints.size > 1 || codePoints.first() > 255) {
-                        "X" // replace multibyte char as single-byte char
-                    } else {
-                        it
-                    }
+            parse(text, byte.toInt())
+        }
+    }
+
+    fun parse(text: BigText, start: Int): CharSequence? {
+        return if (start in 0 until text.length) {
+            text.chunkAt(start).map {
+                val codePoints = it.toString().codePoints().toArray()
+                if (codePoints.size > 1 || codePoints.first() > 255) {
+                    "X" // replace multibyte char as single-byte char
+                } else {
+                    it
                 }
-            } else {
-                "" // the doc is wrong. null would result in crash
-            }/*.also {
-                println("parse $byte = '$it'")
-            }*/
+            }
+                .joinToString("")
+        } else {
+            "" // the doc is wrong. null would result in crash
+        }.also {
+            log.v { "parse $start = '$it'" }
+            log.i { "parse $start = '${it.length}'" }
         }
     }
 
@@ -127,20 +133,7 @@ abstract class AbstractSyntaxHighlightDecorator(language: Language) : CacheableB
         }
 
         ast = parser.parse(oldAst) { byte, point ->
-            if (byte in 0u until change.bigText.length.toUInt()) {
-                change.bigText.substring(byte.toInt() ..byte.toInt()).let {
-                    val codePoints = it.codePoints().toArray()
-                    if (codePoints.size > 1 || codePoints.first() > 255) {
-                        "X" // replace multibyte char as single-byte char
-                    } else {
-                        it
-                    }
-                }
-            } else {
-                "" // the doc is wrong. null would result in crash
-            }.also {
-                log.v { "parse $byte = '$it'" }
-            }
+            parse(change.bigText, byte.toInt())
         }
 
         log.v { "AST change sexp = ${ast.rootNode.sexp()}" }

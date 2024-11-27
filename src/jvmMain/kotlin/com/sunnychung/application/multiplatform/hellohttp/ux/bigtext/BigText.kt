@@ -51,6 +51,8 @@ interface BigText {
 
     fun subSequence(startIndex: Int, endIndex: Int): CharSequence
 
+    fun chunkAt(start: Int): String
+
     fun findLineString(lineIndex: Int): CharSequence
 
     fun findRowString(rowIndex: Int): CharSequence

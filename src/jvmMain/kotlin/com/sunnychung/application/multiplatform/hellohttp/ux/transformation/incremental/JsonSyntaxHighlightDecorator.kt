@@ -76,4 +76,21 @@ class JsonSyntaxHighlightDecorator(val colours: AppColor) : AbstractSyntaxHighli
 
         return AnnotatedString(text.toString(), spans)
     }
+
+    override fun afterTextChange(change: BigTextChangeEvent) {
+        println("afterTextChange ${change.eventType} ${change.changeStartIndex} ..< ${change.changeEndExclusiveIndex}")
+        super.afterTextChange(change)
+        printDebug()
+    }
+
+    fun printDebug() {
+        fun visit(node: Node, depth: Int) {
+            println("${"-".repeat(depth)} ${node.type} ${node.range.startByte} ..< ${node.range.endByte}")
+            node.children.forEach { visit(it, depth + 1) }
+        }
+        println("=====")
+        visit(ast.rootNode, 1)
+        println("=====")
+        println()
+    }
 }
