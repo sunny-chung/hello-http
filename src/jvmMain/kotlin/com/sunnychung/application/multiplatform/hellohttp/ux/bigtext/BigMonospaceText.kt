@@ -360,7 +360,7 @@ private fun CoreBigMonospaceText(
                 transformedText.setContentWidth(contentWidth)
 
                 val endInstant = KInstant.now()
-                log.d { "BigText layout took ${endInstant - startInstant}" }
+                log.i { "BigText layout took ${endInstant - startInstant}" }
 
                 if (log.config.minSeverity <= Severity.Verbose) {
                     (transformedText as BigTextImpl).printDebug("after init layout")
