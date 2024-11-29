@@ -1,14 +1,31 @@
 package com.sunnychung.application.multiplatform.hellohttp.parser
 
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.dslplatform.json.DslJson
+import com.dslplatform.json.ObjectConverter
+import com.dslplatform.json.StringConverter
 import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 
+private val WHITESPACE_BYTES: Set<Byte> = listOf(' ', '\n', '\r', '\t').map { it.code.toByte() }.toSet()
+
 class JsonParser(jsonBytes: ByteArray) {
-    private val tree = jacksonObjectMapper().apply {
-        enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-    }.readTree(jsonBytes)
+    private val parser = DslJson<Any?>()
+    private val writer = parser.newWriter()
+    private val tree: Any?
+    init {
+        val reader = parser.newReader().process(jsonBytes, jsonBytes.size)
+        reader.nextToken
+        tree = ObjectConverter.deserializeObject(reader)
+        if (reader.currentIndex != jsonBytes.size) { // there is something after a valid JSON
+            // it is considered to be valid if the extra string contains only whitespaces
+            while (reader.currentIndex < jsonBytes.size && reader.read() in WHITESPACE_BYTES) {
+                // continue
+            }
+            // otherwise, the string is not a valid JSON
+            if (reader.last() !in WHITESPACE_BYTES) {
+                throw IllegalArgumentException("There is something extra after a JSON to make it invalid")
+            }
+        }
+    }
 
     constructor(json: String) : this(json.encodeToByteArray())
 
@@ -27,15 +44,15 @@ class JsonParser(jsonBytes: ByteArray) {
                     }
                 }
 
-                fun StringBuilder.transverse(node: JsonNode, indentLevel: Int) {
-                    if (node.isArray) {
-                        if (node.isEmpty) {
+                fun StringBuilder.transverse(node: Any?, indentLevel: Int) {
+                    if (node is List<*>) {
+                        if (node.isEmpty()) {
                             append("[]")
                         } else {
                             startCharStack += lastIndex + 1
                             append('[')
                             startLineStack += lineIndex
-                            if (node.size() <= 20 && node.all { it.isValueNode }) {
+                            if (node.size <= 20 && node.all { it.isValue }) {
                                 node.forEachIndexed { i, it ->
                                     if (i > 0) {
                                         append(", ")
@@ -61,15 +78,15 @@ class JsonParser(jsonBytes: ByteArray) {
                             lineGroups += startLineStack.removeLast() .. lineIndex
                             charGroups += startCharStack.removeLast() .. lastIndex
                         }
-                    } else if (node.isObject) {
-                        if (node.isEmpty) {
+                    } else if (node is Map<*, *>) {
+                        if (node.isEmpty()) {
                             append("{}")
                         } else {
                             startCharStack += lastIndex + 1
                             startLineStack += lineIndex
                             append("{\n")
                             ++lineIndex
-                            node.fields().withIndex().forEach { (i, it) ->
+                            node.entries.forEachIndexed { i, it ->
                                 if (i > 0) {
                                     append(",\n")
                                     ++lineIndex
@@ -85,10 +102,18 @@ class JsonParser(jsonBytes: ByteArray) {
                             lineGroups += startLineStack.removeLast() .. lineIndex
                             charGroups += startCharStack.removeLast() .. lastIndex
                         }
-                    } else if (node.isValueNode) {
-                        append(node.toPrettyString())
+                    } else if (node is String) {
+//                        val baos = ByteArrayOutputStream()
+//                        parser.serialize(node, baos)
+//                        append(baos.toByteArray().decodeToString())
+
+                        StringConverter.serialize(node, writer)
+                        append(writer.toString())
+                        writer.reset()
                     } else {
-                        throw RuntimeException("what is this? -- $node")
+                        append(node.toString())
+//                    } else {
+//                        throw RuntimeException("what is this? -- $node")
                     }
                 }
 
@@ -98,4 +123,7 @@ class JsonParser(jsonBytes: ByteArray) {
             collapsableCharRange = charGroups,
         )
     }
+
+    private val Any?.isValue: Boolean
+        get() = this !is Map<*, *> && this !is List<*>
 }

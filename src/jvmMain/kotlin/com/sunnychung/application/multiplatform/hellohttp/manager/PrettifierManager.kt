@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.parser.JsonParser
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 
 class PrettifierManager {
     private val registrations: MutableSet<PrettifierRegistration> = mutableSetOf()
@@ -19,7 +20,10 @@ class PrettifierManager {
             prettifier = Prettifier(
                 formatName = "JSON (Prettified)",
                 prettify = {
-                    JsonParser(it).prettify()
+                    val start = System.currentTimeMillis()
+                    JsonParser(it).prettify().also {
+                        log.i { "Prettify took ${System.currentTimeMillis() - start}ms" }
+                    }
                 }
             )
         )
