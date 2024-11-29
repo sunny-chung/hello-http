@@ -87,7 +87,7 @@ kotlin {
 
                 // incremental parser
                 implementation("io.github.tree-sitter:ktreesitter:0.23.0")
-                implementation("io.github.sunny-chung:ktreesitter-json:0.23.0.1")
+//                implementation("io.github.sunny-chung:ktreesitter-json:0.23.0.1") // too slow
                 implementation("io.github.sunny-chung:ktreesitter-graphql:1.0.0.0")
 
                 // public/private key decoding
