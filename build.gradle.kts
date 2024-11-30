@@ -195,6 +195,7 @@ compose.desktop {
             packageVersion = distributionVersion
 
             modules("java.naming")
+            modules("java.sql")
 
             macOS {
                 iconFile.set(project.file("appicon/appicon.icns"))
