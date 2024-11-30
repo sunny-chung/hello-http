@@ -55,10 +55,14 @@ _Changes since 1.7.0-beta.1_
 - The size threshold of disabling syntax highlighting in Request/Payload text fields has been raised from 1.5 MB to 32 MB
 - JSON syntax highlighting does not tolerate syntax error now
 
+### Fixed
+- Crash on text deletion of lines that cover the whole current viewport
+
 ### Optimized
-- Performance of large text fields
-- Performance of JSON syntax highlighting -- processing a 30 MB JSON takes less than 0.1s now
+- Computation performance of large text fields
+- Computation performance of JSON syntax highlighting -- processing a 30 MB JSON takes less than 0.1s now
 - Memory use of JSON syntax highlighting
+- Peak memory use and computation performance of JSON prettifying
 
 ## [1.7.0-beta.1] - 2024-11-24
 

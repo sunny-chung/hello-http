@@ -764,10 +764,9 @@ fun BigTextLineNumbersView(
 
     val viewportTop = scrollState.value
     val visibleRows = bigTextViewState.calculateVisibleRowRange(viewportTop)
-    val firstLine = layoutText?.findOriginalLineIndexByRowIndex(visibleRows.first) ?: 0
-    val lastLine = (layoutText?.findOriginalLineIndexByRowIndex(visibleRows.last) ?: -100) + 1
-    log.d { "scroll = $viewportTop; visibleRows = $visibleRows (L $firstLine .. L $lastLine); totalLines = ${layoutText?.numOfOriginalLines}" }
+    log.d { "scroll = $viewportTop; visibleRows = $visibleRows; totalLines = ${layoutText?.numOfOriginalLines}" }
     val rowHeight = layoutResult?.rowHeight ?: 0f
+    // Note: it is possible that `visibleRows.first` > `visibleRows.last`, when the text covered by this range is removed.
     CoreLineNumbersView(
         firstRow = visibleRows.first,
         lastRow = visibleRows.endInclusive + 1,
