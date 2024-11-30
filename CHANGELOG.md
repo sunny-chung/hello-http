@@ -42,6 +42,7 @@ Note: For large request/response bodies, v1.7.0 has a higher memory usage than v
 ### Fixed
 - Request body editor, payload body editor and response body viewer are reimplemented. This fixes many of the issues or weird behavior known in Jetpack Compose text fields.
 - The copy button should not overlap with the search bar in the response body viewer.
+- After searching for a pattern in text editor, changing the search pattern should scroll to the first of new search results
 
 ### Optimized
 - Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without significant performance issues.
@@ -58,6 +59,7 @@ _Changes since 1.7.0-beta.1_
 ### Fixed
 - Crash on text deletion of lines that cover the whole current viewport
 - The Request/Payload text fields' viewport should scroll to follow the cursor while typing
+- After searching for a pattern in text editor, changing the search pattern should scroll to the first of new search results
 
 ### Optimized
 - Computation performance of large text fields

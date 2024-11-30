@@ -265,8 +265,6 @@ fun CodeEditorView(
                 Pattern.quote(searchText).toRegex(regexOption)
             }
             searchPattern = pattern
-            searchResultViewIndex = 0
-            lastSearchResultViewIndex = -1
             log.d { "set search pattern ${searchPattern?.pattern}" }
         } catch (_: Throwable) {}
     }
@@ -275,7 +273,7 @@ fun CodeEditorView(
     LaunchedEffect(bigTextValue) {
         withContext(Dispatchers.IO) {
             searchTrigger.receiveAsFlow()
-                .debounce(210L)
+                .debounce(410L)
                 .filter { isSearchVisible }
                 .collectLatest {
                     log.d { "search triggered ${searchPatternLatest?.pattern}" }
@@ -292,6 +290,8 @@ fun CodeEditorView(
                                 searchResultRangesState.value = r
                                 searchResultRangeTreeState.value = treeRangeMap
                                 log.d { "search r ${r.size}" }
+                                searchResultViewIndex = 0
+                                lastSearchResultViewIndex = -1
                             }
                         } catch (e: Throwable) {
                             log.d(e) { "search error" }
@@ -300,6 +300,8 @@ fun CodeEditorView(
                         withContext(Dispatchers.Main) {
                             searchResultRangesState.value = null
                             searchResultRangeTreeState.value = null
+                            searchResultViewIndex = 0
+                            lastSearchResultViewIndex = -1
                         }
                     }
                 }
@@ -363,9 +365,8 @@ fun CodeEditorView(
         )
     }
 
-
-    if (isSearchVisible) {
-        if (lastSearchResultViewIndex != searchResultViewIndex && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
+    if (isSearchVisible && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
+        remember(searchPattern, searchResultRanges, searchResultViewIndex, lastSearchResultViewIndex /* force scroll trigger */) {
             lastSearchResultViewIndex = searchResultViewIndex
             searchResultRanges!!.getOrNull(searchResultViewIndex)?.start?.let { position ->
                 if (position > layoutResult!!.text.length) return@let
