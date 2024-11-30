@@ -12,7 +12,7 @@ I must be crazy -- the text fields for request body and response body have been 
 
 The TODO list on README is also gradually being shortened as I am fulfilling the promises.
 
-Note: For large request/response bodies, v1.7.0 has a higher memory usage than v1.6.0 as a trade-off for fast performance. It would be improved in upcoming versions. Users with large concerns on memory usage may stay at v1.6.
+Note: For large request/response bodies, v1.7.0 has a higher memory usage than v1.6.0 as a trade-off for fast performance. It would be improved in upcoming versions. Users with large concerns on memory usage may stay at v1.6 until the improvement arrives.
 
 ### Added
 - Example-level variables
@@ -33,7 +33,8 @@ Note: For large request/response bodies, v1.7.0 has a higher memory usage than v
 - Update the label of "Copy as PowerShell Invoke-WebRequest command" to confine supporting PowerShell version 6 or above only (there is no change to the underlying logic)
 - Inherited values in Request Editor are now showing at the bottom rather than the top
 - Number of space characters to indent or unindent in Request Body and Payload editors are changed from 4 to 2
-- Syntax highlighting would be disabled for Request/Payload text fields that exceeding 1.5 MB size
+- Syntax highlighting would be disabled for Request/Payload text fields that exceeding 32 MB size
+- JSON syntax highlighting does not tolerate syntax error now
 
 ### Removed
 - Text fields and response body viewer now do not trim content over 4 MB (but other limits still apply)
@@ -47,8 +48,10 @@ Note: For large request/response bodies, v1.7.0 has a higher memory usage than v
 ### Optimized
 - Request body editor, payload body editor and response body viewer are now able to handle bodies with a size of megabytes without significant performance issues.
 - Clicking the "Send" button now never freeze for a short while.
+- Computation performance of JSON syntax highlighting -- processing a 30 MB JSON takes less than 0.1s now
+- Peak memory use and computation performance of JSON prettifying
 
-## [Unreleased -- 1.7.0-beta.2]
+## [1.7.0-beta.2] -- 2024-11-30
 
 _Changes since 1.7.0-beta.1_
 
