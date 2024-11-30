@@ -65,6 +65,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         http2AccumulatedInboundDataSerializeLimit: Int,
         doOnRequestSent: (HttpClientRequest) -> Unit,
     ) : WebClient {
+        log.d { "spring building client" }
         return WebClient.builder()
             .clientConnector(
                 buildHttpClient(
@@ -79,11 +80,14 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                     http2AccumulatedInboundDataSerializeLimit = http2AccumulatedInboundDataSerializeLimit,
                     onRequestSent = doOnRequestSent,
                 )
+                .also { log.d { "spring building connector" } }
                 .let { ReactorClientHttpConnector(it) }
+                .also { log.d { "spring init connector done" } }
             )
             .codecs { conf ->
                 conf.defaultCodecs()
                     .maxInMemorySize(22 * 1024 * 1024) // 22 MB
+                    .also { log.d { "spring init codecs done" } }
             }
             .build()
     }
@@ -98,6 +102,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         sslConfig: SslConfig,
         subprojectConfig: SubprojectConfiguration
     ): CallData {
+        log.d { "sendRequest start" }
         val uri = request.getResolvedUri()
         val data = createCallData(
             requestBodySize = null,
@@ -112,6 +117,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         val sentRequestHeaders: MutableList<Pair<String, String>> = mutableListOf()
 
         CoroutineScope(Dispatchers.IO).launch(coroutineExceptionHandler()) {
+            log.d { "net start coroutine" }
             data.cancel = {
                 log.i { "Cancel call #$callId" }
                 this.cancel("Cancel", it)
@@ -252,6 +258,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             }
             emitEvent(callId, "Response completed")
         }
+        log.d { "sendRequest return" }
         return data
     }
 }

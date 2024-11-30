@@ -93,7 +93,10 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
     ) : HttpClient {
 //        System.setProperty(ReactorNetty.SSL_CLIENT_DEBUG, "true")
 
+        log.d { "netty init 0" }
+
         val sslContext = createSslContext(sslConfig)
+        log.d { "netty init 1" }
         val frameLogger = Http2FramePeeker(
             outgoingBytesFlow = outgoingBytesFlow,
             incomingBytesFlow = incomingBytesFlow,
@@ -102,14 +105,19 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
         )
         val httpClientId = uuidString()
 
+        log.d { "netty init 2" }
+
         var isHttp2Established = false
         var isHttp2ClientConnectionPrefaceSent = false
         val writeQueue: Deque<ByteArray> = LinkedList<ByteArray>()
         var currentTotalWrittenBytes = 0
         val writeLock = Any()
 
+        log.d { "netty init 3" }
+
         return HttpClient.newConnection()
 //            .wiretap("NettyIO", LogLevel.ERROR, AdvancedByteBufFormat.SIMPLE, Charsets.UTF_8) // FIXME remove
+            .also { log.d { "netty init chain 1" } }
             .protocol(
                 *when (httpConfig.protocolVersion) {
                     HttpConfig.HttpProtocolVersion.Http1Only -> arrayOf(HttpProtocol.HTTP11)
@@ -122,6 +130,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                     }
                 }
             )
+            .also { log.d { "netty init chain 2" } }
             .secure { spec ->
                 spec.sslContext(
                     SslContextBuilder.forClient()
@@ -148,6 +157,7 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                         .build()
                 )
             }
+            .also { log.d { "netty init chain 3" } }
             .doOnChannelInit { connectionObserver, channel, socketAddress ->
                 fun http2ClientConnectionPrefaceListener(isPropagateEvent: Boolean): ChannelInboundHandlerAdapter = @ChannelHandler.Sharable object : ChannelInboundHandlerAdapter() {
                     override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
@@ -257,15 +267,19 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                     )
                 }
             }
+            .also { log.d { "netty init chain 4" } }
             .doOnResolve { conn, addr ->
                 emitEvent(callId, "DNS resolution of domain [${(addr as InetSocketAddress).hostName}] started") // TODO add domain name
             }
+            .also { log.d { "netty init chain 5" } }
             .doAfterResolve { conn, addr ->
                 emitEvent(callId, "DNS resolved to [${(addr as InetSocketAddress).address}]")
             }
+            .also { log.d { "netty init chain 6" } }
             .doOnResolveError { conn, e ->
                 emitEvent(callId, "DNS resolve error: ${e.message}")
             }
+            .also { log.d { "netty init chain 7" } }
             .doOnConnected { conn ->
                 val eventInstant = KInstant.now()
                 val eventDescription = buildString {
@@ -321,15 +335,19 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
 
                 log.d { "pipeline =>\n${conn.channel().pipeline().joinToString("\n") { it.key }}" }
             }
+            .also { log.d { "netty init chain 8" } }
             .doOnDisconnected {
                 emitEvent(callId, "Disconnected")
             }
+            .also { log.d { "netty init chain 9" } }
             .observe { connection, state ->
 //                emitEvent(callId, "Connection state => $state")
             }
+            .also { log.d { "netty init chain 10" } }
             .doAfterRequest { request, connection ->
                 onRequestSent(request)
             }
+            .also { log.d { "netty init chain 11" } }
             .loggingHandler(object : ChannelDuplexHandler() {
                 fun emitRawPayload(direction: RawExchange.Direction, channel: Channel?, payload: Any) {
                     if (isHttp2Established) {
@@ -445,18 +463,25 @@ open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientMa
                     super.flush(ctx)
                 }
             })
+            .also { log.d { "netty init chain 12" } }
             .http2FrameLogger(frameLogger)
+            .also { log.d { "netty init chain 13" } }
             .compress(true)
+            .also { log.d { "netty init chain 14" } }
             .headers { it.remove(HttpHeaderNames.ACCEPT_ENCODING) } // don't add "Accept-Encoding: gzip" header by default
+            .also { log.d { "netty init chain 15" } }
             .doOnResponse { resp, conn ->
                 log.i { "NettyIO onResponse" }
             }
+            .also { log.d { "netty init chain 16" } }
             .doOnRequestError { req, err ->
                 log.d(err) { "NettyIO doOnRequestError" }
             }
+            .also { log.d { "netty init chain 17" } }
             .doOnResponseError { resp, err ->
                 log.d(err) { "NettyIO doOnResponseError" }
             }
+            .also { log.d { "netty init chain 18" } }
     }
 
     protected fun readPayload(payload: Any?): ByteArray {

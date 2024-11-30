@@ -144,7 +144,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
 
     override fun getCallData(callId: String) = callData[callId]
 
-    protected fun createCallData(
+    fun createCallData(
         requestBodySize: Int?,
         requestExampleId: String,
         requestId: String,

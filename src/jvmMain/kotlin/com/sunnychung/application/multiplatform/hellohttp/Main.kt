@@ -25,6 +25,7 @@ import com.jayway.jsonpath.spi.mapper.MappingProvider
 import com.sunnychung.application.multiplatform.hellohttp.document.OperationalDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
 import com.sunnychung.application.multiplatform.hellohttp.error.MultipleProcessError
+import com.sunnychung.application.multiplatform.hellohttp.helper.InitClasses
 import com.sunnychung.application.multiplatform.hellohttp.helper.InitNativeClasses
 import com.sunnychung.application.multiplatform.hellohttp.model.UserPreference
 import com.sunnychung.application.multiplatform.hellohttp.model.Version
@@ -154,6 +155,7 @@ fun main() {
 
                     Thread {
                         InitNativeClasses()
+                        InitClasses()
                     }.start()
 
                     delay(500L)
