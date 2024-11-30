@@ -133,10 +133,10 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         }
     }
 
-    open suspend fun read(identifier: ID): T? {
+    open suspend fun read(identifier: ID, isKeepInCache: Boolean = true): T? {
         return withLock(identifier) {
             log.d { "readWithoutLock $identifier" }
-            readWithoutLock(identifier).also {
+            readWithoutLock(identifier, isKeepInCache).also {
                 log.d { "readWithoutLock $identifier done" }
             }
         }
@@ -146,20 +146,22 @@ sealed class BaseCollectionRepository<T : Document<ID>, ID : DocumentIdentifier>
         return persistenceManager.documentCaches[identifier] as T?
     }
 
-    private suspend fun readWithoutLock(identifier: ID): T? {
+    private suspend fun readWithoutLock(identifier: ID, isKeepInCache: Boolean): T? {
         return with(persistenceManager) {
             val cache = documentCaches[identifier]
             if (cache != null) return cache as T
             val persisted: T = readFile(relativeFilePath(id = identifier), serializer) ?: return null
-            documentCaches[identifier] = persisted
-            buildIndex(persisted)
+            if (isKeepInCache) {
+                documentCaches[identifier] = persisted
+                buildIndex(persisted)
+            }
             persisted
         }
     }
 
     open suspend fun readOrCreate(identifier: ID, documentSupplier: (ID) -> T): T {
         return withLock(identifier) {
-            val record = readWithoutLock(identifier)
+            val record = readWithoutLock(identifier, isKeepInCache = true)
             if (record != null) return@withLock record
             with(persistenceManager) {
                 val document = documentSupplier(identifier)

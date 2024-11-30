@@ -10,9 +10,9 @@ _Changes since 1.6.0_
 
 I must be crazy -- the text fields for request body and response body have been reinvented to optimize performance and fix known issues, since I am too unhappy with what the UI framework provides. Now a 4 MB JSON can be loaded and manipulated instantly, and it is still working good beyond 100 MB with millions of lines. The text fields would be further optimized and extended to replace all text fields in next minor versions.
 
-The TODO list on README is also gradually being shortened as I am fulfilling the promises.
+A critical memory usage bug has also been fixed. This can lower memory usage back to an expected level when there is no large request/response -- about 0.5 GB.
 
-Note: For large request/response bodies, v1.7.0 has a higher memory usage than v1.6.0 as a trade-off for fast performance. It would be improved in upcoming versions. Users with large concerns on memory usage may stay at v1.6 until the improvement arrives.
+The TODO list on README is also gradually being shortened as I am fulfilling the promises.
 
 ### Added
 - Example-level variables
@@ -42,6 +42,7 @@ Note: For large request/response bodies, v1.7.0 has a higher memory usage than v
 
 ### Fixed
 - Request body editor, payload body editor and response body viewer are reimplemented. This fixes many of the issues or weird behavior known in Jetpack Compose text fields.
+- The entire database, including all request and response bodies, should not be retained in memory. This can take up gigabytes of unnecessary memory.
 - The copy button should not overlap with the search bar in the response body viewer.
 - After searching for a pattern in text editor, changing the search pattern should scroll to the first of new search results
 

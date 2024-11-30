@@ -26,19 +26,19 @@ class DataDumpExporter {
         val requests = subprojects
             .mapNotNull {
                 val id = RequestsDI(subprojectId = it.id)
-                val doc = AppContext.RequestCollectionRepository.read(id) ?: return@mapNotNull null
+                val doc = AppContext.RequestCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
                 Pair(id, doc.requests)
             }
         val responses = subprojects
             .mapNotNull {
                 val id = ResponsesDI(subprojectId = it.id)
-                val doc = AppContext.ResponseCollectionRepository.read(id) ?: return@mapNotNull null
+                val doc = AppContext.ResponseCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
                 Pair(id, doc.responsesByRequestExampleId)
             }
         val apiSpecs = projects
             .mapNotNull {
                 val id = ApiSpecDI(projectId = it.id)
-                val doc = AppContext.ApiSpecificationCollectionRepository.read(id) ?: return@mapNotNull null
+                val doc = AppContext.ApiSpecificationCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
                 Pair(id, doc)
             }
 
@@ -52,12 +52,16 @@ class DataDumpExporter {
                 apiSpecs = apiSpecs,
             ),
         )
-        val bytes = codec.encodeToByteArray(dump)
+        run {
+            val bytes = codec.encodeToByteArray(dump)
 
-        // use FileManager for file locking, because export can be done both manually and by schedule
-        // not using FileManager's schema because the dump is supposed to be read by any application
-        AppContext.FileManager.withLock(file) {
-            file.writeBytes(bytes)
+            // use FileManager for file locking, because export can be done both manually and by schedule
+            // not using FileManager's schema because the dump is supposed to be read by any application
+            AppContext.FileManager.withLock(file) {
+                file.writeBytes(bytes)
+            }
         }
+
+        System.gc()
     }
 }

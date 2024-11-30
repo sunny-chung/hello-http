@@ -13,6 +13,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.encodeToStre
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.OperationalInfo
 import com.sunnychung.application.multiplatform.hellohttp.model.UserPreference
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -74,6 +75,7 @@ class PersistenceManager {
     internal suspend inline fun <T> readFile(relativePath: String, serializer: KSerializer<T>): T? {
         val file = dataFile(relativePath)
         if (!file.isFile) return null
+        log.d { "read file: $relativePath" }
         val bytes = fileManager.readFromFile(file)
         return codec.decodeFromByteArray(serializer, bytes)
     }
