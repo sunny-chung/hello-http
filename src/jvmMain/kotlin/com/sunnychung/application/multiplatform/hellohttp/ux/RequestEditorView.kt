@@ -1564,7 +1564,7 @@ private fun RequestBodyTextEditor(
             },
             outerPadding = PaddingValues(
                 top = 4.dp + with(LocalDensity.current) { textFieldPositionTop.toDp() },
-                end = 8.dp,
+                end = 16.dp,
             ),
             modifier = modifier,
         ) {
