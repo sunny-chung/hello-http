@@ -18,9 +18,11 @@ class BigTextViewState {
     var version: Long by mutableStateOf(0)
         internal set
 
+    @Deprecated("Use calculateVisibleRowRange")
     var firstVisibleRow: Int by mutableStateOf(0)
         internal set
 
+    @Deprecated("Use calculateVisibleRowRange")
     var lastVisibleRow: Int by mutableStateOf(0)
         internal set
 

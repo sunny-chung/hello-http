@@ -57,6 +57,7 @@ _Changes since 1.7.0-beta.1_
 
 ### Fixed
 - Crash on text deletion of lines that cover the whole current viewport
+- The Request/Payload text fields' viewport should scroll to follow the cursor while typing
 
 ### Optimized
 - Computation performance of large text fields

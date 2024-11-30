@@ -614,6 +614,7 @@ private fun CoreBigMonospaceText(
         if (isSaveUndoSnapshot) {
             text.recordCurrentChangeSequenceIntoUndoHistory()
         }
+        scrollToCursor()
     }
 
     fun onDelete(direction: TextFBDirection): Boolean {
@@ -636,6 +637,7 @@ private fun CoreBigMonospaceText(
                         (transformedText as BigTextImpl).printDebug("transformedText onDelete $direction")
                     }
                     text.recordCurrentChangeSequenceIntoUndoHistory()
+                    scrollToCursor()
                     return true
                 }
             }
@@ -654,6 +656,7 @@ private fun CoreBigMonospaceText(
                     viewState.transformedSelectionStart = viewState.transformedCursorIndex
                     log.v { "set cursor pos 3 => ${viewState.cursorIndex} t ${viewState.transformedCursorIndex}" }
                     text.recordCurrentChangeSequenceIntoUndoHistory()
+                    scrollToCursor()
                     return true
                 }
             }
