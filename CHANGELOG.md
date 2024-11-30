@@ -51,6 +51,15 @@ Note: For large request/response bodies, v1.7.0 has a higher memory usage than v
 - Computation performance of JSON syntax highlighting -- processing a 30 MB JSON takes less than 0.1s now
 - Peak memory use and computation performance of JSON prettifying
 
+
+## [1.7.0-beta.3] -- 2024-11-30
+
+_Changes since 1.7.0-beta.2_
+
+### Fixed
+- Crash on JSON syntax highlighting in distribution builds
+
+
 ## [1.7.0-beta.2] -- 2024-11-30
 
 _Changes since 1.7.0-beta.1_
@@ -69,6 +78,7 @@ _Changes since 1.7.0-beta.1_
 - Computation performance of JSON syntax highlighting -- processing a 30 MB JSON takes less than 0.1s now
 - Memory use of JSON syntax highlighting
 - Peak memory use and computation performance of JSON prettifying
+
 
 ## [1.7.0-beta.1] - 2024-11-24
 
