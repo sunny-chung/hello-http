@@ -22,37 +22,37 @@ class DataDumpExporter {
     }
 
     suspend fun exportToFile(projects: List<Project>, file: File) {
-        val subprojects = projects.flatMap { it.subprojects }
-        val requests = subprojects
-            .mapNotNull {
-                val id = RequestsDI(subprojectId = it.id)
-                val doc = AppContext.RequestCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
-                Pair(id, doc.requests)
-            }
-        val responses = subprojects
-            .mapNotNull {
-                val id = ResponsesDI(subprojectId = it.id)
-                val doc = AppContext.ResponseCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
-                Pair(id, doc.responsesByRequestExampleId)
-            }
-        val apiSpecs = projects
-            .mapNotNull {
-                val id = ApiSpecDI(projectId = it.id)
-                val doc = AppContext.ApiSpecificationCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
-                Pair(id, doc)
-            }
-
-        val dump = DataDump(
-            schemaVersion = schemaVersion,
-            createdAt = KInstant.now(),
-            data = DataDump.Data(
-                projects = projects,
-                requests = requests,
-                responses = responses,
-                apiSpecs = apiSpecs,
-            ),
-        )
         run {
+            val subprojects = projects.flatMap { it.subprojects }
+            val requests = subprojects
+                .mapNotNull {
+                    val id = RequestsDI(subprojectId = it.id)
+                    val doc = AppContext.RequestCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
+                    Pair(id, doc.requests)
+                }
+            val responses = subprojects
+                .mapNotNull {
+                    val id = ResponsesDI(subprojectId = it.id)
+                    val doc = AppContext.ResponseCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
+                    Pair(id, doc.responsesByRequestExampleId)
+                }
+            val apiSpecs = projects
+                .mapNotNull {
+                    val id = ApiSpecDI(projectId = it.id)
+                    val doc = AppContext.ApiSpecificationCollectionRepository.read(id, isKeepInCache = false) ?: return@mapNotNull null
+                    Pair(id, doc)
+                }
+
+            val dump = DataDump(
+                schemaVersion = schemaVersion,
+                createdAt = KInstant.now(),
+                data = DataDump.Data(
+                    projects = projects,
+                    requests = requests,
+                    responses = responses,
+                    apiSpecs = apiSpecs,
+                ),
+            )
             val bytes = codec.encodeToByteArray(dump)
 
             // use FileManager for file locking, because export can be done both manually and by schedule
