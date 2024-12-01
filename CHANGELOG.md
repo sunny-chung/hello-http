@@ -53,6 +53,17 @@ The TODO list on README is also gradually being shortened as I am fulfilling the
 - Peak memory use and computation performance of JSON prettifying
 
 
+## [1.7.0-beta.4] -- 2024-12-01
+
+_Changes since 1.7.0-beta.3_
+
+### Fixed
+- The entire database, including all request and response bodies, should not be retained in memory. This can take up gigabytes of unnecessary memory.
+
+### Optimized
+- The pause immediately after firing requests before UI updates has been lowered.
+
+
 ## [1.7.0-beta.3] -- 2024-11-30
 
 _Changes since 1.7.0-beta.2_
