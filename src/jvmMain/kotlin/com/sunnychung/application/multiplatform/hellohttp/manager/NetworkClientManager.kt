@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import com.jayway.jsonpath.JsonPath
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -25,6 +26,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
+import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -260,17 +262,17 @@ class NetworkClientManager : CallDataStore {
         requestExampleToCallMapping[requestExampleId]
             ?.let { callDataMap[it] }
 
-    fun getResponseByRequestExampleId(requestExampleId: String) =
+    fun getResponseByRequestExampleId(requestExampleId: String): UserResponse? =
         getCallDataByRequestExampleId(requestExampleId)
             ?.response
 
-    fun getStatusByRequestExampleId(requestExampleId: String) =
+    fun getStatusByRequestExampleId(requestExampleId: String): ConnectionStatus =
         getCallDataByRequestExampleId(requestExampleId)
             ?.status
             ?: ConnectionStatus.DISCONNECTED
 
     @Composable
-    fun subscribeToRequestExampleCall(requestExampleId: String) =
+    fun subscribeToRequestExampleCall(requestExampleId: String): State<NetworkEvent?>? =
         getCallDataByRequestExampleId(requestExampleId)
             ?.eventsStateFlow
             ?.onEach { log.d { "callDataUpdates onEach ${it?.event}" } }

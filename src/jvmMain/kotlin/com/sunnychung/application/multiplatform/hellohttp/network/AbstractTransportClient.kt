@@ -195,11 +195,13 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                         val lastExchange = data.response.rawExchange.exchanges.lastOrNull()
                         lastExchange?.consumePayloadBuilder(isComplete = false)
                     }
-                    data.response.rawExchange.exchanges += RawExchange.Exchange(
-                        instant = it.instant,
-                        direction = RawExchange.Direction.Unspecified,
-                        detail = it.event
-                    )
+                    if (it.event.isNotEmpty()) { // there are some "empty" events not for display
+                        data.response.rawExchange.exchanges += RawExchange.Exchange(
+                            instant = it.instant,
+                            direction = RawExchange.Direction.Unspecified,
+                            detail = it.event
+                        )
+                    }
                 }
             }
             .launchIn(CoroutineScope(Dispatchers.IO))

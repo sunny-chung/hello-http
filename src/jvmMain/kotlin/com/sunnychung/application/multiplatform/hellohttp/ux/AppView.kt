@@ -691,12 +691,16 @@ fun AppContentView() {
                             }
                         }
                         second(minSize = 200.dp) {
+                            callDataUpdates // subscribe to call updates
                             ResponseViewerView(
-                                response = response?.copy() ?: UserResponse(
-                                    id = "-",
-                                    requestId = "-",
-                                    requestExampleId = "-"
-                                ),
+                                response = selectedRequestExampleId
+                                    ?.let(networkClientManager::getResponseByRequestExampleId)
+                                    ?: response?.copy()
+                                    ?: UserResponse(
+                                        id = "-",
+                                        requestId = "-",
+                                        requestExampleId = "-"
+                                    ),
                                 connectionStatus = selectedRequestExampleId
                                     ?.let(networkClientManager::getStatusByRequestExampleId)
                                     ?: ConnectionStatus.DISCONNECTED,

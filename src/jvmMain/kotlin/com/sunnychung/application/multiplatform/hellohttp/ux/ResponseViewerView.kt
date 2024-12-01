@@ -362,6 +362,8 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateT
     val startAt = response.startAt ?: return
     val timerAt = response.endAt ?: if (connectionStatus.isConnectionActive()) KInstant.now() else return
     val duration = timerAt - startAt
+    updateTime // subscribe to timer update
+    log.v { "response duration update to $duration" }
     val text = if (duration >= KDuration.of(10, KFixedTimeUnit.Second)) {
         "${"%.1f".format(duration.toMilliseconds() / 1000.0)} s"
     } else {

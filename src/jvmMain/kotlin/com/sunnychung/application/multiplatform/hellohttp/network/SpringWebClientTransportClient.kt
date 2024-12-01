@@ -229,6 +229,8 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
 
                 log.i { "Request started at ${out.startAt!!.atLocalZoneOffset()}" }
 
+                emitEvent(data.id, "") // update the UI
+
                 requestBuilder
                     .awaitExchangeOrNull { resp ->
                         val response: HttpClientResponse = DefaultClientResponseFieldResponse.get(resp)
