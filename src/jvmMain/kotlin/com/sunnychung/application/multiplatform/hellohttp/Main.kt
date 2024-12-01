@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import co.touchlab.kermit.MutableLoggerConfig
+import co.touchlab.kermit.Severity
 import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.Option
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider
@@ -35,6 +37,7 @@ import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.DataLossWarningDialogWindow
 import io.github.dralletje.ktreesitter.graphql.TreeSitterGraphql
@@ -52,10 +55,29 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
-fun main() {
+fun main(args: Array<String>) {
     System.setProperty("apple.awt.application.appearance", "system")
 //    System.setProperty("skiko.renderApi", "OPENGL") // IllegalArgumentException: "MacOS does not support OPENGL rendering API."
 //    System.setProperty("skiko.renderApi", "SOFTWARE")
+    if (args.isNotEmpty()) {
+        println("args = [${args.joinToString(",") { "'$it'" }}]")
+        args.forEach { arg ->
+            when {
+                arg.startsWith("--logLevel=") -> {
+                    val logLevel = when (val l = arg.removePrefix("--logLevel=").trim()) {
+                        "verbose" -> Severity.Verbose
+                        "debug" -> Severity.Debug
+                        "info" -> Severity.Info
+                        "warn" -> Severity.Warn
+                        "error" -> Severity.Error
+                        else -> throw IllegalArgumentException("Unknown log level $l")
+                    }
+                    (log.config as MutableLoggerConfig).minSeverity = logLevel
+                }
+                else -> throw IllegalArgumentException("Unknown option $arg")
+            }
+        }
+    }
     val appDir = AppDirsFactory.getInstance().getUserDataDir("Hello HTTP", null, null)
     println("appDir = $appDir")
     AppContext.dataDir = File(appDir)
