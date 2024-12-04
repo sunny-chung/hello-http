@@ -12,7 +12,7 @@ title: Hello HTTP
 [![Release](https://img.shields.io/github/v/release/sunny-chung/hello-http)](https://github.com/sunny-chung/hello-http/releases)
 
 This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket, GraphQL (including
-subscriptions) and gRPC endpoints. This is an alternative to Postman, Insomnia REST, etc., but not another web app.
+subscriptions) and gRPC endpoints. This is an alternative to Postman, Insomnia REST, etc., but not another web app. This software is portable, so no installation is needed.
 
 ![Screenshot 1](screenshot1.png)
 ![Screenshot 2](screenshot2.png)

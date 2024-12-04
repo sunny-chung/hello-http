@@ -5,19 +5,16 @@
 [![Website](https://img.shields.io/badge/website-Hello%20HTTP-yellow)](https://sunny-chung.github.io/hello-http/)
 [![Verification Tests](https://github.com/sunny-chung/hello-http/actions/workflows/run-test.yaml/badge.svg?branch=main)](https://github.com/sunny-chung/hello-http/actions/workflows/run-test.yaml?query=branch%3Amain)
 
-This is a cross-platform HTTP client desktop application for testing HTTP and REST APIs, WebSocket, GraphQL (including
+This is a cross-platform [portable](https://en.wikipedia.org/wiki/Portable_application) HTTP client desktop application for testing HTTP and REST APIs, WebSocket, GraphQL (including
 subscriptions) and gRPC endpoints. This is an alternative to Postman, Insomnia REST, etc.
 
 ![Screenshot 1](doc/_include/screenshot1.png)
 ![Screenshot 2](doc/_include/screenshot2.png)
 ![Screenshot GraphQL Subscription](doc/_include/screenshot-graphql-subscription.png)
 
-This was made because of the decision these software made to go cloud and some of their imperfects.
+This software was made because of the decision these software made to go cloud and some of their imperfects. Only you own your data. There is no plan to go cloud.
 
 Though this was built to address my daily needs, hope this could also help solving many of your problems!
-There is no plan to go a shared cloud, but it might be possible at a later stage to go online under clouds managed by
-users themselves, for example, users' Dropbox, users' S3, or users' Git repository. That is a bit far at this
-moment.
 
 ## Status
 
@@ -25,100 +22,14 @@ moment.
 - **Windows** - Stable since v1.4.1
 - **Linux** - Stable since v1.4.3
 
-Filing bug reports are much appreciated. It would help addressing issues quickly. Normally, critical bugs are
-fixed and released within 3 days.
+[Filing bug reports](https://github.com/sunny-chung/hello-http/issues), creating feature requests or [throwing ideas](https://github.com/sunny-chung/hello-http/discussions) are much appreciated. I would be glad to hear what users think and want.
+
+Rest assured that the software is regularly tested. Below full test result was snapshot from a pre-release build of v1.7.0. Individual test results can be examined on [GitHub](https://github.com/sunny-chung/hello-http/actions/workflows/run-test.yaml).
+![Test Results](doc/_include/quality-tests.png)
 
 ## Features
 
-Watch the images and videos on the [website](https://sunny-chung.github.io/hello-http/). All the below can be skipped.
-
----
-
-**Data**
-- **Only you own your data** - no mandatory online registration or request collection sharing
-- Automatic local regular backup - no more frustrations due to misclicking delete buttons and mistakes
-  - configurable backup retention period (default 15 days)
-  - backup at every launch and every 6 hours while the application is running
-  - you can make it online by e.g. mounting the backup directory to Dropbox or writing rsync scripts
-- Data freedom - your data is not locked to one software
-  - Import from
-    - Insomnia
-    - Postman
-  - Export to
-    - Insomnia
-    - Postman
-    - (make feature requests for more destinations)
-- Selective exports
-
-**Requests and Projects**
-- Firing HTTP/1.1 and HTTP/2 requests
-  - with HTTP methods:
-    - GET
-    - POST
-    - PUT
-    - PATCH
-    - DELETE
-    - OPTIONS
-    - HEAD
-    - any other custom defined
-  - with request body varieties:
-    - Form URL-encoded
-    - Multipart Form with file upload
-    - JSON
-    - Raw String
-    - Binary File
-    - None
-  - with query parameters and headers
-- Connecting and sending payloads to WebSocket and gRPC endpoints
-- GraphQL queries, mutations and subscriptions
-- Request management with infinite nested folders
-- Different kinds of requests can coexist in the same folder
-- Multiple examples (request templates) with 1-level inheritance for each request - handle different scenario of the same API in the same request entry
-- Multiple payload examples for WebSocket requests
-- Multiple subprojects per project, designed for multiple services use
-- Multiple environments (no inheritance) per subproject, in which each one has
-  - Environment variables that can be embedded anywhere in the request (type `${{variable-name}}`)
-  - SSL configuration
-    - Additional trusted CA certificates
-    - Option to disable system CA certificates
-    - Client certificate
-    - Option to disable SSL Verification
-  - HTTP protocol preference
-- Functions that can be resolved anywhere in the request:
-  - UUID (type `$((uuid))`)
-  - Current date-time ISO-8601 string (type `$((now.iso8601))`)
-  - Current timestamp (type `$((now.epochMills))` or `$((now.epochSeconds))`)
-- Executing custom safe script to mutate a Request before firing it
-- Copying as verbose cURL commands
-- Copying as verbose [grpcurl](https://github.com/fullstorydev/grpcurl) commands
-- Copying as PowerShell Invoke-WebRequest command (for Windows pwsh.exe version 6 or above)
-
-**Response**
-- Post flight actions
-  - update environment variables according to a request field (JSON path) or header
-- Transport I/O timeline view
-  - DNS lookup, connection and SSL events
-  - Raw HTTP/1.1 messages
-  - HTTP/2 decoded frames with push promises
-- Message streaming from WebSocket communications
-- Message streaming from GraphQL subscriptions
-- Message streaming from gRPC communications
-- Persistence per request example
-- Searching in response body
-- Collapsable JSON response body
-- Filtering JSON response body by [JSON path](https://github.com/json-path/JsonPath)
-- Automatic gzip / deflate decompression
-- Connection security indicator (Unencrypted / Unverified TLS / Verified One-way TLS / Verified mTLS)
-- Certificates in use
-
-**Appearance and Interactions**
-- Dark and light theme
-- Syntax highlighting for JSON and GraphQL
-- Confirmation is made before executing any delete action
-- Handy buttons for copying requests, responses or transport logs to clipboard
-
-**Others**
-- Best effort to make executables portable. Installation is not mandatory.
+Watch the images and videos on the [website](https://sunny-chung.github.io/hello-http/).
 
 ## Executables are not signed by verified developers
 
@@ -143,9 +54,9 @@ Clearing this directory would reset the application.
 
 ## Performance
 
-Honestly, Hello HTTP is not yet performance-oriented. It is not another web app. It relies on JVM, so it demands a
-significant amount of memory (about 0.5 GB). But, it still outperforms many web apps. It performs very well on a
-Windows laptop with 8 GB RAM without a noticeable performance degrade of other applications.
+In regular usage, it demands about 0.5 GB memory. It performs very well on a Windows laptop with 8 GB RAM without a noticeable performance degrade of other applications.
+
+It is also capable of loading large content without slowing down user interactions, although that would consume a significant amount of memory.
 
 ## Planned
 
@@ -164,4 +75,6 @@ Hello HTTP heavily relies on [Jetpack Compose Multiplatform](https://www.jetbrai
 There are quite a number of components built from scratch. Please file a request if you would like them to become a
 reusable library.
 
-This project can be edited by any code editor that supports Kotlin 1.8, though IntelliJ IDEA is recommended.
+This project can be edited by any code editor that supports Kotlin 1.9, though IntelliJ IDEA is recommended.
+
+I am also seeking for an experienced UI/UX designer to improve this project.

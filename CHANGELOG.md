@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+
+## [1.7.0] -- 2024-12-05
+
 _Changes since 1.6.0_
 
 I must be crazy -- the text fields for request body and response body have been reinvented to optimize performance and fix known issues, since I am too unhappy with what the UI framework provides. Now a 4 MB JSON can be loaded and manipulated instantly, and it is still working good beyond 100 MB with millions of lines. The text fields would be further optimized and extended to replace all text fields in next minor versions.
