@@ -34,6 +34,7 @@ import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenceDI
+import com.sunnychung.application.multiplatform.hellohttp.error.ApplicationException
 import com.sunnychung.application.multiplatform.hellohttp.exporter.DataDumpExporter
 import com.sunnychung.application.multiplatform.hellohttp.exporter.InsomniaV4Exporter
 import com.sunnychung.application.multiplatform.hellohttp.exporter.PostmanV2MultiFileExporter
@@ -54,6 +55,7 @@ import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import kotlinx.coroutines.runBlocking
 import java.awt.Desktop
 import java.io.File
+import java.io.IOException
 
 @Composable
 fun SettingDialogView(closeDialog: () -> Unit) {
@@ -169,24 +171,41 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
             AppTextButton(
                 text = "Import",
                 onClick = {
-                    runBlocking { // TODO change to suspend in background
-                        // FIXME error handling
-                        when (importFileFormat) {
-                            ImportFormat.`Hello HTTP Data Dump` -> {
-                                DataDumpImporter().importAsProjects(file!!)
-                            }
-                            ImportFormat.`Insomnia v4 JSON` -> {
-                                InsomniaV4Importer().importAsProject(file = file!!, projectName = projectName)
-                            }
-                            ImportFormat.`Postman v2 ZIP Data Dump` -> {
-                                PostmanV2ZipImporter().importAsProjects(file!!)
-                            }
-                            ImportFormat.`Postman v2 JSON Single Collection` -> {
-                                PostmanV2JsonImporter().importAsProject(file = file!!, projectName = projectName)
+                    try {
+                        runBlocking { // TODO change to suspend in background
+                            // FIXME error handling
+                            val file = file ?: throw ApplicationException("Please select a file to continue.")
+                            if (!file.isFile) throw ApplicationException("The selected file is not a regular file.")
+                            if (!file.canRead()) throw ApplicationException("The selected file is not readable.")
+                            when (importFileFormat) {
+                                ImportFormat.`Hello HTTP Data Dump` -> {
+                                    DataDumpImporter().importAsProjects(file!!)
+                                }
+
+                                ImportFormat.`Insomnia v4 JSON` -> {
+                                    InsomniaV4Importer().importAsProject(file = file!!, projectName = projectName)
+                                }
+
+                                ImportFormat.`Postman v2 ZIP Data Dump` -> {
+                                    PostmanV2ZipImporter().importAsProjects(file!!)
+                                }
+
+                                ImportFormat.`Postman v2 JSON Single Collection` -> {
+                                    PostmanV2JsonImporter().importAsProject(file = file!!, projectName = projectName)
+                                }
                             }
                         }
+                        closeDialog()
+                    } catch (e: Throwable) {
+                        val errorMessage = if (e is ApplicationException) {
+                            e.message!!
+                        } else if (e is IOException) {
+                            "Fail to import due to an I/O error.\n\nDetail: ${e.message ?: "-"}"
+                        } else {
+                            "Fail to import. The file is not in a supported format.\n\nDetail: ${e.message ?: "-"}"
+                        }
+                        AppContext.ErrorMessagePromptViewModel.showErrorMessage(errorMessage)
                     }
-                    closeDialog()
                 },
                 modifier = Modifier.padding(top = 8.dp),
             )
