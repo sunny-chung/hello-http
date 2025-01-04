@@ -156,7 +156,7 @@ fun CodeEditorView(
 
         val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
         val previousLineString = bigTextValue.findLineString(lineIndex) // as '\n' is not yet inputted, current line is the "previous line"
-        val spacesMatch = "^(\\s+)".toRegex().matchAt(previousLineString, 0)
+        val spacesMatch = "^([ \t]+)".toRegex().matchAt(previousLineString, 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
         textManipulator.replaceAtCursor(newSpaces)
     }
