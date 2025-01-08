@@ -7,8 +7,8 @@ import androidx.compose.ui.text.font.FontWeight
 import com.sunnychung.application.multiplatform.hellohttp.util.VisitScope
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.visit
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
 import io.github.dralletje.ktreesitter.graphql.TreeSitterGraphql
 import io.github.treesitter.ktreesitter.Language
 import io.github.treesitter.ktreesitter.Node

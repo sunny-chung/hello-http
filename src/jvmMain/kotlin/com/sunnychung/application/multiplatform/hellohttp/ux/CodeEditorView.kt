@@ -61,20 +61,10 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
+import com.sunnychung.application.multiplatform.hellohttp.util.let
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppUX.ENV_VAR_VALUE_MAX_DISPLAY_LENGTH
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigMonospaceTextField
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextFieldState
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextInputFilter
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextKeyboardInputProcessor
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextSimpleLayoutResult
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformed
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.rememberConcurrentLargeAnnotatedBigTextFieldState
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
@@ -83,12 +73,23 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightLinearDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.SearchHighlightDecorator
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformed
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextField
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextInputFilter
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextKeyboardInputProcessor
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextLabel
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextSimpleLayoutResult
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextViewState
+import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -126,7 +127,7 @@ fun CodeEditorView(
     isEnableVariables: Boolean = false,
     knownVariables: Map<String, String> = mutableMapOf(),
     onMeasured: ((textFieldPositionTop: Float) -> Unit)? = null,
-    onTextManipulatorReady: ((BigTextManipulator) -> Unit)? = null,
+    onTextManipulatorReady: ((BigTextFieldState) -> Unit)? = null,
     testTag: String? = null,
 ) {
     log.d { "CodeEditorView start. cache key = '$cacheKey'" }
@@ -150,23 +151,24 @@ fun CodeEditorView(
     val collapsedChars = rememberLast(bigTextFieldState) { mutableStateMapOf<IntRange, IntRange>() }
 
     log.d { "CodeEditorView recompose" }
+    onTextManipulatorReady?.invoke(bigTextFieldState)
 
-    fun onPressEnterAddIndent(textManipulator: BigTextManipulator) {
+    fun onPressEnterAddIndent() {
         log.d { "onPressEnterAddIndent" }
 
         val lineIndex = bigTextValue.findLineAndColumnFromRenderPosition(bigTextFieldState.viewState.cursorIndex).first
         val previousLineString = bigTextValue.findLineString(lineIndex) // as '\n' is not yet inputted, current line is the "previous line"
         val spacesMatch = "^([ \t]+)".toRegex().matchAt(previousLineString, 0)
         val newSpaces = "\n" + (spacesMatch?.groups?.get(1)?.value ?: "")
-        textManipulator.replaceAtCursor(newSpaces)
+        bigTextFieldState.replaceTextAtCursor(newSpaces)
     }
 
-    fun onPressTab(textManipulator: BigTextManipulator, isShiftPressed: Boolean) {
+    fun onPressTab(isShiftPressed: Boolean) {
         val vs = bigTextFieldState.viewState
         val text = bigTextFieldState.text
         if (!isShiftPressed && !vs.hasSelection()) {
             val newSpaces = " ".repeat(INDENT_SPACES)
-            textManipulator.replaceAtCursor(newSpaces)
+            bigTextFieldState.replaceTextAtCursor(newSpaces)
             return
         }
 
@@ -191,12 +193,12 @@ fun CodeEditorView(
                 val newSpaces = " ".repeat(INDENT_SPACES)
                 selectionStartChange = newSpaces.length
                 selectionEndChange += newSpaces.length
-                textManipulator.insertAt(linePosStart, newSpaces)
+                bigTextValue.insertAt(linePosStart, newSpaces)
             } else { // decrease indent
                 val line = text.findLineString(it)
                 val textToBeDeleted = "^( {1,$INDENT_SPACES}|\t)".toRegex().matchAt(line, 0) ?: return@forEach
                 val rangeToBeDeleted = linePosStart until linePosStart + textToBeDeleted.groups[1]!!.range.length
-                textManipulator.delete(rangeToBeDeleted)
+                bigTextValue.delete(rangeToBeDeleted)
 
                 if (it == lineRange.first) {
                     selectionStartChange -= textToBeDeleted.groups[1]!!.range.length
@@ -215,12 +217,12 @@ fun CodeEditorView(
         log.d { "tab ∆sel = $selectionStartChange, $selectionEndChange" }
         if (selectionStartChange != 0 || selectionEndChange != 0) {
             if (vs.hasSelection()) {
-                textManipulator.setSelection(vs.selection.start + selectionStartChange..vs.selection.endInclusive + selectionEndChange)
+                vs.setSelection(vs.selection.start + selectionStartChange..vs.selection.endInclusive + selectionEndChange)
             }
             if (isCursorAtSelectionStart) {
-                textManipulator.setCursorPosition(vs.cursorIndex + selectionStartChange)
+                vs.setCursorIndex(vs.cursorIndex + selectionStartChange)
             } else {
-                textManipulator.setCursorPosition(vs.cursorIndex + selectionEndChange)
+                vs.setCursorIndex(vs.cursorIndex + selectionEndChange)
             }
         }
     }
@@ -349,9 +351,10 @@ fun CodeEditorView(
             when (syntaxHighlight) {
                 SyntaxHighlight.None -> emptyList()
 //                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightDecorator(themeColours))
-                SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
 //                SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightSlowDecorator(themeColours))
                 SyntaxHighlight.Json -> listOf(JsonSyntaxHighlightLinearDecorator(themeColours))
+                SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
+//                SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightSlowDecorator(themeColours))
                 SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
             }
         }
@@ -368,11 +371,11 @@ fun CodeEditorView(
     if (isSearchVisible && layoutResult != null && textFieldSize != null && searchResultRanges != null) {
         remember(searchPattern, searchResultRanges, searchResultViewIndex, lastSearchResultViewIndex /* force scroll trigger */) {
             lastSearchResultViewIndex = searchResultViewIndex
-            searchResultRanges!!.getOrNull(searchResultViewIndex)?.start?.let { position ->
-                if (position > layoutResult!!.text.length) return@let
+            let(searchResultRanges!!.getOrNull(searchResultViewIndex)?.start, layoutResult?.text) { position, text ->
+                if (position > text.length) return@let
 
                 val visibleVerticalRange = scrollState.value .. scrollState.value + textFieldSize!!.height
-                val rowIndex = layoutResult!!.text.findRowIndexByPosition(position)
+                val rowIndex = text.findRowIndexByPosition(position)
                 val rowVerticalRange = layoutResult!!.getTopOfRow(rowIndex).toInt()  .. layoutResult!!.getBottomOfRow(rowIndex).toInt()
                 if (rowVerticalRange !in visibleVerticalRange) {
                     coroutineScope.launch {
@@ -505,7 +508,7 @@ fun CodeEditorView(
                         collapseIncrementalTransformation.update(collapsedChars.values.toList(), bigTextFieldState.viewState)
                     }
 
-                    BigMonospaceText(
+                    BigTextLabel(
                         text = bigTextValue,
                         color = textColor,
                         padding = PaddingValues(4.dp),
@@ -577,7 +580,7 @@ fun CodeEditorView(
                         } ?: "",
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        BigMonospaceTextField(
+                        BigTextField(
                             textFieldState = bigTextFieldState,
                             inputFilter = inputFilter,
                             textTransformation = remember(variableTransformations) {
@@ -590,16 +593,15 @@ fun CodeEditorView(
                             //},
                             ,
                             color = textColor,
+                            cursorColor = themeColours.cursor,
                             fontSize = fonts.codeEditorBodyFontSize,
                             fontFamily = fonts.monospaceFontFamily,
                             scrollState = scrollState,
                             onTextLayout = { layoutResult = it },
-                            onTextManipulatorReady = onTextManipulatorReady,
                             keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
                                 override fun beforeProcessInput(
                                     it: KeyEvent,
-                                    viewState: BigTextViewState,
-                                    textManipulator: BigTextManipulator
+                                    viewState: BigTextViewState
                                 ): Boolean {
                                     return if (it.type == KeyEventType.KeyDown) {
                                         when (it.key) {
@@ -609,7 +611,7 @@ fun CodeEditorView(
                                                     && !it.isCtrlPressed
                                                     && !it.isMetaPressed
                                                 ) {
-                                                    onPressEnterAddIndent(textManipulator)
+                                                    onPressEnterAddIndent()
                                                     true
                                                 } else {
                                                     false
@@ -617,7 +619,7 @@ fun CodeEditorView(
                                             }
 
                                             Key.Tab -> {
-                                                onPressTab(textManipulator, it.isShiftPressed)
+                                                onPressTab(it.isShiftPressed)
                                                 true
                                             }
 

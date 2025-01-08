@@ -9,12 +9,11 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.util.VisitScope
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.toPoint
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEventType
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.CacheableBigTextDecorator
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEvent
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEventType
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextImpl
+import com.sunnychung.lib.multiplatform.bigtext.core.CacheableBigTextDecorator
 import io.github.treesitter.ktreesitter.InputEdit
 import io.github.treesitter.ktreesitter.Language
 import io.github.treesitter.ktreesitter.Node

@@ -1,8 +1,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental
 
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEvent
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 
 class MultipleTextDecorator(val decorators: List<BigTextDecorator>): BigTextDecorator {
     override fun initialize(text: BigText) {

@@ -7,8 +7,8 @@ import com.google.common.collect.TreeRangeMap
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 
 class SearchHighlightDecorator(private val searchResultRangesTree: TreeRangeMap<Int, Int>, val currentIndex: Int?, colours: AppColor)
     : BigTextDecorator {

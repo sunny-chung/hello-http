@@ -19,7 +19,7 @@ interface RedBlackTreeComputations<T : Comparable<T>> {
 
 open class RedBlackTree2<T>(private val computations: RedBlackTreeComputations<T>) : RedBlackTree<T>() where T : Comparable<T>, T : DebuggableNode<in T> {
 
-    fun getRoot() = root
+//    fun getRoot() = root
 
     fun setRoot(node: RedBlackTree<T>.Node) {
         root = node

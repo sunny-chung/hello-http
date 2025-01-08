@@ -89,13 +89,13 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIn
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
 import graphql.language.OperationDefinition
 import graphql.language.OperationDefinition.Operation
 import java.io.File
@@ -1523,7 +1523,7 @@ private fun RequestBodyTextEditor(
     val colors = LocalColor.current
     val baseExample = request.examples.first()
 
-    var textManipulator by remember(cacheKey) { mutableStateOf<BigTextManipulator?>(null) }
+    var textManipulator by remember(cacheKey) { mutableStateOf<BigTextFieldState?>(null) }
     val changeText = { it: String ->
         onRequestModified(
             request.copy(
@@ -1540,7 +1540,8 @@ private fun RequestBodyTextEditor(
             try {
                 val prettified = JsonParser(code).prettify().prettyString
                 changeText(prettified)
-                textManipulator?.replace(0 until code.length, prettified)
+                textManipulator?.viewState?.setSelection(0 until (textManipulator?.text?.length ?: 0))
+                textManipulator?.replaceTextAtCursor(prettified)
             } catch (e: Throwable) {
                 AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: "Error while prettifying as JSON")
             }
@@ -1575,6 +1576,7 @@ private fun RequestBodyTextEditor(
                 knownVariables = environmentVariables,
                 initialText = content,
                 onTextChange = changeText,
+                // this is an anti-pattern. suppose when BigText is passed from parent composables, no reverse control is needed.
                 onTextManipulatorReady = { textManipulator = it },
                 onMeasured = { textFieldPositionTop = it },
                 syntaxHighlight = syntaxHighlight,

@@ -6,16 +6,17 @@ import androidx.compose.ui.text.font.FontFamily
 import com.sunnychung.application.multiplatform.hellohttp.constant.UserFunctions
 import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersectWith
 import com.sunnychung.application.multiplatform.hellohttp.util.RangeWithResult
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEventType
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformer
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.IncrementalTextTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEvent
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEventType
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformOffsetMapping
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformer
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
 
-class FunctionIncrementalTransformation(private val themeColors: AppColor, font: AppFont) : IncrementalTextTransformation<Unit> {
+class FunctionIncrementalTransformation(private val themeColors: AppColor, font: AppFont) :
+    IncrementalTextTransformation<Unit> {
     val processLengthLimit = 30
 
     private val functionRegex =

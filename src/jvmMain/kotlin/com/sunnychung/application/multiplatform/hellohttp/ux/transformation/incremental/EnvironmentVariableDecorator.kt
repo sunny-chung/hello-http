@@ -3,11 +3,12 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.transformation.inc
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 
-class EnvironmentVariableDecorator(themeColors: AppColor, font: AppFont, val knownVariables: Set<String>) : BigTextDecorator {
+class EnvironmentVariableDecorator(themeColors: AppColor, font: AppFont, val knownVariables: Set<String>) :
+    BigTextDecorator {
     val knownVariableStyle = SpanStyle(
         color = themeColors.variableTextColor,
         background = themeColors.variableBackgroundColor,
