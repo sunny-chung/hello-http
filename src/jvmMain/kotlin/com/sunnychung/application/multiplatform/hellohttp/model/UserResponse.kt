@@ -187,7 +187,7 @@ fun UserResponse.describeApplicationLayer() =
     when {
         payloadExchanges == null -> """
 Request
-=======
+-------
 Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
 
 ${protocol?.toString().orEmpty()}
@@ -225,7 +225,7 @@ $BODY_BLOCK_DELIMITER${
 
 """ } else ""
 }Response
-========
+--------
 ${
     if (endAt != null) {
 """Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
@@ -255,7 +255,7 @@ $BODY_BLOCK_DELIMITER
     payloadExchanges != null -> buildString {
         append("""
 Request
-=======
+-------
 Start Time: ${startAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
 
 ${protocol?.toString().orEmpty()}
@@ -278,7 +278,7 @@ $BODY_BLOCK_DELIMITER
             append("\n\n")
             append("""
 Response
-========
+--------
 Status Code: ${statusCode ?: "-"}${statusText?.let { " $it" } ?: ""}
 
 Headers:
@@ -298,7 +298,7 @@ $BODY_BLOCK_DELIMITER
                     "Outgoing #${++outgoingCount}"
                 }
                 append("\n\n", title, "\n")
-                append("=".repeat(title.length), "\n")
+                append("-".repeat(title.length), "\n")
                 append("Time: ${it.instant.atZoneOffset(KZoneOffset.local()).format(TIME_FORMAT)}\n\n")
                 append("Body:\n$BODY_BLOCK_DELIMITER\n")
                 append(it.data?.decodeToString()?.endWithNewLine().orEmpty())
@@ -309,7 +309,7 @@ $BODY_BLOCK_DELIMITER
         if (endAt != null) {
             append("\n\n", """
 End
-===
+---
 Completion Time: ${endAt?.atZoneOffset(KZoneOffset.local())?.format(TIME_FORMAT) ?: "-"}
 
 Duration: ${String.format("%.3f", (endAt!! - startAt!!).millis / 1000.0)}s

@@ -61,7 +61,7 @@ The copied text is in a markdown-like format for readability.
 Sample of copied text of a simple HTTP call:
 ``````markdown
 Request
-=======
+-------
 Start Time: 2024-02-18 23:33:31.426 (+08:00)
 
 HTTP/2.0
@@ -88,7 +88,7 @@ Body:
 `````
 
 Response
-========
+--------
 Completion Time: 2024-02-18 23:33:32.545 (+08:00)
 
 Duration: 1.119s
@@ -137,7 +137,7 @@ Body:
 Sample of copied text of a GraphQL subscription call:
 ``````markdown
 Request
-=======
+-------
 Start Time: 2024-02-18 23:35:03.259 (+08:00)
 
 HTTP/1.1
@@ -155,7 +155,7 @@ User-Agent: Hello-HTTP/1.5.0-SNAPSHOT
 `````
 
 Response
-========
+--------
 Status Code: 101 Switching Protocols
 
 Headers:
@@ -166,7 +166,7 @@ upgrade: websocket
 `````
 
 Incoming #1
-===========
+-----------
 Time: 2024-02-18 23:35:03.428 (+08:00)
 
 Body:
@@ -176,7 +176,7 @@ Body:
 
 
 Incoming #2
-===========
+-----------
 Time: 2024-02-18 23:35:04.431 (+08:00)
 
 Body:
@@ -186,7 +186,7 @@ Body:
 
 
 Incoming #3
-===========
+-----------
 Time: 2024-02-18 23:35:05.437 (+08:00)
 
 Body:
@@ -196,7 +196,7 @@ Body:
 
 
 Incoming #4
-===========
+-----------
 Time: 2024-02-18 23:35:06.439 (+08:00)
 
 Body:
@@ -206,7 +206,7 @@ Body:
 
 
 End
-===
+---
 Completion Time: 2024-02-18 23:35:06.441 (+08:00)
 
 Duration: 3.182s
@@ -218,7 +218,7 @@ Closed by us with code 1000
 Sample of copied text of a gRPC bidirectional call:
 ``````markdown
 Request
-=======
+-------
 Start Time: 2024-02-18 23:49:43.670 (+08:00)
 
 HTTP/2.0
@@ -238,7 +238,7 @@ grpc-accept-encoding: gzip
 `````
 
 Outgoing #1
-===========
+-----------
 Time: 2024-02-18 23:49:44.882 (+08:00)
 
 Body:
@@ -250,7 +250,7 @@ Body:
 
 
 Incoming #1
-===========
+-----------
 Time: 2024-02-18 23:49:44.884 (+08:00)
 
 Body:
@@ -262,7 +262,7 @@ Body:
 
 
 Outgoing #2
-===========
+-----------
 Time: 2024-02-18 23:49:46.415 (+08:00)
 
 Body:
@@ -274,7 +274,7 @@ Body:
 
 
 Incoming #2
-===========
+-----------
 Time: 2024-02-18 23:49:46.417 (+08:00)
 
 Body:
@@ -286,7 +286,7 @@ Body:
 
 
 End
-===
+---
 Completion Time: 2024-02-18 23:49:47.105 (+08:00)
 
 Duration: 3.435s
