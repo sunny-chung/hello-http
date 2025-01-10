@@ -9,6 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Nothing yet.
 
 
+## [1.7.1] -- 2025-01-10
+
+_Changes since 1.7.0_
+
+### Changed
+- After clicking "Copy All" in the response viewer, the copied text now uses the Heading 2 style (`-------`) instead of the Heading 1 style (`=======`). This facilitates embedding multiple requests and responses in the same Markdown document.
+
+### Fixed
+- Crash during project import if a file is not selected or there is an error (#2)
+- Double hit the enter key in Code Editor would incorrectly add an extra blank line and reset cursor to the start of the line
+- Line number of text fields incorrectly appeared and was bouncing if the line is long and partially left the screen
+
+
 ## [1.7.0] -- 2024-12-05
 
 _Changes since 1.6.0_
