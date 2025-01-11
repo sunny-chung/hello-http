@@ -73,7 +73,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightDecorator
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightSlowDecorator
+//import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.GraphqlSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightLinearDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
@@ -524,6 +524,7 @@ fun CodeEditorView(
                         ,
                         fontSize = fonts.codeEditorBodyFontSize,
                         fontFamily = fonts.monospaceFontFamily,
+                        isSoftWrapEnabled = true,
                         isSelectable = true,
                         scrollState = scrollState,
                         viewState = bigTextFieldState.viewState,
@@ -596,6 +597,7 @@ fun CodeEditorView(
                             cursorColor = themeColours.cursor,
                             fontSize = fonts.codeEditorBodyFontSize,
                             fontFamily = fonts.monospaceFontFamily,
+                            isSoftWrapEnabled = true,
                             scrollState = scrollState,
                             onTextLayout = { layoutResult = it },
                             keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
