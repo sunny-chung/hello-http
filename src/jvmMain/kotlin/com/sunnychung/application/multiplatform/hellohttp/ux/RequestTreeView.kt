@@ -454,6 +454,7 @@ fun RequestTreeView(
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             AppTextField(
+                key = "RequestTree/SearchText",
                 value = searchText,
                 onValueChange = { searchText = it },
                 singleLine = true,

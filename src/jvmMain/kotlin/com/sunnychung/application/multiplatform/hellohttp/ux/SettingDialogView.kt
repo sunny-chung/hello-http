@@ -331,6 +331,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
 
                 AppText(text = "Keep backups for", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
                 AppTextField(
+                    key = "Setting/Data/AutomaticBackup/KeepBackupsForHowManyDays",
                     value = (inputState ?: DEFAULT_BACKUP_RETENTION_DAYS).toString(),
                     onValueChange = {
                         val days = if (it.isEmpty()) {

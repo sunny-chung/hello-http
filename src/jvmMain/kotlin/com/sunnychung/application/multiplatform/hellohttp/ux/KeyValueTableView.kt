@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 
 @Composable
-fun KeyValueTableView(modifier: Modifier = Modifier, keyValues: List<Pair<String, String>>, isCopyable: Boolean = false) {
+fun KeyValueTableView(modifier: Modifier = Modifier, key: String, keyValues: List<Pair<String, String>>, isCopyable: Boolean = false) {
     val colors = LocalColor.current
 
     Column(modifier) {
@@ -40,6 +40,7 @@ fun KeyValueTableView(modifier: Modifier = Modifier, keyValues: List<Pair<String
                             .border(width = 1.dp, color = colors.placeholder, RectangleShape)
                     ) {
                         AppTextField(
+                            key = "$key/${it.first}/Key",
                             value = it.first,
                             readOnly = true,
                             onValueChange = {},
@@ -58,6 +59,7 @@ fun KeyValueTableView(modifier: Modifier = Modifier, keyValues: List<Pair<String
                             .border(width = 1.dp, color = colors.placeholder, RectangleShape)
                     ) {
                         AppTextField(
+                            key = "$key/${it.first}/Value",
                             value = it.second,
                             readOnly = true,
                             onValueChange = {},

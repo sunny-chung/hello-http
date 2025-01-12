@@ -318,7 +318,7 @@ fun CodeEditorView(
     val variableTransformations = remember(bigTextFieldState, themeColours, isEnableVariables) {
         if (isEnableVariables) {
             listOf(
-                EnvironmentVariableIncrementalTransformation(),
+                EnvironmentVariableIncrementalTransformation(fonts),
                 FunctionIncrementalTransformation(themeColours, fonts)
             )
         } else {
@@ -419,6 +419,7 @@ fun CodeEditorView(
     }) {
         if (isSearchVisible) {
             TextSearchBar(
+                key = cacheKey,
                 text = searchText,
                 onTextChange = {
                     searchText = it
@@ -666,6 +667,7 @@ private val SEARCH_OPTION_BUTTON_WIDTH = 20.dp
 @Composable
 fun TextSearchBar(
     modifier: Modifier = Modifier,
+    key: String,
     text: String,
     onTextChange: (String) -> Unit,
     statusText: String,
@@ -679,6 +681,7 @@ fun TextSearchBar(
     val textSizes = LocalFont.current
     Row(modifier = modifier.padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         AppTextField(
+            key = "$key/SearchText",
             value = text,
             onValueChange = onTextChange,
             textStyle = LocalTextStyle.current.copy(fontSize = textSizes.searchInputSize),

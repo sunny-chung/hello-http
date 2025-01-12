@@ -93,6 +93,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLas
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
@@ -300,16 +302,23 @@ fun RequestEditorView(
             )
 
             AppTextField(
+                key = "Request/${request.id}/URL",
                 value = request.url,
                 onValueChange = {
                     onRequestModified(request.copy(url = it))
                 },
                 placeholder = { AppText(text = "URL", color = colors.placeholder) },
-                visualTransformation = EnvironmentVariableTransformation(
+//                visualTransformation = EnvironmentVariableTransformation(
+//                    themeColors = colors,
+//                    font = fonts,
+//                    knownVariables = mergedVariables.keys
+//                ),
+                transformation = remember(fonts) { EnvironmentVariableIncrementalTransformation(font = fonts) },
+                decorator = remember(colors, fonts, mergedVariables.keys) { EnvironmentVariableDecorator(
                     themeColors = colors,
                     font = fonts,
                     knownVariables = mergedVariables.keys
-                ),
+                ) },
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
                     .testTag(TestTag.RequestUrlTextField.name)

@@ -34,7 +34,6 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,6 +56,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.bigtext.ux.extra.PasswordIncrementalTransformation
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import java.io.File
 
@@ -429,15 +429,18 @@ fun EnvironmentSslTabContent(
             )
             Column(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp)) {
                 if (sslConfig.clientCertificateKeyPairs.isEmpty()) {
-                    CertificateKeyPairImportForm(onAddItem = { new ->
-                        onUpdateEnvironment(
-                            environment.copy(
-                                sslConfig = sslConfig.copy(
-                                    clientCertificateKeyPairs = listOf(new) // always only one
+                    CertificateKeyPairImportForm(
+                        key = "Environment/${environment.id}/SSL/ClientCertificate",
+                        onAddItem = { new ->
+                            onUpdateEnvironment(
+                                environment.copy(
+                                    sslConfig = sslConfig.copy(
+                                        clientCertificateKeyPairs = listOf(new) // always only one
+                                    )
                                 )
                             )
-                        )
-                    })
+                        }
+                    )
                 } else {
                     AppText(text = "Only 1 certificate can be persisted. To add a new one, delete the current one first.")
                 }
@@ -570,7 +573,7 @@ fun CertificateEditorView(
 }
 
 @Composable
-fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (ClientCertificateKeyPair) -> Unit) {
+fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, key: String, onAddItem: (ClientCertificateKeyPair) -> Unit) {
     val headerColumnWidth = 160.dp
     val colours = LocalColor.current
 
@@ -660,9 +663,11 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AppText(text = "Key Store Password", modifier = Modifier.width(headerColumnWidth))
                         AppTextField(
+                            key = "$key/CertificateKeyPairImportForm/KeyStorePassword",
                             value = bundleFilePassword,
                             onValueChange = { bundleFilePassword = it },
-                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            transformation = PasswordIncrementalTransformation(),
                             modifier = Modifier.defaultMinSize(minWidth = 200.dp)
                         )
                     }
@@ -672,9 +677,11 @@ fun CertificateKeyPairImportForm(modifier: Modifier = Modifier, onAddItem: (Clie
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Private Key Password", modifier = Modifier.width(headerColumnWidth))
             AppTextField(
+                key = "$key/CertificateKeyPairImportForm/PrivateKeyPassword",
                 value = keyFilePassword,
                 onValueChange = { keyFilePassword = it },
-                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                transformation = PasswordIncrementalTransformation(),
                 modifier = Modifier.defaultMinSize(minWidth = 200.dp)
             )
         }
@@ -810,6 +817,7 @@ fun EnvironmentUserFilesTabContent(
         environment.userFiles.forEach { entry ->
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
                 AppTextField(
+                    key = "Environment/${environment.id}/UserFiles/${entry.id}/Name",
                     value = entry.name,
                     onValueChange = { onUpdateImportedFile(entry.copy(name = it)) },
                     modifier = Modifier.weight(0.4f)
@@ -865,6 +873,7 @@ fun EnvironmentUserFilesTabContent(
         }
 
         ImportUserFileForm(
+            key = "Environment/${environment.id}",
             onImportFile = {
                 onUpdateEnvironment(
                     environment.copy(
@@ -878,17 +887,19 @@ fun EnvironmentUserFilesTabContent(
 }
 
 @Composable
-fun ImportUserFileForm(modifier: Modifier = Modifier, onImportFile: (ImportedFile) -> Unit) {
+fun ImportUserFileForm(modifier: Modifier = Modifier, key: String, onImportFile: (ImportedFile) -> Unit) {
     val headerColumnWidth = 200.dp
 
     var name by remember { mutableStateOf("") }
     var isFileDialogVisible by remember { mutableStateOf(false) }
     var chosenFile by remember { mutableStateOf<File?>(null) }
+    var newId by remember { mutableStateOf(uuidString()) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppText(text = "Name", modifier = Modifier.width(headerColumnWidth))
             AppTextField(
+                key = "$key/UserFiles/New-$newId/Name",
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.defaultMinSize(minWidth = 200.dp)
@@ -926,6 +937,7 @@ fun ImportUserFileForm(modifier: Modifier = Modifier, onImportFile: (ImportedFil
                         // reset after successful import
                         name = ""
                         chosenFile = null
+                        newId = uuidString()
                     } catch (e: Throwable) {
                         AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: e::class.simpleName!!)
                         return@AppTextButton

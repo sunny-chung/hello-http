@@ -204,6 +204,7 @@ private fun PayloadLimitEditorView(
         Column {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 AppTextField(
+                    key = "Subproject/${subproject.id}/Configuration/PayloadLimit/$title",
                     value = textValue,
                     onValueChange = {
                         if (it.length > "104857600".length) return@AppTextField
