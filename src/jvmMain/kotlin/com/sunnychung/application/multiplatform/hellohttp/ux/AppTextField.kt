@@ -2,11 +2,8 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -17,7 +14,6 @@ import androidx.compose.material.TextFieldDefaults.indicatorLine
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -82,16 +78,12 @@ fun AppTextField(
 ) {
     val textState by rememberConcurrentLargeAnnotatedBigTextFieldState(value, key)
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    BigTextFieldLayout(
         modifier = modifier
             .background(colors.backgroundColor(enabled).value)
-            .debugConstraints("$key tf row")
-    ) {
-        if (leadingIcon != null) {
-            leadingIcon()
-        }
-        Box(modifier = Modifier.padding(contentPadding).debugConstraints("$key tf box"), contentAlignment = Alignment.CenterStart) {
+            .padding(contentPadding)
+            .debugConstraints("$key tf layout"),
+        textField = {
             CoreBigTextField(
                 text = textState.text,
                 viewState = textState.viewState,
@@ -109,17 +101,63 @@ fun AppTextField(
                 textTransformation = transformation,
                 textDecorator = decorator,
                 isSingleLineInput = singleLine,
-//            modifier = modifier
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
                     .debugConstraints("$key tf core")
                     .onGloballyPositioned { log.w { "[$key] tf size = ${it.size}" } }
             )
-
+        },
+        leadingIcon = {
+            leadingIcon?.invoke()
+        },
+        placeholder = {
             if (placeholder != null && textState.text.isEmpty) {
                 placeholder()
             }
-        }
-    }
+        },
+    )
+
+//    Row(
+//        verticalAlignment = Alignment.CenterVertically,
+//        modifier = modifier
+//            .background(colors.backgroundColor(enabled).value)
+//            .debugConstraints("$key tf row")
+//            .height(IntrinsicSize.Min),
+//    ) {
+//        if (leadingIcon != null) {
+//            leadingIcon()
+//        }
+//        Box(modifier = Modifier.weight(1f)/*.width(IntrinsicSize.Min).height(IntrinsicSize.Min)*/.padding(contentPadding).debugConstraints("$key tf box"), contentAlignment = Alignment.CenterStart, propagateMinConstraints = true) {
+//            CoreBigTextField(
+//                text = textState.text,
+//                viewState = textState.viewState,
+//                onTextChange = {
+//                    val newStringValue = it.bigText.buildString()
+//                    log.w { "onTextChange: new = $newStringValue" }
+////                    onValueChange(newStringValue)
+//                },
+//                isEditable = enabled && !readOnly,
+//                isSelectable = enabled,
+//                fontSize = textStyle.fontSize,
+//                fontFamily = textStyle.fontFamily ?: FontFamily.SansSerif,
+//                color = colors.textColor(enabled).value,
+//                cursorColor = colors.cursorColor(false).value,
+//                textTransformation = transformation,
+//                textDecorator = decorator,
+//                isSingleLineInput = singleLine,
+////            modifier = modifier
+//                modifier = Modifier //.fillMaxWidth()
+////                    .fillMaxSize()
+////                    .wrapContentSize()
+//                    .useMaxSizeOfParentAndChild()
+//                    .debugConstraints("$key tf core")
+//                    .onGloballyPositioned { log.w { "[$key] tf size = ${it.size}" } }
+//            )
+//
+//            if (placeholder != null && textState.text.isEmpty) {
+//                placeholder()
+//            }
+//        }
+//    }
 
     return
 
