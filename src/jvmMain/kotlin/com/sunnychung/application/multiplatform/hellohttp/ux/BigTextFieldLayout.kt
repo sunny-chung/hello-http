@@ -15,14 +15,14 @@ import androidx.compose.ui.unit.Constraints
 fun BigTextFieldLayout(
     modifier: Modifier = Modifier,
     textField: @Composable () -> Unit,
-    leadingIcon: @Composable () -> Unit = {},
-    placeholder: @Composable () -> Unit = {},
+    leadingIcon: (@Composable () -> Unit)? = null,
+    placeholder: (@Composable () -> Unit)? = null,
 ) {
     var index = 0
     val TextFieldId = index++
     val LeadingId = index++
     val PlaceholderId = index++
-    val contents = MutableList<@Composable () -> Unit>(index) { {} }
+    val contents = MutableList<(@Composable () -> Unit)?>(index) { {} }
     contents[TextFieldId] = textField
     contents[LeadingId] = leadingIcon
     contents[PlaceholderId] = placeholder
@@ -31,7 +31,7 @@ fun BigTextFieldLayout(
         content = {
             contents.forEach {
                 Box(propagateMinConstraints = true) {
-                    it()
+                    it?.invoke()
                 }
             }
         },
@@ -43,6 +43,7 @@ fun BigTextFieldLayout(
                 var myHeight = 0
 
                 fun consume(width: Int) {
+//                    println("consume($width)")
                     consumedWidth += width
                     if (remainWidth != Constraints.Infinity) {
                         remainWidth -= width
@@ -67,12 +68,16 @@ fun BigTextFieldLayout(
                     )
                 ).also {
 //                    println("leading size = ${it.width} * ${it.height}, ${it.measuredWidth} * ${it.measuredHeight}")
-                    consume(it.width)
-                    enlarge(it)
+                    if (contents[LeadingId] != null && it.width > 0 && it.height > 0) {
+                        consume(it.width)
+                        enlarge(it)
+                    }
                 }
 
                 var remainMinWidth = maxOf(0, constraints.minWidth - consumedWidth)
                 var remainMaxWidth = remainWidth
+
+//                println("tf remain $remainMinWidth, $remainMaxWidth")
 
                 val textFieldPlaceable = measurables[TextFieldId].measure(
                     Constraints(
@@ -82,7 +87,10 @@ fun BigTextFieldLayout(
                         constraints.maxHeight
                     )
                 ).also {
-                    enlarge(it)
+//                    println("tf measured ${it.width} * ${it.height}")
+                    if (it.width > 0 && it.height > 0) {
+                        enlarge(it)
+                    }
                 }
 
                 val placeholderPlaceable = measurables[PlaceholderId].measure(
@@ -93,10 +101,12 @@ fun BigTextFieldLayout(
                         constraints.maxHeight
                     )
                 ).also {
-                    enlarge(it)
+                    if (contents[PlaceholderId] != null && it.width > 0 && it.height > 0) {
+                        enlarge(it)
+                    }
                 }
 
-                consume(maxOf(textFieldPlaceable.width, placeholderPlaceable.height))
+                consume(maxOf(textFieldPlaceable.width, placeholderPlaceable.width))
 
                 return layout(consumedWidth, myHeight) {
                     leadingPlaceable.placeRelative(0, leadingPlaceable.yOffsetToCenter())
