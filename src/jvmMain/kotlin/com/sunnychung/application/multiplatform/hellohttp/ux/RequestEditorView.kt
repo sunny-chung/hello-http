@@ -52,8 +52,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
@@ -92,12 +90,14 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.createFromTinyString
 import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextViewState
 import graphql.language.OperationDefinition
 import graphql.language.OperationDefinition.Operation
 import java.io.File
@@ -457,17 +457,27 @@ fun RequestEditorView(
                             log.d { "req ex edit ${selectedExample.id}" }
                             val focusRequester = remember { FocusRequester() }
                             val focusManager = LocalFocusManager.current
-                            var textFieldState by remember { mutableStateOf(TextFieldValue(it.name, selection = TextRange(0, it.name.length))) }
+                            val textFieldState = remember(it.id) {
+                                BigTextFieldState(
+                                    BigText.createFromTinyString(it.name),
+                                    BigTextViewState()
+                                ).also {
+                                    it.viewState.setSelection(0 ..< it.text.length)
+                                    it.viewState.setCursorIndex(it.text.length)
+                                }
+                            }
+//                            (com.sunnychung.lib.multiplatform.bigtext.ux.log.config as MutableLoggerConfig).minSeverity = Severity.Debug
                             AppTextField(
-                                value = textFieldState,
-                                onValueChange = { textFieldState = it },
+                                textState = textFieldState,
+                                onValueChange = {},
                                 singleLine = true,
+                                onFinishInit = { focusRequester.requestFocus() },
                                 modifier = Modifier.weight(1f)
                                     .focusRequester(focusRequester)
                                     .onFocusChanged { f ->
-                                        log.d { "RequestListView onFocusChanged ${f.hasFocus} ${f.isFocused}" }
+                                        log.w { "RequestListView onFocusChanged ${f.hasFocus} ${f.isFocused}" }
                                         if (!f.hasFocus && editExampleNameViewModel.isInvokeModelUpdate()) {
-                                            onRequestModified(request.copy(examples = request.examples.copyWithChange(it.copy(name = textFieldState.text))))
+                                            onRequestModified(request.copy(examples = request.examples.copyWithChange(it.copy(name = textFieldState.text.buildString()))))
                                         }
                                         editExampleNameViewModel.onTextFieldFocusChange(f)
                                     }
