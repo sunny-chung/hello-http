@@ -596,6 +596,7 @@ fun BodyViewerView(
         }
         if (isEnableJsonPath) {
             AppTextFieldWithPlaceholder(
+                key = "$key/JSONPath",
                 value = jsonPathExpression,
                 onValueChange = { jsonPathExpression = it },
                 textColor = if (!isJsonPathError) colours.text else colours.warning,

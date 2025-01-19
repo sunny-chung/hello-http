@@ -242,6 +242,7 @@ fun EnvironmentVariableTabContent(
     updateEnvVariable: ((List<UserKeyValuePair>) -> List<UserKeyValuePair>) -> Unit,
 ) {
     KeyValueEditorView(
+        key = "EnvironmentEditor/${environment.id}",
         keyValues = environment.variables,
         isInheritedView = false,
         isSupportFileValue = false,

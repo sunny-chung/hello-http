@@ -90,8 +90,6 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.bigtext.core.BigText
@@ -301,24 +299,14 @@ fun RequestEditorView(
                 modifier = Modifier.fillMaxHeight()
             )
 
-            AppTextField(
+            AppTextFieldWithVariables(
                 key = "Request/${request.id}/URL",
                 value = request.url,
                 onValueChange = {
                     onRequestModified(request.copy(url = it))
                 },
+                variables = mergedVariables,
                 placeholder = { AppText(text = "URL", color = colors.placeholder) },
-//                visualTransformation = EnvironmentVariableTransformation(
-//                    themeColors = colors,
-//                    font = fonts,
-//                    knownVariables = mergedVariables.keys
-//                ),
-                transformation = remember(fonts) { EnvironmentVariableIncrementalTransformation(font = fonts) },
-                decorator = remember(colors, fonts, mergedVariables.keys) { EnvironmentVariableDecorator(
-                    themeColors = colors,
-                    font = fonts,
-                    knownVariables = mergedVariables.keys
-                ) },
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
                     .testTag(TestTag.RequestUrlTextField.name)
@@ -650,7 +638,7 @@ fun RequestEditorView(
                 Modifier.weight(0.3f)
             }.fillMaxWidth()
         ) {
-            when (tabs[selectedRequestTabIndex]) {
+            when (val tab = tabs[selectedRequestTabIndex]) {
                 RequestTab.Body -> RequestBodyEditor(
                     request = request,
                     onRequestModified = onRequestModified,
@@ -661,6 +649,7 @@ fun RequestEditorView(
 
                 RequestTab.Header ->
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab",
                         value = selectedExample.headers,
                         onValueUpdate = {
                             onRequestModified(
@@ -694,6 +683,7 @@ fun RequestEditorView(
 
                 RequestTab.Query ->
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab",
                         value = selectedExample.queryParameters,
                         onValueUpdate = {
                             onRequestModified(
@@ -761,6 +751,7 @@ fun RequestEditorView(
                         }
 
                         KeyValueEditorView(
+                            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Current",
                             keyValues = data,
                             isSupportVariables = true,
                             knownVariables = environmentVariables,
@@ -786,6 +777,7 @@ fun RequestEditorView(
                         if (activeBaseValues.isNotEmpty()) {
                             InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
                             KeyValueEditorView(
+                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Inherited",
                                 keyValues = activeBaseValues.map {
                                     it.copy(isEnabled = it.isEnabled && it.key !in activeValueKeys)
                                 },
@@ -810,6 +802,7 @@ fun RequestEditorView(
                             )
 
                             KeyValueEditorView(
+                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment",
                                 keyValues = environmentVariables.map {
                                     UserKeyValuePair(
                                         uuidString(),
@@ -852,6 +845,7 @@ fun RequestEditorView(
                         modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
                     )
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/UpdateEnvironmentVariableFromResponseHeader",
                         keyPlaceholder = "Variable",
                         valuePlaceholder = "Header",
                         value = selectedExample.postFlight.updateVariablesFromHeader,
@@ -891,6 +885,7 @@ fun RequestEditorView(
                         modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp)
                     )
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/UpdateEnvironmentVariableFromResponseBody",
                         keyPlaceholder = "Variable",
                         valuePlaceholder = "Field's JSON Path",
                         value = selectedExample.postFlight.updateVariablesFromBody,
@@ -1117,6 +1112,7 @@ private fun RequestServiceMethodSelector(
 @Composable
 private fun RequestKeyValueEditorView(
     modifier: Modifier,
+    key: String,
     value: List<UserKeyValuePair>?,
     baseValue: List<UserKeyValuePair>?,
     baseDisabledIds: Set<String>,
@@ -1136,6 +1132,7 @@ private fun RequestKeyValueEditorView(
         }
 
         KeyValueEditorView(
+            key = "$key/Current",
             keyValues = data,
             keyPlaceholder = keyPlaceholder,
             valuePlaceholder = valuePlaceholder,
@@ -1165,6 +1162,7 @@ private fun RequestKeyValueEditorView(
             val isShowInheritedValues by remember { mutableStateOf(true) }
             InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
             KeyValueEditorView(
+                key = "$key/Inherited",
                 keyValues = activeBaseValues,
                 keyPlaceholder = keyPlaceholder,
                 valuePlaceholder = valuePlaceholder,
@@ -1344,6 +1342,7 @@ private fun RequestBodyEditor(
 
             ContentType.FormUrlEncoded ->
                 RequestKeyValueEditorView(
+                    key = "RequestEditor/${request.id}/Example/${selectedExample.id}/RequestBody/$selectedContentType",
                     value = (requestBody as? FormUrlEncodedBody)?.value,
                     onValueUpdate = {
                         onRequestModified(
@@ -1378,6 +1377,7 @@ private fun RequestBodyEditor(
 
             ContentType.Multipart ->
                 RequestKeyValueEditorView(
+                    key = "RequestEditor/${request.id}/Example/${selectedExample.id}/RequestBody/$selectedContentType",
                     value = (requestBody as? MultipartBody)?.value,
                     onValueUpdate = {
                         onRequestModified(

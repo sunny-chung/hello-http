@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -129,8 +130,19 @@ fun ProjectAndEnvironmentViewV2(
             showDialogType = EditDialogType.None
         }
 
+        val id = if (dialogIsCreate) {
+            "New"
+        } else {
+            when (showDialogType) {
+                EditDialogType.Project -> selectedProject!!.id
+                EditDialogType.CreateSubproject -> selectedSubproject!!.id
+                else -> throw UnsupportedOperationException()
+            }
+        }
+
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             AppTextFieldWithPlaceholder(
+                key = "ProjectNameAndSubprojectNameDialog/$showDialogType/$id",
                 value = dialogTextFieldValue,
                 onValueChange = { dialogTextFieldValue = it },
                 placeholder = {

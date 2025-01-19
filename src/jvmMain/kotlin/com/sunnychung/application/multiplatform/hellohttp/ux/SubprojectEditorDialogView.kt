@@ -84,6 +84,7 @@ fun SubprojectEditorDialogView(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             AppText(text = "Subproject Name:  ")
             AppTextFieldWithPlaceholder(
+                key = "SubprojectEditorDialogView/${subproject.id}/SubprojectName",
                 value = subproject.name,
                 onValueChange = {
                     subproject.name = it
@@ -269,6 +270,7 @@ private fun GrpcApiSpecEditor(
                 ) {
                     AppText("Spec Name")
                     AppTextFieldWithPlaceholder(
+                        key = "SubprojectEditorDialogView/${subproject.id}/gRPCAPISpec/${selectedGrpcApiSpec.id}",
                         value = selectedGrpcApiSpec.name,
                         onValueChange = { newName ->
                             // name should be unique within a Subproject

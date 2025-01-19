@@ -39,7 +39,7 @@ fun KeyValueTableView(modifier: Modifier = Modifier, key: String, keyValues: Lis
                         modifier = Modifier.weight(0.4f).fillMaxHeight()
                             .border(width = 1.dp, color = colors.placeholder, RectangleShape)
                     ) {
-                        AppTextField(
+                        AppTextFieldWrapContent(
                             key = "$key/${it.first}/Key",
                             value = it.first,
                             readOnly = true,
@@ -58,7 +58,7 @@ fun KeyValueTableView(modifier: Modifier = Modifier, key: String, keyValues: Lis
                         modifier = Modifier.weight(0.6f).fillMaxHeight()
                             .border(width = 1.dp, color = colors.placeholder, RectangleShape)
                     ) {
-                        AppTextField(
+                        AppTextFieldWrapContent(
                             key = "$key/${it.first}/Value",
                             value = it.second,
                             readOnly = true,

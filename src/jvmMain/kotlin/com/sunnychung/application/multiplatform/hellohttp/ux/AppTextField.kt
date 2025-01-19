@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,38 +11,42 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.LocalTextStyle
+import androidx.compose.material.TextFieldColors
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.TextFieldDefaults.indicatorLine
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldColors
-import com.sunnychung.application.multiplatform.hellohttp.ux.compose.TextFieldDefaults
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.lib.multiplatform.bigtext.annotation.ExperimentalBigTextUiApi
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
 import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
 import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
 import com.sunnychung.lib.multiplatform.bigtext.ux.CoreBigTextField
 import com.sunnychung.lib.multiplatform.bigtext.ux.compose.debugConstraints
 import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
-
-/**
- * This file is essential a clone of Compose TextField.kt, TetFieldImpl.kt, TextFieldDefaults.kt, OutlinedTextField.kt, with
- * some modifications to padding values and styles.
- */
 
 @OptIn(ExperimentalBigTextUiApi::class)
 @Composable
@@ -76,46 +81,33 @@ fun AppTextField(
         backgroundColor = backgroundColor,
     ),
     contentPadding: PaddingValues = PaddingValues(2.dp),
+    hasIndicatorLine: Boolean = false,
+    onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
+    onFinishInit: () -> Unit = {},
 ) {
     val textState by rememberConcurrentLargeAnnotatedBigTextFieldState(value, key)
 
-    BigTextFieldLayout(
-        modifier = modifier
-            .background(colors.backgroundColor(enabled).value)
-            .padding(contentPadding)
-//            .debugConstraints("$key tf layout")
-            ,
-        textField = {
-            CoreBigTextField(
-                text = textState.text,
-                viewState = textState.viewState,
-                onTextChange = {
-                    val newStringValue = it.bigText.buildString()
-                    log.w { "onTextChange: new = $newStringValue" }
-                    onValueChange(newStringValue)
-                },
-                isEditable = enabled && !readOnly,
-                isSelectable = enabled,
-                fontSize = textStyle.fontSize,
-                fontFamily = textStyle.fontFamily ?: FontFamily.SansSerif,
-                color = colors.textColor(enabled).value,
-                cursorColor = colors.cursorColor(false).value,
-                textTransformation = transformation,
-                textDecorator = decorator,
-                isSingleLineInput = singleLine,
-//                modifier = Modifier
-//                    .debugConstraints("$key tf core")
-//                    .onGloballyPositioned { log.w { "[$key] tf size = ${it.size}" } }
-            )
+    AppTextField(
+        textState = textState,
+        onValueChange = {
+            val newStringValue = it.buildString()
+            log.w { "onTextChange: new = $newStringValue" }
+            onValueChange(newStringValue)
         },
-        leadingIcon = {
-            leadingIcon?.invoke()
-        },
-        placeholder = {
-            if (placeholder != null && textState.text.isEmpty) {
-                placeholder()
-            }
-        },
+        modifier = modifier,
+        enabled = enabled,
+        readOnly = readOnly,
+        textStyle = textStyle,
+        placeholder = placeholder,
+        leadingIcon = leadingIcon,
+        transformation = transformation,
+        decorator = decorator,
+        singleLine = singleLine,
+        colors = colors,
+        contentPadding = contentPadding,
+        hasIndicatorLine = hasIndicatorLine,
+        onPointerEvent = onPointerEvent,
+        onFinishInit = onFinishInit
     )
 
 //    Row(
@@ -214,11 +206,95 @@ fun AppTextField(
 //    )
 }
 
+@Composable
+fun AppTextFieldWrapContent(
+    key: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
+    textStyle: TextStyle = LocalTextStyle.current,
+    backgroundColor: Color = LocalColor.current.backgroundInputField,
+    label: @Composable (() -> Unit)? = null,
+    placeholder: @Composable (() -> Unit)? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    isError: Boolean = false,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    transformation: IncrementalTextTransformation<*>? = null,
+    decorator: BigTextDecorator? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions(),
+    singleLine: Boolean = false,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    minLines: Int = 1,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    shape: Shape = TextFieldDefaults.TextFieldShape,
+    colors: TextFieldColors = TextFieldDefaults.textFieldColors(
+        textColor = LocalColor.current.text,
+        placeholderColor = LocalColor.current.placeholder,
+        cursorColor = LocalColor.current.cursor,
+        backgroundColor = backgroundColor,
+    ),
+    contentPadding: PaddingValues = PaddingValues(6.dp),
+) {
+    /** copy from implementation of TextField **/
+
+    // If color is not provided via the text style, use content color as a default
+    val textColor = textStyle.color.takeOrElse {
+        colors.textColor(enabled).value
+    }
+    val mergedTextStyle = textStyle.merge(TextStyle(color = textColor))
+
+    @OptIn(ExperimentalMaterialApi::class)
+    BasicTextField(
+        value = value,
+        modifier = modifier
+            .background(colors.backgroundColor(enabled).value, shape)
+//            .indicatorLine(false, isError, interactionSource, colors) /** difference here **/
+            .defaultMinSize(
+                minWidth = 1.dp, /** difference here **/  // TextFieldDefaults.MinWidth,
+                minHeight = 1.dp /** difference here **/  //TextFieldDefaults.MinHeight
+            ),
+        onValueChange = onValueChange,
+        enabled = enabled,
+        readOnly = readOnly,
+        textStyle = mergedTextStyle,
+        cursorBrush = SolidColor(colors.cursorColor(isError).value),
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        interactionSource = interactionSource,
+        singleLine = singleLine,
+        maxLines = maxLines,
+        minLines = minLines,
+        decorationBox = @Composable { innerTextField ->
+            // places leading icon, text field with label and placeholder, trailing icon
+            TextFieldDefaults.TextFieldDecorationBox( /* difference */
+                value = value,
+                visualTransformation = visualTransformation,
+                innerTextField = innerTextField,
+                placeholder = placeholder,
+                label = label,
+                leadingIcon = leadingIcon,
+                trailingIcon = trailingIcon,
+                singleLine = singleLine,
+                enabled = enabled,
+                isError = isError,
+                interactionSource = interactionSource,
+                colors = colors,
+                contentPadding = contentPadding /** difference here **/
+            )
+        }
+    )
+}
+
 @OptIn(ExperimentalBigTextUiApi::class)
 @Composable
 fun AppTextField(
     textState: BigTextFieldState,
-    onValueChange: () -> Unit,
+    onValueChange: (BigText) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
@@ -236,7 +312,7 @@ fun AppTextField(
     singleLine: Boolean = false,
 //    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
 //    minLines: Int = 1,
-//    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 //    onTextLayout: (TextLayoutResult) -> Unit = {},
 //    shape: Shape = TextFieldDefaults.TextFieldShape,
     colors: TextFieldColors = TextFieldDefaults.textFieldColors(
@@ -246,8 +322,21 @@ fun AppTextField(
         backgroundColor = LocalColor.current.backgroundInputField,
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp),
+    hasIndicatorLine: Boolean = false,
+    onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onFinishInit: () -> Unit = {},
 ) {
+    var modifier = modifier
+    var textFieldModifier: Modifier = Modifier
+    if (hasIndicatorLine) {
+        var isFocused by remember { mutableStateOf(false) }
+
+        modifier = modifier.onFocusChanged { isFocused = it.hasFocus }
+
+        if (isFocused) {
+            modifier = modifier.drawIndicatorLine(BorderStroke(2.dp, Color(98, 0, 238, 222)))
+        }
+    }
     BigTextFieldLayout(
         modifier = modifier
             .background(colors.backgroundColor(enabled).value)
@@ -257,7 +346,7 @@ fun AppTextField(
                 text = textState.text,
                 viewState = textState.viewState,
                 onTextChange = {
-                    onValueChange()
+                    onValueChange(it.bigText)
                 },
                 isEditable = enabled && !readOnly,
                 isSelectable = enabled,
@@ -268,7 +357,11 @@ fun AppTextField(
                 textTransformation = transformation,
                 textDecorator = decorator,
                 isSingleLineInput = singleLine,
+                onPointerEvent = onPointerEvent,
+//                interactionSource = interactionSource,
                 onFinishInit = onFinishInit,
+                padding = PaddingValues(0.dp),
+//                modifier = textFieldModifier,
             )
         },
         leadingIcon = {
@@ -335,90 +428,112 @@ fun AppTextField(
 
 @Composable
 fun AppTextFieldWithPlaceholder(
+    key: String,
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
     textStyle: TextStyle = LocalTextStyle.current,
-    label: @Composable (() -> Unit)? = null,
+//    label: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    isError: Boolean = false,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions(),
+//    trailingIcon: @Composable (() -> Unit)? = null,
+//    isError: Boolean = false,
+//    visualTransformation: VisualTransformation = VisualTransformation.None,
+    transformation: IncrementalTextTransformation<*>? = null,
+    decorator: BigTextDecorator? = null,
+//    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+//    keyboardActions: KeyboardActions = KeyboardActions(),
     singleLine: Boolean = false,
     maxLines: Int = Int.MAX_VALUE,
-    minLines: Int = 1,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    shape: Shape = TextFieldDefaults.TextFieldShape,
+//    minLines: Int = 1,
+//    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+//    shape: Shape = TextFieldDefaults.TextFieldShape,
     textColor: Color = LocalColor.current.text,
-    colors: androidx.compose.material.TextFieldColors = androidx.compose.material.TextFieldDefaults.textFieldColors(
+    colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = textColor,
         placeholderColor = LocalColor.current.placeholder,
         cursorColor = LocalColor.current.cursor,
         backgroundColor = LocalColor.current.backgroundInputField,
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp),
-    hasIndicatorLine: Boolean = false,
+//    hasIndicatorLine: Boolean = false,
 ) {
-    /** copy from implementation of TextField **/
-
-    // If color is not provided via the text style, use content color as a default
-    val textColor = textStyle.color.takeOrElse {
-        colors.textColor(enabled).value
-    }
-    val mergedTextStyle = textStyle.merge(TextStyle(color = textColor))
-
-    @OptIn(ExperimentalMaterialApi::class)
-    BasicTextField(
+    return AppTextField(
+        key = key,
         value = value,
-        modifier = modifier
-            .background(colors.backgroundColor(enabled).value, shape)
-            .run {
-                if (hasIndicatorLine) {
-                    this.indicatorLine(enabled, isError, interactionSource, colors)
-                } else {
-                    this
-                }
-            }
-            .defaultMinSize(
-                minWidth = 1.dp, /** difference here **/  // TextFieldDefaults.MinWidth,
-                minHeight = 1.dp /** difference here **/  //TextFieldDefaults.MinHeight
-            ),
         onValueChange = onValueChange,
+        modifier = modifier,
         enabled = enabled,
         readOnly = readOnly,
-        textStyle = mergedTextStyle,
-        cursorBrush = SolidColor(colors.cursorColor(isError).value),
-        visualTransformation = visualTransformation,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        interactionSource = interactionSource,
+        textStyle = textStyle,
+        backgroundColor = LocalColor.current.backgroundInputField,
+        placeholder = placeholder,
+        leadingIcon = leadingIcon,
+        transformation = transformation,
+        decorator = decorator,
         singleLine = singleLine,
         maxLines = maxLines,
-        minLines = minLines,
-        decorationBox = @Composable { innerTextField ->
-            // places leading icon, text field with label and placeholder, trailing icon
-            androidx.compose.material.TextFieldDefaults.TextFieldDecorationBox( /* difference */
-                value = value,
-                visualTransformation = visualTransformation,
-                innerTextField = innerTextField,
-                placeholder = placeholder,
-                label = label,
-                leadingIcon = leadingIcon,
-                trailingIcon = trailingIcon,
-                singleLine = singleLine,
-                enabled = enabled,
-                isError = isError,
-                interactionSource = interactionSource,
-                colors = colors,
-                contentPadding = contentPadding /** difference here **/
-            )
-        }
+        colors = colors,
+        contentPadding = contentPadding
     )
+
+//    /** copy from implementation of TextField **/
+//
+//    // If color is not provided via the text style, use content color as a default
+//    val textColor = textStyle.color.takeOrElse {
+//        colors.textColor(enabled).value
+//    }
+//    val mergedTextStyle = textStyle.merge(TextStyle(color = textColor))
+//
+//    @OptIn(ExperimentalMaterialApi::class)
+//    BasicTextField(
+//        value = value,
+//        modifier = modifier
+//            .background(colors.backgroundColor(enabled).value, shape)
+//            .run {
+//                if (hasIndicatorLine) {
+//                    this.indicatorLine(enabled, isError, interactionSource, colors)
+//                } else {
+//                    this
+//                }
+//            }
+//            .defaultMinSize(
+//                minWidth = 1.dp, /** difference here **/  // TextFieldDefaults.MinWidth,
+//                minHeight = 1.dp /** difference here **/  //TextFieldDefaults.MinHeight
+//            ),
+//        onValueChange = onValueChange,
+//        enabled = enabled,
+//        readOnly = readOnly,
+//        textStyle = mergedTextStyle,
+//        cursorBrush = SolidColor(colors.cursorColor(isError).value),
+//        visualTransformation = visualTransformation,
+//        keyboardOptions = keyboardOptions,
+//        keyboardActions = keyboardActions,
+//        interactionSource = interactionSource,
+//        singleLine = singleLine,
+//        maxLines = maxLines,
+//        minLines = minLines,
+//        decorationBox = @Composable { innerTextField ->
+//            // places leading icon, text field with label and placeholder, trailing icon
+//            androidx.compose.material.TextFieldDefaults.TextFieldDecorationBox( /* difference */
+//                value = value,
+//                visualTransformation = visualTransformation,
+//                innerTextField = innerTextField,
+//                placeholder = placeholder,
+//                label = label,
+//                leadingIcon = leadingIcon,
+//                trailingIcon = trailingIcon,
+//                singleLine = singleLine,
+//                enabled = enabled,
+//                isError = isError,
+//                interactionSource = interactionSource,
+//                colors = colors,
+//                contentPadding = contentPadding /** difference here **/
+//            )
+//        }
+//    )
 }
 
 @Composable
@@ -443,7 +558,7 @@ fun AppTextFieldWithPlaceholder(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     shape: Shape = TextFieldDefaults.TextFieldShape,
     textColor: Color = LocalColor.current.text,
-    colors: androidx.compose.material.TextFieldColors = androidx.compose.material.TextFieldDefaults.textFieldColors(
+    colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = textColor,
         placeholderColor = LocalColor.current.placeholder,
         cursorColor = LocalColor.current.cursor,
@@ -507,4 +622,20 @@ fun AppTextFieldWithPlaceholder(
             )
         }
     )
+}
+
+fun Modifier.drawIndicatorLine(indicatorBorder: BorderStroke): Modifier {
+    val strokeWidthDp = indicatorBorder.width
+    return drawWithContent {
+        drawContent()
+        if (strokeWidthDp == Dp.Hairline) return@drawWithContent
+        val strokeWidth = strokeWidthDp.value * density
+        val y = size.height - strokeWidth / 2
+        drawLine(
+            indicatorBorder.brush,
+            Offset(0f, y),
+            Offset(size.width, y),
+            strokeWidth
+        )
+    }
 }
