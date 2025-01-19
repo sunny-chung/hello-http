@@ -80,7 +80,7 @@ fun AppTextField(
         cursorColor = LocalColor.current.cursor,
         backgroundColor = backgroundColor,
     ),
-    contentPadding: PaddingValues = PaddingValues(2.dp),
+    contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
     onFinishInit: () -> Unit = {},
