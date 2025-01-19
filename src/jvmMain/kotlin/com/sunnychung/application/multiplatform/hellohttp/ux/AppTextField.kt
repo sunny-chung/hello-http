@@ -538,25 +538,25 @@ fun AppTextFieldWithPlaceholder(
 
 @Composable
 fun AppTextFieldWithPlaceholder(
-    value: TextFieldValue,
-    onValueChange: (TextFieldValue) -> Unit,
+    value: BigTextFieldState,
+    onValueChange: (BigText) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
     textStyle: TextStyle = LocalTextStyle.current,
-    label: @Composable (() -> Unit)? = null,
+//    label: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    isError: Boolean = false,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions(),
+//    trailingIcon: @Composable (() -> Unit)? = null,
+//    isError: Boolean = false,
+//    visualTransformation: VisualTransformation = VisualTransformation.None,
+//    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+//    keyboardActions: KeyboardActions = KeyboardActions(),
     singleLine: Boolean = false,
     maxLines: Int = Int.MAX_VALUE,
-    minLines: Int = 1,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    shape: Shape = TextFieldDefaults.TextFieldShape,
+//    minLines: Int = 1,
+//    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+//    shape: Shape = TextFieldDefaults.TextFieldShape,
     textColor: Color = LocalColor.current.text,
     colors: TextFieldColors = TextFieldDefaults.textFieldColors(
         textColor = textColor,
@@ -566,62 +566,82 @@ fun AppTextFieldWithPlaceholder(
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
+    onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
+    onFinishInit: () -> Unit = {},
 ) {
-    /** copy from implementation of TextField **/
-
-    // If color is not provided via the text style, use content color as a default
-    val textColor = textStyle.color.takeOrElse {
-        colors.textColor(enabled).value
-    }
-    val mergedTextStyle = textStyle.merge(TextStyle(color = textColor))
-
-    @OptIn(ExperimentalMaterialApi::class)
-    BasicTextField(
-        value = value,
-        modifier = modifier
-            .background(colors.backgroundColor(enabled).value, shape)
-            .run {
-                if (hasIndicatorLine) {
-                    this.indicatorLine(enabled, isError, interactionSource, colors)
-                } else {
-                    this
-                }
-            }
-            .defaultMinSize(
-                minWidth = 1.dp, /** difference here **/  // TextFieldDefaults.MinWidth,
-                minHeight = 1.dp /** difference here **/  //TextFieldDefaults.MinHeight
-            ),
+    return AppTextField(
+        textState = value,
         onValueChange = onValueChange,
+        modifier = modifier,
         enabled = enabled,
         readOnly = readOnly,
-        textStyle = mergedTextStyle,
-        cursorBrush = SolidColor(colors.cursorColor(isError).value),
-        visualTransformation = visualTransformation,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        interactionSource = interactionSource,
+        textStyle = textStyle,
+        placeholder = placeholder,
+        leadingIcon = leadingIcon,
         singleLine = singleLine,
-        maxLines = maxLines,
-        minLines = minLines,
-        decorationBox = @Composable { innerTextField ->
-            // places leading icon, text field with label and placeholder, trailing icon
-            androidx.compose.material.TextFieldDefaults.TextFieldDecorationBox( /* difference */
-                value = value.text,
-                visualTransformation = visualTransformation,
-                innerTextField = innerTextField,
-                placeholder = placeholder,
-                label = label,
-                leadingIcon = leadingIcon,
-                trailingIcon = trailingIcon,
-                singleLine = singleLine,
-                enabled = enabled,
-                isError = isError,
-                interactionSource = interactionSource,
-                colors = colors,
-                contentPadding = contentPadding /** difference here **/
-            )
-        }
+//        maxLines = maxLines,
+        colors = colors,
+        contentPadding = contentPadding,
+        hasIndicatorLine = hasIndicatorLine,
+        onPointerEvent = onPointerEvent,
+        onFinishInit = onFinishInit,
     )
+
+//    /** copy from implementation of TextField **/
+//
+//    // If color is not provided via the text style, use content color as a default
+//    val textColor = textStyle.color.takeOrElse {
+//        colors.textColor(enabled).value
+//    }
+//    val mergedTextStyle = textStyle.merge(TextStyle(color = textColor))
+//
+//    @OptIn(ExperimentalMaterialApi::class)
+//    BasicTextField(
+//        value = value,
+//        modifier = modifier
+//            .background(colors.backgroundColor(enabled).value, shape)
+//            .run {
+//                if (hasIndicatorLine) {
+//                    this.indicatorLine(enabled, isError, interactionSource, colors)
+//                } else {
+//                    this
+//                }
+//            }
+//            .defaultMinSize(
+//                minWidth = 1.dp, /** difference here **/  // TextFieldDefaults.MinWidth,
+//                minHeight = 1.dp /** difference here **/  //TextFieldDefaults.MinHeight
+//            ),
+//        onValueChange = onValueChange,
+//        enabled = enabled,
+//        readOnly = readOnly,
+//        textStyle = mergedTextStyle,
+//        cursorBrush = SolidColor(colors.cursorColor(isError).value),
+//        visualTransformation = visualTransformation,
+//        keyboardOptions = keyboardOptions,
+//        keyboardActions = keyboardActions,
+//        interactionSource = interactionSource,
+//        singleLine = singleLine,
+//        maxLines = maxLines,
+//        minLines = minLines,
+//        decorationBox = @Composable { innerTextField ->
+//            // places leading icon, text field with label and placeholder, trailing icon
+//            androidx.compose.material.TextFieldDefaults.TextFieldDecorationBox( /* difference */
+//                value = value.text,
+//                visualTransformation = visualTransformation,
+//                innerTextField = innerTextField,
+//                placeholder = placeholder,
+//                label = label,
+//                leadingIcon = leadingIcon,
+//                trailingIcon = trailingIcon,
+//                singleLine = singleLine,
+//                enabled = enabled,
+//                isError = isError,
+//                interactionSource = interactionSource,
+//                colors = colors,
+//                contentPadding = contentPadding /** difference here **/
+//            )
+//        }
+//    )
 }
 
 fun Modifier.drawIndicatorLine(indicatorBorder: BorderStroke): Modifier {

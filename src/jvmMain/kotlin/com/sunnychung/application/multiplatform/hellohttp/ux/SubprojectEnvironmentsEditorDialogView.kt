@@ -57,6 +57,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.bigtext.ux.extra.PasswordIncrementalTransformation
+import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import java.io.File
 
@@ -151,8 +152,8 @@ fun EnvironmentEditorView(
     val colors = LocalColor.current
 
     val focusRequester = remember { FocusRequester() }
-    var envName by remember { mutableStateOf(TextFieldValue(text = environment.name)) }
-    envName = envName.copy(text = environment.name)
+    val envName by rememberConcurrentLargeAnnotatedBigTextFieldState(environment.name, "Environment:${environment.id}")
+//    envName = envName.copy(text = environment.name)
     var selectedTabIndex by remember { mutableStateOf(0) }
 
     val updateEnvVariable = { update: (List<UserKeyValuePair>) -> List<UserKeyValuePair> ->
@@ -168,13 +169,19 @@ fun EnvironmentEditorView(
             AppTextFieldWithPlaceholder(
                 value = envName,
                 onValueChange = {
-                    onUpdateEnvironment(environment.copy(name = it.text))
-                    envName = it // copy selection range
+                    onUpdateEnvironment(environment.copy(name = it.buildString()))
+//                    envName = it // copy selection range
                 },
                 placeholder = { AppText(text = "Environment Name", color = LocalColor.current.placeholder) },
                 textStyle = LocalTextStyle.current.copy(fontSize = 16.sp),
                 hasIndicatorLine = true,
                 singleLine = true,
+                onFinishInit = {
+                    if (isFocusOnEnvNameField) {
+                        focusRequester.requestFocus()
+                        envName.viewState.setSelection(0 ..< envName.text.length)
+                    }
+                },
                 modifier = Modifier
                     .weight(1f)
                     .background(color = LocalColor.current.backgroundInputField)
@@ -228,9 +235,9 @@ fun EnvironmentEditorView(
     }
 
     if (isFocusOnEnvNameField) {
-        LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
-            envName = envName.copy(selection = TextRange(0, envName.text.length))
+        LaunchedEffect(Unit) { // moved to onFinishInit
+//            focusRequester.requestFocus()
+//            envName = envName.copy(selection = TextRange(0, envName.text.length))
         }
     }
 }
