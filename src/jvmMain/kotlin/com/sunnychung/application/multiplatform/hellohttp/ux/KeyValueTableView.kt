@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,14 +40,14 @@ fun KeyValueTableView(modifier: Modifier = Modifier, key: String, keyValues: Lis
                         modifier = Modifier.weight(0.4f).fillMaxHeight()
                             .border(width = 1.dp, color = colors.placeholder, RectangleShape)
                     ) {
-                        AppTextFieldWrapContent(
+                        AppTextField(
                             key = "$key/${it.first}/Key",
                             value = it.first,
                             readOnly = true,
                             onValueChange = {},
                             backgroundColor = Color.Transparent,
                             contentPadding = PaddingValues(0.dp),
-                            modifier = Modifier.padding(all = 8.dp),
+                            modifier = Modifier.padding(all = 8.dp).fillMaxWidth(),
                         )
                     }
                     CopyableContentContainer(
@@ -58,14 +59,14 @@ fun KeyValueTableView(modifier: Modifier = Modifier, key: String, keyValues: Lis
                         modifier = Modifier.weight(0.6f).fillMaxHeight()
                             .border(width = 1.dp, color = colors.placeholder, RectangleShape)
                     ) {
-                        AppTextFieldWrapContent(
+                        AppTextField(
                             key = "$key/${it.first}/Value",
                             value = it.second,
                             readOnly = true,
                             onValueChange = {},
                             backgroundColor = Color.Transparent,
                             contentPadding = PaddingValues(0.dp),
-                            modifier = Modifier.padding(all = 8.dp),
+                            modifier = Modifier.padding(all = 8.dp).fillMaxWidth(),
                         )
                     }
                 }
