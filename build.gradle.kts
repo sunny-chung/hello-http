@@ -18,7 +18,7 @@ repositories {
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 //    maven("https://jitpack.io")
-    mavenLocal()
+//    mavenLocal()
 }
 
 val grpcVersion = "1.59.1"
@@ -94,7 +94,7 @@ kotlin {
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
 
                 // text field
-                implementation("io.github.sunny-chung:bigtext-ui-composable:2.0.1-SNAPSHOT")
+                implementation("io.github.sunny-chung:bigtext-ui-composable:2.0.1")
             }
 
             resources.srcDir("$buildDir/resources")
