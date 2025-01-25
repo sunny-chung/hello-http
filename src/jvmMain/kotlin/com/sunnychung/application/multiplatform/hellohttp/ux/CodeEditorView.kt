@@ -531,6 +531,7 @@ fun CodeEditorView(
                         viewState = bigTextFieldState.viewState,
                         onTextLayout = { layoutResult = it },
                         onTransformInit = { transformedText = it },
+                        contextMenu = AppBigTextFieldContextMenu,
                         modifier = Modifier.fillMaxSize()
                             .focusRequester(textFieldFocusRequester)
                             .run {
@@ -601,6 +602,7 @@ fun CodeEditorView(
                             isSoftWrapEnabled = true,
                             scrollState = scrollState,
                             onTextLayout = { layoutResult = it },
+                            contextMenu = AppBigTextFieldContextMenu,
                             keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
                                 override fun beforeProcessInput(
                                     it: KeyEvent,

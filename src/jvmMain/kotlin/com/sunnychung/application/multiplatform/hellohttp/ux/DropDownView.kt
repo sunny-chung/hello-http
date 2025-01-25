@@ -227,6 +227,13 @@ object DropDownDivider : DropDownable {
         get() = ""
 }
 
+data class DropDownKeyValueAction<T>(
+    override val key: T,
+    override val displayText: String,
+    override val isEnabled: Boolean = true,
+    val action: () -> Unit,
+) : DropDownable
+
 data class DropDownMap<T>(private val values: List<DropDownKeyValue<T>>) {
     private val mapByKey = values.associateBy { it.key }
 
