@@ -458,7 +458,7 @@ fun RequestTreeView(
                 value = searchText,
                 onValueChange = { searchText = it },
                 singleLine = true,
-                leadingIcon = { AppImage(resource = "search.svg", size = 16.dp, modifier = Modifier.padding(horizontal = 6.dp)) },
+                leadingIcon = { AppImage(resource = "search.svg", size = 16.dp, modifier = Modifier.padding(start = 2.dp, end = 6.dp)) },
                 modifier = Modifier.weight(1f).border(width = 1.dp, color = colors.placeholder, shape = RoundedCornerShape(2.dp))
             )
             DropDownView(
