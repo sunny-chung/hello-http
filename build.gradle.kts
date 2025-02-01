@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.7.1" // must be in 'x.y.z' for native distributions
+version = "1.7.2-SNAPSHOT" // must be in 'x.y.z' for native distributions
 
 repositories {
     google()
@@ -92,6 +92,9 @@ kotlin {
 
                 // public/private key decoding
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
+
+                // text field
+                implementation("io.github.sunny-chung:bigtext-ui-composable:2.0.1")
             }
 
             resources.srcDir("$buildDir/resources")

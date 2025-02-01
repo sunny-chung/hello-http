@@ -15,10 +15,10 @@ import com.sunnychung.application.multiplatform.hellohttp.parser.TokenWithoutVal
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.string
 import com.sunnychung.application.multiplatform.hellohttp.util.timeAndLog
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.CacheableBigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEvent
+import com.sunnychung.lib.multiplatform.bigtext.core.CacheableBigTextDecorator
 import java.io.IOException
 
 class JsonSyntaxHighlightLinearDecorator(colours: AppColor) : CacheableBigTextDecorator() {

@@ -52,8 +52,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
@@ -89,13 +87,15 @@ import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemovedIn
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextManipulator
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.createFromTinyString
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextViewState
 import graphql.language.OperationDefinition
 import graphql.language.OperationDefinition.Operation
 import java.io.File
@@ -299,17 +299,14 @@ fun RequestEditorView(
                 modifier = Modifier.fillMaxHeight()
             )
 
-            AppTextField(
+            AppTextFieldWithVariables(
+                key = "Request/${request.id}/URL",
                 value = request.url,
                 onValueChange = {
                     onRequestModified(request.copy(url = it))
                 },
+                variables = mergedVariables,
                 placeholder = { AppText(text = "URL", color = colors.placeholder) },
-                visualTransformation = EnvironmentVariableTransformation(
-                    themeColors = colors,
-                    font = fonts,
-                    knownVariables = mergedVariables.keys
-                ),
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
                     .testTag(TestTag.RequestUrlTextField.name)
@@ -448,17 +445,27 @@ fun RequestEditorView(
                             log.d { "req ex edit ${selectedExample.id}" }
                             val focusRequester = remember { FocusRequester() }
                             val focusManager = LocalFocusManager.current
-                            var textFieldState by remember { mutableStateOf(TextFieldValue(it.name, selection = TextRange(0, it.name.length))) }
+                            val textFieldState = remember(it.id) {
+                                BigTextFieldState(
+                                    BigText.createFromTinyString(it.name),
+                                    BigTextViewState()
+                                ).also {
+                                    it.viewState.setSelection(0 ..< it.text.length)
+                                    it.viewState.setCursorIndex(it.text.length)
+                                }
+                            }
+//                            (com.sunnychung.lib.multiplatform.bigtext.ux.log.config as MutableLoggerConfig).minSeverity = Severity.Debug
                             AppTextField(
-                                value = textFieldState,
-                                onValueChange = { textFieldState = it },
+                                textState = textFieldState,
+                                onValueChange = {},
                                 singleLine = true,
+                                onFinishInit = { focusRequester.requestFocus() },
                                 modifier = Modifier.weight(1f)
                                     .focusRequester(focusRequester)
                                     .onFocusChanged { f ->
-                                        log.d { "RequestListView onFocusChanged ${f.hasFocus} ${f.isFocused}" }
+                                        log.w { "RequestListView onFocusChanged ${f.hasFocus} ${f.isFocused}" }
                                         if (!f.hasFocus && editExampleNameViewModel.isInvokeModelUpdate()) {
-                                            onRequestModified(request.copy(examples = request.examples.copyWithChange(it.copy(name = textFieldState.text))))
+                                            onRequestModified(request.copy(examples = request.examples.copyWithChange(it.copy(name = textFieldState.text.buildString()))))
                                         }
                                         editExampleNameViewModel.onTextFieldFocusChange(f)
                                     }
@@ -631,7 +638,7 @@ fun RequestEditorView(
                 Modifier.weight(0.3f)
             }.fillMaxWidth()
         ) {
-            when (tabs[selectedRequestTabIndex]) {
+            when (val tab = tabs[selectedRequestTabIndex]) {
                 RequestTab.Body -> RequestBodyEditor(
                     request = request,
                     onRequestModified = onRequestModified,
@@ -642,6 +649,7 @@ fun RequestEditorView(
 
                 RequestTab.Header ->
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab",
                         value = selectedExample.headers,
                         onValueUpdate = {
                             onRequestModified(
@@ -675,6 +683,7 @@ fun RequestEditorView(
 
                 RequestTab.Query ->
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab",
                         value = selectedExample.queryParameters,
                         onValueUpdate = {
                             onRequestModified(
@@ -742,6 +751,7 @@ fun RequestEditorView(
                         }
 
                         KeyValueEditorView(
+                            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Current",
                             keyValues = data,
                             isSupportVariables = true,
                             knownVariables = environmentVariables,
@@ -767,6 +777,7 @@ fun RequestEditorView(
                         if (activeBaseValues.isNotEmpty()) {
                             InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
                             KeyValueEditorView(
+                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Inherited",
                                 keyValues = activeBaseValues.map {
                                     it.copy(isEnabled = it.isEnabled && it.key !in activeValueKeys)
                                 },
@@ -791,6 +802,7 @@ fun RequestEditorView(
                             )
 
                             KeyValueEditorView(
+                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment",
                                 keyValues = environmentVariables.map {
                                     UserKeyValuePair(
                                         uuidString(),
@@ -833,6 +845,7 @@ fun RequestEditorView(
                         modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
                     )
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/UpdateEnvironmentVariableFromResponseHeader",
                         keyPlaceholder = "Variable",
                         valuePlaceholder = "Header",
                         value = selectedExample.postFlight.updateVariablesFromHeader,
@@ -872,6 +885,7 @@ fun RequestEditorView(
                         modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp)
                     )
                     RequestKeyValueEditorView(
+                        key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/UpdateEnvironmentVariableFromResponseBody",
                         keyPlaceholder = "Variable",
                         valuePlaceholder = "Field's JSON Path",
                         value = selectedExample.postFlight.updateVariablesFromBody,
@@ -1098,6 +1112,7 @@ private fun RequestServiceMethodSelector(
 @Composable
 private fun RequestKeyValueEditorView(
     modifier: Modifier,
+    key: String,
     value: List<UserKeyValuePair>?,
     baseValue: List<UserKeyValuePair>?,
     baseDisabledIds: Set<String>,
@@ -1117,6 +1132,7 @@ private fun RequestKeyValueEditorView(
         }
 
         KeyValueEditorView(
+            key = "$key/Current",
             keyValues = data,
             keyPlaceholder = keyPlaceholder,
             valuePlaceholder = valuePlaceholder,
@@ -1146,6 +1162,7 @@ private fun RequestKeyValueEditorView(
             val isShowInheritedValues by remember { mutableStateOf(true) }
             InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
             KeyValueEditorView(
+                key = "$key/Inherited",
                 keyValues = activeBaseValues,
                 keyPlaceholder = keyPlaceholder,
                 valuePlaceholder = valuePlaceholder,
@@ -1325,6 +1342,7 @@ private fun RequestBodyEditor(
 
             ContentType.FormUrlEncoded ->
                 RequestKeyValueEditorView(
+                    key = "RequestEditor/${request.id}/Example/${selectedExample.id}/RequestBody/$selectedContentType",
                     value = (requestBody as? FormUrlEncodedBody)?.value,
                     onValueUpdate = {
                         onRequestModified(
@@ -1359,6 +1377,7 @@ private fun RequestBodyEditor(
 
             ContentType.Multipart ->
                 RequestKeyValueEditorView(
+                    key = "RequestEditor/${request.id}/Example/${selectedExample.id}/RequestBody/$selectedContentType",
                     value = (requestBody as? MultipartBody)?.value,
                     onValueUpdate = {
                         onRequestModified(
@@ -1523,7 +1542,7 @@ private fun RequestBodyTextEditor(
     val colors = LocalColor.current
     val baseExample = request.examples.first()
 
-    var textManipulator by remember(cacheKey) { mutableStateOf<BigTextManipulator?>(null) }
+    var textManipulator by remember(cacheKey) { mutableStateOf<BigTextFieldState?>(null) }
     val changeText = { it: String ->
         onRequestModified(
             request.copy(
@@ -1540,7 +1559,8 @@ private fun RequestBodyTextEditor(
             try {
                 val prettified = JsonParser(code).prettify().prettyString
                 changeText(prettified)
-                textManipulator?.replace(0 until code.length, prettified)
+                textManipulator?.viewState?.setSelection(0 until (textManipulator?.text?.length ?: 0))
+                textManipulator?.replaceTextAtCursor(prettified)
             } catch (e: Throwable) {
                 AppContext.ErrorMessagePromptViewModel.showErrorMessage(e.message ?: "Error while prettifying as JSON")
             }
@@ -1575,6 +1595,7 @@ private fun RequestBodyTextEditor(
                 knownVariables = environmentVariables,
                 initialText = content,
                 onTextChange = changeText,
+                // this is an anti-pattern. suppose when BigText is passed from parent composables, no reverse control is needed.
                 onTextManipulatorReady = { textManipulator = it },
                 onMeasured = { textFieldPositionTop = it },
                 syntaxHighlight = syntaxHighlight,

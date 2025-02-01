@@ -6,14 +6,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersectWith
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.util.log
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformer
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextViewState
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.IncrementalTextTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformOffsetMapping
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformer
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextViewState
 
-class CollapseIncrementalTransformation(colours: AppColor, collapsedCharRanges: List<IntRange>) : IncrementalTextTransformation<Unit> {
+class CollapseIncrementalTransformation(colours: AppColor, collapsedCharRanges: List<IntRange>) :
+    IncrementalTextTransformation<Unit> {
     val collapsedStyle = SpanStyle(background = colours.backgroundCollapsed)
 
     private var collapsedCharRanges = collapsedCharRanges
@@ -23,7 +24,7 @@ class CollapseIncrementalTransformation(colours: AppColor, collapsedCharRanges: 
     }
 
     fun update(newCollapsedCharRanges: List<IntRange>, viewState: BigTextViewState) {
-        val transformer: BigTextTransformer = viewState.transformedText ?: return
+        val transformer: BigTextTransformer = viewState.transformedText?.get() ?: return
 //        val newCollapsedCharRanges = filterOverlappedIntervals(newCollapsedCharRanges)
         val old = collapsedCharRanges
         collapsedCharRanges = newCollapsedCharRanges

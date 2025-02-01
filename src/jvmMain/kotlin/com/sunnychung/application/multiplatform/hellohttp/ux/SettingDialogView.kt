@@ -160,6 +160,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AppText(text = "New Project Name", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
                         AppTextFieldWithPlaceholder(
+                            key = "SettingDialog/DataTab/NewpProjectName",
                             value = projectName,
                             onValueChange = { projectName = it },
                             placeholder = { AppText(text = "New Project Name", color = colors.placeholder) },
@@ -331,6 +332,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
 
                 AppText(text = "Keep backups for", modifier = Modifier.width(COLUMN_HEADER_WIDTH))
                 AppTextField(
+                    key = "Setting/Data/AutomaticBackup/KeepBackupsForHowManyDays",
                     value = (inputState ?: DEFAULT_BACKUP_RETENTION_DAYS).toString(),
                     onValueChange = {
                         val days = if (it.isEmpty()) {

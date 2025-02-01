@@ -187,7 +187,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                 ResponseTab.Stream -> ResponseStreamView(response)
 
                 ResponseTab.Header -> if (response.headers != null) {
-                    KeyValueTableView(keyValues = response.headers!!, isCopyable = true, modifier = Modifier.fillMaxSize().padding(8.dp))
+                    KeyValueTableView(key = "Response/${response.id}/Headers", keyValues = response.headers!!, isCopyable = true, modifier = Modifier.fillMaxSize().padding(8.dp))
                 } else {
                     ResponseEmptyView(type = "header", isCommunicating = connectionStatus.isConnectionActive(), modifier = Modifier.fillMaxSize().padding(8.dp))
                 }
@@ -596,6 +596,7 @@ fun BodyViewerView(
         }
         if (isEnableJsonPath) {
             AppTextFieldWithPlaceholder(
+                key = "$key/JSONPath",
                 value = jsonPathExpression,
                 onValueChange = { jsonPathExpression = it },
                 textColor = if (!isJsonPathError) colours.text else colours.warning,

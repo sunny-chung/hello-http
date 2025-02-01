@@ -2,12 +2,11 @@ package com.sunnychung.application.multiplatform.hellohttp.ux.transformation.inc
 
 import androidx.compose.ui.text.AnnotatedString
 import com.sunnychung.application.multiplatform.hellohttp.util.string
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextDecorator
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.CacheableBigTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.KotlinSyntaxHighlightTransformation
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEvent
+import com.sunnychung.lib.multiplatform.bigtext.core.CacheableBigTextDecorator
 
 class KotlinSyntaxHighlightSlowDecorator(private val colours: AppColor) : CacheableBigTextDecorator() {
 

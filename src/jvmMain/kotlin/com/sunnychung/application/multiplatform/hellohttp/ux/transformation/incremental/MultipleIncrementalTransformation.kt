@@ -1,9 +1,9 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental
 
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformer
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.IncrementalTextTransformation
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEvent
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformer
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
 
 class MultipleIncrementalTransformation(val transformations: List<IncrementalTextTransformation<*>>) : IncrementalTextTransformation<Any?> {
     override fun initialize(text: BigText, transformer: BigTextTransformer): Any? {

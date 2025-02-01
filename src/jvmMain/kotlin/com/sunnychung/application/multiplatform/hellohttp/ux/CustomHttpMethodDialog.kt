@@ -46,6 +46,7 @@ fun CustomHttpMethodDialog(isEnabled: Boolean, onDismiss: () -> Unit, onConfirm:
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             AppTextFieldWithPlaceholder(
+                key = "CustomHttpMethodDialog/HttpMethod",
                 value = text,
                 onValueChange = {
                     if (it.isEmpty() || it.isValidHttpMethod()) {

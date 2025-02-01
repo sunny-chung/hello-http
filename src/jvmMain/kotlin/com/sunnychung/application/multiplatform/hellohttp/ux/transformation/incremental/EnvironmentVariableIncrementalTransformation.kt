@@ -9,15 +9,16 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.hasIntersect
 import com.sunnychung.application.multiplatform.hellohttp.util.RangeWithResult
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.string
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigText
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEvent
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextChangeEventType
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformOffsetMapping
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformer
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.IncrementalTextTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.TextFBDirection
+import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
+import com.sunnychung.lib.multiplatform.bigtext.core.BigText
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEvent
+import com.sunnychung.lib.multiplatform.bigtext.core.BigTextChangeEventType
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformOffsetMapping
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.BigTextTransformer
+import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
+import com.sunnychung.lib.multiplatform.bigtext.ux.TextFBDirection
 
-class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformation<Unit> {
+class EnvironmentVariableIncrementalTransformation(font: AppFont) : IncrementalTextTransformation<Unit> {
     companion object {
         const val TAG_PREFIX = "EnvVar/"
         const val TAG = "EnvVar"
@@ -27,6 +28,10 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
     private val variableNameRegex = "[^{}\$\n\r]{1,$processLengthLimit}".toRegex()
 
     private val variableRegex = "\\$\\{\\{(${variableNameRegex.pattern})\\}\\}".toRegex()
+
+    private val variableStyle = SpanStyle(
+        fontFamily = font.monospaceFontFamily,
+    )
 
     override fun initialize(text: BigText, transformer: BigTextTransformer) {
 //        if (true) return
@@ -188,7 +193,7 @@ class EnvironmentVariableIncrementalTransformation : IncrementalTextTransformati
 //                append(variableName)
 //            }
 //        }
-        return AnnotatedString(variableName, listOf(AnnotatedString.Range(SpanStyle(), 0, variableName.length, "$TAG_PREFIX$variableName")))
+        return AnnotatedString(variableName, listOf(AnnotatedString.Range(variableStyle, 0, variableName.length, "$TAG_PREFIX$variableName")))
     }
 }
 

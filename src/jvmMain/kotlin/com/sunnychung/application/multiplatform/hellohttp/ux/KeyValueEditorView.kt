@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,7 +14,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -24,23 +25,20 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.EnvironmentVariableTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.FunctionTransformation
-import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.MultipleVisualTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.bigtext.ux.compose.debugConstraints
 import java.io.File
 
 @Composable
 fun KeyValueEditorView(
     modifier: Modifier = Modifier,
+    key: String,
     keyValues: List<UserKeyValuePair>,
     keyPlaceholder: String = "Key",
     valuePlaceholder: String = "Value",
@@ -104,17 +102,22 @@ fun KeyValueEditorView(
         }
 
         Column {
+            var retainFocus by remember { mutableStateOf<Pair<Int, String>?>(null) }
             (0 until keyValues.size + if (!isInheritedView) 1 else 0).forEach { index ->
                 val it = if (index < keyValues.size) keyValues[index] else null
                 val isEnabled = it?.let { if (!isInheritedView) it.isEnabled else it.isEnabled && !disabledIds.contains(it.id) } ?: true
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppTextFieldWithPlaceholder(
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.debugConstraints("row $index")) {
+                    val keyFocusRequester = remember { FocusRequester() }
+                    val valueFocusRequester = remember { FocusRequester() }
+                    AppTextFieldWithVariables(
+                        key = "$key/${it?.id ?: "New"}/Key",
                         placeholder = { AppText(text = keyPlaceholder, color = colors.placeholder) },
                         value = it?.key ?: "",
                         onValueChange = { v ->
                             if (it != null) {
                                 onItemChange(index, it.copy(key = v))
                             } else if (v.isNotEmpty()) {
+                                retainFocus = index to "Key"
                                 onItemAddLast(
                                     UserKeyValuePair(
                                         id = uuidString(),
@@ -126,22 +129,22 @@ fun KeyValueEditorView(
                                 )
                             }
                         },
-                        visualTransformation = if (isSupportVariables) {
-                            MultipleVisualTransformation(listOf(
-                                EnvironmentVariableTransformation(
-                                    themeColors = colors,
-                                    font = LocalFont.current,
-                                    knownVariables = knownVariables.keys
-                                ),
-                                FunctionTransformation(themeColors = colors, font = LocalFont.current),
-                            ))
-                        } else {
-                            VisualTransformation.None
-                        },
+                        isSupportVariables = isSupportVariables,
+                        variables = knownVariables,
                         readOnly = isInheritedView,
                         textColor = if (isEnabled) colors.primary else colors.disabled,
                         hasIndicatorLine = !isInheritedView,
+                        onFinishInit = { textState ->
+                            retainFocus?.takeIf {
+                                it.first == index && it.second == "Key"
+                            }?.run {
+                                textState.viewState.setCursorIndex(textState.text.length)
+                                keyFocusRequester.requestFocus()
+                                retainFocus = null
+                            }
+                        },
                         modifier = Modifier.weight(0.4f)
+                            .focusRequester(keyFocusRequester)
                             .onKeyDownTabMoveFocus(if (index == 0) FocusPosition.Start else FocusPosition.Middle)
                             .run {
                                 buildTestTag(testTagPart1, testTagPart2, TestTagPart.Key, index)?.let {
@@ -150,13 +153,15 @@ fun KeyValueEditorView(
                             },
                     )
                     if (it?.valueType == FieldValueType.String || it == null) {
-                        AppTextFieldWithPlaceholder(
+                        AppTextFieldWithVariables(
+                            key = "$key/${it?.id ?: "New"}/Value",
                             placeholder = { AppText(text = valuePlaceholder, color = colors.placeholder) },
                             value = it?.value ?: "",
                             onValueChange = { v ->
                                 if (it != null) {
                                     onItemChange(index, it.copy(value = v))
                                 } else if (v.isNotEmpty()) {
+                                    retainFocus = index to "Value"
                                     onItemAddLast(
                                         UserKeyValuePair(
                                             id = uuidString(),
@@ -168,22 +173,22 @@ fun KeyValueEditorView(
                                     )
                                 }
                             },
-                            visualTransformation = if (isSupportVariables) {
-                                MultipleVisualTransformation(listOf(
-                                    EnvironmentVariableTransformation(
-                                        themeColors = colors,
-                                        font = LocalFont.current,
-                                        knownVariables = knownVariables.keys
-                                    ),
-                                    FunctionTransformation(themeColors = colors, font = LocalFont.current),
-                                ))
-                            } else {
-                                VisualTransformation.None
-                            },
+                            isSupportVariables = isSupportVariables,
+                            variables = knownVariables,
                             readOnly = isInheritedView,
                             textColor = if (isEnabled) colors.primary else colors.disabled,
                             hasIndicatorLine = !isInheritedView,
+                            onFinishInit = { textState ->
+                                retainFocus?.takeIf {
+                                    it.first == index && it.second == "Value"
+                                }?.run {
+                                    textState.viewState.setCursorIndex(textState.text.length)
+                                    valueFocusRequester.requestFocus()
+                                    retainFocus = null
+                                }
+                            },
                             modifier = Modifier.weight(0.6f)
+                                .focusRequester(valueFocusRequester)
                                 .onKeyDownTabMoveFocus(if (index == keyValues.size) FocusPosition.End else FocusPosition.Middle)
                                 .run {
                                     buildTestTag(testTagPart1, testTagPart2, TestTagPart.Value, index)?.let {
