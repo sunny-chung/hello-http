@@ -843,6 +843,10 @@ private fun CoreLineNumbersView(
     ) {
         var ii: Int = firstRow
         var lastLineIndex = -1
+        if (firstRow > 0) {
+            val lineBeforeFirstRow = rowToLineIndex(firstRow - 1)
+            lastLineIndex = lineBeforeFirstRow
+        }
         while (ii < lastRow) {
             val i: Int = ii // `ii` is passed by ref
             val lineIndex = rowToLineIndex(i)

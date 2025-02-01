@@ -56,8 +56,9 @@ class JsonSyntaxHighlightLinearDecorator(colours: AppColor) : CacheableBigTextDe
 //        }
 
         timeAndLog(Severity.Info, "parse linear json 3") {
-            val bytes = ByteArray(text.length)
-            text.forEachIndexed { i, c -> bytes[i] = c.code.coerceIn(0, 126).toByte() }
+            val bytes = ByteArray(text.length) { i ->
+                text[i].code.coerceIn(0, 126).toByte()
+            }
             try {
                 val reader = parser.newReader().process(bytes, bytes.size)
                 reader.nextToken
