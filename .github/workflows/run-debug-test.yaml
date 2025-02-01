@@ -20,17 +20,17 @@ jobs:
           export GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3072m -XX:+HeapDumpOnOutOfMemoryError"'
           ./gradlew jvmTest --tests 'com.sunnychung.application.multiplatform.hellohttp.test.util.ChunkedLatestFlowTest'
         shell: bash # let Windows use bash
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ux-test-result_${{ matrix.os }}
           path: ux-and-transport-test/build/reports/tests/test
         if: ${{ always() }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: unit-test-result_${{ matrix.os }}
           path: build/reports/tests
         if: ${{ always() }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ux-test-error_${{ matrix.os }}
           path: ux-and-transport-test/test-error-screenshot
