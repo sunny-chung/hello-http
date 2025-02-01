@@ -9,7 +9,9 @@ import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
+import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 
 @Composable
 fun BigTextFieldLayout(
@@ -17,6 +19,12 @@ fun BigTextFieldLayout(
     textField: @Composable () -> Unit,
     leadingIcon: (@Composable () -> Unit)? = null,
     placeholder: (@Composable () -> Unit)? = null,
+
+    /**
+     * This parameter exists to work around the weird limitation of `Modifier.semantics(mergeDescendants = true)` that
+     * nested nodes with `semantics(mergeDescendants = true)` would not be merged.
+     */
+    isDisableMerging: Boolean = false,
 ) {
     var index = 0
     val TextFieldId = index++
@@ -26,8 +34,12 @@ fun BigTextFieldLayout(
     contents[TextFieldId] = textField
     contents[LeadingId] = leadingIcon
     contents[PlaceholderId] = placeholder
+    println("btfl $modifier")
     Layout(
-        modifier = modifier,
+        modifier = modifier
+            .runIf(!isDisableMerging) {
+                semantics(mergeDescendants = true) {}
+            },
         content = {
             contents.forEach {
                 Box(propagateMinConstraints = true) {

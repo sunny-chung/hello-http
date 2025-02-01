@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -81,12 +82,11 @@ fun AppTextFieldWithVariables(
                 s
             }
         } ?: "",
-        modifier = modifier,
+        modifier = modifier.semantics(mergeDescendants = true) {},
     ) {
         AppTextField(
             textState = textState,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxSize(),
             enabled = enabled,
             readOnly = readOnly,
             textStyle = textStyle,
@@ -127,6 +127,8 @@ fun AppTextFieldWithVariables(
             },
             interactionSource = interactionSource,
             onFinishInit = onFinishInit,
+            isDisableMerging = true,
+            modifier = Modifier.fillMaxSize()
         )
 
     }

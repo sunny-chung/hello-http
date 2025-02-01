@@ -226,6 +226,12 @@ fun AppTextField(
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
+
+    /**
+     * This parameter exists to work around the weird limitation of `Modifier.semantics(mergeDescendants = true)` that
+     * nested nodes with `semantics(mergeDescendants = true)` would not be merged.
+     */
+    isDisableMerging: Boolean = false,
     onFinishInit: () -> Unit = {},
 ) {
     var modifier = modifier
@@ -277,6 +283,7 @@ fun AppTextField(
                 placeholder()
             }
         },
+        isDisableMerging = isDisableMerging,
     )
 
 //    /** copy from implementation of TextField **/

@@ -13,8 +13,10 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasRequestFocusAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTextExactly
@@ -29,7 +31,6 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runDesktopComposeUiTest
-import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
@@ -1252,6 +1253,23 @@ fun SemanticsNodeInteractionCollection.fetchSemanticsNodesWithRetry(host: Compos
  * To work around the bug: https://issuetracker.google.com/issues/319395743
  */
 fun SemanticsNodeInteraction.performTextInput(host: ComposeUiTest, s: String) {
+    // workaround that BigTextField is not immediately ready for text input
+    host.waitUntil(1.seconds().millis) {
+        host.runOnUiThread {
+            val node = fetchSemanticsNodeWithRetry(host)
+            try {
+                assert(hasRequestFocusAction()) { "" }
+                true
+            } catch (_: AssertionError) {
+//                println("no focus action. ${node.config.toString()}")
+                false
+            }
+        }
+    }
+
+    /**
+     * To work around the bug: https://issuetracker.google.com/issues/319395743
+     */
     host.runOnUiThread {
         performTextInput(s)
     }
