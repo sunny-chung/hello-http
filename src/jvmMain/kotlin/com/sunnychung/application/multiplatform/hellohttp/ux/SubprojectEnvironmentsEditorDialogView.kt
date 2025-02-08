@@ -208,11 +208,14 @@ fun EnvironmentEditorView(
 
         val modifier = Modifier.fillMaxWidth().weight(1f)
         when (EnvironmentEditorTab.values()[selectedTabIndex]) {
-            EnvironmentEditorTab.Variables -> EnvironmentVariableTabContent(
-                environment = environment,
-                updateEnvVariable = updateEnvVariable,
-                modifier = modifier.verticalScroll(rememberScrollState()),
-            )
+            EnvironmentEditorTab.Variables -> {
+                VariableHintText()
+                EnvironmentVariableTabContent(
+                    environment = environment,
+                    updateEnvVariable = updateEnvVariable,
+                    modifier = modifier.verticalScroll(rememberScrollState()),
+                )
+            }
 
             EnvironmentEditorTab.HTTP -> EnvironmentHttpTabContent(
                 environment = environment,
