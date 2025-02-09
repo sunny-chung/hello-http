@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,24 +25,46 @@ fun StatusBarView(modifier: Modifier = Modifier) {
     val colors = LocalColor.current
     val metadataManager = AppContext.MetadataManager
 
-    var isShowSettingDialog by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf<DialogName?>(null) }
+    var openUrl by remember { mutableStateOf("") }
 
     Box(modifier = modifier.fillMaxWidth().height(22.dp).background(colors.backgroundLight).padding(horizontal = 4.dp)) {
         AppText(
             text = "v${metadataManager.version} (${metadataManager.gitCommitHash})",
             fontSize = 12.sp,
-            modifier = Modifier.align(
-                Alignment.CenterStart
-            )
+            modifier = Modifier.align(Alignment.CenterStart)
         )
 
-        Row(modifier = Modifier.align(Alignment.CenterEnd).clickable { isShowSettingDialog = true }) {
-            AppImage(resource = "setting.svg", size = 16.dp, modifier = Modifier.padding(horizontal = 4.dp))
-            AppText(text = "Setting & Data", fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.align(Alignment.CenterEnd)) {
+            ClickableIconAndText("question.svg", "User Manual") {
+                openUrl = "https://sunny-chung.github.io/hello-http/"
+                showDialog = DialogName.OpenExternalLink
+            }
+            ClickableIconAndText("report-issue.svg", "Bug Report or Feature Request") {
+                openUrl = "https://github.com/sunny-chung/hello-http/issues"
+                showDialog = DialogName.OpenExternalLink
+            }
+            ClickableIconAndText("setting.svg", "Setting & Data") { showDialog = DialogName.Setting }
         }
     }
 
-    MainWindowDialog(key = "Setting", isEnabled = isShowSettingDialog, onDismiss = { isShowSettingDialog = false }) {
-        SettingDialogView(closeDialog = { isShowSettingDialog = false })
+    MainWindowDialog(key = "Setting", isEnabled = showDialog == DialogName.Setting, onDismiss = { showDialog = null }) {
+        SettingDialogView(closeDialog = { showDialog = null })
     }
+
+    MainWindowDialog(key = "OpenExternalLink", isEnabled = showDialog == DialogName.OpenExternalLink, onDismiss = { showDialog = null }) {
+        OpenExternalLinkDialogView(url = openUrl, onDismiss = { showDialog = null })
+    }
+}
+
+@Composable
+fun ClickableIconAndText(imageResource: String, text: String, onClick: () -> Unit) {
+    Row(modifier = Modifier.clickable { onClick() }) {
+        AppImage(resource = imageResource, size = 16.dp, modifier = Modifier.padding(horizontal = 4.dp))
+        AppText(text = text, fontSize = 12.sp)
+    }
+}
+
+private enum class DialogName {
+    Setting, OpenExternalLink
 }

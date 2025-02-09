@@ -746,6 +746,8 @@ fun RequestEditorView(
                     val baseValues = if (selectedExample.id != baseExample.id) baseExample.variables else emptyList()
                     val activeBaseValues = baseValues.filter { it.isEnabled }
                     Column(modifier = Modifier.fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
+                        VariableHintText()
+                        
                         if (environmentVariables.isNotEmpty() || activeBaseValues.isNotEmpty()) {
                             InputFormHeader(text = "This Example")
                         }
