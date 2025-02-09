@@ -137,7 +137,8 @@ fun RequestEditorView(
 
     var selectedRequestTabIndex by remember { mutableStateOf(0) }
 
-    val environmentVariables = environment?.variables?.filter { it.isEnabled }?.map { it.key to it.value }?.toMap() ?: emptyMap()
+    val environmentVariables = environment?.variables?.filter { it.isEnabled } ?: emptyList()
+    val environmentVariablesMap = environmentVariables.map { it.key to it.value }.toMap()
     val exampleVariables = request.getExampleVariablesOnly(selectedExample.id)
     val mergedVariables = request.getAllVariables(selectedExample.id, environment)
 
@@ -747,7 +748,7 @@ fun RequestEditorView(
                     val activeBaseValues = baseValues.filter { it.isEnabled }
                     Column(modifier = Modifier.fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
                         VariableHintText()
-                        
+
                         if (environmentVariables.isNotEmpty() || activeBaseValues.isNotEmpty()) {
                             InputFormHeader(text = "This Example")
                         }
@@ -756,7 +757,7 @@ fun RequestEditorView(
                             key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Current",
                             keyValues = data,
                             isSupportVariables = true,
-                            knownVariables = environmentVariables,
+                            knownVariables = environmentVariablesMap,
                             isInheritedView = false,
                             disabledIds = emptySet(),
                             onItemChange = { index, item ->
@@ -785,7 +786,7 @@ fun RequestEditorView(
                                 },
                                 isSupportVariables = true,
                                 isSupportDisable = false,
-                                knownVariables = environmentVariables,
+                                knownVariables = environmentVariablesMap,
                                 disabledIds = baseDisabledIds,
                                 isInheritedView = true,
                                 onItemChange = {_, _ ->},
@@ -807,7 +808,7 @@ fun RequestEditorView(
                                 key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment",
                                 keyValues = environmentVariables.map {
                                     UserKeyValuePair(
-                                        uuidString(),
+                                        it.id,
                                         it.key,
                                         it.value,
                                         FieldValueType.String,
