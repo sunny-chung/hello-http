@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- Textual hint on variable usage to top of Variable editors (#3)
+- "Open User Manual" and "Report Bug or Request Feature" buttons on the Status Bar
+- Mouse hovering variable placeholders in text fields to show a tooltip for its value (if exists)
+
+### Changed
+- The text field re-implementation has been extended to cover all text fields.
 
 
 ## [1.7.1] -- 2025-01-10
