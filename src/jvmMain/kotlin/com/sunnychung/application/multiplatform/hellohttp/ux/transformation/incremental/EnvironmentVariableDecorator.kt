@@ -7,7 +7,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.AppFont
 import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 
-class EnvironmentVariableDecorator(themeColors: AppColor, font: AppFont, val knownVariables: Set<String>) :
+class EnvironmentVariableDecorator(themeColors: AppColor, font: AppFont, var knownVariables: Set<String>) :
     BigTextDecorator {
     val knownVariableStyle = SpanStyle(
         color = themeColors.variableTextColor,

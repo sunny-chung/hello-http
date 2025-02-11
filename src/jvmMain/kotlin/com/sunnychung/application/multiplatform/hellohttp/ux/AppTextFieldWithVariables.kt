@@ -99,12 +99,16 @@ fun AppTextFieldWithVariables(
                 null
             },
             decorator = if (isSupportVariables) {
-                remember(themeColors, fonts, variableKeys) {
+                remember(themeColors, fonts) {
+                    // reuse the same decorator even if variableKeys is changed
+                    // to avoid text field blinking due to re-initialization
                     EnvironmentVariableDecorator(
                         themeColors = themeColors,
                         font = fonts,
                         knownVariables = variableKeys
                     )
+                }.also {
+                    it.knownVariables = variableKeys // update the cache
                 }
             } else {
                 null
