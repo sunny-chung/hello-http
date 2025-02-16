@@ -97,7 +97,7 @@ kotlin {
                 implementation("io.github.sunny-chung:bigtext-ui-composable:2.0.1")
 
                 // for proguard to understand the code
-                implementation("com.github.luben:zstd-jni:1.5.5-11")
+//                implementation("com.github.luben:zstd-jni:1.5.5-11")
             }
 
             resources.srcDir("$buildDir/resources")
