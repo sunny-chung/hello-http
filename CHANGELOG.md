@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - The text field re-implementation has been extended to cover all text fields.
 
+### Fixed
+- JSON highlighting on string values was inaccurate if it contains an escape
+
 
 ## [1.7.1] -- 2025-01-10
 
