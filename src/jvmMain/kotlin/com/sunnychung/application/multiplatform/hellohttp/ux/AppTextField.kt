@@ -33,6 +33,7 @@ import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
 import com.sunnychung.lib.multiplatform.bigtext.ux.ContextMenuItemEntry
 import com.sunnychung.lib.multiplatform.bigtext.ux.CoreBigTextField
 import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
+import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalBigTextUiApi::class)
 @Composable
@@ -271,6 +272,7 @@ fun AppTextField(
                 onPointerEvent = onPointerEvent,
 //                interactionSource = interactionSource,
                 onFinishInit = onFinishInit,
+                provideUiCoroutineContext = { Dispatchers.Main.immediate },
                 padding = PaddingValues(0.dp),
 //                modifier = Modifier.debugConstraints("core tf"),
             )
