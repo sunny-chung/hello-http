@@ -1254,7 +1254,7 @@ fun SemanticsNodeInteractionCollection.fetchSemanticsNodesWithRetry(host: Compos
  */
 fun SemanticsNodeInteraction.performTextInput(host: ComposeUiTest, s: String) {
     // workaround that BigTextField is not immediately ready for text input
-    host.waitUntil(1.seconds().millis) {
+    host.waitUntil(2.seconds().millis) {
         host.runOnUiThread {
             val node = fetchSemanticsNodeWithRetry(host)
             try {
