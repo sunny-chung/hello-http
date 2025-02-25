@@ -56,6 +56,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
+import com.sunnychung.lib.multiplatform.bigtext.ux.clearAllBigTextWorkerCoroutineContexts
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
@@ -115,7 +116,9 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
                     it.awaitAllUpdates()
                 }
             }
-            println("All repositories updated. Finish test case.")
+            println("All repositories updated. Await cleanup dedicated resources")
+            clearAllBigTextWorkerCoroutineContexts()
+            println("Finish test case.")
         }
     }
 
@@ -1254,7 +1257,7 @@ fun SemanticsNodeInteractionCollection.fetchSemanticsNodesWithRetry(host: Compos
  */
 fun SemanticsNodeInteraction.performTextInput(host: ComposeUiTest, s: String) {
     // workaround that BigTextField is not immediately ready for text input
-    host.waitUntil(2.seconds().millis) {
+    host.waitUntil(1.seconds().millis) {
         host.runOnUiThread {
             val node = fetchSemanticsNodeWithRetry(host)
             try {
