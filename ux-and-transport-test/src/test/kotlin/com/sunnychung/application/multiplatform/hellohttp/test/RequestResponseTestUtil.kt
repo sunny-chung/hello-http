@@ -56,12 +56,14 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
-import com.sunnychung.lib.multiplatform.bigtext.ux.clearAllBigTextWorkerCoroutineContexts
+import com.sunnychung.lib.multiplatform.bigtext.ux.CoroutineContexts
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import kotlinx.coroutines.CloseableCoroutineDispatcher
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
@@ -74,6 +76,8 @@ import java.awt.Robot
 import java.awt.Toolkit
 import java.io.File
 import java.net.URL
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.TimeUnit
 
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
     executeWithTimeout(120.seconds()) {
@@ -121,6 +125,32 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
             println("Finish test case.")
         }
     }
+
+fun clearAllBigTextWorkerCoroutineContexts() {
+    val threads = mutableListOf<Thread>()
+    synchronized(CoroutineContexts) {
+        println("B Ready to clean ${CoroutineContexts.size} CoroutineContexts")
+        while (CoroutineContexts.isNotEmpty()) {
+            val it = CoroutineContexts.firstOrNull()
+
+            threads += Thread {
+                (it as? CloseableCoroutineDispatcher)?.let { d ->
+                    d.close()
+                    ((it as? ExecutorCoroutineDispatcher)?.executor as? ExecutorService)?.let {
+                        it.shutdownNow()
+                        it.awaitTermination(5, TimeUnit.SECONDS)
+                        println("Closed ExecutorService $it")
+                    }
+                    println("closed BT worker dispatcher -- $it")
+                }
+            }.apply {
+                start()
+            }
+            CoroutineContexts.remove(it)
+        }
+    }
+    threads.forEach { it.join() }
+}
 
 enum class TestEnvironment(val displayName: String) {
     LocalDefault("Local Default"),
