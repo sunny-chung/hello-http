@@ -79,7 +79,7 @@ import java.net.URL
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 
-fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
+fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
     executeWithTimeout(120.seconds()) {
         try {
             runDesktopComposeUiTest {
@@ -120,11 +120,13 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
                     it.awaitAllUpdates()
                 }
             }
-            println("All repositories updated. Await cleanup dedicated resources")
-            clearAllBigTextWorkerCoroutineContexts()
-            println("Finish test case.")
+            println("All repositories updated.")
         }
     }
+    println("Cleaning up BigText worker coroutine contexts.")
+    clearAllBigTextWorkerCoroutineContexts()
+    println("Cleaned up. Finish test case.")
+}
 
 fun clearAllBigTextWorkerCoroutineContexts() {
     val threads = mutableListOf<Thread>()
