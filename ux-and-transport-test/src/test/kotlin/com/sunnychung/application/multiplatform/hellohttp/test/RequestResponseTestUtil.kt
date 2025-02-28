@@ -80,52 +80,55 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
-    executeWithTimeout(120.seconds()) {
-        try {
-            runDesktopComposeUiTest {
-                setContent {
-                    Window(
-                        title = "Hello HTTP",
-                        onCloseRequest = {},
-                        state = rememberWindowState(width = 1024.dp, height = 560.dp)
-                    ) {
-                        with(LocalDensity.current) {
-                            window.minimumSize = if (isMacOs()) {
-                                Dimension(800, 450)
-                            } else {
-                                Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+    try {
+        executeWithTimeout(120.seconds()) {
+            try {
+                runDesktopComposeUiTest {
+                    setContent {
+                        Window(
+                            title = "Hello HTTP",
+                            onCloseRequest = {},
+                            state = rememberWindowState(width = 1024.dp, height = 560.dp)
+                        ) {
+                            with(LocalDensity.current) {
+                                window.minimumSize = if (isMacOs()) {
+                                    Dimension(800, 450)
+                                } else {
+                                    Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                                }
                             }
+                            AppView()
                         }
-                        AppView()
+                    }
+                    runBlocking { // don't use Dispatchers.Main, or most tests would fail with ComposeTimeoutException
+                        testBlock()
                     }
                 }
-                runBlocking { // don't use Dispatchers.Main, or most tests would fail with ComposeTimeoutException
-                    testBlock()
-                }
-            }
-        } catch (e: Throwable) {
-            System.err.println("[${KZonedInstant.nowAtLocalZoneOffset()}] Exception thrown during test")
-            RuntimeException("Exception thrown during test", e)
-                .printStackTrace()
-            throw e
-        } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
-            println("UX test case ends, await all repositories updates")
-            val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
-            runBlocking {
-                if (numActiveCalls > 0) {
-                    delay(2.seconds().millis) // wait for cancelling calls
-                }
+            } catch (e: Throwable) {
+                System.err.println("[${KZonedInstant.nowAtLocalZoneOffset()}] Exception thrown during test")
+                RuntimeException("Exception thrown during test", e)
+                    .printStackTrace()
+                throw e
+            } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
+                println("UX test case ends, await all repositories updates")
+                val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
+                runBlocking {
+                    if (numActiveCalls > 0) {
+                        delay(2.seconds().millis) // wait for cancelling calls
+                    }
 
-                AppContext.allRepositories.forEach {
-                    it.awaitAllUpdates()
+                    AppContext.allRepositories.forEach {
+                        it.awaitAllUpdates()
+                    }
                 }
+                println("All repositories updated.")
             }
-            println("All repositories updated.")
         }
+    } finally {
+        println("Cleaning up BigText worker coroutine contexts.")
+        clearAllBigTextWorkerCoroutineContexts()
+        println("Cleaned up. Finish test case.")
     }
-    println("Cleaning up BigText worker coroutine contexts.")
-    clearAllBigTextWorkerCoroutineContexts()
-    println("Cleaned up. Finish test case.")
 }
 
 fun clearAllBigTextWorkerCoroutineContexts() {
