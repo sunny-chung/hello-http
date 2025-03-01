@@ -94,7 +94,7 @@ kotlin {
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
 
                 // text field
-                api("io.github.sunny-chung:bigtext-ui-composable:2.0.9")
+                api("io.github.sunny-chung:bigtext-ui-composable:2.0.10")
             }
 
             resources.srcDir("$buildDir/resources")
