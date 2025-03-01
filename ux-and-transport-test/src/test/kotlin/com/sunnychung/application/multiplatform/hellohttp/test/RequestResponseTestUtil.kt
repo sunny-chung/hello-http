@@ -56,7 +56,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
-import com.sunnychung.lib.multiplatform.bigtext.ux.CoroutineContexts
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextCoroutineContexts
+import com.sunnychung.lib.multiplatform.bigtext.ux.clearAllBigTextWorkerCoroutineContexts
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
@@ -131,31 +132,31 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
     }
 }
 
-fun clearAllBigTextWorkerCoroutineContexts() {
-    val threads = mutableListOf<Thread>()
-    synchronized(CoroutineContexts) {
-        println("B Ready to clean ${CoroutineContexts.size} CoroutineContexts")
-        while (CoroutineContexts.isNotEmpty()) {
-            val it = CoroutineContexts.firstOrNull()
-
-            threads += Thread {
-                (it as? CloseableCoroutineDispatcher)?.let { d ->
-                    d.close()
-                    ((it as? ExecutorCoroutineDispatcher)?.executor as? ExecutorService)?.let {
-                        it.shutdownNow()
-                        it.awaitTermination(5, TimeUnit.SECONDS)
-                        println("Closed ExecutorService $it")
-                    }
-                    println("closed BT worker dispatcher -- $it")
-                }
-            }.apply {
-                start()
-            }
-            CoroutineContexts.remove(it)
-        }
-    }
-    threads.forEach { it.join() }
-}
+//fun clearAllBigTextWorkerCoroutineContexts() {
+//    val threads = mutableListOf<Thread>()
+//    synchronized(BigTextCoroutineContexts) {
+//        println("B Ready to clean ${BigTextCoroutineContexts.size} CoroutineContexts")
+//        while (BigTextCoroutineContexts.isNotEmpty()) {
+//            val it = BigTextCoroutineContexts.firstOrNull()
+//
+//            threads += Thread {
+//                (it as? CloseableCoroutineDispatcher)?.let { d ->
+//                    d.close()
+//                    ((it as? ExecutorCoroutineDispatcher)?.executor as? ExecutorService)?.let {
+//                        it.shutdownNow()
+//                        it.awaitTermination(5, TimeUnit.SECONDS)
+//                        println("Closed ExecutorService $it")
+//                    }
+//                    println("closed BT worker dispatcher -- $it")
+//                }
+//            }.apply {
+//                start()
+//            }
+//            BigTextCoroutineContexts.remove(it)
+//        }
+//    }
+//    threads.forEach { it.join() }
+//}
 
 enum class TestEnvironment(val displayName: String) {
     LocalDefault("Local Default"),
