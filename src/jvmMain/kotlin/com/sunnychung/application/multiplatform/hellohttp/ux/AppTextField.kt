@@ -29,6 +29,7 @@ import com.sunnychung.lib.multiplatform.bigtext.annotation.ExperimentalBigTextUi
 import com.sunnychung.lib.multiplatform.bigtext.core.BigText
 import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
+import com.sunnychung.lib.multiplatform.bigtext.platform.AsyncOperation
 import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
 import com.sunnychung.lib.multiplatform.bigtext.ux.ContextMenuItemEntry
 import com.sunnychung.lib.multiplatform.bigtext.ux.CoreBigTextField
@@ -227,6 +228,7 @@ fun AppTextField(
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
+    isAsynchronous: Boolean = false,
 
     /**
      * This parameter exists to work around the weird limitation of `Modifier.semantics(mergeDescendants = true)` that
@@ -272,7 +274,7 @@ fun AppTextField(
                 onPointerEvent = onPointerEvent,
 //                interactionSource = interactionSource,
                 onFinishInit = onFinishInit,
-                provideUiCoroutineContext = { Dispatchers.Main.immediate },
+                onHeavyComputation = if (isAsynchronous) AsyncOperation.Asynchronous else AsyncOperation.Synchronous,
                 padding = PaddingValues(0.dp),
 //                modifier = Modifier.debugConstraints("core tf"),
             )
