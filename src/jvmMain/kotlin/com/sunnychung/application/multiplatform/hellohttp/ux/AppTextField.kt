@@ -79,7 +79,7 @@ fun AppTextField(
         textState = textState,
         onValueChange = {
             val newStringValue = it.buildString()
-            log.w { "onTextChange: new = $newStringValue" }
+            log.d { "onTextChange: new = $newStringValue" }
             onValueChange(newStringValue)
         },
         modifier = modifier,

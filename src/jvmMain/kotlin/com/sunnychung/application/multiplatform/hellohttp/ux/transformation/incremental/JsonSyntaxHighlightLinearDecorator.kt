@@ -64,7 +64,7 @@ class JsonSyntaxHighlightLinearDecorator(colours: AppColor) : CacheableBigTextDe
                 reader.nextToken
                 tokens = JsonParser3(reader).parse()
             } catch (e: IOException) {
-                log.w { "Parsing JSON failed: ${e.message}" }
+                log.i { "Parsing JSON failed: ${e.message}" }
             }
         }
 
