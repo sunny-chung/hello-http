@@ -14,18 +14,18 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 @Composable
 fun VariableHintText(modifier: Modifier = Modifier
     .fillMaxWidth()
-    .padding(start = 4.dp, bottom = 8.dp)
+    .padding(start = 4.dp, bottom = 12.dp)
 ) {
     val colour = LocalColor.current
     AppText(
         text = buildAnnotatedString {
             append("To use a variable defined here, type ")
-            withStyle(SpanStyle(fontFamily = FontFamily.Monospace, color = colour.primary)) {
+            withStyle(SpanStyle(fontFamily = FontFamily.Monospace, color = colour.highlight)) {
                 append("\${{name}}")
             }
             append(" at the use-site.")
         },
-        color = colour.placeholder,
+        color = colour.primary,
         modifier = modifier
     )
 }

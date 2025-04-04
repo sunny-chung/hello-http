@@ -464,7 +464,7 @@ fun RequestEditorView(
                                 modifier = Modifier.weight(1f)
                                     .focusRequester(focusRequester)
                                     .onFocusChanged { f ->
-                                        log.w { "RequestListView onFocusChanged ${f.hasFocus} ${f.isFocused}" }
+                                        log.d { "RequestListView onFocusChanged ${f.hasFocus} ${f.isFocused}" }
                                         if (!f.hasFocus && editExampleNameViewModel.isInvokeModelUpdate()) {
                                             onRequestModified(request.copy(examples = request.examples.copyWithChange(it.copy(name = textFieldState.text.buildString()))))
                                         }

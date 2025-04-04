@@ -6,13 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+
+## [1.7.2] -- 2025-03-18
+
+_Changes since 1.7.1_
+
 ### Added
 - Textual hint on variable usage to top of Variable editors (#3)
 - "Open User Manual" and "Report Bug or Request Feature" buttons on the Status Bar
 - Mouse hovering variable placeholders in text fields to show a tooltip for its value (if exists)
 
 ### Changed
-- The text field re-implementation has been extended to cover all text fields.
+- The text field re-implementation has been extended to cover all text fields
+
+### Fixed
+- JSON highlighting on string values was inaccurate if it contains an escape
 
 
 ## [1.7.1] -- 2025-01-10

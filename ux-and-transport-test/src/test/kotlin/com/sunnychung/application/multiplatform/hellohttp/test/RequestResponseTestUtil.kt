@@ -56,11 +56,15 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
+import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextCoroutineContexts
+import com.sunnychung.lib.multiplatform.bigtext.ux.clearAllBigTextWorkerCoroutineContexts
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import kotlinx.coroutines.CloseableCoroutineDispatcher
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
@@ -73,51 +77,86 @@ import java.awt.Robot
 import java.awt.Toolkit
 import java.io.File
 import java.net.URL
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.TimeUnit
 
-fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) =
-    executeWithTimeout(120.seconds()) {
-        try {
-            runDesktopComposeUiTest {
-                setContent {
-                    Window(
-                        title = "Hello HTTP",
-                        onCloseRequest = {},
-                        state = rememberWindowState(width = 1024.dp, height = 560.dp)
-                    ) {
-                        with(LocalDensity.current) {
-                            window.minimumSize = if (isMacOs()) {
-                                Dimension(800, 450)
-                            } else {
-                                Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
+    try {
+        executeWithTimeout(120.seconds()) {
+            try {
+                runDesktopComposeUiTest {
+                    setContent {
+                        Window(
+                            title = "Hello HTTP",
+                            onCloseRequest = {},
+                            state = rememberWindowState(width = 1024.dp, height = 560.dp)
+                        ) {
+                            with(LocalDensity.current) {
+                                window.minimumSize = if (isMacOs()) {
+                                    Dimension(800, 450)
+                                } else {
+                                    Dimension(800.dp.roundToPx(), 450.dp.roundToPx())
+                                }
                             }
+                            AppView()
                         }
-                        AppView()
+                    }
+                    runBlocking { // don't use Dispatchers.Main, or most tests would fail with ComposeTimeoutException
+                        testBlock()
                     }
                 }
-                runBlocking { // don't use Dispatchers.Main, or most tests would fail with ComposeTimeoutException
-                    testBlock()
-                }
-            }
-        } catch (e: Throwable) {
-            System.err.println("[${KZonedInstant.nowAtLocalZoneOffset()}] Exception thrown during test")
-            RuntimeException("Exception thrown during test", e)
-                .printStackTrace()
-            throw e
-        } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
-            println("UX test case ends, await all repositories updates")
-            val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
-            runBlocking {
-                if (numActiveCalls > 0) {
-                    delay(2.seconds().millis) // wait for cancelling calls
-                }
+            } catch (e: Throwable) {
+                System.err.println("[${KZonedInstant.nowAtLocalZoneOffset()}] Exception thrown during test")
+                RuntimeException("Exception thrown during test", e)
+                    .printStackTrace()
+                throw e
+            } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
+                println("UX test case ends, await all repositories updates")
+                val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
+                runBlocking {
+                    if (numActiveCalls > 0) {
+                        delay(2.seconds().millis) // wait for cancelling calls
+                    }
 
-                AppContext.allRepositories.forEach {
-                    it.awaitAllUpdates()
+                    AppContext.allRepositories.forEach {
+                        it.awaitAllUpdates()
+                    }
                 }
+                println("All repositories updated.")
             }
-            println("All repositories updated. Finish test case.")
         }
+    } finally {
+        println("Cleaning up BigText worker coroutine contexts.")
+        clearAllBigTextWorkerCoroutineContexts()
+        println("Cleaned up. Finish test case.")
     }
+}
+
+//fun clearAllBigTextWorkerCoroutineContexts() {
+//    val threads = mutableListOf<Thread>()
+//    synchronized(BigTextCoroutineContexts) {
+//        println("B Ready to clean ${BigTextCoroutineContexts.size} CoroutineContexts")
+//        while (BigTextCoroutineContexts.isNotEmpty()) {
+//            val it = BigTextCoroutineContexts.firstOrNull()
+//
+//            threads += Thread {
+//                (it as? CloseableCoroutineDispatcher)?.let { d ->
+//                    d.close()
+//                    ((it as? ExecutorCoroutineDispatcher)?.executor as? ExecutorService)?.let {
+//                        it.shutdownNow()
+//                        it.awaitTermination(5, TimeUnit.SECONDS)
+//                        println("Closed ExecutorService $it")
+//                    }
+//                    println("closed BT worker dispatcher -- $it")
+//                }
+//            }.apply {
+//                start()
+//            }
+//            BigTextCoroutineContexts.remove(it)
+//        }
+//    }
+//    threads.forEach { it.join() }
+//}
 
 enum class TestEnvironment(val displayName: String) {
     LocalDefault("Local Default"),

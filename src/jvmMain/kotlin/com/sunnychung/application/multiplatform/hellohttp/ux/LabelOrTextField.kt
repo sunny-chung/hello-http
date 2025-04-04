@@ -57,6 +57,9 @@ fun LabelOrTextField(
             textState = textFieldState,
             onValueChange = {},
             singleLine = true,
+            onFinishInit = {
+                focusRequester.requestFocus()
+            },
             modifier = modifier // modifier is immutable
                 .focusRequester(focusRequester)
                 .onFocusChanged { f ->

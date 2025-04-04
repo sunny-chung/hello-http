@@ -22,6 +22,8 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.lib.multiplatform.bigtext.core.BigText
 import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
@@ -94,7 +96,12 @@ fun AppTextFieldWithVariables(
             leadingIcon = leadingIcon,
             hasIndicatorLine = hasIndicatorLine,
             transformation = if (isSupportVariables) {
-                remember(fonts) { EnvironmentVariableIncrementalTransformation(font = fonts) }
+                remember(fonts, themeColors) {
+                    MultipleIncrementalTransformation(listOf(
+                        EnvironmentVariableIncrementalTransformation(font = fonts),
+                        FunctionIncrementalTransformation(themeColors, fonts),
+                    ))
+                }
             } else {
                 null
             },

@@ -94,7 +94,7 @@ kotlin {
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
 
                 // text field
-                implementation("io.github.sunny-chung:bigtext-ui-composable:2.0.1")
+                api("io.github.sunny-chung:bigtext-ui-composable:2.1.0")
 
                 // for proguard to understand the code
 //                implementation("com.github.luben:zstd-jni:1.5.5-11")
@@ -192,7 +192,7 @@ compose.desktop {
         val distributionVersion = "^(\\d+\\.\\d+\\.\\d+).*".toRegex().matchEntire(project.version.toString())!!.groupValues[1]
 
         mainClass = "com.sunnychung.application.multiplatform.hellohttp.MainKt"
-//        jvmArgs += "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005" // to enable debugger for debug use only
+//        jvmArgs += "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5015" // to enable debugger for debug use only
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Hello HTTP"
