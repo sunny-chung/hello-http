@@ -688,8 +688,8 @@ fun TextSearchBar(
             onValueChange = onTextChange,
             textStyle = LocalTextStyle.current.copy(fontSize = textSizes.searchInputSize),
             maxLines = 1,
-            singleLine = false, // allow '\n'
             modifier = Modifier.weight(1f),
+            singleLine = true, // TODO allow '\n'
         )
         AppText(text = statusText, fontSize = textSizes.supplementSize, modifier = Modifier.padding(horizontal = 4.dp))
         AppTextToggleButton(

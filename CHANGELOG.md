@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- Search bars in code editor, body editor and viewer should not fill the parent height
 
 
 ## [1.7.2] -- 2025-03-18
