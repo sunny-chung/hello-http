@@ -682,14 +682,19 @@ fun TextSearchBar(
 ) {
     val textSizes = LocalFont.current
     Row(modifier = modifier.padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        val focusRequester = remember { FocusRequester() }
         AppTextField(
             key = "$key/SearchText",
             value = text,
             onValueChange = onTextChange,
             textStyle = LocalTextStyle.current.copy(fontSize = textSizes.searchInputSize),
             maxLines = 1,
-            modifier = Modifier.weight(1f),
             singleLine = true, // TODO allow '\n'
+            onFinishInit = {
+                focusRequester.requestFocus()
+            },
+            modifier = Modifier.weight(1f)
+                .focusRequester(focusRequester),
         )
         AppText(text = statusText, fontSize = textSizes.supplementSize, modifier = Modifier.padding(horizontal = 4.dp))
         AppTextToggleButton(
