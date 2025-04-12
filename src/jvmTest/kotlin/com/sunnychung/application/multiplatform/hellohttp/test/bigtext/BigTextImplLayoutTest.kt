@@ -6,6 +6,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.MonospaceTextLayouter
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.isD
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.logL
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.TestMethodOrder
@@ -19,6 +20,7 @@ import kotlin.test.assertEquals
 
 internal var random: Random = Random
 
+@Disabled("Refactored to the BigText library")
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class BigTextImplLayoutTest {
 

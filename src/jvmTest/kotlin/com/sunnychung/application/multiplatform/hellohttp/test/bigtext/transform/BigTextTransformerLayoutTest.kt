@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.test.bigtext.verifyBig
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.MonospaceTextLayouter
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.TestMethodOrder
@@ -18,6 +19,7 @@ import java.util.TreeMap
 import kotlin.random.Random
 import kotlin.test.assertEquals
 
+@Disabled("Refactored to the BigText library")
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class BigTextTransformerLayoutTest {
 

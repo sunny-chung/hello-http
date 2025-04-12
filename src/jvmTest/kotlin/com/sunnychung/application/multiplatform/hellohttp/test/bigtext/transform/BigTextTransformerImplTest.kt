@@ -7,10 +7,12 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTran
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextTransformerImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.isD
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.assertEquals
 
+@Disabled("Refactored to the BigText library")
 class BigTextTransformerImplTest {
 
     @ParameterizedTest
