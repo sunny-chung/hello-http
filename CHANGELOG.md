@@ -6,13 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+
+## [1.7.3] -- 2025-04-29
+
+_Changes since 1.7.2_
+
 ### Fixed
 - Search bars in code editor, body editor and viewer should not fill the parent height
 - Search bar should obtain the focus when it appears
 - Text field in Project Name dialog should obtain the focus when it appears
 
 ### Optimized
-- Reduced latencies brought by custom text fields
+- Reduced latencies brought by text field re-implementation
 
 
 ## [1.7.2] -- 2025-03-18
