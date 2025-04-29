@@ -692,6 +692,8 @@ fun TextSearchBar(
             singleLine = true, // TODO allow '\n'
             onFinishInit = {
                 focusRequester.requestFocus()
+                selectAll()
+                moveCursorToEnd()
             },
             modifier = Modifier.weight(1f)
                 .focusRequester(focusRequester),
