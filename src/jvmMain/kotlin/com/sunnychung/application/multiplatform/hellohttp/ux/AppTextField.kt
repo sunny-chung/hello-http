@@ -71,7 +71,7 @@ fun AppTextField(
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
-    onFinishInit: () -> Unit = {},
+    onFinishInit: BigTextFieldStateScope.() -> Unit = {},
 ) {
     val textState by rememberConcurrentLargeAnnotatedBigTextFieldState(value, key)
 
@@ -95,7 +95,9 @@ fun AppTextField(
         contentPadding = contentPadding,
         hasIndicatorLine = hasIndicatorLine,
         onPointerEvent = onPointerEvent,
-        onFinishInit = onFinishInit
+        onFinishInit = {
+            BigTextFieldStateScope(textState).onFinishInit()
+        }
     )
 
 //    Row(
@@ -375,6 +377,7 @@ fun AppTextFieldWithPlaceholder(
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp),
 //    hasIndicatorLine: Boolean = false,
+    onFinishInit: BigTextFieldStateScope.() -> Unit = {},
 ) {
     return AppTextField(
         key = key,
@@ -392,7 +395,8 @@ fun AppTextFieldWithPlaceholder(
         singleLine = singleLine,
         maxLines = maxLines,
         colors = colors,
-        contentPadding = contentPadding
+        contentPadding = contentPadding,
+        onFinishInit = onFinishInit,
     )
 
 //    /** copy from implementation of TextField **/

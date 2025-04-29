@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Search bars in code editor, body editor and viewer should not fill the parent height
 - Search bar should obtain the focus when it appears
+- Text field in Project Name dialog should obtain the focus when it appears
 
 ### Optimized
 - Reduced latencies brought by custom text fields

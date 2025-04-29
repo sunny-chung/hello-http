@@ -152,6 +152,10 @@ fun ProjectAndEnvironmentViewV2(
                     )
                 },
                 singleLine = true,
+                onFinishInit = {
+                    focusRequester.requestFocus()
+                    moveCursorToEnd()
+                },
                 modifier = Modifier.focusRequester(focusRequester)
                     .onPreviewKeyEvent {
                         if (it.key == Key.Enter && it.type == KeyEventType.KeyDown) {
