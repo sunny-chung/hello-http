@@ -45,7 +45,7 @@ class JsonParser3(val reader: JsonReader<*>) {
                 return false
             }
 
-            '"' -> return reader.readString().also { tokens += TokenWithoutValue(start ..< start + 1 /* '"' */ + it.length + 1 /* '"' */, JsonNodeType.STRING) }
+            '"' -> return reader.readString().also { tokens += TokenWithoutValue(start ..< currentPos, JsonNodeType.STRING) }
             '{' -> return deserializeMap()
             '[' -> return deserializeList()
             else -> return NumberConverter.deserializeNumber(reader).also { tokens += TokenWithoutValue(start ..< currentPos, JsonNodeType.NUMBER) }

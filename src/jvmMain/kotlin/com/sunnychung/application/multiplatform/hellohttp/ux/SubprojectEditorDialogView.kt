@@ -91,6 +91,7 @@ fun SubprojectEditorDialogView(
                     onSubprojectUpdate()
                 },
                 placeholder = { AppText(text = "Subproject Name", color = colours.placeholder) },
+                singleLine = true,
                 modifier = Modifier.weight(1f).focusRequester(focusRequester),
             )
         }

@@ -10,10 +10,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Disabled
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@Disabled("Refactored to the BigText library")
 class ConcurrentBigTextTransformedThreadSafetyTest {
 
     @Test

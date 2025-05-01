@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.isD
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
@@ -13,6 +14,7 @@ import kotlin.test.assertEquals
 /**
  * Some cases in this test may look very specific, but they had consistently failed before.
  */
+@Disabled("Refactored to the BigText library")
 class BigTextImplTest {
 
     companion object {

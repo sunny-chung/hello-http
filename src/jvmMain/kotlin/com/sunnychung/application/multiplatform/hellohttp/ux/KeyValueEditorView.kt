@@ -1,9 +1,12 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -17,6 +20,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -33,6 +37,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.bigtext.ux.compose.debugConstraints
+import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
 import java.io.File
 
 @Composable
@@ -72,7 +77,19 @@ fun KeyValueEditorView(
         }
     }
 
+    val hiddenFocusRequester = remember { FocusRequester() }
+
     Column(modifier) {
+        val hiddenTextState by rememberConcurrentLargeAnnotatedBigTextFieldState(cacheKeys = arrayOf(key))
+        AppTextField(
+            textState = hiddenTextState,
+            onValueChange = { _ -> },
+            modifier = Modifier.height(0.dp).fillMaxWidth()
+                .focusRequester(hiddenFocusRequester)
+                .onFocusChanged { log.w { "hid onFocusChanged $it" } }
+                .focusProperties { canFocus = false }
+        )
+
         if (false && !isInheritedView) { // always disable
             Row(modifier = Modifier.padding(8.dp)) {
                 AppTextButton(text = "Switch to Raw Input", onClick = { /* TODO */ })
@@ -127,6 +144,7 @@ fun KeyValueEditorView(
                                         isEnabled = true
                                     )
                                 )
+                                hiddenFocusRequester.requestFocus()
                             }
                         },
                         isSupportVariables = isSupportVariables,
@@ -138,6 +156,11 @@ fun KeyValueEditorView(
                             retainFocus?.takeIf {
                                 it.first == index && it.second == "Key"
                             }?.run {
+                                if (hiddenTextState.text.isNotEmpty) {
+                                    textState.text.append(hiddenTextState.text.buildCharSequence())
+                                    hiddenTextState.viewState.setCursorIndex(0)
+                                    hiddenTextState.text.delete(0, hiddenTextState.text.length)
+                                }
                                 textState.viewState.setCursorIndex(textState.text.length)
                                 keyFocusRequester.requestFocus()
                                 retainFocus = null
@@ -171,6 +194,7 @@ fun KeyValueEditorView(
                                             isEnabled = true
                                         )
                                     )
+                                    hiddenFocusRequester.requestFocus()
                                 }
                             },
                             isSupportVariables = isSupportVariables,
@@ -182,6 +206,11 @@ fun KeyValueEditorView(
                                 retainFocus?.takeIf {
                                     it.first == index && it.second == "Value"
                                 }?.run {
+                                    if (hiddenTextState.text.isNotEmpty) {
+                                        textState.text.append(hiddenTextState.text.buildCharSequence())
+                                        hiddenTextState.viewState.setCursorIndex(0)
+                                        hiddenTextState.text.delete(0, hiddenTextState.text.length)
+                                    }
                                     textState.viewState.setCursorIndex(textState.text.length)
                                     valueFocusRequester.requestFocus()
                                     retainFocus = null

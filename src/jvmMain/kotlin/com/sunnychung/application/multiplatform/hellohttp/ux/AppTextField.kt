@@ -29,10 +29,12 @@ import com.sunnychung.lib.multiplatform.bigtext.annotation.ExperimentalBigTextUi
 import com.sunnychung.lib.multiplatform.bigtext.core.BigText
 import com.sunnychung.lib.multiplatform.bigtext.core.BigTextDecorator
 import com.sunnychung.lib.multiplatform.bigtext.core.transform.IncrementalTextTransformation
+import com.sunnychung.lib.multiplatform.bigtext.platform.AsyncOperation
 import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextFieldState
 import com.sunnychung.lib.multiplatform.bigtext.ux.ContextMenuItemEntry
 import com.sunnychung.lib.multiplatform.bigtext.ux.CoreBigTextField
 import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
+import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalBigTextUiApi::class)
 @Composable
@@ -69,7 +71,7 @@ fun AppTextField(
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
-    onFinishInit: () -> Unit = {},
+    onFinishInit: BigTextFieldStateScope.() -> Unit = {},
 ) {
     val textState by rememberConcurrentLargeAnnotatedBigTextFieldState(value, key)
 
@@ -77,7 +79,7 @@ fun AppTextField(
         textState = textState,
         onValueChange = {
             val newStringValue = it.buildString()
-            log.w { "onTextChange: new = $newStringValue" }
+            log.d { "onTextChange: new = $newStringValue" }
             onValueChange(newStringValue)
         },
         modifier = modifier,
@@ -93,7 +95,9 @@ fun AppTextField(
         contentPadding = contentPadding,
         hasIndicatorLine = hasIndicatorLine,
         onPointerEvent = onPointerEvent,
-        onFinishInit = onFinishInit
+        onFinishInit = {
+            BigTextFieldStateScope(textState).onFinishInit()
+        }
     )
 
 //    Row(
@@ -226,6 +230,7 @@ fun AppTextField(
     contentPadding: PaddingValues = PaddingValues(6.dp),
     hasIndicatorLine: Boolean = false,
     onPointerEvent: ((event: PointerEvent, tag: String?) -> Unit)? = null,
+    isAsynchronous: Boolean = false,
 
     /**
      * This parameter exists to work around the weird limitation of `Modifier.semantics(mergeDescendants = true)` that
@@ -271,6 +276,7 @@ fun AppTextField(
                 onPointerEvent = onPointerEvent,
 //                interactionSource = interactionSource,
                 onFinishInit = onFinishInit,
+                onHeavyComputation = if (isAsynchronous) AsyncOperation.Asynchronous else AsyncOperation.Synchronous,
                 padding = PaddingValues(0.dp),
 //                modifier = Modifier.debugConstraints("core tf"),
             )
@@ -371,6 +377,7 @@ fun AppTextFieldWithPlaceholder(
     ),
     contentPadding: PaddingValues = PaddingValues(6.dp),
 //    hasIndicatorLine: Boolean = false,
+    onFinishInit: BigTextFieldStateScope.() -> Unit = {},
 ) {
     return AppTextField(
         key = key,
@@ -388,7 +395,8 @@ fun AppTextFieldWithPlaceholder(
         singleLine = singleLine,
         maxLines = maxLines,
         colors = colors,
-        contentPadding = contentPadding
+        contentPadding = contentPadding,
+        onFinishInit = onFinishInit,
     )
 
 //    /** copy from implementation of TextField **/

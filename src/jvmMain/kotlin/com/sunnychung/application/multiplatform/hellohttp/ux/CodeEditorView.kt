@@ -682,14 +682,21 @@ fun TextSearchBar(
 ) {
     val textSizes = LocalFont.current
     Row(modifier = modifier.padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        val focusRequester = remember { FocusRequester() }
         AppTextField(
             key = "$key/SearchText",
             value = text,
             onValueChange = onTextChange,
             textStyle = LocalTextStyle.current.copy(fontSize = textSizes.searchInputSize),
             maxLines = 1,
-            singleLine = false, // allow '\n'
-            modifier = Modifier.weight(1f),
+            singleLine = true, // TODO allow '\n'
+            onFinishInit = {
+                focusRequester.requestFocus()
+                selectAll()
+                moveCursorToEnd()
+            },
+            modifier = Modifier.weight(1f)
+                .focusRequester(focusRequester),
         )
         AppText(text = statusText, fontSize = textSizes.supplementSize, modifier = Modifier.padding(horizontal = 4.dp))
         AppTextToggleButton(
@@ -843,7 +850,7 @@ private fun CoreLineNumbersView(
     ) {
         var ii: Int = firstRow
         var lastLineIndex = -1
-        if (firstRow > 0) {
+        if (firstRow > 0 && firstRow < lastRow) {
             val lineBeforeFirstRow = rowToLineIndex(firstRow - 1)
             lastLineIndex = lineBeforeFirstRow
         }

@@ -13,9 +13,11 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.Inefficient
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.LengthTree
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.TextBuffer
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.TextLayouter
+import org.junit.jupiter.api.Disabled
 import java.util.TreeMap
 import kotlin.test.assertEquals
 
+@Disabled("Refactored to the BigText library")
 internal class BigTextVerifyImpl(bigTextImpl: BigTextImpl) : BigText {
     val bigTextImpl: BigTextImpl = bigTextImpl
     val stringImpl = InefficientBigText("")

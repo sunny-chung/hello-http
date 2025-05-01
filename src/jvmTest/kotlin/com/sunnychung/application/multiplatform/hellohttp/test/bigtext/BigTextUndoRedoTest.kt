@@ -1,11 +1,13 @@
 package com.sunnychung.application.multiplatform.hellohttp.test.bigtext
 
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.BigTextImpl
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@Disabled("Refactored to the BigText library")
 class BigTextUndoRedoTest {
 
     @ParameterizedTest
