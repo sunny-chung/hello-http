@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +68,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
@@ -74,7 +76,9 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
+import java.awt.FileDialog
 import java.io.ByteArrayInputStream
+import java.io.File
 
 @Composable
 fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatus) {
@@ -490,9 +494,35 @@ fun BodyViewerView(
     var isJsonPathError by rememberLast(key) { mutableStateOf(false) }
     val (debouncedJsonPathExpression, _) = debouncedStateOf(400.milliseconds()) { jsonPathExpression }
 
+    var isShowSaveFileDialog by remember { mutableStateOf(false) }
+    val fileDialogState = rememberFileDialogState()
+    var file by remember { mutableStateOf<File?>(null) }
+    if (isShowSaveFileDialog) {
+        FileDialog(
+            state = fileDialogState,
+            mode = FileDialog.SAVE,
+            title = "Save Raw Response Body to File",
+        ) {
+            if (it != null) {
+                file = it.firstOrNull()
+            }
+            isShowSaveFileDialog = false
+        }
+    }
+    LaunchedEffect(file) {
+        val f = file ?: return@LaunchedEffect
+        f.writeBytes(content)
+
+        file = null
+    }
+
     Column(modifier = modifier) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.padding(vertical = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(vertical = 8.dp).weight(1f)) {
                 AppText(text = "View: ")
                 DropDownView(
                     items = prettifiers,
@@ -500,11 +530,21 @@ fun BodyViewerView(
                     onClickItem = { selectedView = it; true }
                 )
             }
+            if (content.isNotEmpty()) {
+                AppTextButton(
+                    text = "Save Raw",
+                    onClick = {
+                        isShowSaveFileDialog = true
+                    },
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                )
+            }
             if (hasTopCopyButton) {
                 AppTextButton(
                     text = "Copy All",
                     onClick = onTopCopyButtonClick,
-                    modifier = Modifier.align(Alignment.CenterEnd)
+                    modifier = Modifier
                         .padding(top = 4.dp)
                 )
             }
