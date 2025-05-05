@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 _Changes since 1.7.3_
 
 ### Added
+- On pre-flight, update environment variables according to request headers and bodies
 - A "Save Raw" button at the response viewer to save raw response body to a file
 
 ### Changed

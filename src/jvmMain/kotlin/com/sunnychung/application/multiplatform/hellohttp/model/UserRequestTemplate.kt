@@ -44,6 +44,10 @@ data class UserRequestTemplate(
         return examples.indexOfFirst { it.id == example.id } == 0
     }
 
+    fun isExampleIdBase(exampleId: String): Boolean {
+        return examples.indexOfFirst { it.id == exampleId } == 0
+    }
+
     fun copyForApplication(application: ProtocolApplication, method: String) =
         if (application == ProtocolApplication.WebSocket && payloadExamples.isNullOrEmpty()) {
             copy(
@@ -193,6 +197,22 @@ data class UserRequestTemplate(
         return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode)).action()
     }
 
+    fun getPreFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
+        val headerVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromHeader },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val bodyVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromBody },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        Pair(headerVariables, bodyVariables)
+    }
+
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
         val headerVariables = getMergedKeyValues(
             propertyGetter = { it.postFlight.updateVariablesFromHeader },
@@ -279,6 +299,8 @@ data class UserRequestExample(
 
         val isOverridePreFlightScript: Boolean = true,
 
+        val disablePreFlightUpdateVarIds: Set<String> = emptySet(),
+
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     ) {
         fun hasNoDisable(): Boolean =
@@ -311,7 +333,12 @@ data class UserRequestExample(
             queryParameters = queryParameters.deepCopyWithNewId(),
             body = body?.deepCopyWithNewId(),
             variables = variables.deepCopyWithNewId(),
-            preFlight = preFlight.copy(),
+            preFlight = with(preFlight) {
+                copy(
+                    updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
+                    updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(),
+                )
+            },
             postFlight = with (postFlight) {
                 copy(
                     updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
@@ -323,6 +350,7 @@ data class UserRequestExample(
                     disabledHeaderIds = o.disabledHeaderIds.map { it }.toSet(),
                     disabledQueryParameterIds = o.disabledQueryParameterIds.map { it }.toSet(),
                     disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { it }.toSet(),
+                    disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { it }.toSet(),
                     disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { it }.toSet(),
                     disabledVariables = o.disabledVariables.map { it }.toSet(),
                 )
@@ -373,9 +401,13 @@ data class PayloadExample(
 @Persisted
 @Serializable
 data class PreFlightSpec(
-    val executeCode: String = ""
+    val executeCode: String = "",
+    val updateVariablesFromHeader: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromBody: List<UserKeyValuePair> = mutableListOf(),
 ) {
-    fun isNotEmpty(): Boolean = executeCode.isNotEmpty()
+    fun isNotEmpty(): Boolean = executeCode.isNotEmpty() ||
+        updateVariablesFromHeader.isNotEmpty() ||
+        updateVariablesFromBody.isNotEmpty()
 }
 
 @Persisted

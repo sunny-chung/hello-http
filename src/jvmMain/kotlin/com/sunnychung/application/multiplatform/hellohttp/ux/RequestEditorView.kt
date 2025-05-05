@@ -839,6 +839,7 @@ fun RequestEditorView(
                         selectedExample = selectedExample,
                         onRequestModified = onRequestModified,
                         request = request,
+                        environment = environment,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     )
 
@@ -948,9 +949,10 @@ private fun PreFlightEditorView(
     modifier: Modifier = Modifier,
     selectedExample: UserRequestExample,
     onRequestModified: (UserRequestTemplate?) -> Unit,
-    request: UserRequestTemplate
+    request: UserRequestTemplate,
+    environment: Environment?,
 ) {
-    Column(modifier) {
+    Column(modifier.verticalScroll(rememberScrollState())) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
             if (!request.isExampleBase(selectedExample)) {
@@ -973,6 +975,8 @@ private fun PreFlightEditorView(
         } else {
             selectedExample
         }
+        val baseExample = request.examples.first()
+        val mergedVariables = request.getAllVariables(selectedExample.id, environment)
         KotliteCodeEditorView(
             cacheKey = "Request:${request.id}/Example:${example.id}/Preflight/Script",
             text = example.preFlight.executeCode,
@@ -992,7 +996,87 @@ private fun PreFlightEditorView(
             isEnabled = isEnabled,
             isReadOnly = !isEnabled,
             testTag = TestTag.RequestPreFlightScriptTextField.name,
-            modifier = Modifier.padding(top = 4.dp).fillMaxSize(),
+            modifier = Modifier.padding(top = 4.dp).fillMaxWidth().height(300.dp),
+        )
+
+        AppText(
+            text = "Update environment variables according to request headers.",
+            modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
+        )
+        RequestKeyValueEditorView(
+            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromRequestHeader",
+            keyPlaceholder = "Variable",
+            valuePlaceholder = "Header",
+            value = selectedExample.preFlight.updateVariablesFromHeader,
+            onValueUpdate = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.copy(
+                                preFlight = selectedExample.preFlight.copy(
+                                    updateVariablesFromHeader = it
+                                )
+                            )
+                        )
+                    )
+                )
+            },
+            baseValue = if (selectedExample.id != baseExample.id) baseExample.preFlight.updateVariablesFromHeader else null,
+            baseDisabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds ?: emptySet(),
+            onDisableUpdate = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = overrides!!.copy(disablePreFlightUpdateVarIds = it))
+                            }
+                        )
+                    )
+                )
+            },
+            knownVariables = mergedVariables,
+            isSupportFileValue = false,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+        )
+
+        AppText(
+            text = "Update environment variables according to request bodies.",
+            modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp)
+        )
+        RequestKeyValueEditorView(
+            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromRequestBody",
+            keyPlaceholder = "Variable",
+            valuePlaceholder = "JSON Path / Param Key",
+            value = selectedExample.preFlight.updateVariablesFromBody,
+            onValueUpdate = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.copy(
+                                preFlight = selectedExample.preFlight.copy(
+                                    updateVariablesFromBody = it
+                                )
+                            )
+                        )
+                    )
+                )
+            },
+            baseValue = if (selectedExample.id != baseExample.id) baseExample.preFlight.updateVariablesFromBody else null,
+            baseDisabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds ?: emptySet(),
+            onDisableUpdate = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = overrides!!.copy(disablePreFlightUpdateVarIds = it))
+                            }
+                        )
+                    )
+                )
+            },
+            knownVariables = mergedVariables,
+            isSupportFileValue = false,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
         )
     }
 }
