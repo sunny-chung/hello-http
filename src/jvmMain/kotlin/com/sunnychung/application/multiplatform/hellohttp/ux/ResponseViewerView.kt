@@ -533,6 +533,7 @@ fun BodyViewerView(
             if (content.isNotEmpty()) {
                 AppTextButton(
                     text = "Save Raw",
+                    image = "save.svg",
                     onClick = {
                         isShowSaveFileDialog = true
                     },
