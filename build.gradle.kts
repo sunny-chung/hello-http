@@ -95,6 +95,9 @@ kotlin {
 
                 // text field
                 api("io.github.sunny-chung:bigtext-ui-composable:2.2.0")
+
+                // for proguard to understand the code
+//                implementation("com.github.luben:zstd-jni:1.5.5-11")
             }
 
             resources.srcDir("$buildDir/resources")
@@ -215,6 +218,11 @@ compose.desktop {
             linux {
                 iconFile.set(project.file("appicon/appicon.png"))
             }
+        }
+
+        buildTypes.release.proguard {
+            version.set("7.5.0")
+            configurationFiles.from(project.file("proguard.pro"))
         }
     }
 }
