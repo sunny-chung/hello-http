@@ -83,6 +83,7 @@ import java.io.File
 @Composable
 fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatus) {
     val colors = LocalColor.current
+    val clipboardManager = LocalClipboardManager.current
 
     var selectedTabIndex by remember { mutableStateOf(0) }
 
@@ -167,14 +168,28 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
         } else {
             listOf(ResponseTab.Body, ResponseTab.Header, ResponseTab.Raw)
         }
-        TabsView(
-            modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
-            selectedIndex = selectedTabIndex,
-            onSelectTab = { selectedTabIndex = it },
-            contents = tabs.map {
-                { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
+        Row(Modifier.fillMaxWidth().background(color = colors.backgroundLight)) {
+            TabsView(
+                modifier = Modifier.weight(1f),
+                selectedIndex = selectedTabIndex,
+                onSelectTab = { selectedTabIndex = it },
+                contents = tabs.map {
+                    { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
+                }
+            )
+            if (response.hasSomethingToCopy()) {
+                AppTextButton(
+                    text = "Copy All",
+                    image = "copy-to-clipboard.svg",
+                    onClick = {
+                        val textToCopy = response.describeApplicationLayer()
+                        clipboardManager.setText(AnnotatedString(textToCopy))
+                        AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
+                    },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
             }
-        )
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (tabs[selectedTabIndex]) {
                 ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
@@ -476,8 +491,6 @@ fun BodyViewerView(
     errorMessage: String?,
     prettifiers: List<PrettifierDropDownValue>,
     selectedPrettifierState: MutableState<PrettifierDropDownValue> = remember { mutableStateOf(prettifiers.first()) },
-    hasTopCopyButton: Boolean,
-    onTopCopyButtonClick: () -> Unit,
 ) {
     val colours = LocalColor.current
     val fonts = LocalFont.current
@@ -541,18 +554,10 @@ fun BodyViewerView(
                         .padding(top = 4.dp)
                 )
             }
-            if (hasTopCopyButton) {
-                AppTextButton(
-                    text = "Copy All",
-                    onClick = onTopCopyButtonClick,
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                )
-            }
         }
 
         var textFieldPositionTop by remember { mutableStateOf(0f) }
-        val modifier = Modifier.fillMaxWidth().weight(1f).padding(top = if (hasTopCopyButton) 2.dp else 6.dp, bottom = 8.dp)
+        val modifier = Modifier.fillMaxWidth().weight(1f).padding(top = if (content.isNotEmpty()) 2.dp else 6.dp, bottom = 8.dp)
         if (selectedView.name != CLIENT_ERROR) {
             var hasError = false
             var isRaw = true
@@ -679,8 +684,6 @@ fun ResponseBodyView(response: UserResponse) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     }
 
-    val clipboardManager = LocalClipboardManager.current
-
     log.d { "ResponseBodyView recompose" }
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
@@ -690,12 +693,6 @@ fun ResponseBodyView(response: UserResponse) {
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
             selectedPrettifierState = rememberLast(response.requestExampleId) { mutableStateOf(prettifiers.first()) },
-            hasTopCopyButton = response.hasSomethingToCopy(),
-            onTopCopyButtonClick = {
-                val textToCopy = response.describeApplicationLayer()
-                clipboardManager.setText(AnnotatedString(textToCopy))
-                AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
-            }
         )
 
         if (response.postFlightErrorMessage?.isNotEmpty() == true) {
@@ -793,12 +790,6 @@ fun ResponseStreamView(response: UserResponse) {
                 }
             ) { mutableStateOf(prettifiers.first()) },
             errorMessage = null,
-            hasTopCopyButton = response.hasSomethingToCopy(),
-            onTopCopyButtonClick = {
-                val textToCopy = response.describeApplicationLayer()
-                clipboardManager.setText(AnnotatedString(textToCopy))
-                AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
-            }
         )
 
         Box(modifier = Modifier.weight(0.4f).testTag(TestTag.ResponseStreamLog.name)) {

@@ -11,6 +11,9 @@ _Changes since 1.7.3_
 ### Added
 - A "Save Raw" button at the response viewer to save raw response body to a file
 
+### Changed
+- The "Save All" button near the response body viewer has been relocated to the upper level, as it copies the whole Request and Response rather than only response body
+
 
 ## [1.7.3] -- 2025-04-29
 
