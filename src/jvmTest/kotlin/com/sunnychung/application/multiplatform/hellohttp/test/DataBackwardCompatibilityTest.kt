@@ -40,7 +40,7 @@ class DataBackwardCompatibilityTest {
     companion object {
         @JvmStatic
         fun appVersionsHavingTestData(): List<String> =
-            listOf("1.5.2", "1.6.0", "1.7.0", "1.7.1", "1.7.2", "1.7.3") // sorted by versions ascending
+            listOf("1.5.2", "1.6.0", "1.7.0", "1.7.1", "1.7.2", "1.7.3", "1.8.0") // sorted by versions ascending
     }
 
     internal fun currentAppVersionExcludingLabel(): String =

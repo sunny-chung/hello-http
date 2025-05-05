@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +68,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import com.sunnychung.lib.multiplatform.kdatetime.KDateTimeFormat
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KFixedTimeUnit
@@ -74,11 +76,14 @@ import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZoneOffset
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
+import java.awt.FileDialog
 import java.io.ByteArrayInputStream
+import java.io.File
 
 @Composable
 fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatus) {
     val colors = LocalColor.current
+    val clipboardManager = LocalClipboardManager.current
 
     var selectedTabIndex by remember { mutableStateOf(0) }
 
@@ -163,14 +168,28 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
         } else {
             listOf(ResponseTab.Body, ResponseTab.Header, ResponseTab.Raw)
         }
-        TabsView(
-            modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
-            selectedIndex = selectedTabIndex,
-            onSelectTab = { selectedTabIndex = it },
-            contents = tabs.map {
-                { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
+        Row(Modifier.fillMaxWidth().background(color = colors.backgroundLight)) {
+            TabsView(
+                modifier = Modifier.weight(1f),
+                selectedIndex = selectedTabIndex,
+                onSelectTab = { selectedTabIndex = it },
+                contents = tabs.map {
+                    { AppText(text = it.name, modifier = Modifier.padding(8.dp)) }
+                }
+            )
+            if (response.hasSomethingToCopy()) {
+                AppTextButton(
+                    text = "Copy All",
+                    image = "copy-to-clipboard.svg",
+                    onClick = {
+                        val textToCopy = response.describeApplicationLayer()
+                        clipboardManager.setText(AnnotatedString(textToCopy))
+                        AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
+                    },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
             }
-        )
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (tabs[selectedTabIndex]) {
                 ResponseTab.Body -> if (response.body != null || response.errorMessage != null) {
@@ -472,8 +491,6 @@ fun BodyViewerView(
     errorMessage: String?,
     prettifiers: List<PrettifierDropDownValue>,
     selectedPrettifierState: MutableState<PrettifierDropDownValue> = remember { mutableStateOf(prettifiers.first()) },
-    hasTopCopyButton: Boolean,
-    onTopCopyButtonClick: () -> Unit,
 ) {
     val colours = LocalColor.current
     val fonts = LocalFont.current
@@ -490,9 +507,35 @@ fun BodyViewerView(
     var isJsonPathError by rememberLast(key) { mutableStateOf(false) }
     val (debouncedJsonPathExpression, _) = debouncedStateOf(400.milliseconds()) { jsonPathExpression }
 
+    var isShowSaveFileDialog by remember { mutableStateOf(false) }
+    val fileDialogState = rememberFileDialogState()
+    var file by remember { mutableStateOf<File?>(null) }
+    if (isShowSaveFileDialog) {
+        FileDialog(
+            state = fileDialogState,
+            mode = FileDialog.SAVE,
+            title = "Save Raw Response Body to File",
+        ) {
+            if (it != null) {
+                file = it.firstOrNull()
+            }
+            isShowSaveFileDialog = false
+        }
+    }
+    LaunchedEffect(file) {
+        val f = file ?: return@LaunchedEffect
+        f.writeBytes(content)
+
+        file = null
+    }
+
     Column(modifier = modifier) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.padding(vertical = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(vertical = 8.dp).weight(1f)) {
                 AppText(text = "View: ")
                 DropDownView(
                     items = prettifiers,
@@ -500,18 +543,21 @@ fun BodyViewerView(
                     onClickItem = { selectedView = it; true }
                 )
             }
-            if (hasTopCopyButton) {
+            if (content.isNotEmpty()) {
                 AppTextButton(
-                    text = "Copy All",
-                    onClick = onTopCopyButtonClick,
-                    modifier = Modifier.align(Alignment.CenterEnd)
+                    text = "Save Raw",
+                    image = "save.svg",
+                    onClick = {
+                        isShowSaveFileDialog = true
+                    },
+                    modifier = Modifier
                         .padding(top = 4.dp)
                 )
             }
         }
 
         var textFieldPositionTop by remember { mutableStateOf(0f) }
-        val modifier = Modifier.fillMaxWidth().weight(1f).padding(top = if (hasTopCopyButton) 2.dp else 6.dp, bottom = 8.dp)
+        val modifier = Modifier.fillMaxWidth().weight(1f).padding(top = if (content.isNotEmpty()) 2.dp else 6.dp, bottom = 8.dp)
         if (selectedView.name != CLIENT_ERROR) {
             var hasError = false
             var isRaw = true
@@ -638,8 +684,6 @@ fun ResponseBodyView(response: UserResponse) {
         listOf(PrettifierDropDownValue(CLIENT_ERROR, null))
     }
 
-    val clipboardManager = LocalClipboardManager.current
-
     log.d { "ResponseBodyView recompose" }
 
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
@@ -649,12 +693,6 @@ fun ResponseBodyView(response: UserResponse) {
             prettifiers = prettifiers,
             errorMessage = response.errorMessage,
             selectedPrettifierState = rememberLast(response.requestExampleId) { mutableStateOf(prettifiers.first()) },
-            hasTopCopyButton = response.hasSomethingToCopy(),
-            onTopCopyButtonClick = {
-                val textToCopy = response.describeApplicationLayer()
-                clipboardManager.setText(AnnotatedString(textToCopy))
-                AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
-            }
         )
 
         if (response.postFlightErrorMessage?.isNotEmpty() == true) {
@@ -752,12 +790,6 @@ fun ResponseStreamView(response: UserResponse) {
                 }
             ) { mutableStateOf(prettifiers.first()) },
             errorMessage = null,
-            hasTopCopyButton = response.hasSomethingToCopy(),
-            onTopCopyButtonClick = {
-                val textToCopy = response.describeApplicationLayer()
-                clipboardManager.setText(AnnotatedString(textToCopy))
-                AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
-            }
         )
 
         Box(modifier = Modifier.weight(0.4f).testTag(TestTag.ResponseStreamLog.name)) {
