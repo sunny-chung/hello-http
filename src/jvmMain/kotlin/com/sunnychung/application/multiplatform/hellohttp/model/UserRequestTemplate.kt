@@ -139,6 +139,7 @@ data class UserRequestTemplate(
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
                             updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                         )
                     },
                     postFlight = with (it.postFlight) {
@@ -216,7 +217,13 @@ data class UserRequestTemplate(
         )
             .filter { it.key.isNotBlank() }
 
-        Pair(headerVariables, bodyVariables)
+        val queryParamVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromQueryParameters },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        Triple(headerVariables, bodyVariables, queryParamVariables)
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
@@ -343,6 +350,7 @@ data class UserRequestExample(
                 copy(
                     updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
                     updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(),
+                    updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(),
                 )
             },
             postFlight = with (postFlight) {
@@ -409,10 +417,12 @@ data class PayloadExample(
 data class PreFlightSpec(
     val executeCode: String = "",
     val updateVariablesFromHeader: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromQueryParameters: List<UserKeyValuePair> = mutableListOf(),
     val updateVariablesFromBody: List<UserKeyValuePair> = mutableListOf(),
 ) {
     fun isNotEmpty(): Boolean = executeCode.isNotEmpty() ||
         updateVariablesFromHeader.isNotEmpty() ||
+        updateVariablesFromQueryParameters.isNotEmpty() ||
         updateVariablesFromBody.isNotEmpty()
 }
 

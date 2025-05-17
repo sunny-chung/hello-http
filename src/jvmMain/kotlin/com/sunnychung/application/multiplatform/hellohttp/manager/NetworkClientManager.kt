@@ -129,7 +129,7 @@ class NetworkClientManager : CallDataStore {
                 }
             }
 
-            val (preFlightHeaderVars, preFlightBodyVars) = request.getPreFlightVariables(
+            val (preFlightHeaderVars, preFlightBodyVars, preFlightQueryParamVars) = request.getPreFlightVariables(
                 exampleId = requestExampleId,
                 environment = environment
             )
@@ -137,6 +137,16 @@ class NetworkClientManager : CallDataStore {
                 preFlightHeaderVars.forEach { v -> // O(n^2)
                     try {
                         val value = networkRequest.headers.firstOrNull { it.first == v.value }?.second
+                        if (value != null) {
+                            setEnvironmentVariable(environment = environment, key = v.key, value = value)
+                        }
+                    } catch (e: Throwable) {
+                        throw PreflightError(variable = v.key, cause = e)
+                    }
+                }
+                preFlightQueryParamVars.forEach { v -> // O(n^2)
+                    try {
+                        val value = networkRequest.queryParameters.firstOrNull { it.first == v.value }?.second
                         if (value != null) {
                             setEnvironmentVariable(environment = environment, key = v.key, value = value)
                         }

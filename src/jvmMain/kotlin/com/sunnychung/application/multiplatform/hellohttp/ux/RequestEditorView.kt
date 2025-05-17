@@ -52,8 +52,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -952,6 +955,7 @@ private fun PreFlightEditorView(
     request: UserRequestTemplate,
     environment: Environment?,
 ) {
+    val colours = LocalColor.current
     Column(modifier.verticalScroll(rememberScrollState())) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
@@ -1000,7 +1004,13 @@ private fun PreFlightEditorView(
         )
 
         AppText(
-            text = "Update environment variables according to request headers.",
+            text = buildAnnotatedString {
+                append("Update environment variables according to ")
+                withStyle(SpanStyle(color = colours.highlight)) {
+                    append("request headers")
+                }
+                append(".")
+            },
             modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
         )
         RequestKeyValueEditorView(
@@ -1040,7 +1050,59 @@ private fun PreFlightEditorView(
         )
 
         AppText(
-            text = "Update environment variables according to request bodies.",
+            text = buildAnnotatedString {
+                append("Update environment variables according to ")
+                withStyle(SpanStyle(color = colours.highlight)) {
+                    append("request query parameters")
+                }
+                append(".")
+            },
+            modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
+        )
+        RequestKeyValueEditorView(
+            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromRequestQueryParameter",
+            keyPlaceholder = "Variable",
+            valuePlaceholder = "Parameter Key",
+            value = selectedExample.preFlight.updateVariablesFromQueryParameters,
+            onValueUpdate = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.copy(
+                                preFlight = selectedExample.preFlight.copy(
+                                    updateVariablesFromQueryParameters = it
+                                )
+                            )
+                        )
+                    )
+                )
+            },
+            baseValue = if (selectedExample.id != baseExample.id) baseExample.preFlight.updateVariablesFromQueryParameters else null,
+            baseDisabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds ?: emptySet(),
+            onDisableUpdate = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = overrides!!.copy(disablePreFlightUpdateVarIds = it))
+                            }
+                        )
+                    )
+                )
+            },
+            knownVariables = mergedVariables,
+            isSupportFileValue = false,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+        )
+
+        AppText(
+            text = buildAnnotatedString {
+                append("Update environment variables according to ")
+                withStyle(SpanStyle(color = colours.highlight)) {
+                    append("request bodies")
+                }
+                append(".")
+            },
             modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp)
         )
         RequestKeyValueEditorView(

@@ -124,6 +124,15 @@ class RequestDataTest {
                                         isEnabled = true
                                     )
                                 },
+                                updateVariablesFromQueryParameters = (0 until 10).map {
+                                    UserKeyValuePair(
+                                        id = generateUuidForSubject(),
+                                        key = "env_body_$it",
+                                        value = "Query Parameter $it",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                },
                             ),
                             postFlight = PostFlightSpec(
                                 updateVariablesFromHeader = (0 until 10).map {
@@ -152,7 +161,7 @@ class RequestDataTest {
                                     disabledQueryParameterIds = baseExample!!.queryParameters.map { it.id }.shuffled().take(4).toSet(),
                                     disabledBodyKeyValueIds = (baseExample!!.body as? RequestBodyWithKeyValuePairs)
                                         ?.value?.map { it.id }?.shuffled()?.take(5)?.toSet() ?: emptySet(),
-                                    disablePreFlightUpdateVarIds = with(baseExample!!.preFlight) { updateVariablesFromHeader + updateVariablesFromBody }
+                                    disablePreFlightUpdateVarIds = with(baseExample!!.preFlight) { updateVariablesFromHeader + updateVariablesFromBody + updateVariablesFromQueryParameters }
                                         .map { it.id }.shuffled().take(9).toSet(),
                                     disablePostFlightUpdateVarIds = with(baseExample!!.postFlight) { updateVariablesFromHeader + updateVariablesFromBody }
                                         .map { it.id }.shuffled().take(9).toSet(),
@@ -190,6 +199,7 @@ class RequestDataTest {
                         }
                         it.preFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
                         it.preFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
+                        it.preFlight.updateVariablesFromQueryParameters.forEach { assertIdIsNew(it.id) }
                         it.postFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
                         it.postFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
                         it.overrides?.disabledHeaderIds?.forEach { assertIdIsNew(it) }
@@ -222,7 +232,7 @@ class RequestDataTest {
                         assert(it in (baseExample.body as RequestBodyWithKeyValuePairs).value.map { it.id })
                     }
                     it.overrides?.disablePreFlightUpdateVarIds?.forEach {
-                        assert(it in with(baseExample.preFlight) { updateVariablesFromHeader + updateVariablesFromBody}.map { it.id })
+                        assert(it in with(baseExample.preFlight) { updateVariablesFromHeader + updateVariablesFromBody + updateVariablesFromQueryParameters}.map { it.id })
                     }
                     it.overrides?.disablePostFlightUpdateVarIds?.forEach {
                         assert(it in with(baseExample.postFlight) { updateVariablesFromHeader + updateVariablesFromBody}.map { it.id })
@@ -241,6 +251,7 @@ class RequestDataTest {
                     }
                     assertEquals(it.preFlight.updateVariablesFromHeader.size, copiedIt.preFlight.updateVariablesFromHeader.size)
                     assertEquals(it.preFlight.updateVariablesFromBody.size, copiedIt.preFlight.updateVariablesFromBody.size)
+                    assertEquals(it.preFlight.updateVariablesFromQueryParameters.size, copiedIt.preFlight.updateVariablesFromQueryParameters.size)
                     assertEquals(it.postFlight.updateVariablesFromHeader.size, copiedIt.postFlight.updateVariablesFromHeader.size)
                     assertEquals(it.postFlight.updateVariablesFromBody.size, copiedIt.postFlight.updateVariablesFromBody.size)
                     it.overrides?.let {
@@ -347,6 +358,15 @@ class RequestDataTest {
                                     isEnabled = true
                                 )
                             },
+                            updateVariablesFromQueryParameters = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "env_body_$it",
+                                    value = "Query Parameter $it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
                         ),
                         postFlight = PostFlightSpec(
                             updateVariablesFromHeader = (0 until 10).map {
@@ -404,6 +424,7 @@ class RequestDataTest {
                         }
                         preFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
                         preFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
+                        preFlight.updateVariablesFromQueryParameters.forEach { assertIdIsNew(it.id) }
                         postFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
                         postFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
                     }
