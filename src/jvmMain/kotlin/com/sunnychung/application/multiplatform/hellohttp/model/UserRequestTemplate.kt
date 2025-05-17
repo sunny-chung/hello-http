@@ -135,7 +135,12 @@ data class UserRequestTemplate(
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     variables = it.variables.deepCopyWithNewId(isSaveIdMapping = index == 0),
-                    preFlight = it.preFlight.copy(),
+                    preFlight = with(it.preFlight) {
+                        copy(
+                            updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                        )
+                    },
                     postFlight = with (it.postFlight) {
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
@@ -147,6 +152,7 @@ data class UserRequestTemplate(
                             disabledHeaderIds = o.disabledHeaderIds.map { idMapping[it]!! }.toSet(),
                             disabledQueryParameterIds = o.disabledQueryParameterIds.map { idMapping[it]!! }.toSet(),
                             disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { idMapping[it]!! }.toSet(),
+                            disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
                             disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
                             disabledVariables = o.disabledVariables.map { idMapping[it]!! }.toSet(),
                         )
