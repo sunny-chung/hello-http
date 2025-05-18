@@ -14,6 +14,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.PreFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
@@ -346,6 +347,50 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
     }
 
     @Test
+    fun preflightSaveJsonFieldToEnvironment() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Json,
+                        body = StringBody("""
+                            {
+                                "s": "abcdefgh中文字_;-+",
+                                "abc": 123,
+                                "de": true,
+                                "fgh": 45.67,
+                                "obj": {
+                                    "wxyz": "X"
+                                }
+                            }
+                        """.trimIndent()),
+                        preFlight = PreFlightSpec(
+                            updateVariablesFromBody = listOf(
+                                UserKeyValuePair("eB1", "\$.de"),
+                                UserKeyValuePair("eB2", "\$.s"),
+                                UserKeyValuePair("eQ1", "\$.fgh"), // reuse env var name to avoid the need of scrolling in tests
+                                UserKeyValuePair("eQ2", "\$.obj.wxyz"), // reuse env var name to avoid the need of scrolling in tests
+                            ),
+                        )
+                    )
+                )
+            ),
+            environment = environment,
+            assertEnvVariables = mapOf(
+                "eB1" to "true",
+                "eB2" to "abcdefgh中文字_;-+",
+                "eQ1" to "45.67",
+                "eQ2" to "X",
+            ),
+        )
+    }
+
+    @Test
     fun echoPostWithJsonBodyAndHeaderAndQueryParameters() = runTest {
         createAndSendRestEchoRequestAndAssertResponse(
             UserRequestTemplate(
@@ -435,6 +480,57 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
                 )
             ),
             environment = environment,
+        )
+    }
+
+    @Test
+    fun preflightSaveHeaderAndQueryParametersAndFormParametersToEnvironment() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                        contentType = ContentType.FormUrlEncoded,
+                        body = FormUrlEncodedBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                        )),
+                        preFlight = PreFlightSpec(
+                            updateVariablesFromHeader = listOf(
+                                UserKeyValuePair("eMyHeader", "x-My-Header"),
+                            ),
+                            updateVariablesFromQueryParameters = listOf(
+                                UserKeyValuePair("eQ1", "MyQueryParam"),
+                                UserKeyValuePair("eQ2", "emoji"),
+                            ),
+                            updateVariablesFromBody = listOf(
+                                UserKeyValuePair("eB1", "abcc"),
+                            ),
+                        )
+                    )
+                )
+            ),
+            environment = environment,
+            assertEnvVariables = mapOf(
+                "eMyHeader" to "defg HIjk",
+                "eQ1" to "abc def_gh+i=?j/k",
+                "eQ2" to "A\uD83D\uDE0Eb",
+                "eB1" to "中文字123",
+            ),
         )
     }
 

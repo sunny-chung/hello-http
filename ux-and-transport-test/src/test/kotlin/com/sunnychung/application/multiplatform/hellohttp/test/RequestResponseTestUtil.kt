@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.DesktopComposeUiTest
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasRequestFocusAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTextExactly
@@ -834,21 +836,62 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
 
         waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
 
-        onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
-            .assertIsDisplayedWithRetry(this)
-            .performTextInput(this, baseExample.preFlight.executeCode)
-
-        waitUntil {
+        if (baseExample.preFlight.executeCode.isNotEmpty()) {
             onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
-                .fetchSemanticsNodeWithRetry(this)
-                .getTexts()
-                .joinToString("") == baseExample.preFlight.executeCode
+                .assertIsDisplayedWithRetry(this)
+                .performTextInput(this, baseExample.preFlight.executeCode)
+
+            waitUntil {
+                onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
+                    .fetchSemanticsNodeWithRetry(this)
+                    .getTexts()
+                    .joinToString("") == baseExample.preFlight.executeCode
+            }
+        }
+
+        if (baseExample.preFlight.updateVariablesFromHeader.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromHeader,
+                testTagPart = TestTagPart.PreflightUpdateEnvByHeader,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTab.name, useUnmergedTree = true),
+            )
+        }
+
+        if (baseExample.preFlight.updateVariablesFromQueryParameters.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromQueryParameters,
+                testTagPart = TestTagPart.PreflightUpdateEnvByQueryParameter,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTab.name, useUnmergedTree = true),
+            )
+        }
+
+        if (baseExample.preFlight.updateVariablesFromBody.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromBody,
+                testTagPart = TestTagPart.PreflightUpdateEnvByBody,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTab.name, useUnmergedTree = true),
+            )
         }
     }
 }
 
-private suspend fun DesktopComposeUiTest.fillRequestKeyValueEditor(keyValues: List<UserKeyValuePair>, testTagPart: TestTagPart) {
+private suspend fun DesktopComposeUiTest.fillRequestKeyValueEditor(
+    keyValues: List<UserKeyValuePair>,
+    testTagPart: TestTagPart,
+    parentScrollableNode: SemanticsNodeInteraction? = null,
+) {
     keyValues.forEachIndexed { index, it ->
+        parentScrollableNode?.performScrollToNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+
         waitUntilExactlyOneExists(
             this,
             hasTestTag(
@@ -871,6 +914,24 @@ private suspend fun DesktopComposeUiTest.fillRequestKeyValueEditor(keyValues: Li
                 )!!
             )
         )
+        waitUntil(3.seconds().millis) {
+            try {
+                onNode(
+                    hasTestTag(
+                        buildTestTag(
+                            testTagPart,
+                            TestTagPart.Current,
+                            TestTagPart.Key,
+                            index
+                        )!!
+                    ).and(hasSetTextAction())
+                ).assertIsDisplayedWithRetry(this)
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
+
         onNode(
             hasTestTag(
                 buildTestTag(
@@ -943,10 +1004,14 @@ suspend fun DesktopComposeUiTest.createAndSendHttpRequest(request: UserRequestTe
     }
 }
 
-suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment?, ignoreAssertQueryParameters: Set<String> = emptySet()): RequestData {
+suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment?, ignoreAssertQueryParameters: Set<String> = emptySet(), assertEnvVariables: Map<String, String> = emptyMap()): RequestData {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
+
+    if (assertEnvVariables.isNotEmpty()) {
+        assertPreflightHaveUpdatedEnvironmentVariables(request, assertEnvVariables)
+    }
 
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
@@ -1020,6 +1085,52 @@ suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(r
         }
     }
     return resp
+}
+
+fun DesktopComposeUiTest.assertPreflightHaveUpdatedEnvironmentVariables(request: UserRequestTemplate, expectedVariables: Map<String, String>) {
+    val baseExample = request.examples.first()
+    if (baseExample.preFlight.hasUpdateVariables()) {
+        onNodeWithTag(TestTag.EditEnvironmentsButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+
+        waitUntil {
+            onAllNodes(
+                hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                    .and(isFocusable())
+            )
+                .fetchSemanticsNodesWithRetry(this)
+                .isNotEmpty()
+        }
+
+        listOf(
+            baseExample.preFlight.updateVariablesFromHeader,
+            baseExample.preFlight.updateVariablesFromBody,
+            baseExample.preFlight.updateVariablesFromQueryParameters,
+        ).flatten().forEach {
+            val testTagOfKeyTextField = onAllNodes(hasTextExactly(it.key))
+                .fetchSemanticsNodesWithRetry(this)
+                .map { it.config[SemanticsProperties.TestTag] }
+                .first { it.startsWith("EnvironmentEditorVariableKeyValue/") }
+
+            onNodeWithTag(testTagOfKeyTextField).assertIsDisplayedWithRetry(this)
+
+            onNode(
+                hasTestTag(
+                    testTagOfKeyTextField.replace(
+                        "/Key/",
+                        "/Value/"
+                    )
+                ).and(hasTextExactly(expectedVariables[it.key]!!))
+            ).assertIsDisplayedWithRetry(this)
+        }
+
+        onNodeWithTag(TestTag.DialogCloseButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+        waitUntil { onAllNodesWithTag(TestTag.DialogCloseButton.name).fetchSemanticsNodesWithRetry(this).isEmpty() }
+        waitForIdle()
+    }
 }
 
 suspend fun DesktopComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: Boolean = true) {
@@ -1164,6 +1275,8 @@ fun SemanticsNodeInteraction.assertIsDisplayedWithRetry(host: ComposeUiTest): Se
                 assertIsDisplayed()
             }
             return this
+        } catch (e: AssertionError) {
+            throw AssertionError("Assert failed -- ${host.runOnUiThread { fetchSemanticsNodeWithRetry(host).config.getOrNull(SemanticsProperties.TestTag) } }", e)
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
         }

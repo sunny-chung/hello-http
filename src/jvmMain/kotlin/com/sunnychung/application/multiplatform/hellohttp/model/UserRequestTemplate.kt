@@ -424,6 +424,11 @@ data class PreFlightSpec(
         updateVariablesFromHeader.isNotEmpty() ||
         updateVariablesFromQueryParameters.isNotEmpty() ||
         updateVariablesFromBody.isNotEmpty()
+
+    fun hasUpdateVariables(): Boolean =
+        updateVariablesFromHeader.isNotEmpty() ||
+        updateVariablesFromQueryParameters.isNotEmpty() ||
+        updateVariablesFromBody.isNotEmpty()
 }
 
 @Persisted

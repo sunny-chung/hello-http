@@ -956,7 +956,7 @@ private fun PreFlightEditorView(
     environment: Environment?,
 ) {
     val colours = LocalColor.current
-    Column(modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier.verticalScroll(rememberScrollState()).testTag(TestTag.RequestPreFlightTab.name)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
             if (!request.isExampleBase(selectedExample)) {
@@ -1046,6 +1046,7 @@ private fun PreFlightEditorView(
             },
             knownVariables = mergedVariables,
             isSupportFileValue = false,
+            testTagPart = TestTagPart.PreflightUpdateEnvByHeader,
             modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
         )
 
@@ -1092,6 +1093,7 @@ private fun PreFlightEditorView(
             },
             knownVariables = mergedVariables,
             isSupportFileValue = false,
+            testTagPart = TestTagPart.PreflightUpdateEnvByQueryParameter,
             modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
         )
 
@@ -1138,6 +1140,7 @@ private fun PreFlightEditorView(
             },
             knownVariables = mergedVariables,
             isSupportFileValue = false,
+            testTagPart = TestTagPart.PreflightUpdateEnvByBody,
             modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
         )
     }
