@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextInput
+import com.sunnychung.application.multiplatform.hellohttp.model.PreFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
@@ -120,6 +121,48 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
               "data": "Hello HTTP, $input!"
             }
         """.trimIndent(), getResponseBody())
+    }
+
+    @Test
+    fun unaryPreflightSaveHeaderAndBodyToEnvironment() = runTest {
+        val input = "中文字${uuidString()}✌🏽😎abcd"
+        val request = createGrpcRequest(environment = environment) { req ->
+            req.copy(
+                grpc = UserGrpcRequest(
+                    service = "sunnychung.grpc.services.MyService",
+                    method = "SayHello",
+                ),
+                examples = req.examples.map { ex ->
+                    ex.copy(
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        body = StringBody("{\"name\": \"$input\"}"),
+                        preFlight = PreFlightSpec(
+                            updateVariablesFromHeader = listOf(
+                                UserKeyValuePair("eMyHeader", "x-My-Header"),
+                            ),
+                            updateVariablesFromBody = listOf(
+                                UserKeyValuePair("eGrpcB1", "\$.name"),
+                            ),
+                        )
+                    )
+                }
+            )
+        }
+        fireRequest(timeout = 4.seconds())
+        assertSuccessStatus()
+        assertEquals("""
+            {
+              "data": "Hello HTTP, $input!"
+            }
+        """.trimIndent(), getResponseBody())
+
+        assertPreflightHaveUpdatedEnvironmentVariables(request, mapOf(
+            "eMyHeader" to "defg HIjk",
+            "eGrpcB1" to input,
+        ))
     }
 
     @Test
@@ -273,7 +316,7 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
         assertSuccessStatus()
     }
 
-    suspend fun DesktopComposeUiTest.createGrpcRequest(environment: TestEnvironment, requestDecorator: (UserRequestTemplate) -> UserRequestTemplate) {
+    suspend fun DesktopComposeUiTest.createGrpcRequest(environment: TestEnvironment, requestDecorator: (UserRequestTemplate) -> UserRequestTemplate): UserRequestTemplate {
         val request = UserRequestTemplate(
             id = uuidString(),
             application = ProtocolApplication.Grpc,
@@ -366,6 +409,8 @@ class GrpcRequestResponseTest(testName: String, isSsl: Boolean, isMTls: Boolean)
                 .performTextInput(this, (request.examples.first().body as StringBody).value)
             delayShort()
         }
+
+        return request
     }
 }
 

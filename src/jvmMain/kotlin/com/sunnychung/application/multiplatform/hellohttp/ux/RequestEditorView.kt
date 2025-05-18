@@ -567,7 +567,7 @@ fun RequestEditorView(
             ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header, RequestTab.Variable)
             ProtocolApplication.Grpc -> listOfNotNull(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
-                RequestTab.Header, RequestTab.Variable, RequestTab.PostFlight
+                RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight
             )
             else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
         }
@@ -849,6 +849,7 @@ fun RequestEditorView(
                         hasScriptEditor = request.application in listOf(ProtocolApplication.Http, ProtocolApplication.Graphql),
                         hasQueryParameters = request.application in listOf(ProtocolApplication.Http, ProtocolApplication.Graphql),
                         hasBodyVariables = request.application in listOf(ProtocolApplication.Http, ProtocolApplication.Grpc) && RequestTab.Body in tabs,
+                        isBodySupportParamKey = request.application == ProtocolApplication.Http,
                         hasGraphqlVariables = request.application in listOf(ProtocolApplication.Graphql),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     )
@@ -964,26 +965,11 @@ private fun PreFlightEditorView(
     hasScriptEditor: Boolean,
     hasQueryParameters: Boolean,
     hasBodyVariables: Boolean,
+    isBodySupportParamKey: Boolean,
     hasGraphqlVariables: Boolean,
 ) {
     val colours = LocalColor.current
     Column(modifier.verticalScroll(rememberScrollState()).testTag(TestTag.RequestPreFlightTabContent.name)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
-            if (!request.isExampleBase(selectedExample)) {
-                OverrideCheckboxWithLabel(
-                    selectedExample = selectedExample,
-                    onRequestModified = onRequestModified,
-                    request = request,
-                    translateToValue = { overrides ->
-                        overrides.isOverridePreFlightScript
-                    },
-                    translateToNewOverrides = { isChecked, overrides ->
-                        overrides.copy(isOverridePreFlightScript = isChecked)
-                    },
-                )
-            }
-        }
         val isEnabled = request.isExampleBase(selectedExample) || (selectedExample.overrides?.isOverridePreFlightScript == true)
         val example = if (!request.isExampleBase(selectedExample) && (selectedExample.overrides?.isOverridePreFlightScript == false)) {
             request.examples.first()
@@ -994,6 +980,23 @@ private fun PreFlightEditorView(
         val mergedVariables = request.getAllVariables(selectedExample.id, environment)
 
         if (hasScriptEditor) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
+                if (!request.isExampleBase(selectedExample)) {
+                    OverrideCheckboxWithLabel(
+                        selectedExample = selectedExample,
+                        onRequestModified = onRequestModified,
+                        request = request,
+                        translateToValue = { overrides ->
+                            overrides.isOverridePreFlightScript
+                        },
+                        translateToNewOverrides = { isChecked, overrides ->
+                            overrides.copy(isOverridePreFlightScript = isChecked)
+                        },
+                    )
+                }
+            }
+
             KotliteCodeEditorView(
                 cacheKey = "Request:${request.id}/Example:${example.id}/Preflight/Script",
                 text = example.preFlight.executeCode,
@@ -1127,7 +1130,7 @@ private fun PreFlightEditorView(
             RequestKeyValueEditorView(
                 key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromRequestBody",
                 keyPlaceholder = "Variable",
-                valuePlaceholder = "JSON Path / Param Key",
+                valuePlaceholder = if (isBodySupportParamKey) "JSON Path / Param Key" else "JSON Path",
                 value = selectedExample.preFlight.updateVariablesFromBody,
                 onValueUpdate = {
                     onRequestModified(
