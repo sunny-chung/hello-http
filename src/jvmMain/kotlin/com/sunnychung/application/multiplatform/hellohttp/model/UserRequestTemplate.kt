@@ -139,6 +139,7 @@ data class UserRequestTemplate(
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
                             updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromGraphqlVariables = updateVariablesFromGraphqlVariables.deepCopyWithNewId(isSaveIdMapping = index == 0),
                             updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                         )
                     },
@@ -223,7 +224,18 @@ data class UserRequestTemplate(
         )
             .filter { it.key.isNotBlank() }
 
-        Triple(headerVariables, bodyVariables, queryParamVariables)
+        val graphqlVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromGraphqlVariables },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        PreFlightSpec(
+            updateVariablesFromHeader = headerVariables,
+            updateVariablesFromQueryParameters = queryParamVariables,
+            updateVariablesFromBody = bodyVariables,
+            updateVariablesFromGraphqlVariables = graphqlVariables,
+        )
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
@@ -350,6 +362,7 @@ data class UserRequestExample(
                 copy(
                     updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
                     updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(),
+                    updateVariablesFromGraphqlVariables = updateVariablesFromGraphqlVariables.deepCopyWithNewId(),
                     updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(),
                 )
             },
@@ -419,16 +432,19 @@ data class PreFlightSpec(
     val updateVariablesFromHeader: List<UserKeyValuePair> = mutableListOf(),
     val updateVariablesFromQueryParameters: List<UserKeyValuePair> = mutableListOf(),
     val updateVariablesFromBody: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromGraphqlVariables: List<UserKeyValuePair> = mutableListOf(),
 ) {
     fun isNotEmpty(): Boolean = executeCode.isNotEmpty() ||
         updateVariablesFromHeader.isNotEmpty() ||
         updateVariablesFromQueryParameters.isNotEmpty() ||
-        updateVariablesFromBody.isNotEmpty()
+        updateVariablesFromBody.isNotEmpty() ||
+        updateVariablesFromGraphqlVariables.isNotEmpty()
 
     fun hasUpdateVariables(): Boolean =
         updateVariablesFromHeader.isNotEmpty() ||
         updateVariablesFromQueryParameters.isNotEmpty() ||
-        updateVariablesFromBody.isNotEmpty()
+        updateVariablesFromBody.isNotEmpty() ||
+        updateVariablesFromGraphqlVariables.isNotEmpty()
 }
 
 @Persisted

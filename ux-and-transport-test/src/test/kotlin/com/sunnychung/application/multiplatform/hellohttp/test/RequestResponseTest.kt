@@ -520,7 +520,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
                             updateVariablesFromBody = listOf(
                                 UserKeyValuePair("eB1", "abcc"),
                             ),
-                        )
+                        ),
                     )
                 )
             ),

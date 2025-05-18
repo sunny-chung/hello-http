@@ -6,7 +6,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.DesktopComposeUiTest
@@ -601,6 +600,9 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
     if (request.application == ProtocolApplication.Http && request.method != "GET") {
         selectRequestMethod(request.method)
         delayShort()
+    } else if (request.application == ProtocolApplication.Graphql) {
+        selectRequestMethod("GraphQL")
+        delayShort()
     }
 
     onNodeWithTag(TestTag.RequestUrlTextField.name)
@@ -853,7 +855,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             fillRequestKeyValueEditor(
                 keyValues = baseExample.preFlight.updateVariablesFromHeader,
                 testTagPart = TestTagPart.PreflightUpdateEnvByHeader,
-                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTab.name, useUnmergedTree = true),
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
             )
         }
 
@@ -861,7 +863,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             fillRequestKeyValueEditor(
                 keyValues = baseExample.preFlight.updateVariablesFromQueryParameters,
                 testTagPart = TestTagPart.PreflightUpdateEnvByQueryParameter,
-                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTab.name, useUnmergedTree = true),
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
             )
         }
 
@@ -869,7 +871,15 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             fillRequestKeyValueEditor(
                 keyValues = baseExample.preFlight.updateVariablesFromBody,
                 testTagPart = TestTagPart.PreflightUpdateEnvByBody,
-                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTab.name, useUnmergedTree = true),
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
+            )
+        }
+
+        if (baseExample.preFlight.updateVariablesFromGraphqlVariables.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromGraphqlVariables,
+                testTagPart = TestTagPart.PreflightUpdateEnvByGraphqlVariables,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
             )
         }
     }
@@ -1106,12 +1116,14 @@ fun DesktopComposeUiTest.assertPreflightHaveUpdatedEnvironmentVariables(request:
         listOf(
             baseExample.preFlight.updateVariablesFromHeader,
             baseExample.preFlight.updateVariablesFromBody,
+            baseExample.preFlight.updateVariablesFromGraphqlVariables,
             baseExample.preFlight.updateVariablesFromQueryParameters,
         ).flatten().forEach {
             val testTagOfKeyTextField = onAllNodes(hasTextExactly(it.key))
                 .fetchSemanticsNodesWithRetry(this)
                 .map { it.config[SemanticsProperties.TestTag] }
-                .first { it.startsWith("EnvironmentEditorVariableKeyValue/") }
+                .firstOrNull { it.startsWith("EnvironmentEditorVariableKeyValue/") }
+                ?: throw NoSuchElementException("Cannot find a match for '${it.key}'")
 
             onNodeWithTag(testTagOfKeyTextField).assertIsDisplayedWithRetry(this)
 

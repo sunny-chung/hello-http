@@ -129,10 +129,14 @@ class NetworkClientManager : CallDataStore {
                 }
             }
 
-            val (preFlightHeaderVars, preFlightBodyVars, preFlightQueryParamVars) = request.getPreFlightVariables(
+            val preFlightVars = request.getPreFlightVariables(
                 exampleId = requestExampleId,
                 environment = environment
             )
+            val preFlightHeaderVars = preFlightVars.updateVariablesFromHeader
+            val preFlightBodyVars = preFlightVars.updateVariablesFromBody
+            val preFlightQueryParamVars = preFlightVars.updateVariablesFromQueryParameters
+            val graphqlVars = preFlightVars.updateVariablesFromGraphqlVariables
             if (environment != null) {
                 preFlightHeaderVars.forEach { v -> // O(n^2)
                     try {
@@ -177,6 +181,21 @@ class NetworkClientManager : CallDataStore {
                                 } else {
                                     requestParameterMap?.get(it)
                                 }
+                            }
+                            if (value != null) {
+                                setEnvironmentVariable(environment = environment, key = v.key, value = value)
+                            }
+                        } catch (e: Throwable) {
+                            throw PreflightError(variable = v.key, cause = e)
+                        }
+                    }
+                }
+                if (graphqlVars.isNotEmpty()) {
+                    val jsonBodyContext = JsonPath.parse((networkRequest.body as StringBody).value)
+                    graphqlVars.forEach { v ->
+                        try {
+                            val value = (v.value).let {
+                                jsonBodyContext?.read<Any?>(it.replaceFirst("$.", "$.variables."))?.toString()
                             }
                             if (value != null) {
                                 setEnvironmentVariable(environment = environment, key = v.key, value = value)
