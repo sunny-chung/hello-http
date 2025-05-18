@@ -571,6 +571,7 @@ fun RequestEditorView(
             )
             else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
         }
+        selectedRequestTabIndex = selectedRequestTabIndex.coerceAtMost(tabs.lastIndex)
 
         fun isApplicable(property: (UserRequestExample) -> Boolean?): Int {
             return if (selectedExample.id == baseExample.id) {

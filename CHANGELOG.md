@@ -15,6 +15,9 @@ _Changes since 1.7.3_
 ### Changed
 - The "Save All" button near the response body viewer has been relocated to the upper level, as it copies the whole Request and Response rather than only response body
 
+### Fixed
+- Crash when selecting the last tab of a HTTP request then switching to a gRPC or WS request
+
 
 ## [1.7.3] -- 2025-04-29
 
