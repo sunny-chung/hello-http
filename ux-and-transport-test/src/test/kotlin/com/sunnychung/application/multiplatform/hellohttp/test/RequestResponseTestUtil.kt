@@ -45,6 +45,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
@@ -56,15 +57,12 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
-import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextCoroutineContexts
 import com.sunnychung.lib.multiplatform.bigtext.ux.clearAllBigTextWorkerCoroutineContexts
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
-import kotlinx.coroutines.CloseableCoroutineDispatcher
-import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
@@ -77,8 +75,6 @@ import java.awt.Robot
 import java.awt.Toolkit
 import java.io.File
 import java.net.URL
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.TimeUnit
 
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
     try {
@@ -792,67 +788,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
 
             ContentType.FormUrlEncoded -> {
                 val body = (baseExample.body as FormUrlEncodedBody).value
-                body.forEachIndexed { index, it ->
-                    waitUntilExactlyOneExists(this,
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
-                        )
-                    )
-                    waitUntilExactlyOneExists(this,
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Value,
-                                index
-                            )!!
-                        )
-                    )
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
-                        )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(this, it.key)
-                    delayShort()
-
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
-                        )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .assertTextEquals(it.key)
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Value,
-                                index
-                            )!!
-                        )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(this, it.value)
-                    delayShort()
-                }
+                fillRequestKeyValueEditor(keyValues = body, testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm)
             }
 
             ContentType.BinaryFile -> {
@@ -880,102 +816,15 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
-        baseExample.queryParameters.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Value,
-                        index
-                    )!!
-                )
-            )
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.key)
-            delayShort()
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .assertTextEquals(it.key)
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Value,
-                        index
-                    )!!
-                )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.value)
-            delayShort()
-        }
+        fillRequestKeyValueEditor(baseExample.queryParameters, TestTagPart.RequestQueryParameter)
     }
 
     if (baseExample.headers.isNotEmpty()) {
         onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
-        baseExample.headers.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestHeader,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestHeader,
-                        TestTagPart.Current,
-                        TestTagPart.Value,
-                        index
-                    )!!
-                )
-            )
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.key)
-            delayShort()
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.value)
-            delayShort()
-        }
+
+        fillRequestKeyValueEditor(baseExample.headers, TestTagPart.RequestHeader)
     }
 
     if (baseExample.preFlight.isNotEmpty()) {
@@ -995,6 +844,72 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
                 .getTexts()
                 .joinToString("") == baseExample.preFlight.executeCode
         }
+    }
+}
+
+private suspend fun DesktopComposeUiTest.fillRequestKeyValueEditor(keyValues: List<UserKeyValuePair>, testTagPart: TestTagPart) {
+    keyValues.forEachIndexed { index, it ->
+        waitUntilExactlyOneExists(
+            this,
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+        waitUntilExactlyOneExists(
+            this,
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Value,
+                    index
+                )!!
+            )
+        )
+        onNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+            .assertIsDisplayedWithRetry(this)
+            .performTextInput(this, it.key)
+        delayShort()
+
+        onNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals(it.key)
+        onNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Value,
+                    index
+                )!!
+            )
+        )
+            .assertIsDisplayedWithRetry(this)
+            .performTextInput(this, it.value)
+        delayShort()
     }
 }
 
