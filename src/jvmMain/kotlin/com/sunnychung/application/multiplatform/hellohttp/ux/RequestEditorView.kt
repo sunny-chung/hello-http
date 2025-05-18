@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -52,8 +51,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -565,7 +567,7 @@ fun RequestEditorView(
             ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header, RequestTab.Variable)
             ProtocolApplication.Grpc -> listOfNotNull(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
-                RequestTab.Header, RequestTab.Variable, RequestTab.PostFlight
+                RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight
             )
             else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
         }
@@ -595,14 +597,18 @@ fun RequestEditorView(
             RequestTab.Query -> selectedExample.queryParameters.countActive()
             RequestTab.Header -> selectedExample.headers.countActive()
             RequestTab.PreFlight -> isApplicable { it.overrides?.isOverridePreFlightScript } *
-                selectedExample.preFlight.executeCode.countNotBlank()
+                selectedExample.preFlight.executeCode.countNotBlank() +
+                selectedExample.preFlight.updateVariablesFromHeader.countActive() +
+                selectedExample.preFlight.updateVariablesFromQueryParameters.countActive() +
+                selectedExample.preFlight.updateVariablesFromBody.countActive() +
+                selectedExample.preFlight.updateVariablesFromGraphqlVariables.countActive()
             RequestTab.PostFlight -> selectedExample.postFlight.updateVariablesFromHeader.countActive() +
                 selectedExample.postFlight.updateVariablesFromBody.countActive()
             RequestTab.Variable -> selectedExample.variables.countActive()
         } }
 
         TabsView(
-            modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight),
+            modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight).testTag(TestTag.RequestParameterTypeTabContainer.name),
             selectedIndex = selectedRequestTabIndex,
             onSelectTab = { selectedRequestTabIndex = it },
             contents = tabs.map {
@@ -839,6 +845,12 @@ fun RequestEditorView(
                         selectedExample = selectedExample,
                         onRequestModified = onRequestModified,
                         request = request,
+                        environment = environment,
+                        hasScriptEditor = request.application in listOf(ProtocolApplication.Http, ProtocolApplication.Graphql),
+                        hasQueryParameters = request.application in listOf(ProtocolApplication.Http, ProtocolApplication.Graphql),
+                        hasBodyVariables = request.application in listOf(ProtocolApplication.Http, ProtocolApplication.Grpc) && RequestTab.Body in tabs,
+                        isBodySupportParamKey = request.application == ProtocolApplication.Http,
+                        hasGraphqlVariables = request.application in listOf(ProtocolApplication.Graphql),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     )
 
@@ -948,52 +960,259 @@ private fun PreFlightEditorView(
     modifier: Modifier = Modifier,
     selectedExample: UserRequestExample,
     onRequestModified: (UserRequestTemplate?) -> Unit,
-    request: UserRequestTemplate
+    request: UserRequestTemplate,
+    environment: Environment?,
+    hasScriptEditor: Boolean,
+    hasQueryParameters: Boolean,
+    hasBodyVariables: Boolean,
+    isBodySupportParamKey: Boolean,
+    hasGraphqlVariables: Boolean,
 ) {
-    Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
-            if (!request.isExampleBase(selectedExample)) {
-                OverrideCheckboxWithLabel(
-                    selectedExample = selectedExample,
-                    onRequestModified = onRequestModified,
-                    request = request,
-                    translateToValue = { overrides ->
-                        overrides.isOverridePreFlightScript
-                    },
-                    translateToNewOverrides = { isChecked, overrides ->
-                        overrides.copy(isOverridePreFlightScript = isChecked)
-                    },
-                )
-            }
-        }
+    val colours = LocalColor.current
+    Column(modifier.verticalScroll(rememberScrollState()).testTag(TestTag.RequestPreFlightTabContent.name)) {
         val isEnabled = request.isExampleBase(selectedExample) || (selectedExample.overrides?.isOverridePreFlightScript == true)
         val example = if (!request.isExampleBase(selectedExample) && (selectedExample.overrides?.isOverridePreFlightScript == false)) {
             request.examples.first()
         } else {
             selectedExample
         }
-        KotliteCodeEditorView(
-            cacheKey = "Request:${request.id}/Example:${example.id}/Preflight/Script",
-            text = example.preFlight.executeCode,
-            onTextChange = {
+        val baseExample = request.examples.first()
+        val mergedVariables = request.getAllVariables(selectedExample.id, environment)
+
+        if (hasScriptEditor) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                AppText("Execute code before sending request", modifier = Modifier.weight(1f).padding(end = 8.dp))
+                if (!request.isExampleBase(selectedExample)) {
+                    OverrideCheckboxWithLabel(
+                        selectedExample = selectedExample,
+                        onRequestModified = onRequestModified,
+                        request = request,
+                        translateToValue = { overrides ->
+                            overrides.isOverridePreFlightScript
+                        },
+                        translateToNewOverrides = { isChecked, overrides ->
+                            overrides.copy(isOverridePreFlightScript = isChecked)
+                        },
+                    )
+                }
+            }
+
+            KotliteCodeEditorView(
+                cacheKey = "Request:${request.id}/Example:${example.id}/Preflight/Script",
+                text = example.preFlight.executeCode,
+                onTextChange = {
+                    onRequestModified(
+                        request.copy(
+                            examples = request.examples.copyWithChange(
+                                example.copy(
+                                    preFlight = example.preFlight.copy(
+                                        executeCode = it
+                                    )
+                                )
+                            )
+                        )
+                    )
+                },
+                isEnabled = isEnabled,
+                isReadOnly = !isEnabled,
+                testTag = TestTag.RequestPreFlightScriptTextField.name,
+                modifier = Modifier.padding(top = 4.dp).fillMaxWidth().height(300.dp),
+            )
+        }
+
+        AppText(
+            text = buildAnnotatedString {
+                append("Update environment variables according to ")
+                withStyle(SpanStyle(color = colours.highlight)) {
+                    append("request headers")
+                }
+                append(".")
+            },
+            modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
+        )
+        RequestKeyValueEditorView(
+            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromRequestHeader",
+            keyPlaceholder = "Variable",
+            valuePlaceholder = "Header",
+            value = selectedExample.preFlight.updateVariablesFromHeader,
+            onValueUpdate = {
                 onRequestModified(
                     request.copy(
                         examples = request.examples.copyWithChange(
-                            example.copy(
-                                preFlight = example.preFlight.copy(
-                                    executeCode = it
+                            selectedExample.copy(
+                                preFlight = selectedExample.preFlight.copy(
+                                    updateVariablesFromHeader = it
                                 )
                             )
                         )
                     )
                 )
             },
-            isEnabled = isEnabled,
-            isReadOnly = !isEnabled,
-            testTag = TestTag.RequestPreFlightScriptTextField.name,
-            modifier = Modifier.padding(top = 4.dp).fillMaxSize(),
+            baseValue = if (selectedExample.id != baseExample.id) baseExample.preFlight.updateVariablesFromHeader else null,
+            baseDisabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds ?: emptySet(),
+            onDisableUpdate = {
+                onRequestModified(
+                    request.copy(
+                        examples = request.examples.copyWithChange(
+                            selectedExample.run {
+                                copy(overrides = overrides!!.copy(disablePreFlightUpdateVarIds = it))
+                            }
+                        )
+                    )
+                )
+            },
+            knownVariables = mergedVariables,
+            isSupportFileValue = false,
+            testTagPart = TestTagPart.PreflightUpdateEnvByHeader,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
         )
+
+        if (hasQueryParameters) {
+            AppText(
+                text = buildAnnotatedString {
+                    append("Update environment variables according to ")
+                    withStyle(SpanStyle(color = colours.highlight)) {
+                        append("request query parameters")
+                    }
+                    append(".")
+                },
+                modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp)
+            )
+            RequestKeyValueEditorView(
+                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromRequestQueryParameter",
+                keyPlaceholder = "Variable",
+                valuePlaceholder = "Parameter Key",
+                value = selectedExample.preFlight.updateVariablesFromQueryParameters,
+                onValueUpdate = {
+                    onRequestModified(
+                        request.copy(
+                            examples = request.examples.copyWithChange(
+                                selectedExample.copy(
+                                    preFlight = selectedExample.preFlight.copy(
+                                        updateVariablesFromQueryParameters = it
+                                    )
+                                )
+                            )
+                        )
+                    )
+                },
+                baseValue = if (selectedExample.id != baseExample.id) baseExample.preFlight.updateVariablesFromQueryParameters else null,
+                baseDisabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds ?: emptySet(),
+                onDisableUpdate = {
+                    onRequestModified(
+                        request.copy(
+                            examples = request.examples.copyWithChange(
+                                selectedExample.run {
+                                    copy(overrides = overrides!!.copy(disablePreFlightUpdateVarIds = it))
+                                }
+                            )
+                        )
+                    )
+                },
+                knownVariables = mergedVariables,
+                isSupportFileValue = false,
+                testTagPart = TestTagPart.PreflightUpdateEnvByQueryParameter,
+                modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+            )
+        }
+
+        if (hasBodyVariables) {
+            AppText(
+                text = buildAnnotatedString {
+                    append("Update environment variables according to ")
+                    withStyle(SpanStyle(color = colours.highlight)) {
+                        append("request bodies")
+                    }
+                    append(".")
+                },
+                modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp)
+            )
+            RequestKeyValueEditorView(
+                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromRequestBody",
+                keyPlaceholder = "Variable",
+                valuePlaceholder = if (isBodySupportParamKey) "JSON Path / Param Key" else "JSON Path",
+                value = selectedExample.preFlight.updateVariablesFromBody,
+                onValueUpdate = {
+                    onRequestModified(
+                        request.copy(
+                            examples = request.examples.copyWithChange(
+                                selectedExample.copy(
+                                    preFlight = selectedExample.preFlight.copy(
+                                        updateVariablesFromBody = it
+                                    )
+                                )
+                            )
+                        )
+                    )
+                },
+                baseValue = if (selectedExample.id != baseExample.id) baseExample.preFlight.updateVariablesFromBody else null,
+                baseDisabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds ?: emptySet(),
+                onDisableUpdate = {
+                    onRequestModified(
+                        request.copy(
+                            examples = request.examples.copyWithChange(
+                                selectedExample.run {
+                                    copy(overrides = overrides!!.copy(disablePreFlightUpdateVarIds = it))
+                                }
+                            )
+                        )
+                    )
+                },
+                knownVariables = mergedVariables,
+                isSupportFileValue = false,
+                testTagPart = TestTagPart.PreflightUpdateEnvByBody,
+                modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+            )
+        }
+
+        if (hasGraphqlVariables) {
+            AppText(
+                text = buildAnnotatedString {
+                    append("Update environment variables according to ")
+                    withStyle(SpanStyle(color = colours.highlight)) {
+                        append("GraphQL variables")
+                    }
+                    append(".")
+                },
+                modifier = Modifier.padding(horizontal = 8.dp).padding(top = 8.dp + 12.dp)
+            )
+            RequestKeyValueEditorView(
+                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/PreFlight/UpdateEnvironmentVariableFromGraphqlVariables",
+                keyPlaceholder = "Variable",
+                valuePlaceholder = "JSON Path",
+                value = selectedExample.preFlight.updateVariablesFromGraphqlVariables,
+                onValueUpdate = {
+                    onRequestModified(
+                        request.copy(
+                            examples = request.examples.copyWithChange(
+                                selectedExample.copy(
+                                    preFlight = selectedExample.preFlight.copy(
+                                        updateVariablesFromGraphqlVariables = it
+                                    )
+                                )
+                            )
+                        )
+                    )
+                },
+                baseValue = if (selectedExample.id != baseExample.id) baseExample.preFlight.updateVariablesFromGraphqlVariables else null,
+                baseDisabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds ?: emptySet(),
+                onDisableUpdate = {
+                    onRequestModified(
+                        request.copy(
+                            examples = request.examples.copyWithChange(
+                                selectedExample.run {
+                                    copy(overrides = overrides!!.copy(disablePreFlightUpdateVarIds = it))
+                                }
+                            )
+                        )
+                    )
+                },
+                knownVariables = mergedVariables,
+                isSupportFileValue = false,
+                testTagPart = TestTagPart.PreflightUpdateEnvByGraphqlVariables,
+                modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+            )
+        }
     }
 }
 

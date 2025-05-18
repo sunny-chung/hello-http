@@ -44,6 +44,10 @@ data class UserRequestTemplate(
         return examples.indexOfFirst { it.id == example.id } == 0
     }
 
+    fun isExampleIdBase(exampleId: String): Boolean {
+        return examples.indexOfFirst { it.id == exampleId } == 0
+    }
+
     fun copyForApplication(application: ProtocolApplication, method: String) =
         if (application == ProtocolApplication.WebSocket && payloadExamples.isNullOrEmpty()) {
             copy(
@@ -131,7 +135,14 @@ data class UserRequestTemplate(
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     variables = it.variables.deepCopyWithNewId(isSaveIdMapping = index == 0),
-                    preFlight = it.preFlight.copy(),
+                    preFlight = with(it.preFlight) {
+                        copy(
+                            updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromGraphqlVariables = updateVariablesFromGraphqlVariables.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                        )
+                    },
                     postFlight = with (it.postFlight) {
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
@@ -143,6 +154,7 @@ data class UserRequestTemplate(
                             disabledHeaderIds = o.disabledHeaderIds.map { idMapping[it]!! }.toSet(),
                             disabledQueryParameterIds = o.disabledQueryParameterIds.map { idMapping[it]!! }.toSet(),
                             disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { idMapping[it]!! }.toSet(),
+                            disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
                             disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
                             disabledVariables = o.disabledVariables.map { idMapping[it]!! }.toSet(),
                         )
@@ -191,6 +203,39 @@ data class UserRequestTemplate(
         val selectedExample = examples.first { it.id == exampleId }
 
         return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode)).action()
+    }
+
+    fun getPreFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
+        val headerVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromHeader },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val bodyVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromBody },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val queryParamVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromQueryParameters },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val graphqlVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromGraphqlVariables },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        PreFlightSpec(
+            updateVariablesFromHeader = headerVariables,
+            updateVariablesFromQueryParameters = queryParamVariables,
+            updateVariablesFromBody = bodyVariables,
+            updateVariablesFromGraphqlVariables = graphqlVariables,
+        )
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
@@ -279,6 +324,8 @@ data class UserRequestExample(
 
         val isOverridePreFlightScript: Boolean = true,
 
+        val disablePreFlightUpdateVarIds: Set<String> = emptySet(),
+
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     ) {
         fun hasNoDisable(): Boolean =
@@ -311,7 +358,14 @@ data class UserRequestExample(
             queryParameters = queryParameters.deepCopyWithNewId(),
             body = body?.deepCopyWithNewId(),
             variables = variables.deepCopyWithNewId(),
-            preFlight = preFlight.copy(),
+            preFlight = with(preFlight) {
+                copy(
+                    updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
+                    updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(),
+                    updateVariablesFromGraphqlVariables = updateVariablesFromGraphqlVariables.deepCopyWithNewId(),
+                    updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(),
+                )
+            },
             postFlight = with (postFlight) {
                 copy(
                     updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
@@ -323,6 +377,7 @@ data class UserRequestExample(
                     disabledHeaderIds = o.disabledHeaderIds.map { it }.toSet(),
                     disabledQueryParameterIds = o.disabledQueryParameterIds.map { it }.toSet(),
                     disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { it }.toSet(),
+                    disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { it }.toSet(),
                     disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { it }.toSet(),
                     disabledVariables = o.disabledVariables.map { it }.toSet(),
                 )
@@ -373,9 +428,23 @@ data class PayloadExample(
 @Persisted
 @Serializable
 data class PreFlightSpec(
-    val executeCode: String = ""
+    val executeCode: String = "",
+    val updateVariablesFromHeader: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromQueryParameters: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromBody: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromGraphqlVariables: List<UserKeyValuePair> = mutableListOf(),
 ) {
-    fun isNotEmpty(): Boolean = executeCode.isNotEmpty()
+    fun isNotEmpty(): Boolean = executeCode.isNotEmpty() ||
+        updateVariablesFromHeader.isNotEmpty() ||
+        updateVariablesFromQueryParameters.isNotEmpty() ||
+        updateVariablesFromBody.isNotEmpty() ||
+        updateVariablesFromGraphqlVariables.isNotEmpty()
+
+    fun hasUpdateVariables(): Boolean =
+        updateVariablesFromHeader.isNotEmpty() ||
+        updateVariablesFromQueryParameters.isNotEmpty() ||
+        updateVariablesFromBody.isNotEmpty() ||
+        updateVariablesFromGraphqlVariables.isNotEmpty()
 }
 
 @Persisted

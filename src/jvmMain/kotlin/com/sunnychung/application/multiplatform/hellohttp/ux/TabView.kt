@@ -33,6 +33,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.scrollToIndex
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -157,6 +159,14 @@ fun TabsView(
 //                    }
 //                }
 //            }
+            .semantics {
+                scrollToIndex {
+                    coroutineScope.launch {
+                        scrollState.animateScrollToItem(it)
+                    }
+                    true
+                }
+            }
     ) {
         items(count = contents.size) { i ->
             TabItem(

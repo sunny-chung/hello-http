@@ -213,7 +213,8 @@ fun EnvironmentEditorView(
                 EnvironmentVariableTabContent(
                     environment = environment,
                     updateEnvVariable = updateEnvVariable,
-                    modifier = modifier.verticalScroll(rememberScrollState()),
+                    modifier = modifier.verticalScroll(rememberScrollState())
+                        .testTag(TestTag.EnvironmentEditorVariableTabContent.name)
                 )
             }
 
@@ -273,6 +274,8 @@ fun EnvironmentVariableTabContent(
             }
         },
         onDisableChange = { _ -> },
+        testTagPart1 = TestTagPart.EnvironmentEditorVariableKeyValue,
+        testTagPart2 = TestTagPart.Current,
         modifier = modifier,
     )
 }

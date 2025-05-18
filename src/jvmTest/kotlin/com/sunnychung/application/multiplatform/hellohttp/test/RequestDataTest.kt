@@ -8,6 +8,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
+import com.sunnychung.application.multiplatform.hellohttp.model.PreFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestBodyWithKeyValuePairs
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
@@ -104,6 +105,44 @@ class RequestDataTest {
                                 ContentType.Graphql -> GraphqlBody("", "", null)
                                 ContentType.None -> null
                             },
+                            preFlight = PreFlightSpec(
+                                updateVariablesFromHeader = (0 until 10).map {
+                                    UserKeyValuePair(
+                                        id = generateUuidForSubject(),
+                                        key = "env_header_$it",
+                                        value = "Request Header $it",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                },
+                                updateVariablesFromBody = (0 until 10).map {
+                                    UserKeyValuePair(
+                                        id = generateUuidForSubject(),
+                                        key = "env_body_$it",
+                                        value = "\$.request_json_path_$it",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                },
+                                updateVariablesFromGraphqlVariables = (0 until 10).map {
+                                    UserKeyValuePair(
+                                        id = generateUuidForSubject(),
+                                        key = "env_gql_var_$it",
+                                        value = "\$.json_path_$it",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                },
+                                updateVariablesFromQueryParameters = (0 until 10).map {
+                                    UserKeyValuePair(
+                                        id = generateUuidForSubject(),
+                                        key = "env_body_$it",
+                                        value = "Query Parameter $it",
+                                        valueType = FieldValueType.String,
+                                        isEnabled = true
+                                    )
+                                },
+                            ),
                             postFlight = PostFlightSpec(
                                 updateVariablesFromHeader = (0 until 10).map {
                                     UserKeyValuePair(
@@ -131,6 +170,8 @@ class RequestDataTest {
                                     disabledQueryParameterIds = baseExample!!.queryParameters.map { it.id }.shuffled().take(4).toSet(),
                                     disabledBodyKeyValueIds = (baseExample!!.body as? RequestBodyWithKeyValuePairs)
                                         ?.value?.map { it.id }?.shuffled()?.take(5)?.toSet() ?: emptySet(),
+                                    disablePreFlightUpdateVarIds = with(baseExample!!.preFlight) { updateVariablesFromHeader + updateVariablesFromBody + updateVariablesFromGraphqlVariables + updateVariablesFromQueryParameters }
+                                        .map { it.id }.shuffled().take(9).toSet(),
                                     disablePostFlightUpdateVarIds = with(baseExample!!.postFlight) { updateVariablesFromHeader + updateVariablesFromBody }
                                         .map { it.id }.shuffled().take(9).toSet(),
                                 )
@@ -165,11 +206,16 @@ class RequestDataTest {
                         if (it.body is RequestBodyWithKeyValuePairs) {
                             (it.body as RequestBodyWithKeyValuePairs).value.forEach { assertIdIsNew(it.id) }
                         }
+                        it.preFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
+                        it.preFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
+                        it.preFlight.updateVariablesFromGraphqlVariables.forEach { assertIdIsNew(it.id) }
+                        it.preFlight.updateVariablesFromQueryParameters.forEach { assertIdIsNew(it.id) }
                         it.postFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
                         it.postFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
                         it.overrides?.disabledHeaderIds?.forEach { assertIdIsNew(it) }
                         it.overrides?.disabledQueryParameterIds?.forEach { assertIdIsNew(it) }
                         it.overrides?.disabledBodyKeyValueIds?.forEach { assertIdIsNew(it) }
+                        it.overrides?.disablePreFlightUpdateVarIds?.forEach { assertIdIsNew(it) }
                         it.overrides?.disablePostFlightUpdateVarIds?.forEach { assertIdIsNew(it) }
                     }
                     payloadExamples?.forEach {
@@ -195,6 +241,9 @@ class RequestDataTest {
                     it.overrides?.disabledBodyKeyValueIds?.forEach {
                         assert(it in (baseExample.body as RequestBodyWithKeyValuePairs).value.map { it.id })
                     }
+                    it.overrides?.disablePreFlightUpdateVarIds?.forEach {
+                        assert(it in with(baseExample.preFlight) { updateVariablesFromHeader + updateVariablesFromBody + updateVariablesFromGraphqlVariables + updateVariablesFromQueryParameters}.map { it.id })
+                    }
                     it.overrides?.disablePostFlightUpdateVarIds?.forEach {
                         assert(it in with(baseExample.postFlight) { updateVariablesFromHeader + updateVariablesFromBody}.map { it.id })
                     }
@@ -210,6 +259,10 @@ class RequestDataTest {
                         assert(copiedIt.body is RequestBodyWithKeyValuePairs)
                         assertEquals((it.body as RequestBodyWithKeyValuePairs).value.size, (copiedIt.body as RequestBodyWithKeyValuePairs).value.size)
                     }
+                    assertEquals(it.preFlight.updateVariablesFromHeader.size, copiedIt.preFlight.updateVariablesFromHeader.size)
+                    assertEquals(it.preFlight.updateVariablesFromBody.size, copiedIt.preFlight.updateVariablesFromBody.size)
+                    assertEquals(it.preFlight.updateVariablesFromGraphqlVariables.size, copiedIt.preFlight.updateVariablesFromGraphqlVariables.size)
+                    assertEquals(it.preFlight.updateVariablesFromQueryParameters.size, copiedIt.preFlight.updateVariablesFromQueryParameters.size)
                     assertEquals(it.postFlight.updateVariablesFromHeader.size, copiedIt.postFlight.updateVariablesFromHeader.size)
                     assertEquals(it.postFlight.updateVariablesFromBody.size, copiedIt.postFlight.updateVariablesFromBody.size)
                     it.overrides?.let {
@@ -218,6 +271,7 @@ class RequestDataTest {
                         assertEquals(it.disabledHeaderIds.size, copiedIt.disabledHeaderIds.size)
                         assertEquals(it.disabledQueryParameterIds.size, copiedIt.disabledQueryParameterIds.size)
                         assertEquals(it.disabledBodyKeyValueIds.size, copiedIt.disabledBodyKeyValueIds.size)
+                        assertEquals(it.disablePreFlightUpdateVarIds.size, copiedIt.disablePreFlightUpdateVarIds.size)
                         assertEquals(it.disablePostFlightUpdateVarIds.size, copiedIt.disablePostFlightUpdateVarIds.size)
                     }
                 }
@@ -296,6 +350,44 @@ class RequestDataTest {
                             ContentType.Graphql -> GraphqlBody("", "", null)
                             ContentType.None -> null
                         },
+                        preFlight = PreFlightSpec(
+                            updateVariablesFromHeader = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "env_header_$it",
+                                    value = "Request Header $it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
+                            updateVariablesFromBody = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "env_body_$it",
+                                    value = "\$.request_json_path_$it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
+                            updateVariablesFromGraphqlVariables = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "env_gql_var_$it",
+                                    value = "\$.json_path_$it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
+                            updateVariablesFromQueryParameters = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "env_body_$it",
+                                    value = "Query Parameter $it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
+                        ),
                         postFlight = PostFlightSpec(
                             updateVariablesFromHeader = (0 until 10).map {
                                 UserKeyValuePair(
@@ -322,6 +414,7 @@ class RequestDataTest {
                                 disabledHeaderIds = randomStrings(3),
                                 disabledQueryParameterIds = randomStrings(4),
                                 disabledBodyKeyValueIds = randomStrings(5),
+                                disablePreFlightUpdateVarIds = randomStrings(9),
                                 disablePostFlightUpdateVarIds = randomStrings(9),
                             )
                         }
@@ -349,6 +442,10 @@ class RequestDataTest {
                             }
                             else -> {}
                         }
+                        preFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
+                        preFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
+                        preFlight.updateVariablesFromGraphqlVariables.forEach { assertIdIsNew(it.id) }
+                        preFlight.updateVariablesFromQueryParameters.forEach { assertIdIsNew(it.id) }
                         postFlight.updateVariablesFromHeader.forEach { assertIdIsNew(it.id) }
                         postFlight.updateVariablesFromBody.forEach { assertIdIsNew(it.id) }
                     }
