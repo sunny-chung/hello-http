@@ -1,8 +1,11 @@
 package com.sunnychung.application.multiplatform.hellohttp.network.util
 
+import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.serializer.CookieJarSerializer
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import com.sunnychung.lib.multiplatform.kdatetime.toKInstant
+import kotlinx.serialization.Serializable
 import java.net.URI
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -11,6 +14,8 @@ import java.time.ZoneOffset
 /**
  * Reference implementation: RFC 6265
  */
+@Persisted
+@Serializable
 data class Cookie(
     val name: String,
     val value: String,
@@ -50,8 +55,12 @@ data class Cookie(
 /**
  * Reference implementation: RFC 6265
  */
-class CookieJar {
-    private val cookies = mutableListOf<Cookie>()
+@Persisted
+@Serializable(with = CookieJarSerializer::class)
+class CookieJar(initialCookies: List<Cookie>? = null) {
+    private val cookies = initialCookies?.toMutableList() ?: mutableListOf<Cookie>()
+
+    val size: Int get() = cookies.size
 
     fun store(url: URI, setCookieHeaders: List<String>) {
         for (header in setCookieHeaders) {
@@ -124,5 +133,9 @@ class CookieJar {
 
     fun getPersistentCookies(): List<Cookie> {
         return cookies.filter { it.isPersistable() }
+    }
+
+    override fun toString(): String {
+        return cookies.toString()
     }
 }
