@@ -1,9 +1,11 @@
 package com.sunnychung.application.multiplatform.hellohttp.manager
 
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
+import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponseCollection
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
+import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.network.CallData
 import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -22,6 +24,7 @@ class PersistResponseManager {
 //    private val networkManager by lazy { AppContext.NetworkManager }
     private val responseCollectionRepository by lazy { AppContext.ResponseCollectionRepository }
     private val requestCollectionRepository by lazy { AppContext.RequestCollectionRepository }
+    private val projectCollectionRepository by lazy { AppContext.ProjectCollectionRepository }
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     fun registerCall(callData: CallData) {
@@ -38,6 +41,10 @@ class PersistResponseManager {
                     NetworkEvent("", KInstant.now(), "")
             }
         }
+    }
+
+    fun updateSubproject(subprojectId: String) {
+        projectCollectionRepository.updateSubproject(ProjectAndEnvironmentsDI(), subprojectId)
     }
 
     private suspend fun persistCallResponse(callData: CallData) {

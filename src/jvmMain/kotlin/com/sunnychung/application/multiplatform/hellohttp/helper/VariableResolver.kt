@@ -8,7 +8,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
  * This class should not be cached. This class is invalid upon changes to the Environment object.
  */
 class VariableResolver(
-    environment: Environment?,
+    val environment: Environment?,
     userRequestTemplate: UserRequestTemplate,
     requestExampleId: String,
     private val resolveVariableMode: UserRequestTemplate.ResolveVariableMode = UserRequestTemplate.ExpandByEnvironment

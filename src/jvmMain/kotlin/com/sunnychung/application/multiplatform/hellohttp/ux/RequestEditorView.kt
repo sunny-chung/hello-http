@@ -101,6 +101,7 @@ import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextViewState
 import graphql.language.OperationDefinition
 import graphql.language.OperationDefinition.Operation
 import java.io.File
+import java.net.URI
 
 @Composable
 fun RequestEditorView(
@@ -143,6 +144,23 @@ fun RequestEditorView(
     val environmentVariablesMap = environmentVariables.map { it.key to it.value }.toMap()
     val exampleVariables = request.getExampleVariablesOnly(selectedExample.id)
     val mergedVariables = request.getAllVariables(selectedExample.id, environment)
+
+    val environmentCookies = try {
+        environment?.cookieJar?.getCookiesFor(
+            URI(
+                request.withScope(selectedExample.id, environment) {
+                    request.url.resolveVariables()
+                }
+            )
+        ) ?: emptyList()
+    } catch (_: Exception) {
+        emptyList()
+    }
+    val applicableCookies = request.withScope(selectedExample.id, environment) {
+        getApplicableCookiesForUrl(request.url.resolveVariables()).also {
+            log.d { "applicableCookies = $it" }
+        }
+    }
 
     val currentGraphqlOperation = if (request.application == ProtocolApplication.Graphql) {
         (selectedExample.body as? GraphqlBody)?.getOperation(isThrowError = false)
@@ -569,7 +587,7 @@ fun RequestEditorView(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
                 RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight
             )
-            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
+            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Cookie, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
         }
         selectedRequestTabIndex = selectedRequestTabIndex.coerceAtMost(tabs.lastIndex)
 
@@ -605,6 +623,7 @@ fun RequestEditorView(
                 selectedExample.preFlight.updateVariablesFromGraphqlVariables.countActive()
             RequestTab.PostFlight -> selectedExample.postFlight.updateVariablesFromHeader.countActive() +
                 selectedExample.postFlight.updateVariablesFromBody.countActive()
+            RequestTab.Cookie -> applicableCookies.countActive()
             RequestTab.Variable -> selectedExample.variables.countActive()
         } }
 
@@ -722,6 +741,129 @@ fun RequestEditorView(
                         testTagPart = TestTagPart.RequestQueryParameter,
                         modifier = Modifier.fillMaxWidth(),
                     )
+
+                RequestTab.Cookie -> {
+                    val testTagPart = TestTagPart.Cookie
+                    val baseDisabledIds = selectedExample.overrides?.disabledCookieIds ?: emptySet()
+                    val onDisableUpdate: (Set<String>) -> Unit = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.run {
+                                        copy(overrides = (overrides ?: UserRequestExample.Overrides())
+                                            .copy(disabledCookieIds = it)
+                                        )
+                                    }
+                                )
+                            )
+                        )
+                    }
+                    val onValueUpdate: (List<UserKeyValuePair>) -> Unit = {
+                        onRequestModified(
+                            request.copy(
+                                examples = request.examples.copyWithChange(
+                                    selectedExample.copy(
+                                        cookies = it
+                                    )
+                                )
+                            )
+                        )
+                    }
+
+                    val data = selectedExample.cookies
+                    val activeValueKeys = data.filter { it.isEnabled }.map { it.key }.toSet()
+                    val activeNonDisabledValueKeys = data.filter { it.isEnabled && selectedExample.overrides?.disabledCookieIds?.contains(it.id) != true }.map { it.key }.toSet()
+                    val baseValues = if (selectedExample.id != baseExample.id) baseExample.cookies else emptyList()
+                    val activeBaseValues = baseValues.filter { it.isEnabled }
+                    val activeNonDisabledBaseValueKeys = activeBaseValues
+                        .filter { selectedExample.overrides?.disabledCookieIds?.contains(it.id) != true }
+                        .map { it.key }
+
+                    Column(modifier = Modifier.fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
+                        if (environmentCookies.isNotEmpty() || activeBaseValues.isNotEmpty()) {
+                            InputFormHeader(text = "This Example")
+                        }
+
+                        KeyValueEditorView(
+                            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Current",
+                            keyValues = data,
+                            isSupportVariables = true,
+                            knownVariables = environmentVariablesMap,
+                            isInheritedView = false,
+                            disabledIds = emptySet(),
+                            onItemChange = { index, item ->
+                                log.d { "onItemChange" }
+                                onValueUpdate(data.copyWithIndexedChange(index, item))
+                            },
+                            onItemAddLast = { item ->
+                                log.d { "onItemAddLast" }
+                                onValueUpdate(data + item)
+                            },
+                            onItemDelete = { index ->
+                                log.d { "onItemDelete" }
+                                onValueUpdate(data.copyWithRemovedIndex(index))
+                            },
+                            onDisableChange = {_ ->},
+                            testTagPart1 = testTagPart,
+                            testTagPart2 = TestTagPart.Current,
+                        )
+
+                        if (activeBaseValues.isNotEmpty()) {
+                            InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
+                            KeyValueEditorView(
+                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Inherited",
+                                keyValues = activeBaseValues.map {
+                                    it.copy(isEnabled = it.isEnabled && it.key !in activeNonDisabledValueKeys)
+                                },
+                                isSupportVariables = true,
+                                isSupportDisable = true,
+                                knownVariables = environmentVariablesMap,
+                                disabledIds = baseDisabledIds,
+                                isInheritedView = true,
+                                onItemChange = {_, _ ->},
+                                onItemAddLast = {_ ->},
+                                onItemDelete = {_ ->},
+                                onDisableChange = onDisableUpdate,
+                                testTagPart1 = testTagPart,
+                                testTagPart2 = TestTagPart.Inherited,
+                            )
+                        }
+
+                        if (environmentCookies.isNotEmpty()) {
+                            InputFormHeader(
+                                text = "Inherited from Environment",
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
+
+                            KeyValueEditorView(
+                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment",
+                                keyValues = environmentCookies.map {
+                                    UserKeyValuePair(
+                                        "env/${it.name}",
+                                        it.name,
+                                        it.value,
+                                        FieldValueType.String,
+                                        it.name !in activeNonDisabledValueKeys && it.name !in activeNonDisabledBaseValueKeys
+                                    )
+                                },
+                                keyPlaceholder = "",
+                                valuePlaceholder = "",
+                                isSupportFileValue = false,
+                                isSupportVariables = false,
+                                isSupportDisable = true,
+                                knownVariables = emptyMap(),
+                                disabledIds = selectedExample.overrides?.disabledCookieIds ?: emptySet(),
+                                isInheritedView = true,
+                                onItemChange = { _, _ -> },
+                                onItemAddLast = { _ -> },
+                                onItemDelete = { _ -> },
+                                onDisableChange = onDisableUpdate,
+                                testTagPart1 = TestTagPart.Cookie,
+                                testTagPart2 = TestTagPart.InheritedFromEnvironment,
+                            )
+                        }
+                    }
+                }
 
                 RequestTab.Variable -> {
                     val testTagPart = TestTagPart.ExampleVariable
@@ -2041,7 +2183,14 @@ fun StreamingPayloadEditorView(
 }
 
 private enum class RequestTab(val displayText: String) {
-    Body("Body"), /* Authorization, */ Query("Query"), Header("Header"), PreFlight("Pre Flight"), PostFlight("Post Flight"), Variable("Variable")
+    Body("Body"),
+    /* Authorization, * */
+    Query("Query"),
+    Header("Header"),
+    Cookie("Cookie"),
+    PreFlight("Pre Flight"),
+    PostFlight("Post Flight"),
+    Variable("Variable")
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)

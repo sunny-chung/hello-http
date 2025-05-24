@@ -19,8 +19,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
-import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
-import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
+import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
+import com.sunnychung.application.multiplatform.hellohttp.network.util.toCookieHeader
 import com.sunnychung.application.multiplatform.hellohttp.platform.OS
 import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
@@ -57,10 +57,11 @@ fun UserRequestTemplate.toHttpRequest(
     }
 
     val overrides = selectedExample.overrides
+    val url = url.resolveVariables()
 
     var req = HttpRequest(
         method = method,
-        url = url.resolveVariables(),
+        url = url,
         headers = getMergedKeyValues({ it.headers }, overrides?.disabledHeaderIds)
             .map { it.key to it.value }
             .run {
@@ -69,6 +70,17 @@ fun UserRequestTemplate.toHttpRequest(
                 } else {
                     this
                 }
+            }
+            .run { // add cookie header if there exists cookie
+                getApplicableCookiesForUrl(url)
+                    .map { Cookie(it.key, it.value, "") }
+                    .let { cookies ->
+                        if (cookies.isNotEmpty()) {
+                            this + Pair("Cookie", cookies.toCookieHeader())
+                        } else {
+                            this
+                        }
+                    }
             },
         queryParameters = getMergedKeyValues({ it.queryParameters }, overrides?.disabledQueryParameterIds)
             .map { it.key to it.value },

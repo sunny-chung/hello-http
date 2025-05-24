@@ -128,7 +128,7 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
     }
 
     fun getCookieHeader(url: URI): String {
-        return getCookiesFor(url).joinToString("; ") { it.toHeaderString() }
+        return getCookiesFor(url).toCookieHeader()
     }
 
     fun getPersistentCookies(): List<Cookie> {
@@ -139,3 +139,5 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
         return cookies.toString()
     }
 }
+
+fun List<Cookie>.toCookieHeader() = joinToString("; ") { it.toHeaderString() }

@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CookieJar
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
@@ -17,6 +18,7 @@ data class Environment(
     val httpConfig: HttpConfig = HttpConfig(),
     val sslConfig: SslConfig = SslConfig(),
     val userFiles: List<ImportedFile> = listOf(),
+    var cookieJar: CookieJar = CookieJar(),
 ) : DropDownable {
 
     override val key: String
