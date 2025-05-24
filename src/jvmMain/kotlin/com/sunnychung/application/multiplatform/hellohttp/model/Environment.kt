@@ -57,6 +57,7 @@ data class Environment(
                 },
             ),
             userFiles = userFiles.deepCopyWithNewId(),
+            cookieJar = cookieJar.copy(),
         )
     }
 }

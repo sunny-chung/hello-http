@@ -138,6 +138,13 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
     override fun toString(): String {
         return cookies.toString()
     }
+
+    fun copy(): CookieJar {
+        val cookiesCopy = cookies.map {
+            it.copy()
+        }
+        return CookieJar(cookiesCopy)
+    }
 }
 
 fun List<Cookie>.toCookieHeader() = joinToString("; ") { it.toHeaderString() }
