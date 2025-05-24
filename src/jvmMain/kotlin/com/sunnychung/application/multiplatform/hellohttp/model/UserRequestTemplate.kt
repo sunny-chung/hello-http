@@ -189,13 +189,7 @@ data class UserRequestTemplate(
             val envValues = (variableResolver.environment?.let { env -> environmentPropertyGetter(env) } ?: emptyList())
                 .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
 
-//            if (envValues.isEmpty() && selectedExample.id == baseExample.id) { // the Base example is selected
-//                return propertyGetter(baseExample)?.filter { it.isEnabled }
-//                    ?.map { it.copy(key = it.key.resolveVariables(), value = it.value.resolveVariables()) }
-//                    ?: emptyList() // TODO reduce code duplication
-//            }
-
-            val baseValues = (propertyGetter(baseExample) ?: emptyList())
+            val baseValues = (baseExample.takeIf { selectedExample.id != baseExample.id }?.let { propertyGetter(it) } ?: emptyList())
                 .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
 
             val currentValues = (propertyGetter(selectedExample) ?: emptyList())
