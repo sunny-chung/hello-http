@@ -76,7 +76,7 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
             if (name.isEmpty()) continue
             val value = nameValue[1]
             var domain = url.host
-            var path = "/"
+            var path = ""
             var secure = false
             var httpOnly = false
             var expires: KInstant? = null
@@ -109,6 +109,15 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
                             }
                         }
                     }
+                }
+            }
+
+            if (path.isEmpty()) { // RFC 6265 Section 5.1.4
+                val lastSlashIndex = url.path.lastIndexOf('/')
+                path = if (lastSlashIndex > 0) {
+                    url.path.substring(0 ..< lastSlashIndex)
+                } else {
+                    "/"
                 }
             }
 

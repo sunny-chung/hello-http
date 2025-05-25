@@ -273,10 +273,23 @@ class CookieJarTest {
     }
 
     @Test
-    fun `cookie without path should default to slash`() {
-        jar.store(baseUrl, listOf("token=abc123"))
+    fun `cookie without path should default to path upto the last slash`() { // RFC 6265 Section 5.1.4
+        jar.store(URI("https://example.com/index.html"), listOf("c1=abc123"))
+        jar.store(URI("https://example.com"), listOf("c2=abc123"))
+        jar.store(URI("https://example.com/"), listOf("c3=abc123"))
+        jar.store(URI("https://example.com/a/bb/c/index.html"), listOf("c4=abc123"))
+        jar.store(URI("https://example.com/a/bb/c/"), listOf("c5=abc123"))
+        jar.store(URI("https://example.com/a/bb/c"), listOf("c6=abc123"))
 
-        val cookies = jar.getCookiesFor(URI("https://example.com/home"))
-        assertEquals(1, cookies.size)
+        val cookies = jar.getAllNonExpiredCookies()
+        assertEquals(6, cookies.size)
+        cookies.forEach {
+            when (it.name) {
+                "c1", "c2", "c3" -> assertEquals("/", it.path)
+                "c4", "c5" -> assertEquals("/a/bb/c", it.path)
+                "c6" -> assertEquals("/a/bb", it.path)
+                else -> throw NotImplementedError()
+            }
+        }
     }
 }
