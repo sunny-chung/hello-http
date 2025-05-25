@@ -43,6 +43,8 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CookieJar
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
@@ -1020,9 +1022,12 @@ fun EnvironmentCookiesTabContent(
 
     val colours = LocalColor.current
 
+    val focusRequester = remember { FocusRequester() }
+
 //    val searchTextFieldState by rememberConcurrentLargeAnnotatedBigTextFieldState()
 //    val searchText = searchTextFieldState.valueChangesFlow.onEach { log.w("BT onEach") }.debounce(50L).collectAsState(null).value?.bigText?.buildString() ?: ""
     var searchText by remember { mutableStateOf("") }
+    var editCookie by remember { mutableStateOf<Cookie?>(null) }
 
     log.v { "searchText: $searchText" }
 
@@ -1041,6 +1046,26 @@ fun EnvironmentCookiesTabContent(
 
     val columns = CookieTableColumnsToRatio.toList()
 
+    CookieEditDialog(
+        cookie = editCookie ?: Cookie("", "", ""),
+        editCookie != null,
+        { edited ->
+            val editIndex = cookies.indexOf(editCookie)
+            val newCookies = if (editIndex >= 0) {
+                cookies.copyWithIndexedChange(editIndex, edited)
+            } else {
+                cookies + edited
+            }
+            onUpdateEnvironment(environment.copy(
+                cookieJar = CookieJar(newCookies),
+            ))
+        },
+        {
+            editCookie = null
+            focusRequester.requestFocus()
+        },
+    )
+
     Column(modifier) {
         AppTextField(
             key = "Cookie/SearchText",
@@ -1056,7 +1081,7 @@ fun EnvironmentCookiesTabContent(
             placeholder = {
                 AppText("Search by Domain / Path / Name / Value", color = colours.placeholder)
             },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).focusRequester(focusRequester)
         )
         Row(Modifier.height(IntrinsicSize.Min)) {
             CookieTableColumnsToRatio.forEach { (name, ratio) ->
@@ -1064,6 +1089,7 @@ fun EnvironmentCookiesTabContent(
                     TitleCell(name)
                 }
             }
+            Column(Modifier.width(4.dp + 16.dp)) {}
         }
         cookies.forEach {
             Row(Modifier.height(IntrinsicSize.Min)) {
@@ -1097,6 +1123,14 @@ fun EnvironmentCookiesTabContent(
                 }
                 Column(Modifier.weight(columns[col++].second)) {
                     ContentCell(it.toAttributeString())
+                }
+                Column(Modifier.padding(start = 4.dp).align(Alignment.CenterVertically)) {
+                    AppImageButton(
+                        resource = "edit.svg",
+                        size = 16.dp,
+                    ) {
+                        editCookie = it
+                    }
                 }
             }
         }

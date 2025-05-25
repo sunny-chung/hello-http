@@ -117,7 +117,7 @@ fun AppView() {
                 ) {
                     AppContentView()
 
-                    dialogState?.let { dialog ->
+                    dialogState.forEach { dialog ->
                         val focusRequester = remember { FocusRequester() }
                         Box(
                             modifier = Modifier
@@ -127,7 +127,7 @@ fun AppView() {
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() }
                                 ) {
-                                    dialogViewModel.updateState(null) // close the dialog
+                                    dialogViewModel.removeDialog(dialog.key) // close the dialog
                                 }
                         )
                         Box(
@@ -144,7 +144,7 @@ fun AppView() {
                                 .onKeyEvent {
                                     log.d { "Dialog key ${it.type} ${it.key}" }
                                     if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
-                                        dialogViewModel.updateState(null) // close the dialog
+                                        dialogViewModel.removeDialog(dialog.key) // close the dialog
                                         true
                                     } else {
                                         false
@@ -165,7 +165,7 @@ fun AppView() {
                             AppImageButton(
                                 resource = "close.svg",
                                 size = 24.dp,
-                                onClick = { dialogViewModel.updateState(null) },
+                                onClick = { dialogViewModel.removeDialog(dialog.key) },
                                 modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = -28.dp)
                                     .testTag(TestTag.DialogCloseButton.name)
                             )
