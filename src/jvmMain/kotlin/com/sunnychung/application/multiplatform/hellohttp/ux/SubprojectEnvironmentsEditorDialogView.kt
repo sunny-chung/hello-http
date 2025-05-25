@@ -1089,25 +1089,25 @@ fun EnvironmentCookiesTabContent(
                     TitleCell(name)
                 }
             }
-            Column(Modifier.width(4.dp + 16.dp)) {}
+            Column(Modifier.width(4.dp + 16.dp + 2.dp + 16.dp)) {}
         }
-        cookies.forEach {
+        cookies.forEach { cookie ->
             Row(Modifier.height(IntrinsicSize.Min)) {
                 var col = 0
                 Column(Modifier.weight(columns[col++].second)) {
-                    ContentCell(it.domain)
+                    ContentCell(cookie.domain)
                 }
                 Column(Modifier.weight(columns[col++].second)) {
-                    ContentCell(it.path)
+                    ContentCell(cookie.path)
                 }
                 Column(Modifier.weight(columns[col++].second)) {
-                    ContentCell(it.name)
+                    ContentCell(cookie.name)
                 }
                 Column(Modifier.weight(columns[col++].second)) {
-                    ContentCell(it.value)
+                    ContentCell(cookie.value)
                 }
                 Column(Modifier.weight(columns[col++].second)) {
-                    val expires = it.expires
+                    val expires = cookie.expires
                     if (expires != null) {
                         val expiryDateTime = expires.atLocalZoneOffset().toKZonedDateTime()
                         // TODO modify KDateTime to add KZonedDateTime comparison
@@ -1122,14 +1122,22 @@ fun EnvironmentCookiesTabContent(
                     }
                 }
                 Column(Modifier.weight(columns[col++].second)) {
-                    ContentCell(it.toAttributeString())
+                    ContentCell(cookie.toAttributeString())
                 }
-                Column(Modifier.padding(start = 4.dp).align(Alignment.CenterVertically)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically)
+                ) {
                     AppImageButton(
                         resource = "edit.svg",
                         size = 16.dp,
                     ) {
-                        editCookie = it
+                        editCookie = cookie
+                    }
+                    AppDeleteButton(size = 16.dp) {
+                        onUpdateEnvironment(environment.copy(
+                            cookieJar = CookieJar(cookies.copyWithRemoval { it == cookie }),
+                        ))
                     }
                 }
             }
