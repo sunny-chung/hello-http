@@ -22,6 +22,9 @@ class CookieApi {
     @PostMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun setCookie(@RequestBody cookies: Map<String, String>, exchange: ServerWebExchange) {
+        exchange.response.addCookie(ResponseCookie.from("after1h", "after1h").maxAge(1 * 60 * 60).build())
+        exchange.response.addCookie(ResponseCookie.from("after1d", "after1d").maxAge(1 * 24 * 60 * 60).secure(true).build())
+        exchange.response.addCookie(ResponseCookie.from("after3d", "after3d").maxAge(3 * 24 * 60 * 60).httpOnly(true).secure(true).build())
         cookies.forEach {
             exchange.response.addCookie(ResponseCookie.from(it.key, it.value).build())
         }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,9 +33,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -56,9 +55,14 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 import com.sunnychung.lib.multiplatform.bigtext.ux.extra.PasswordIncrementalTransformation
 import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.days
+import com.sunnychung.lib.multiplatform.kdatetime.toKZonedDateTime
+import kotlinx.coroutines.FlowPreview
 import java.io.File
 
 @Composable
@@ -228,6 +232,12 @@ fun EnvironmentEditorView(
                 environment = environment,
                 onUpdateEnvironment = onUpdateEnvironment,
                 modifier = modifier.verticalScroll(rememberScrollState()).testTag(TestTag.EnvironmentEditorSslTabContent.name),
+            )
+
+            EnvironmentEditorTab.Cookies -> EnvironmentCookiesTabContent(
+                environment = environment,
+                onUpdateEnvironment = onUpdateEnvironment,
+                modifier = modifier.verticalScroll(rememberScrollState()),
             )
 
             EnvironmentEditorTab.`User Files` -> EnvironmentUserFilesTabContent(
@@ -971,12 +981,134 @@ fun ImportUserFileForm(modifier: Modifier = Modifier, key: String, onImportFile:
     }
 }
 
+private val CookieTableColumnsToRatio = linkedMapOf(
+    "Domain" to 0.15f,
+    "Path" to 0.1f,
+    "Name" to 0.16f,
+    "Value" to 0.3f,
+    "Expires" to 0.16f,
+    "Attributes" to 0.13f,
+)
+
+@OptIn(FlowPreview::class)
+@Composable
+fun EnvironmentCookiesTabContent(
+    modifier: Modifier = Modifier,
+    environment: Environment,
+    onUpdateEnvironment: (Environment) -> Unit,
+) {
+    @Composable
+    fun TitleCell(content: String, modifier: Modifier = Modifier) {
+        val colours = LocalColor.current
+        AppText(content, fontWeight = FontWeight.Bold, modifier = modifier.fillMaxSize().border(width = 1.dp, colours.primary).padding(6.dp))
+    }
+
+    @Composable
+    fun ContentCell(content: String, modifier: Modifier = Modifier) {
+        val colours = LocalColor.current
+        AppText(content, modifier = modifier.fillMaxSize().border(width = 1.dp, colours.primary).padding(6.dp))
+//        val style = LocalTextStyle.current
+//        BigTextLabel(
+//            text = BigText.createFromSmallString(content),
+//            fontSize = LocalFont.current.bodyFontSize,
+//            fontFamily = style.fontFamily!!,
+//            color = colours.text,
+//            padding = PaddingValues(0.dp),
+//            modifier = modifier.fillMaxSize().border(width = 1.dp, color.primary).padding(8.dp)
+//        )
+    }
+
+    val colours = LocalColor.current
+
+//    val searchTextFieldState by rememberConcurrentLargeAnnotatedBigTextFieldState()
+//    val searchText = searchTextFieldState.valueChangesFlow.onEach { log.w("BT onEach") }.debounce(50L).collectAsState(null).value?.bigText?.buildString() ?: ""
+    var searchText by remember { mutableStateOf("") }
+
+    log.v { "searchText: $searchText" }
+
+    val cookies = environment.cookieJar.getAllNonExpiredCookies()
+        .runIf(searchText.isNotEmpty()) {
+            filter { cookie ->
+                val searchWords = searchText.split("\\s+".toRegex())
+                searchWords.all {
+                    cookie.domain.contains(it, ignoreCase = true) ||
+                        cookie.path.contains(it, ignoreCase = true) ||
+                        cookie.name.contains(it, ignoreCase = true) ||
+                        cookie.value.contains(it, ignoreCase = true)
+                }
+            }.also { log.v("filtered: ${it.size}") }
+        }
+
+    val columns = CookieTableColumnsToRatio.toList()
+
+    Column(modifier) {
+        AppTextField(
+            key = "Cookie/SearchText",
+            value = searchText,
+            onValueChange = {
+                log.v("BT onValueChange")
+//                searchText = it.buildString()
+                searchText = it
+            },
+            leadingIcon = {
+                AppImage(resource = "search.svg", size = 16.dp, modifier = Modifier.padding(end = 4.dp))
+            },
+            placeholder = {
+                AppText("Search by Domain / Path / Name / Value", color = colours.placeholder)
+            },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+        )
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            CookieTableColumnsToRatio.forEach { (name, ratio) ->
+                Column(Modifier.weight(ratio)) {
+                    TitleCell(name)
+                }
+            }
+        }
+        cookies.forEach {
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                var col = 0
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(it.domain)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(it.path)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(it.name)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(it.value)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    val expires = it.expires
+                    if (expires != null) {
+                        val expiryDateTime = expires.atLocalZoneOffset().toKZonedDateTime()
+                        // TODO modify KDateTime to add KZonedDateTime comparison
+                        val display = if (expiryDateTime.toKInstant() >= (KZonedInstant.nowAtLocalZoneOffset() + 1.days()).startOfDay()) {
+                            expiryDateTime.format("yyyy-MM-dd")
+                        } else {
+                            expiryDateTime.format("HH:mm:ss")
+                        }
+                        ContentCell(display)
+                    } else {
+                        ContentCell("Session")
+                    }
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(it.toAttributeString())
+                }
+            }
+        }
+    }
+}
+
 private enum class CertificateKeyPairFileChooserType {
     None, Certificate, PrivateKey, Bundle
 }
 
 private enum class EnvironmentEditorTab {
-    Variables, HTTP, SSL, `User Files`
+    Variables, HTTP, SSL, Cookies, `User Files`
 }
 
 private enum class BooleanConfigValueText(val value: Boolean?) {

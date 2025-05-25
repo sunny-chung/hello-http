@@ -50,6 +50,8 @@ data class Cookie(
     }
 
     fun toHeaderString(): String = "$name=$value"
+
+    fun toAttributeString(): String = listOfNotNull("Secure".takeIf { secure }, "HttpOnly".takeIf { httpOnly }).joinToString("; ")
 }
 
 /**
@@ -133,6 +135,12 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
 
     fun getPersistentCookies(): List<Cookie> {
         return cookies.filter { it.isPersistable() }
+    }
+
+    fun getAllCookies(): List<Cookie> = cookies
+
+    fun getAllNonExpiredCookies(): List<Cookie> = cookies.filter {
+        !it.isExpired()
     }
 
     override fun toString(): String {
