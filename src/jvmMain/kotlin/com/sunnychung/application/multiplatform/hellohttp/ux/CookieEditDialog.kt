@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
 import com.sunnychung.application.multiplatform.hellohttp.util.log
@@ -35,6 +37,7 @@ fun CookieEditDialog(cookie: Cookie, isVisible: Boolean, onSave: (Cookie) -> Uni
         onDismiss = onDismiss,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.widthIn(max = 520.dp)) {
+            val focusRequester = remember { FocusRequester() }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 AppText("Domain", modifier = Modifier.width(headerColumnWidth))
                 AppTextField(
@@ -42,15 +45,16 @@ fun CookieEditDialog(cookie: Cookie, isVisible: Boolean, onSave: (Cookie) -> Uni
                     value = editing.domain,
                     onValueChange = { editing = editing.copy(domain = it) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    onFinishInit = { focusRequester.requestFocus() },
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 AppText("Path", modifier = Modifier.width(headerColumnWidth))
                 AppTextField(
                     key = "Cookie/${cookie.hashCode()}/Path",
-                    value = editing.path,
-                    onValueChange = { editing = editing.copy(path = it) },
+                    value = editing.path.takeIf { it.isNotBlank() } ?: "/",
+                    onValueChange = { editing = editing.copy(path = it.takeIf { it.isNotBlank() } ?: "/") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -76,7 +80,7 @@ fun CookieEditDialog(cookie: Cookie, isVisible: Boolean, onSave: (Cookie) -> Uni
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                AppText("Expires (e.g. 01 Jan 2000 00:00:00 GMT)", modifier = Modifier.width(headerColumnWidth))
+                AppText("Expires (e.g. 01 Jan 2000 00:00:00 +0800)", modifier = Modifier.width(headerColumnWidth))
                 AppTextField(
                     key = "Cookie/${cookie.hashCode()}/Expires",
                     value = editing.expires?.let {
@@ -114,7 +118,7 @@ fun CookieEditDialog(cookie: Cookie, isVisible: Boolean, onSave: (Cookie) -> Uni
                     AppTextButton(text = "Cancel", backgroundColor = LocalColor.current.backgroundStopButton) {
                         onDismiss()
                     }
-                    AppTextButton(text = "OK") {
+                    AppTextButton(text = "OK", isEnabled = editing.name.isNotBlank()) {
                         onSave(editing)
                         onDismiss()
                     }

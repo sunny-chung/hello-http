@@ -1047,7 +1047,7 @@ fun EnvironmentCookiesTabContent(
     val columns = CookieTableColumnsToRatio.toList()
 
     CookieEditDialog(
-        cookie = editCookie ?: Cookie("", "", ""),
+        cookie = editCookie ?: Cookie("", "", "__"),
         editCookie != null,
         { edited ->
             val editIndex = cookies.indexOf(editCookie)
@@ -1089,7 +1089,16 @@ fun EnvironmentCookiesTabContent(
                     TitleCell(name)
                 }
             }
-            Column(Modifier.width(4.dp + 16.dp + 2.dp + 16.dp)) {}
+            Row(Modifier.width(4.dp + 16.dp + 2.dp + 16.dp).fillMaxHeight()) {
+                Spacer(Modifier.width(4.dp))
+                AppImageButton(
+                    resource = "add.svg",
+                    size = 30.dp,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                ) {
+                    editCookie = Cookie("", "", "")
+                }
+            }
         }
         cookies.forEach { cookie ->
             Row(Modifier.height(IntrinsicSize.Min)) {
