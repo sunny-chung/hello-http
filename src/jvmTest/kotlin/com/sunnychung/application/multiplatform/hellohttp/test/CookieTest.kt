@@ -292,4 +292,13 @@ class CookieJarTest {
             }
         }
     }
+
+    @Test
+    fun `cookie with a too long name should be dropped`() {
+        jar.store(URI("https://example.com"), listOf("abc=abc123"))
+        jar.store(URI("https://example.com"), listOf("${"a".repeat(3000)}=abc123"))
+
+        val cookies = jar.getAllNonExpiredCookies()
+        assertEquals(1, cookies.size)
+    }
 }

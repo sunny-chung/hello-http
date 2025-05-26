@@ -2,14 +2,24 @@ package com.sunnychung.application.multiplatform.hellohttp.network.util
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.serializer.CookieJarSerializer
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import com.sunnychung.lib.multiplatform.kdatetime.toKInstant
 import kotlinx.serialization.Serializable
+import java.net.IDN
 import java.net.URI
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.time.ZoneOffset
+
+const val COOKIE_NAME_MAX_LENGTH = 255
+const val COOKIE_VALUE_MAX_LENGTH = 4096
+
+// TODO include a longer list
+private val publicSuffixes = setOf(
+    "com", "org", "net", "edu", "gov", "co.uk", "io", "dev"
+)
 
 /**
  * Reference implementation: RFC 6265
@@ -64,7 +74,7 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
 
     val size: Int get() = cookies.size
 
-    fun store(url: URI, setCookieHeaders: List<String>) {
+    fun store(url: URI, setCookieHeaders: List<String>, cookieValidator: (Cookie) -> Boolean = { true }) {
         for (header in setCookieHeaders) {
             val parts = header.split(";").map { it.trim() }
             if (parts.isEmpty()) continue
@@ -121,7 +131,16 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
                 }
             }
 
+            if (!isValidCookieDomain(domain, url)) {
+                continue
+            }
+
             val cookie = Cookie(name, value, domain, path, secure, httpOnly, expires)
+            if (cookie.name.length > COOKIE_NAME_MAX_LENGTH) continue
+            if (cookie.value.length > COOKIE_VALUE_MAX_LENGTH) continue
+            if (!cookieValidator(cookie)) {
+                continue
+            }
 
             // Replace existing cookie with same name + domain + path
             cookies.removeIf {
@@ -162,6 +181,63 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
         }
         return CookieJar(cookiesCopy)
     }
+}
+
+// Utility to check if a domain is a public suffix
+fun isPublicSuffix(domain: String): Boolean {
+    val parts = domain.lowercase().split(".")
+    return when {
+        parts.size >= 2 -> {
+//            val suffix1 = parts.takeLast(1).joinToString(".")
+            val suffix2 = parts.takeLast(2).joinToString(".")
+            publicSuffixes.contains(suffix2) //|| publicSuffixes.contains(suffix1)
+        }
+        else -> publicSuffixes.contains(domain)
+    }
+}
+
+// Normalize domains (e.g. IDN to ASCII)
+fun normalizeDomain(domain: String): String {
+    return IDN.toASCII(domain.trim().lowercase())
+}
+
+// Main validation function
+fun isValidCookieDomain(cookieDomain: String, requestUrl: URI): Boolean {
+    val cookieDomain = try {
+        normalizeDomain(cookieDomain)
+    } catch (_: Throwable) { return false }
+    val requestHost = try {
+        normalizeDomain(requestUrl.host ?: return false)
+    } catch (_: Throwable) { return false }
+
+    // 1. Cookie domain must not be a public suffix
+    if (isPublicSuffix(cookieDomain)) {
+        log.d("❌ Cookie domain is a public suffix.")
+        return false
+    }
+
+    // 2. Cookie domain must domain-match the request host (RFC 6265)
+    if (!requestHost.endsWith(cookieDomain)) {
+        log.d("❌ Cookie domain does not match request host.")
+        return false
+    }
+
+    // 3. Prevent setting cookie for parent domains unless it's a valid superdomain
+    val hostParts = requestHost.split(".")
+    val domainParts = cookieDomain.split(".")
+
+    if (domainParts.size < 2 || domainParts.size > hostParts.size) {
+        log.d("❌ Invalid domain depth.")
+        return false
+    }
+
+    // 4. Prevent setting cookie for TLD only (e.g. ".com")
+    if (cookieDomain.count { it == '.' } < 1) {
+        log.d("❌ Cookie domain is too shallow (likely a TLD).")
+        return false
+    }
+
+    return true
 }
 
 fun List<Cookie>.toCookieHeader() = joinToString("; ") { it.toHeaderString() }

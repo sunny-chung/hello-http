@@ -32,6 +32,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStat
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
 import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
@@ -322,7 +323,7 @@ class NetworkClientManager : CallDataStore {
 
                 if (setCookieHeaders.isNotEmpty()) {
                     val uri = URI(networkRequest.url)
-                    environment.cookieJar.store(uri, setCookieHeaders.map { it.second })
+                    environment.cookieJar.store(uri, setCookieHeaders.map { it.second }, ::verifyCookie)
                     log.d { "Cookie JAR = " + environment.cookieJar.toString() }
                     persistResponseManager.updateSubproject(subprojectId)
                 }
@@ -334,6 +335,12 @@ class NetworkClientManager : CallDataStore {
         if (!callData.response.isError) {
             callData.isPrepared = true
         }
+    }
+
+    fun verifyCookie(cookie: Cookie): Boolean {
+        if (cookie.value.contains("\\\$\\{\\{.*\\}\\}".toRegex())) return false
+        if (cookie.value.contains("\\\$\\(\\(.*\\)\\)".toRegex())) return false
+        return true
     }
 
     fun sendPayload(request: UserRequestTemplate, selectedRequestExampleId: String, payload: String, environment: Environment?) {
