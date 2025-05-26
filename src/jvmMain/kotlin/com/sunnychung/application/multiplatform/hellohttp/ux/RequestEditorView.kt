@@ -788,6 +788,7 @@ fun RequestEditorView(
                             key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Current",
                             keyValues = data,
                             isSupportVariables = true,
+                            isSupportVariablesInValuesOnly = true,
                             knownVariables = environmentVariablesMap,
                             isInheritedView = false,
                             disabledIds = emptySet(),
