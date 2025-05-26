@@ -1048,8 +1048,9 @@ fun EnvironmentCookiesTabContent(
 
     CookieEditDialog(
         cookie = editCookie ?: Cookie("", "", "__"),
-        editCookie != null,
-        { edited ->
+        knownVariables = environment.variables.filter { it.isEnabled }.associate { it.key to it.value },
+        isVisible = editCookie != null,
+        onSave = { edited ->
             val editIndex = cookies.indexOf(editCookie)
             val newCookies = if (editIndex >= 0) {
                 cookies.copyWithIndexedChange(editIndex, edited)
@@ -1060,7 +1061,7 @@ fun EnvironmentCookiesTabContent(
                 cookieJar = CookieJar(newCookies),
             ))
         },
-        {
+        onDismiss = {
             editCookie = null
             focusRequester.requestFocus()
         },

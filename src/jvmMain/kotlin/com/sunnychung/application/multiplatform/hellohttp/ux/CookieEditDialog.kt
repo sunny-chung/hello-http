@@ -29,7 +29,7 @@ import java.time.format.DateTimeFormatter
 private val headerColumnWidth = 180.dp
 
 @Composable
-fun CookieEditDialog(cookie: Cookie, isVisible: Boolean, onSave: (Cookie) -> Unit, onDismiss: () -> Unit) {
+fun CookieEditDialog(cookie: Cookie, knownVariables: Map<String, String>, isVisible: Boolean, onSave: (Cookie) -> Unit, onDismiss: () -> Unit) {
     var editing: Cookie by remember(cookie) { mutableStateOf(cookie) }
     MainWindowDialog(
         key = "CookieEditDialog",
@@ -71,10 +71,11 @@ fun CookieEditDialog(cookie: Cookie, isVisible: Boolean, onSave: (Cookie) -> Uni
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 AppText("Value", modifier = Modifier.width(headerColumnWidth))
-                AppTextField(
+                AppTextFieldWithVariables(
                     key = "Cookie/${cookie.hashCode()}/Value",
                     value = editing.value,
                     onValueChange = { editing = editing.copy(value = it) },
+                    variables = knownVariables,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
