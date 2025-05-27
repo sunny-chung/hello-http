@@ -105,7 +105,8 @@ class NetworkClientManager : CallDataStore {
     fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String, subprojectConfig: SubprojectConfiguration) {
         val networkRequest = request.toHttpRequest(
             exampleId = requestExampleId,
-            environment = environment
+            environment = environment,
+            subprojectConfig = subprojectConfig,
         ).run {
             if (request.application == ProtocolApplication.Grpc) {
                 val apiSpec = runBlocking { apiSpecificationCollectionRepository.read(ApiSpecDI(projectId)) }!!
@@ -314,7 +315,7 @@ class NetworkClientManager : CallDataStore {
             }
         }
         callIdFlow.value = callData.id
-        if (environment != null) {
+        if (environment != null && subprojectConfig.isCookieEnabled()) { // set cookie after flight
             val originalCallDataEnd = callData.end
             callData.end = {
                 val setCookieHeaders = callData.response.headers

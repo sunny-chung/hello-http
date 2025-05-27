@@ -42,6 +42,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
 import com.sunnychung.application.multiplatform.hellohttp.network.util.CookieJar
@@ -117,6 +118,7 @@ fun SubprojectEnvironmentsEditorDialogView(
         val remainModifier = Modifier.padding(start = 10.dp).weight(0.8f)
         selectedEnvironment?.let { env ->
             EnvironmentEditorView(
+                subprojectConfig = subproject.configuration,
                 environment = env,
                 onUpdateEnvironment = { newEnv ->
                     val index = subproject.environments.indexOfFirst { it.id == newEnv.id }
@@ -149,6 +151,7 @@ fun SubprojectEnvironmentsEditorDialogView(
 @Composable
 fun EnvironmentEditorView(
     modifier: Modifier = Modifier,
+    subprojectConfig: SubprojectConfiguration,
     environment: Environment,
     onUpdateEnvironment: (Environment) -> Unit,
     onDuplicateEnvironment: (Environment) -> Unit,
@@ -237,6 +240,7 @@ fun EnvironmentEditorView(
             )
 
             EnvironmentEditorTab.Cookies -> EnvironmentCookiesTabContent(
+                subprojectConfig = subprojectConfig,
                 environment = environment,
                 onUpdateEnvironment = onUpdateEnvironment,
                 modifier = modifier.verticalScroll(rememberScrollState()),
@@ -996,6 +1000,7 @@ private val CookieTableColumnsToRatio = linkedMapOf(
 @Composable
 fun EnvironmentCookiesTabContent(
     modifier: Modifier = Modifier,
+    subprojectConfig: SubprojectConfiguration,
     environment: Environment,
     onUpdateEnvironment: (Environment) -> Unit,
 ) {
@@ -1018,6 +1023,10 @@ fun EnvironmentCookiesTabContent(
 //            padding = PaddingValues(0.dp),
 //            modifier = modifier.fillMaxSize().border(width = 1.dp, color.primary).padding(8.dp)
 //        )
+    }
+
+    if (!subprojectConfig.isCookieEnabled()) {
+        return CookieDisabledText()
     }
 
     val colours = LocalColor.current

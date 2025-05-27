@@ -15,6 +15,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
@@ -24,6 +25,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.util.toCookieH
 import com.sunnychung.application.multiplatform.hellohttp.platform.OS
 import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
+import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 import graphql.language.OperationDefinition
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -45,6 +47,7 @@ import java.util.Locale
 fun UserRequestTemplate.toHttpRequest(
     exampleId: String,
     environment: Environment?,
+    subprojectConfig: SubprojectConfiguration,
     resolveVariableMode: UserRequestTemplate.ResolveVariableMode = UserRequestTemplate.ExpandByEnvironment,
     addDefaultUserAgent: Boolean = true
 ): HttpRequest = withScope(exampleId, environment, resolveVariableMode) {
@@ -71,7 +74,7 @@ fun UserRequestTemplate.toHttpRequest(
                     this
                 }
             }
-            .run { // add cookie header if there exists cookie
+            .runIf(subprojectConfig.isCookieEnabled()) { // add cookie header if there exists cookie
                 getApplicableCookiesForUrl(url)
                     .map { Cookie(it.key, it.value, "") }
                     .let { cookies ->
@@ -282,8 +285,8 @@ class CommandGenerator(val os: OS) {
         return URLEncoder.encode(this, StandardCharsets.UTF_8)
     }
 
-    fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?, isVerbose: Boolean): String {
-        val request = toHttpRequest(exampleId, environment)
+    fun UserRequestTemplate.toCurlCommand(exampleId: String, environment: Environment?, subprojectConfig: SubprojectConfiguration, isVerbose: Boolean): String {
+        val request = toHttpRequest(exampleId, environment, subprojectConfig)
 
         val url = request.getResolvedUri().toString()
 
@@ -359,8 +362,8 @@ class CommandGenerator(val os: OS) {
         }
     }
 
-    fun UserRequestTemplate.toPowerShellInvokeWebRequestCommand(exampleId: String, environment: Environment?): String {
-        val request = toHttpRequest(exampleId, environment)
+    fun UserRequestTemplate.toPowerShellInvokeWebRequestCommand(exampleId: String, environment: Environment?, subprojectConfig: SubprojectConfiguration): String {
+        val request = toHttpRequest(exampleId, environment, subprojectConfig)
 
         val url = request.getResolvedUri().toString()
 
@@ -421,10 +424,11 @@ class CommandGenerator(val os: OS) {
     fun UserRequestTemplate.toGrpcurlCommand(
         exampleId: String,
         environment: Environment?,
+        subprojectConfig: SubprojectConfiguration,
         payloadExampleId: String,
         method: GrpcMethod
     ): String {
-        val request = toHttpRequest(exampleId, environment)
+        val request = toHttpRequest(exampleId, environment, subprojectConfig)
 
         val uri = request.getResolvedUri()
 

@@ -72,6 +72,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadExample
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.model.UserGrpcRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
@@ -112,6 +113,7 @@ fun RequestEditorView(
     selectedExampleId: String,
     editExampleNameViewModel: EditNameViewModel,
     grpcApiSpecs: List<GrpcApiSpec>,
+    subprojectConfig: SubprojectConfiguration,
     environment: Environment?,
     onSelectExample: (UserRequestExample) -> Unit,
     onClickSend: () -> Unit,
@@ -748,6 +750,7 @@ fun RequestEditorView(
                     RequestEditorCookieTab(
                         request = request,
                         selectedExample = selectedExample,
+                        subprojectConfig = subprojectConfig,
                         baseExample = baseExample,
                         environment = environment,
                         environmentCookies = environmentCookies,
@@ -994,12 +997,17 @@ private fun RequestEditorCookieTab(
     request: UserRequestTemplate,
     selectedExample: UserRequestExample,
     baseExample: UserRequestExample,
+    subprojectConfig: SubprojectConfiguration,
     environment: Environment?,
     environmentCookies: List<Cookie>,
     environmentVariablesMap: Map<String, String>,
     onRequestModified: (UserRequestTemplate?) -> Unit,
 ) {
     val tab = RequestTab.Cookie
+
+    if (!subprojectConfig.isCookieEnabled()) {
+        return CookieDisabledText(Modifier.padding(8.dp))
+    }
 
     val testTagPart = TestTagPart.Cookie
     val baseDisabledIds = selectedExample.overrides?.disabledCookieIds ?: emptySet()

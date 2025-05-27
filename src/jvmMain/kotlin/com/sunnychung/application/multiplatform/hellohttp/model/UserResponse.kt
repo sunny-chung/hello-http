@@ -48,6 +48,7 @@ data class UserResponse(
         else // for gRPC, a list is initialized in GrpcTransportClient if the method supports streaming
             null,
     var requestData: RequestData? = null,
+    var requestConfig: RequestConfig = RequestConfig(),
     var closeReason: String? = null,
     @Transient var uiVersion: String = uuidString(),
 ) : Identifiable {
@@ -174,6 +175,12 @@ class RequestData(
         }
     }
 }
+
+@Persisted
+@Serializable
+data class RequestConfig(
+    val isCookieEnabled: Boolean = false, // prior to v1.8, there is no cookie
+)
 
 val TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.lll (Z)"
 val BODY_BLOCK_DELIMITER = "`````"
@@ -408,4 +415,14 @@ fun UserResponse.describeTransportLayer(isRelativeTimeDisplay: Boolean) = buildS
             }
         }
     }
+}
+
+fun UserResponse.warnings(): List<String> {
+    val result = mutableListOf<String>()
+    if (headers?.any { it.first.equals("Set-Cookie", ignoreCase = true) } == true &&
+        !requestConfig.isCookieEnabled
+    ) {
+        result += "There is a `Set-Cookie` header in the response but Cookie is disabled. Edit the Subproject to enable and use Cookie."
+    }
+    return result
 }

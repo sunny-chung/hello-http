@@ -66,6 +66,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
@@ -543,6 +544,7 @@ fun AppContentView() {
                                     request = requestNonNull,
                                     selectedExampleId = selectedRequestExampleId!!,
                                     editExampleNameViewModel = editExampleNameViewModel,
+                                    subprojectConfig = selectedSubproject?.configuration ?: SubprojectConfiguration(subprojectId = ""),
                                     environment = selectedEnvironment,
                                     grpcApiSpecs = selectedSubproject?.grpcApiSpecIds?.mapNotNull {
                                         projectGrpcSpecs?.get(it)
@@ -563,6 +565,7 @@ fun AppContentView() {
                                                 requestNonNull.toCurlCommand(
                                                     exampleId = selectedRequestExampleId!!,
                                                     environment = selectedEnvironment,
+                                                    subprojectConfig = selectedSubproject!!.configuration,
                                                     isVerbose = isVerbose,
                                                 )
                                             }
@@ -581,7 +584,8 @@ fun AppContentView() {
                                             val cmd = with (CommandGenerator(WindowsOS)) {
                                                 requestNonNull.toPowerShellInvokeWebRequestCommand(
                                                     exampleId = selectedRequestExampleId!!,
-                                                    environment = selectedEnvironment
+                                                    environment = selectedEnvironment,
+                                                    subprojectConfig = selectedSubproject!!.configuration,
                                                 )
                                             }
                                             log.d { "cmd: $cmd" }
@@ -600,6 +604,7 @@ fun AppContentView() {
                                                 requestNonNull.toGrpcurlCommand(
                                                     exampleId = selectedRequestExampleId!!,
                                                     environment = selectedEnvironment,
+                                                    subprojectConfig = selectedSubproject!!.configuration,
                                                     payloadExampleId = payloadExampleId,
                                                     method = grpcMethod,
                                                 )
