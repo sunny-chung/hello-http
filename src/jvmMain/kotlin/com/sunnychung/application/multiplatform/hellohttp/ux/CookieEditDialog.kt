@@ -116,7 +116,7 @@ fun CookieEditDialog(cookie: Cookie, knownVariables: Map<String, String>, isVisi
             }
             Box(modifier = Modifier.fillMaxWidth()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.align(Alignment.CenterEnd)) {
-                    AppTextButton(text = "Cancel", backgroundColor = LocalColor.current.backgroundStopButton) {
+                    AppTextButton(text = "Cancel", backgroundColor = LocalColor.current.backgroundCancelButton) {
                         onDismiss()
                     }
                     AppTextButton(text = "OK", isEnabled = editing.name.isNotBlank()) {

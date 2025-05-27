@@ -1067,6 +1067,21 @@ fun EnvironmentCookiesTabContent(
         },
     )
 
+    var isShowDeleteAllCookieDialog by remember { mutableStateOf(false) }
+
+    BinaryDialog(
+        key = "DeleteAllCookieConfirmationDialog",
+        isVisible = isShowDeleteAllCookieDialog,
+        content = "Confirm to delete all cookies?",
+        positiveButtonColor = LocalColor.current.backgroundStopButton,
+        onClickPositiveButton = {
+            onUpdateEnvironment(environment.copy(
+                cookieJar = CookieJar(),
+            ))
+        },
+        onDismiss = { isShowDeleteAllCookieDialog = false },
+    )
+
     Column(modifier) {
         AppTextField(
             key = "Cookie/SearchText",
@@ -1150,6 +1165,16 @@ fun EnvironmentCookiesTabContent(
                         ))
                     }
                 }
+            }
+        }
+
+        if (cookies.isNotEmpty()) {
+            AppTextButton(
+                text = "Delete All Cookies",
+                backgroundColor = colours.backgroundStopButton,
+                modifier = Modifier.padding(12.dp)
+            ) {
+                isShowDeleteAllCookieDialog = true
             }
         }
     }
