@@ -80,6 +80,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTempl
 import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMethod
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
 import com.sunnychung.application.multiplatform.hellohttp.parser.JsonParser
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
@@ -102,6 +103,7 @@ import graphql.language.OperationDefinition
 import graphql.language.OperationDefinition.Operation
 import java.io.File
 import java.net.URI
+import kotlin.collections.plus
 
 @Composable
 fun RequestEditorView(
@@ -743,127 +745,15 @@ fun RequestEditorView(
                     )
 
                 RequestTab.Cookie -> {
-                    val testTagPart = TestTagPart.Cookie
-                    val baseDisabledIds = selectedExample.overrides?.disabledCookieIds ?: emptySet()
-                    val onDisableUpdate: (Set<String>) -> Unit = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.run {
-                                        copy(overrides = (overrides ?: UserRequestExample.Overrides())
-                                            .copy(disabledCookieIds = it)
-                                        )
-                                    }
-                                )
-                            )
-                        )
-                    }
-                    val onValueUpdate: (List<UserKeyValuePair>) -> Unit = {
-                        onRequestModified(
-                            request.copy(
-                                examples = request.examples.copyWithChange(
-                                    selectedExample.copy(
-                                        cookies = it
-                                    )
-                                )
-                            )
-                        )
-                    }
-
-                    val data = selectedExample.cookies
-                    val activeValueKeys = data.filter { it.isEnabled }.map { it.key }.toSet()
-                    val activeNonDisabledValueKeys = data.filter { it.isEnabled && selectedExample.overrides?.disabledCookieIds?.contains(it.id) != true }.map { it.key }.toSet()
-                    val baseValues = if (selectedExample.id != baseExample.id) baseExample.cookies else emptyList()
-                    val activeBaseValues = baseValues.filter { it.isEnabled }
-                    val activeNonDisabledBaseValueKeys = activeBaseValues
-                        .filter { selectedExample.overrides?.disabledCookieIds?.contains(it.id) != true }
-                        .map { it.key }
-
-                    Column(modifier = Modifier.fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
-                        if (environmentCookies.isNotEmpty() || activeBaseValues.isNotEmpty()) {
-                            InputFormHeader(text = "This Example")
-                        }
-
-                        KeyValueEditorView(
-                            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Current",
-                            keyValues = data,
-                            isSupportVariables = true,
-                            isSupportVariablesInValuesOnly = true,
-                            knownVariables = environmentVariablesMap,
-                            isInheritedView = false,
-                            disabledIds = emptySet(),
-                            onItemChange = { index, item ->
-                                log.d { "onItemChange" }
-                                onValueUpdate(data.copyWithIndexedChange(index, item))
-                            },
-                            onItemAddLast = { item ->
-                                log.d { "onItemAddLast" }
-                                onValueUpdate(data + item)
-                            },
-                            onItemDelete = { index ->
-                                log.d { "onItemDelete" }
-                                onValueUpdate(data.copyWithRemovedIndex(index))
-                            },
-                            onDisableChange = {_ ->},
-                            testTagPart1 = testTagPart,
-                            testTagPart2 = TestTagPart.Current,
-                        )
-
-                        if (activeBaseValues.isNotEmpty()) {
-                            InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
-                            KeyValueEditorView(
-                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Inherited",
-                                keyValues = activeBaseValues.map {
-                                    it.copy(isEnabled = it.isEnabled && it.key !in activeNonDisabledValueKeys)
-                                },
-                                isSupportVariables = true,
-                                isSupportDisable = true,
-                                knownVariables = environmentVariablesMap,
-                                disabledIds = baseDisabledIds,
-                                isInheritedView = true,
-                                onItemChange = {_, _ ->},
-                                onItemAddLast = {_ ->},
-                                onItemDelete = {_ ->},
-                                onDisableChange = onDisableUpdate,
-                                testTagPart1 = testTagPart,
-                                testTagPart2 = TestTagPart.Inherited,
-                            )
-                        }
-
-                        if (environmentCookies.isNotEmpty()) {
-                            InputFormHeader(
-                                text = "Inherited from Environment",
-                                modifier = Modifier.padding(top = 12.dp)
-                            )
-
-                            KeyValueEditorView(
-                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment/${environment?.cookieJar?.versionKey ?: "-"}",
-                                keyValues = environmentCookies.map {
-                                    UserKeyValuePair(
-                                        "env/${it.name}",
-                                        it.name,
-                                        it.value,
-                                        FieldValueType.String,
-                                        it.name !in activeNonDisabledValueKeys && it.name !in activeNonDisabledBaseValueKeys
-                                    )
-                                },
-                                keyPlaceholder = "",
-                                valuePlaceholder = "",
-                                isSupportFileValue = false,
-                                isSupportVariables = false,
-                                isSupportDisable = true,
-                                knownVariables = emptyMap(),
-                                disabledIds = selectedExample.overrides?.disabledCookieIds ?: emptySet(),
-                                isInheritedView = true,
-                                onItemChange = { _, _ -> },
-                                onItemAddLast = { _ -> },
-                                onItemDelete = { _ -> },
-                                onDisableChange = onDisableUpdate,
-                                testTagPart1 = TestTagPart.Cookie,
-                                testTagPart2 = TestTagPart.InheritedFromEnvironment,
-                            )
-                        }
-                    }
+                    RequestEditorCookieTab(
+                        request = request,
+                        selectedExample = selectedExample,
+                        baseExample = baseExample,
+                        environment = environment,
+                        environmentCookies = environmentCookies,
+                        environmentVariablesMap = environmentVariablesMap,
+                        onRequestModified = onRequestModified,
+                    )
                 }
 
                 RequestTab.Variable -> {
@@ -1094,6 +984,141 @@ fun RequestEditorView(
                 onClickSendPayload = onClickSendPayload,
                 onClickCompleteStream = onClickCompleteStream,
                 connectionStatus = connectionStatus,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RequestEditorCookieTab(
+    request: UserRequestTemplate,
+    selectedExample: UserRequestExample,
+    baseExample: UserRequestExample,
+    environment: Environment?,
+    environmentCookies: List<Cookie>,
+    environmentVariablesMap: Map<String, String>,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+) {
+    val tab = RequestTab.Cookie
+
+    val testTagPart = TestTagPart.Cookie
+    val baseDisabledIds = selectedExample.overrides?.disabledCookieIds ?: emptySet()
+    val onDisableUpdate: (Set<String>) -> Unit = {
+        onRequestModified(
+            request.copy(
+                examples = request.examples.copyWithChange(
+                    selectedExample.run {
+                        copy(overrides = (overrides ?: UserRequestExample.Overrides())
+                            .copy(disabledCookieIds = it)
+                        )
+                    }
+                )
+            )
+        )
+    }
+    val onValueUpdate: (List<UserKeyValuePair>) -> Unit = {
+        onRequestModified(
+            request.copy(
+                examples = request.examples.copyWithChange(
+                    selectedExample.copy(
+                        cookies = it
+                    )
+                )
+            )
+        )
+    }
+
+    val data = selectedExample.cookies
+    val activeValueKeys = data.filter { it.isEnabled }.map { it.key }.toSet()
+    val activeNonDisabledValueKeys = data.filter { it.isEnabled && selectedExample.overrides?.disabledCookieIds?.contains(it.id) != true }.map { it.key }.toSet()
+    val baseValues = if (selectedExample.id != baseExample.id) baseExample.cookies else emptyList()
+    val activeBaseValues = baseValues.filter { it.isEnabled }
+    val activeNonDisabledBaseValueKeys = activeBaseValues
+        .filter { selectedExample.overrides?.disabledCookieIds?.contains(it.id) != true }
+        .map { it.key }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
+        if (environmentCookies.isNotEmpty() || activeBaseValues.isNotEmpty()) {
+            InputFormHeader(text = "This Example")
+        }
+
+        KeyValueEditorView(
+            key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Current",
+            keyValues = data,
+            isSupportVariables = true,
+            isSupportVariablesInValuesOnly = true,
+            knownVariables = environmentVariablesMap,
+            isInheritedView = false,
+            disabledIds = emptySet(),
+            onItemChange = { index, item ->
+                log.d { "onItemChange" }
+                onValueUpdate(data.copyWithIndexedChange(index, item))
+            },
+            onItemAddLast = { item ->
+                log.d { "onItemAddLast" }
+                onValueUpdate(data + item)
+            },
+            onItemDelete = { index ->
+                log.d { "onItemDelete" }
+                onValueUpdate(data.copyWithRemovedIndex(index))
+            },
+            onDisableChange = {_ ->},
+            testTagPart1 = testTagPart,
+            testTagPart2 = TestTagPart.Current,
+        )
+
+        if (activeBaseValues.isNotEmpty()) {
+            InputFormHeader(text = "Inherited from Base", modifier = Modifier.padding(top = 12.dp))
+            KeyValueEditorView(
+                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/Inherited",
+                keyValues = activeBaseValues.map {
+                    it.copy(isEnabled = it.isEnabled && it.key !in activeNonDisabledValueKeys)
+                },
+                isSupportVariables = true,
+                isSupportDisable = true,
+                knownVariables = environmentVariablesMap,
+                disabledIds = baseDisabledIds,
+                isInheritedView = true,
+                onItemChange = {_, _ ->},
+                onItemAddLast = {_ ->},
+                onItemDelete = {_ ->},
+                onDisableChange = onDisableUpdate,
+                testTagPart1 = testTagPart,
+                testTagPart2 = TestTagPart.Inherited,
+            )
+        }
+
+        if (environmentCookies.isNotEmpty()) {
+            InputFormHeader(
+                text = "Inherited from Environment",
+                modifier = Modifier.padding(top = 12.dp)
+            )
+
+            KeyValueEditorView(
+                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment/${environment?.cookieJar?.versionKey ?: "-"}",
+                keyValues = environmentCookies.map {
+                    UserKeyValuePair(
+                        "env/${it.name}",
+                        it.name,
+                        it.value,
+                        FieldValueType.String,
+                        it.name !in activeNonDisabledValueKeys && it.name !in activeNonDisabledBaseValueKeys
+                    )
+                },
+                keyPlaceholder = "",
+                valuePlaceholder = "",
+                isSupportFileValue = false,
+                isSupportVariables = false,
+                isSupportDisable = true,
+                knownVariables = emptyMap(),
+                disabledIds = selectedExample.overrides?.disabledCookieIds ?: emptySet(),
+                isInheritedView = true,
+                onItemChange = { _, _ -> },
+                onItemAddLast = { _ -> },
+                onItemDelete = { _ -> },
+                onDisableChange = onDisableUpdate,
+                testTagPart1 = TestTagPart.Cookie,
+                testTagPart2 = TestTagPart.InheritedFromEnvironment,
             )
         }
     }
