@@ -82,7 +82,7 @@ fun SubprojectEnvironmentsEditorDialogView(
     val selectedEnvironment = selectedEnvironmentId?.let { id -> subproject.environments.firstOrNull { it.id == id } }
 
     Row(modifier = modifier) {
-        Column(modifier = Modifier.weight(0.25f).defaultMinSize(minWidth = 160.dp)) {
+        Column(modifier = Modifier.weight(0.2f).defaultMinSize(minWidth = 120.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
                 AppText(text = "Environments", modifier = Modifier.weight(1f))
                 AppImageButton(resource = "add.svg", size = 24.dp, onClick = {
@@ -114,7 +114,7 @@ fun SubprojectEnvironmentsEditorDialogView(
                 }
             }
         }
-        val remainModifier = Modifier.padding(start = 10.dp).weight(0.75f)
+        val remainModifier = Modifier.padding(start = 10.dp).weight(0.8f)
         selectedEnvironment?.let { env ->
             EnvironmentEditorView(
                 environment = env,
@@ -1105,7 +1105,7 @@ fun EnvironmentCookiesTabContent(
                     TitleCell(name)
                 }
             }
-            Row(Modifier.width(4.dp + 16.dp + 2.dp + 16.dp).fillMaxHeight()) {
+            Row(Modifier.width(4.dp + 16.dp + 2.dp + 16.dp + 2.dp + 16.dp).fillMaxHeight()) {
                 Spacer(Modifier.width(4.dp))
                 AppImageButton(
                     resource = "add.svg",
@@ -1153,6 +1153,18 @@ fun EnvironmentCookiesTabContent(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically)
                 ) {
+                    AppCheckbox(
+                        checked = cookie.isEnabled,
+                        size = 16.dp,
+                        onCheckedChange = { isChecked ->
+                            onUpdateEnvironment(environment.copy(
+                                cookieJar = CookieJar(cookies.copyWithIndexedChange(
+                                    cookies.indexOf(cookie),
+                                    cookie.copy(isEnabled = isChecked)
+                                )),
+                            ))
+                        }
+                    )
                     AppImageButton(
                         resource = "edit.svg",
                         size = 16.dp,

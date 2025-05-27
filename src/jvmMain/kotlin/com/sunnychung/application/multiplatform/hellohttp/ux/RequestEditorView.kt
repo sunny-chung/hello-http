@@ -837,7 +837,7 @@ fun RequestEditorView(
                             )
 
                             KeyValueEditorView(
-                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment",
+                                key = "RequestEditor/${request.id}/Example/${selectedExample.id}/$tab/FromEnvironment/${environment?.cookieJar?.versionKey ?: "-"}",
                                 keyValues = environmentCookies.map {
                                     UserKeyValuePair(
                                         "env/${it.name}",

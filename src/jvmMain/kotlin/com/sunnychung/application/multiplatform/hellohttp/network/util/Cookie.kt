@@ -1,8 +1,10 @@
 package com.sunnychung.application.multiplatform.hellohttp.network.util
 
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
+import com.sunnychung.application.multiplatform.hellohttp.extension.distinctMergeBy
 import com.sunnychung.application.multiplatform.hellohttp.serializer.CookieJarSerializer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import com.sunnychung.lib.multiplatform.kdatetime.toKInstant
@@ -33,7 +35,10 @@ data class Cookie(
     val path: String = "/",
     val secure: Boolean = false,
     val httpOnly: Boolean = false,
-    val expires: KInstant? = null
+    val expires: KInstant? = null,
+
+    // non HTTP Cookie fields
+    val isEnabled: Boolean = true,
 ) {
     fun isExpired(): Boolean {
         return expires?.let { it <= KInstant.now() } ?: false
@@ -71,6 +76,8 @@ data class Cookie(
 @Serializable(with = CookieJarSerializer::class)
 class CookieJar(initialCookies: List<Cookie>? = null) {
     private val cookies = initialCookies?.toMutableList() ?: mutableListOf<Cookie>()
+    var versionKey: String = uuidString()
+        private set
 
     val size: Int get() = cookies.size
 
@@ -150,11 +157,27 @@ class CookieJar(initialCookies: List<Cookie>? = null) {
             }
 
             cookies.add(cookie)
+
+            updateVersion()
         }
     }
 
+    protected fun updateVersion() {
+        versionKey = uuidString()
+    }
+
     fun getCookiesFor(url: URI): List<Cookie> {
-        return cookies.filter { it.matches(url) }
+        return cookies.filter { it.isEnabled && it.matches(url) }
+            .distinctMergeBy(
+                key = Cookie::name,
+                mergeFunction = { a, b ->
+                    if (compareValuesBy(a, b, { it.path.length }, { it.domain.length }) >= 0) {
+                        a
+                    } else {
+                        b
+                    }
+                },
+            )
     }
 
     fun getCookieHeader(url: URI): String {
