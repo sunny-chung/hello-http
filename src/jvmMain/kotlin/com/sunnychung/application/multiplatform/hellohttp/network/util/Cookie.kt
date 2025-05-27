@@ -249,13 +249,14 @@ fun isValidCookieDomain(cookieDomain: String, requestUrl: URI): Boolean {
     val hostParts = requestHost.split(".")
     val domainParts = cookieDomain.split(".")
 
-    if (domainParts.size < 2 || domainParts.size > hostParts.size) {
+    if (domainParts.size < 1 /* 2 */ || domainParts.size > hostParts.size) {
         log.d("❌ Invalid domain depth.")
         return false
     }
 
     // 4. Prevent setting cookie for TLD only (e.g. ".com")
-    if (cookieDomain.count { it == '.' } < 1) {
+//    if (cookieDomain.count { it == '.' } < 1) {
+    if (cookieDomain.startsWith(".") && isPublicSuffix(cookieDomain.substring(1))) {
         log.d("❌ Cookie domain is too shallow (likely a TLD).")
         return false
     }
