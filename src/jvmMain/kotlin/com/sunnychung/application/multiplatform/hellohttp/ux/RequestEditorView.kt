@@ -627,7 +627,7 @@ fun RequestEditorView(
                 selectedExample.preFlight.updateVariablesFromGraphqlVariables.countActive()
             RequestTab.PostFlight -> selectedExample.postFlight.updateVariablesFromHeader.countActive() +
                 selectedExample.postFlight.updateVariablesFromBody.countActive()
-            RequestTab.Cookie -> applicableCookies.countActive()
+            RequestTab.Cookie -> if (subprojectConfig.isCookieEnabled()) applicableCookies.countActive() else 0
             RequestTab.Variable -> selectedExample.variables.countActive()
         } }
 
