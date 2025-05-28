@@ -586,10 +586,10 @@ fun RequestEditorView(
         }
 
         val tabs = when (request.application) {
-            ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header, RequestTab.Variable)
+            ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header, RequestTab.Cookie, RequestTab.Variable)
             ProtocolApplication.Grpc -> listOfNotNull(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
-                RequestTab.Header, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight
+                RequestTab.Header, RequestTab.Cookie, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight
             )
             else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Cookie, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
         }
