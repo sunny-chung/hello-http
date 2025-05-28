@@ -62,6 +62,12 @@ fun UserRequestTemplate.toHttpRequest(
     val overrides = selectedExample.overrides
     val url = url.resolveVariables()
 
+    val applicableCookies = if (subprojectConfig.isCookieEnabled()) {
+        getApplicableCookiesForUrl(url)
+    } else {
+        emptyList()
+    }
+
     var req = HttpRequest(
         method = method,
         url = url,
@@ -75,7 +81,7 @@ fun UserRequestTemplate.toHttpRequest(
                 }
             }
             .runIf(subprojectConfig.isCookieEnabled()) { // add cookie header if there exists cookie
-                getApplicableCookiesForUrl(url)
+                applicableCookies
                     .map { Cookie(it.key, it.value, "") }
                     .let { cookies ->
                         if (cookies.isNotEmpty()) {
@@ -106,6 +112,7 @@ fun UserRequestTemplate.toHttpRequest(
         contentType = selectedExample.contentType,
         application = application,
         applicableVariables = getAllVariables(selectedExample.id, environment),
+        applicableCookies = applicableCookies.associate { it.key to it.value },
     )
 
     if (req.headers.none { "content-type".equals(it.first, ignoreCase = true) } && req.contentType.headerValue != null && req.contentType != com.sunnychung.application.multiplatform.hellohttp.model.ContentType.Multipart) {
