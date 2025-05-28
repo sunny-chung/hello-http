@@ -279,6 +279,7 @@ class NetworkClientManager : CallDataStore {
                 postFlightAction = postFlightAction,
                 httpConfig = environment?.httpConfig ?: HttpConfig(),
                 sslConfig = environment?.sslConfig ?: SslConfig(),
+                environment = environment,
                 subprojectConfig = subprojectConfig,
             )
         } catch (error: Throwable) {

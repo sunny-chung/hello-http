@@ -180,6 +180,7 @@ class RequestData(
 @Serializable
 data class RequestConfig(
     val isCookieEnabled: Boolean = false, // prior to v1.8, there is no cookie
+    val environmentId: String? = null,
 )
 
 val TIME_FORMAT = "yyyy-MM-dd HH:mm:ss.lll (Z)"
@@ -419,10 +420,13 @@ fun UserResponse.describeTransportLayer(isRelativeTimeDisplay: Boolean) = buildS
 
 fun UserResponse.warnings(): List<String> {
     val result = mutableListOf<String>()
-    if (headers?.any { it.first.equals("Set-Cookie", ignoreCase = true) } == true &&
-        !requestConfig.isCookieEnabled
-    ) {
-        result += "There is a `Set-Cookie` header in the response but Cookie is disabled. Edit the Subproject to enable and use Cookie."
+    if (headers?.any { it.first.equals("Set-Cookie", ignoreCase = true) } == true) {
+        if (!requestConfig.isCookieEnabled) {
+            result += "There is a `Set-Cookie` header in the response but Cookie is disabled. Edit the Subproject to enable and use Cookie."
+        }
+        if (requestConfig.environmentId == null) {
+            result += "There is a `Set-Cookie` header in the response but no Environment is selected. Select an Environment to store incoming Cookie."
+        }
     }
     return result
 }

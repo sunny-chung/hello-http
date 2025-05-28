@@ -9,6 +9,7 @@ import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestE
 import com.sunnychung.application.multiplatform.hellohttp.helper.CountDownLatch
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcApiSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.GrpcMethod
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
@@ -471,6 +472,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        environment: Environment?,
         subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val uri = URI.create(request.url)
@@ -481,6 +483,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            environment = environment,
             subprojectConfig = subprojectConfig,
         )
 

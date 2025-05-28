@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
@@ -151,6 +152,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         requestId: String,
         subprojectId: String,
         sslConfig: SslConfig,
+        environment: Environment?,
         subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
@@ -180,6 +182,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
                 requestExampleId = requestExampleId,
                 requestConfig = RequestConfig(
                     isCookieEnabled = subprojectConfig.isCookieEnabled(),
+                    environmentId = environment?.id,
                 )
             ),
             cancel = {}
