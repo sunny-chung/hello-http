@@ -14,7 +14,7 @@ class InitClasses {
     init {
         (AppContext.instance.HttpTransportClient as SpringWebClientTransportClient)
             .also { transport ->
-                val callData = transport.createCallData(null, "", "", "", SslConfig(), SubprojectConfiguration(subprojectId = ""))
+                val callData = transport.createCallData(null, "", "", "", SslConfig(), null, SubprojectConfiguration(subprojectId = ""))
                 transport.buildWebClient(
                     callId = "",
                     callData = callData,

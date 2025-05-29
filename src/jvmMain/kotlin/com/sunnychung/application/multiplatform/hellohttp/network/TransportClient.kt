@@ -1,5 +1,6 @@
 package com.sunnychung.application.multiplatform.hellohttp.network
 
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
@@ -31,6 +32,7 @@ interface TransportClient {
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        environment: Environment?,
         subprojectConfig: SubprojectConfiguration,
     ): CallData
 }

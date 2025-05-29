@@ -60,6 +60,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
 import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
+import com.sunnychung.application.multiplatform.hellohttp.model.warnings
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.util.debouncedStateOf
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
@@ -95,10 +96,22 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
 
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(IntrinsicSize.Max)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).weight(1f)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).weight(1f)
+            ) {
                 StatusLabel(response = response, connectionStatus = connectionStatus)
                 DurationLabel(response = response, updateTime = updateTime, connectionStatus = connectionStatus)
                 ResponseSizeLabel(response = response)
+                response.warnings().takeIf { it.isNotEmpty() }?.let { warnings ->
+                    val warningMessage = warnings.joinToString("\n\n")
+                    AppTooltipArea(
+                        tooltipText = warningMessage,
+                    ) {
+                        AppImage(resource = "warning-sharp.svg", color = colors.highlight, size = 24.dp)
+                    }
+                }
             }
             response.connectionSecurity?.let {
                 AppTooltipArea(

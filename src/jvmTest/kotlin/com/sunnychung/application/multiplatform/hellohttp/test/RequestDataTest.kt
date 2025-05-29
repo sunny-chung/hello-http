@@ -66,6 +66,15 @@ class RequestDataTest {
                                     isEnabled = true
                                 )
                             },
+                            cookies = (0 until 10).map {
+                                UserKeyValuePair(
+                                    id = generateUuidForSubject(),
+                                    key = "Cookie $it",
+                                    value = "Value $it",
+                                    valueType = FieldValueType.String,
+                                    isEnabled = true
+                                )
+                            },
                             queryParameters = (0 until 10).map {
                                 UserKeyValuePair(
                                     id = generateUuidForSubject(),
@@ -167,6 +176,7 @@ class RequestDataTest {
                                 0 -> null
                                 else -> UserRequestExample.Overrides(
                                     disabledHeaderIds = baseExample!!.headers.map { it.id }.shuffled().take(3).toSet(),
+                                    disabledCookieIds = baseExample!!.cookies.map { it.id }.shuffled().take(3).toSet(),
                                     disabledQueryParameterIds = baseExample!!.queryParameters.map { it.id }.shuffled().take(4).toSet(),
                                     disabledBodyKeyValueIds = (baseExample!!.body as? RequestBodyWithKeyValuePairs)
                                         ?.value?.map { it.id }?.shuffled()?.take(5)?.toSet() ?: emptySet(),
@@ -202,6 +212,7 @@ class RequestDataTest {
                     examples.forEach {
                         assertIdIsNew(it.id)
                         it.headers.forEach { assertIdIsNew(it.id) }
+                        it.cookies.forEach { assertIdIsNew(it.id) }
                         it.queryParameters.forEach { assertIdIsNew(it.id) }
                         if (it.body is RequestBodyWithKeyValuePairs) {
                             (it.body as RequestBodyWithKeyValuePairs).value.forEach { assertIdIsNew(it.id) }
@@ -235,6 +246,9 @@ class RequestDataTest {
                     it.overrides?.disabledHeaderIds?.forEach {
                         assert(it in baseExample.headers.map { it.id })
                     }
+                    it.overrides?.disabledCookieIds?.forEach {
+                        assert(it in baseExample.cookies.map { it.id })
+                    }
                     it.overrides?.disabledQueryParameterIds?.forEach {
                         assert(it in baseExample.queryParameters.map { it.id })
                     }
@@ -254,6 +268,7 @@ class RequestDataTest {
                 subjectRequest.examples.forEachIndexed { index, it ->
                     val copiedIt = copied.examples[index]
                     assertEquals(it.headers.size, copiedIt.headers.size)
+                    assertEquals(it.cookies.size, copiedIt.cookies.size)
                     assertEquals(it.queryParameters.size, copiedIt.queryParameters.size)
                     if (it.body is RequestBodyWithKeyValuePairs) {
                         assert(copiedIt.body is RequestBodyWithKeyValuePairs)
@@ -269,6 +284,7 @@ class RequestDataTest {
                         assert(copiedIt.overrides != null)
                         val copiedIt = copiedIt.overrides!!
                         assertEquals(it.disabledHeaderIds.size, copiedIt.disabledHeaderIds.size)
+                        assertEquals(it.disabledCookieIds.size, copiedIt.disabledCookieIds.size)
                         assertEquals(it.disabledQueryParameterIds.size, copiedIt.disabledQueryParameterIds.size)
                         assertEquals(it.disabledBodyKeyValueIds.size, copiedIt.disabledBodyKeyValueIds.size)
                         assertEquals(it.disablePreFlightUpdateVarIds.size, copiedIt.disablePreFlightUpdateVarIds.size)
@@ -306,6 +322,15 @@ class RequestDataTest {
                             UserKeyValuePair(
                                 id = generateUuidForSubject(),
                                 key = "Header $it",
+                                value = "Value $it",
+                                valueType = FieldValueType.String,
+                                isEnabled = true
+                            )
+                        },
+                        cookies = (0 until 10).map {
+                            UserKeyValuePair(
+                                id = generateUuidForSubject(),
+                                key = "Cookie $it",
                                 value = "Value $it",
                                 valueType = FieldValueType.String,
                                 isEnabled = true
@@ -412,6 +437,7 @@ class RequestDataTest {
                             0 -> null
                             else -> UserRequestExample.Overrides(
                                 disabledHeaderIds = randomStrings(3),
+                                disabledCookieIds = randomStrings(4),
                                 disabledQueryParameterIds = randomStrings(4),
                                 disabledBodyKeyValueIds = randomStrings(5),
                                 disablePreFlightUpdateVarIds = randomStrings(9),
@@ -432,6 +458,7 @@ class RequestDataTest {
                     with (copied) {
                         assertIdIsNew(id)
                         headers.forEach { assertIdIsNew(it.id) }
+                        cookies.forEach { assertIdIsNew(it.id) }
                         queryParameters.forEach { assertIdIsNew(it.id) }
                         when (body) {
                             is FormUrlEncodedBody -> (body as FormUrlEncodedBody).value.forEach {

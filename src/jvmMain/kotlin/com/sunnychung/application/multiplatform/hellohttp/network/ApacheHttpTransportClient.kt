@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.extension.toApacheHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.MAX_CAPTURED_REQUEST_BODY_SIZE
@@ -323,6 +324,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        environment: Environment?,
         subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val (apacheHttpRequest, approximateRequestBodySize) = request.toApacheHttpRequest()
@@ -334,6 +336,7 @@ class ApacheHttpTransportClient(networkClientManager: NetworkClientManager) : Ab
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            environment = environment,
             subprojectConfig = subprojectConfig,
         )
         val callId = data.id

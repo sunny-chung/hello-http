@@ -13,4 +13,7 @@ data class SubprojectConfiguration(
     var inboundPayloadStorageLimit: Long = -1,
     var accumulatedOutboundDataStorageLimitPerCall: Long = -1,
     var accumulatedInboundDataStorageLimitPerCall: Long = -1,
-)
+    var isCookieEnabled: Boolean? = null,
+) {
+    fun isCookieEnabled() = isCookieEnabled ?: false
+}

@@ -66,6 +66,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
@@ -117,7 +118,7 @@ fun AppView() {
                 ) {
                     AppContentView()
 
-                    dialogState?.let { dialog ->
+                    dialogState.forEach { dialog ->
                         val focusRequester = remember { FocusRequester() }
                         Box(
                             modifier = Modifier
@@ -127,7 +128,7 @@ fun AppView() {
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() }
                                 ) {
-                                    dialogViewModel.updateState(null) // close the dialog
+                                    dialogViewModel.removeDialog(dialog.key) // close the dialog
                                 }
                         )
                         Box(
@@ -144,7 +145,7 @@ fun AppView() {
                                 .onKeyEvent {
                                     log.d { "Dialog key ${it.type} ${it.key}" }
                                     if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
-                                        dialogViewModel.updateState(null) // close the dialog
+                                        dialogViewModel.removeDialog(dialog.key) // close the dialog
                                         true
                                     } else {
                                         false
@@ -165,7 +166,7 @@ fun AppView() {
                             AppImageButton(
                                 resource = "close.svg",
                                 size = 24.dp,
-                                onClick = { dialogViewModel.updateState(null) },
+                                onClick = { dialogViewModel.removeDialog(dialog.key) },
                                 modifier = Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = -28.dp)
                                     .testTag(TestTag.DialogCloseButton.name)
                             )
@@ -543,6 +544,7 @@ fun AppContentView() {
                                     request = requestNonNull,
                                     selectedExampleId = selectedRequestExampleId!!,
                                     editExampleNameViewModel = editExampleNameViewModel,
+                                    subprojectConfig = selectedSubproject?.configuration ?: SubprojectConfiguration(subprojectId = ""),
                                     environment = selectedEnvironment,
                                     grpcApiSpecs = selectedSubproject?.grpcApiSpecIds?.mapNotNull {
                                         projectGrpcSpecs?.get(it)
@@ -563,6 +565,7 @@ fun AppContentView() {
                                                 requestNonNull.toCurlCommand(
                                                     exampleId = selectedRequestExampleId!!,
                                                     environment = selectedEnvironment,
+                                                    subprojectConfig = selectedSubproject!!.configuration,
                                                     isVerbose = isVerbose,
                                                 )
                                             }
@@ -581,7 +584,8 @@ fun AppContentView() {
                                             val cmd = with (CommandGenerator(WindowsOS)) {
                                                 requestNonNull.toPowerShellInvokeWebRequestCommand(
                                                     exampleId = selectedRequestExampleId!!,
-                                                    environment = selectedEnvironment
+                                                    environment = selectedEnvironment,
+                                                    subprojectConfig = selectedSubproject!!.configuration,
                                                 )
                                             }
                                             log.d { "cmd: $cmd" }
@@ -600,6 +604,7 @@ fun AppContentView() {
                                                 requestNonNull.toGrpcurlCommand(
                                                     exampleId = selectedRequestExampleId!!,
                                                     environment = selectedEnvironment,
+                                                    subprojectConfig = selectedSubproject!!.configuration,
                                                     payloadExampleId = payloadExampleId,
                                                     method = grpcMethod,
                                                 )

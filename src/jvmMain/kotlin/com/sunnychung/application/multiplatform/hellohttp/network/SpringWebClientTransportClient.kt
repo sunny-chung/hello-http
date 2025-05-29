@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.annotation.Reflection
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_ACCUMULATED_DATA_STORAGE_SIZE_LIMIT
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
@@ -100,6 +101,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        environment: Environment?,
         subprojectConfig: SubprojectConfiguration
     ): CallData {
         log.d { "sendRequest start" }
@@ -110,6 +112,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            environment = environment,
             subprojectConfig = subprojectConfig,
         )
         val callId = data.id

@@ -4,13 +4,12 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
+import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 import graphql.language.OperationDefinition
 import graphql.parser.InvalidSyntaxException
 import graphql.parser.Parser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import okhttp3.FormBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -19,6 +18,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import java.net.URI
 
 @Persisted
 @Serializable
@@ -132,6 +132,7 @@ data class UserRequestTemplate(
                 it.copy(
                     id = uuidString(),
                     headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    cookies = it.cookies.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     variables = it.variables.deepCopyWithNewId(isSaveIdMapping = index == 0),
@@ -152,6 +153,7 @@ data class UserRequestTemplate(
                     overrides = it.overrides?.let { o ->
                         o.copy(
                             disabledHeaderIds = o.disabledHeaderIds.map { idMapping[it]!! }.toSet(),
+                            disabledCookieIds = o.disabledCookieIds.map { idMapping[it]!! }.toSet(),
                             disabledQueryParameterIds = o.disabledQueryParameterIds.map { idMapping[it]!! }.toSet(),
                             disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { idMapping[it]!! }.toSet(),
                             disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
@@ -179,22 +181,56 @@ data class UserRequestTemplate(
 
         fun getMergedKeyValues(
             propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?,
-            disabledIds: Set<String>?
+            disabledIds: Set<String>?,
+            isResolveKeyVariable: Boolean = true,
+            isUniqueKey: Boolean = false,
+            environmentPropertyGetter: (Environment) -> List<UserKeyValuePair> = { emptyList() },
         ): List<UserKeyValuePair> {
-            if (selectedExample.id == baseExample.id) { // the Base example is selected
-                return propertyGetter(baseExample)?.filter { it.isEnabled }
-                    ?.map { it.copy(key = it.key.resolveVariables(), value = it.value.resolveVariables()) }
-                    ?: emptyList() // TODO reduce code duplication
-            }
+            val envValues = (variableResolver.environment?.let { env -> environmentPropertyGetter(env) } ?: emptyList())
+                .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
 
-            val baseValues = (propertyGetter(baseExample) ?: emptyList())
+            val baseValues = (baseExample.takeIf { selectedExample.id != baseExample.id }?.let { propertyGetter(it) } ?: emptyList())
                 .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
 
             val currentValues = (propertyGetter(selectedExample) ?: emptyList())
                 .filter { it.isEnabled }
 
-            return (baseValues + currentValues)
-                .map { it.copy(key = it.key.resolveVariables(), value = it.value.resolveVariables()) }
+            return (envValues + baseValues + currentValues)
+                .map { it.copy(
+                    key = it.key.let { if (isResolveKeyVariable) it.resolveVariables() else it },
+                    value = it.value.resolveVariables(),
+                ) }
+                .runIf(isUniqueKey) {
+                    val keys = mutableSetOf<String>()
+                    val remainingReversedList = mutableListOf<UserKeyValuePair>()
+                    asReversed().forEach {
+                        val key = it.key
+                        if (key !in keys) {
+                            remainingReversedList += it
+                            keys += key
+                        }
+                    }
+                    remainingReversedList.reversed()
+                }
+        }
+
+        fun getApplicableCookiesForUrl(url: String): List<UserKeyValuePair> {
+            return getMergedKeyValues(
+                propertyGetter = { it.cookies },
+                disabledIds = selectedExample.overrides?.disabledCookieIds,
+                isResolveKeyVariable = false,
+                isUniqueKey = true,
+                environmentPropertyGetter = { environment ->
+                    try {
+                        environment.cookieJar.getCookiesFor(
+                            URI(url)
+                        )
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                        .map { UserKeyValuePair("env/${it.name}", it.name, it.value, FieldValueType.String, true) }
+                }
+            )
         }
     }
 
@@ -290,6 +326,7 @@ data class UserRequestExample(
     val name: String,
     val contentType: ContentType = ContentType.None,
     val headers: List<UserKeyValuePair> = mutableListOf(),
+    val cookies: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
     val variables: List<UserKeyValuePair> = mutableListOf(),
@@ -303,6 +340,7 @@ data class UserRequestExample(
     data class Overrides(
         val disabledHeaderIds: Set<String> = emptySet(),
         val disabledQueryParameterIds: Set<String> = emptySet(),
+        val disabledCookieIds: Set<String> = emptySet(),
         val disabledVariables: Set<String> = emptySet(),
 
         /**
@@ -355,6 +393,7 @@ data class UserRequestExample(
         return copy(
             id = uuidString(),
             headers = headers.deepCopyWithNewId(),
+            cookies = cookies.deepCopyWithNewId(),
             queryParameters = queryParameters.deepCopyWithNewId(),
             body = body?.deepCopyWithNewId(),
             variables = variables.deepCopyWithNewId(),
@@ -375,6 +414,7 @@ data class UserRequestExample(
             overrides = overrides?.let { o ->
                 o.copy(
                     disabledHeaderIds = o.disabledHeaderIds.map { it }.toSet(),
+                    disabledCookieIds = o.disabledCookieIds.map { it }.toSet(),
                     disabledQueryParameterIds = o.disabledQueryParameterIds.map { it }.toSet(),
                     disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { it }.toSet(),
                     disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { it }.toSet(),

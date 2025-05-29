@@ -51,6 +51,7 @@ enum class TestTagPart {
     RequestApiSpecDropdown,
     RequestGrpcServiceDropdown,
     RequestGrpcMethodDropdown,
+    Cookie,
     ExampleVariable,
     PreflightUpdateEnvByHeader,
     PreflightUpdateEnvByQueryParameter,

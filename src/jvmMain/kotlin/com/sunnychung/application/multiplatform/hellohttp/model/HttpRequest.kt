@@ -17,6 +17,11 @@ class HttpRequest(
      * Not used in transmission.
      */
     val applicableVariables: Map<String, String> = emptyMap(),
+
+    /**
+     * Not used in transmission.
+     */
+    val applicableCookies: Map<String, String> = emptyMap(),
 ) {
     private val initialHeaders = headers
     private val newHeaders: MutableList<Pair<String, String>> = mutableListOf()

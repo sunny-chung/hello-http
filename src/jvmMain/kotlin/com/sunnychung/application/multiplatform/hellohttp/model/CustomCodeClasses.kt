@@ -171,7 +171,24 @@ object CustomCodeClasses {
                         interpreter.symbolTable(),
                     )
                 }
-            )
+            ),
+            CustomFunctionDefinition(
+                position = SourcePosition("HelloHTTP", 1, 1),
+                receiverType = "Request<*>",
+                functionName = "getApplicableCookies",
+                returnType = "Map<String, String>",
+                parameterTypes = emptyList(),
+                executable = { interpreter, receiver, args, typeArgs ->
+                    MapValue(
+                        (receiver as DelegatedValue<HttpRequest>).value.applicableCookies.map {
+                            interpreter.StringValue(it.key) to interpreter.StringValue(it.value)
+                        }.toMap(),
+                        interpreter.symbolTable().StringType,
+                        interpreter.symbolTable().StringType,
+                        interpreter.symbolTable(),
+                    )
+                }
+            ),
         )
 
         val mutableFunctions = listOf(

@@ -32,6 +32,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStat
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
 import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
@@ -50,6 +51,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -101,19 +103,20 @@ class NetworkClientManager : CallDataStore {
     }
 
     fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String, subprojectConfig: SubprojectConfiguration) {
-        val callData = try {
-            val networkRequest = request.toHttpRequest(
-                exampleId = requestExampleId,
-                environment = environment
-            ).run {
-                if (request.application == ProtocolApplication.Grpc) {
-                    val apiSpec = runBlocking { apiSpecificationCollectionRepository.read(ApiSpecDI(projectId)) }!!
-                        .grpcApiSpecs.first { it.id == request.grpc!!.apiSpecId }
-                    copy(extra = (extra as GrpcRequestExtra).copy(apiSpec = apiSpec))
-                } else {
-                    this
-                }
+        val networkRequest = request.toHttpRequest(
+            exampleId = requestExampleId,
+            environment = environment,
+            subprojectConfig = subprojectConfig,
+        ).run {
+            if (request.application == ProtocolApplication.Grpc) {
+                val apiSpec = runBlocking { apiSpecificationCollectionRepository.read(ApiSpecDI(projectId)) }!!
+                    .grpcApiSpecs.first { it.id == request.grpc!!.apiSpecId }
+                copy(extra = (extra as GrpcRequestExtra).copy(apiSpec = apiSpec))
+            } else {
+                this
             }
+        }
+        val callData = try {
             request.examples.firstOrNull { it.id == requestExampleId }?.let {
                 if (!request.isExampleBase(it) && it.overrides?.isOverridePreFlightScript == false) {
                     request.examples.first()
@@ -276,6 +279,7 @@ class NetworkClientManager : CallDataStore {
                 postFlightAction = postFlightAction,
                 httpConfig = environment?.httpConfig ?: HttpConfig(),
                 sslConfig = environment?.sslConfig ?: SslConfig(),
+                environment = environment,
                 subprojectConfig = subprojectConfig,
             )
         } catch (error: Throwable) {
@@ -312,10 +316,33 @@ class NetworkClientManager : CallDataStore {
             }
         }
         callIdFlow.value = callData.id
+        if (environment != null && subprojectConfig.isCookieEnabled()) { // set cookie after flight
+            val originalCallDataEnd = callData.end
+            callData.end = {
+                val setCookieHeaders = callData.response.headers
+                    ?.filter { it.first.equals("Set-Cookie", ignoreCase = true) && it.second.isNotBlank() }
+                    ?: emptyList()
+
+                if (setCookieHeaders.isNotEmpty()) {
+                    val uri = URI(networkRequest.url)
+                    environment.cookieJar.store(uri, setCookieHeaders.map { it.second }, ::verifyCookie)
+                    log.d { "Cookie JAR = " + environment.cookieJar.toString() }
+                    persistResponseManager.updateSubproject(subprojectId)
+                }
+
+                originalCallDataEnd?.invoke()
+            }
+        }
         persistResponseManager.registerCall(callData)
         if (!callData.response.isError) {
             callData.isPrepared = true
         }
+    }
+
+    fun verifyCookie(cookie: Cookie): Boolean {
+        if (cookie.value.contains("\\\$\\{\\{.*\\}\\}".toRegex())) return false
+        if (cookie.value.contains("\\\$\\(\\(.*\\)\\)".toRegex())) return false
+        return true
     }
 
     fun sendPayload(request: UserRequestTemplate, selectedRequestExampleId: String, payload: String, environment: Environment?) {

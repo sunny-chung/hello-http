@@ -76,6 +76,8 @@ fun Request<*>.getResolvedUri(): String
  * Get variables merged from the selected environment, the base request example and the selected request example.
  */
 fun Request<*>.getApplicableVariables(): Map<String, String>
+
+fun Request<*>.getApplicableCookies(): Map<String, String>
 ```
 
 #### `MutableRequest`

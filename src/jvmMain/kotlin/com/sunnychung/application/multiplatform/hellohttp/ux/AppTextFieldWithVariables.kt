@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.TextFieldColors
 import androidx.compose.material.TextFieldDefaults
@@ -139,7 +140,7 @@ fun AppTextFieldWithVariables(
             interactionSource = interactionSource,
             onFinishInit = onFinishInit,
             isDisableMerging = true,
-            modifier = Modifier.fillMaxSize()
+            modifier = if (!singleLine) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
         )
 
     }
