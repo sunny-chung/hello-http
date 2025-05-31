@@ -44,6 +44,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
@@ -54,15 +55,20 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.dslplatform.json.DslJson
+import com.dslplatform.json.StringConverter
 import com.google.common.collect.TreeRangeMap
 import com.sunnychung.application.multiplatform.hellohttp.extension.contains
 import com.sunnychung.application.multiplatform.hellohttp.extension.intersect
+import com.sunnychung.application.multiplatform.hellohttp.extension.isNotEmpty
 import com.sunnychung.application.multiplatform.hellohttp.extension.length
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
 import com.sunnychung.application.multiplatform.hellohttp.util.TreeRangeMaps
 import com.sunnychung.application.multiplatform.hellohttp.util.chunkedLatest
 import com.sunnychung.application.multiplatform.hellohttp.util.let
+import com.sunnychung.application.multiplatform.hellohttp.util.letIf
 import com.sunnychung.application.multiplatform.hellohttp.util.log
+import com.sunnychung.application.multiplatform.hellohttp.util.string
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppUX.ENV_VAR_VALUE_MAX_DISPLAY_LENGTH
 import com.sunnychung.application.multiplatform.hellohttp.ux.bigtext.abbr
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -122,10 +128,13 @@ fun CodeEditorView(
     onTextChange: ((String) -> Unit)? = null,
     collapsableLines: List<IntRange> = emptyList(),
     collapsableChars: List<IntRange> = emptyList(),
+    isShowCopyLiteralButton: Boolean = false,
+    literalChars: List<IntRange> = emptyList(),
     textColor: Color = LocalColor.current.text,
     syntaxHighlight: SyntaxHighlight,
     isEnableVariables: Boolean = false,
     knownVariables: Map<String, String> = mutableMapOf(),
+    onPointerEvent: ((event: PointerEvent, charIndex: Int) -> Unit)? = null,
     onMeasured: ((textFieldPositionTop: Float) -> Unit)? = null,
     onTextManipulatorReady: ((BigTextFieldState) -> Unit)? = null,
     testTag: String? = null,
@@ -134,6 +143,7 @@ fun CodeEditorView(
 
     val themeColours = LocalColor.current
     val fonts = LocalFont.current
+    val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
     val inputFilter = BigTextInputFilter { it.replace("\r\n".toRegex(), "\n") }
@@ -251,6 +261,45 @@ fun CodeEditorView(
     val searchTrigger = remember { Channel<Unit>() }
 
     var isSyntaxHighlightDisabled = false
+
+    var lineNumberColumnWidth by remember(density) { mutableStateOf(0) }
+
+    var mouseHoverCharIndex by remember { mutableStateOf(-1) }
+    val textLiteralRangeForCopy: IntRange? = remember(mouseHoverCharIndex, bigTextFieldState.viewState.isComponentReady) {
+        if (!isShowCopyLiteralButton) return@remember null
+        if (mouseHoverCharIndex !in 0 ..< bigTextValue.length) return@remember null
+
+        literalChars.binarySearch {
+            if (it.last < mouseHoverCharIndex) {
+                -1
+            } else if (mouseHoverCharIndex < it.first) {
+                1
+            } else {
+                0
+            }
+        }.let {
+            if (it >= 0) {
+                literalChars[it]
+            } else {
+                null
+            }
+        }.also {
+            log.d { "mouseHoverCharIndex = $mouseHoverCharIndex, lit = $it" }
+        }
+    }
+    val showCopyPositionAt: Pair<Float, Float>? = remember(textLiteralRangeForCopy, density, bigTextFieldState.viewState.isComponentReady) {
+        val startOfValue = textLiteralRangeForCopy?.start ?: return@remember null
+        val xyOfStartOfValue =
+            bigTextFieldState.viewState.findRelativeXYOfOriginalCharIndex(startOfValue, scrollState.value, 0)
+                ?: return@remember null
+
+        // put at the left of the string literal, overlapping for 2.dp
+        val copyButtonX = xyOfStartOfValue.first - with(density) { (16.dp - 2.dp).toPx() } // 16.dp is the size of the copy button
+        copyButtonX to xyOfStartOfValue.second
+    }
+    if (isShowCopyLiteralButton) {
+        log.v { "showCopyPositionAt = $showCopyPositionAt" }
+    }
 
     remember(searchOptions) {
         searchTrigger.trySend(Unit)
@@ -465,7 +514,7 @@ fun CodeEditorView(
             )
         }
 
-        Box(modifier = Modifier.weight(1f).onGloballyPositioned {
+        Box(modifier = Modifier.weight(1f).clipToBounds().onGloballyPositioned {
             textFieldSize = it.size
             log.v { "text field pos = ${it.positionInParent().y}" }
             onMeasured?.invoke(it.positionInParent().y)
@@ -497,6 +546,9 @@ fun CodeEditorView(
                         bigTextFieldState.viewState.isLayoutDisabled = false
                     },
                     modifier = Modifier.fillMaxHeight()
+                        .onGloballyPositioned {
+                            lineNumberColumnWidth = it.size.width
+                        }
                 )
 
                 if (isReadOnly) {
@@ -529,6 +581,13 @@ fun CodeEditorView(
                         isSelectable = true,
                         scrollState = scrollState,
                         viewState = bigTextFieldState.viewState,
+                        onPointerEvent = letIf(onPointerEvent != null || isShowCopyLiteralButton) {
+                            { event: PointerEvent, charIndex: Int, _ ->
+                                log.v { "CEV onPointerEvent $event" }
+                                mouseHoverCharIndex = charIndex
+                                onPointerEvent?.invoke(event, charIndex)
+                            }
+                        },
                         onTextLayout = { layoutResult = it },
                         onTransformInit = { transformedText = it },
                         contextMenu = AppBigTextFieldContextMenu,
@@ -635,13 +694,14 @@ fun CodeEditorView(
                                     }
                                 }
                             },
-                            onPointerEvent = { event, tag ->
+                            onPointerEvent = { event, charIndex, tag ->
                                 log.v { "onPointerEventOnAnnotatedTag $tag $event" }
                                 mouseHoverVariable = if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
                                     tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
                                 } else {
                                     null
                                 }
+                                onPointerEvent?.invoke(event, charIndex)
                             },
                             modifier = Modifier.fillMaxSize()
                                 .focusRequester(textFieldFocusRequester)
@@ -654,6 +714,42 @@ fun CodeEditorView(
                                 }
                         )
                     }
+                }
+            }
+            if (showCopyPositionAt != null
+                && textLiteralRangeForCopy?.isNotEmpty == true
+                && !(
+                    textLiteralRangeForCopy.length == 2 && "\"\"" == bigTextValue.substring(textLiteralRangeForCopy).string()
+                ) // has something to copy
+            ) {
+                with(density) {
+                    FloatingCopyButton(
+                        textProvider = {
+                            val literal = bigTextValue.substring(textLiteralRangeForCopy).string()
+                            if (syntaxHighlight == SyntaxHighlight.Json && literal.startsWith('"')) {
+                                try {
+                                    // deserialize quoted string
+                                    // TODO refactor this function not to couple with DslJson directly
+                                    val bytes = literal.toByteArray()
+                                    val reader = DslJson<Any?>().newReader().process(bytes, bytes.size)
+                                    reader.nextToken
+                                    StringConverter.deserialize(reader)
+                                } catch (_: Throwable) {
+                                    literal
+                                }
+                            } else {
+                                literal
+                            }
+                        },
+                        size = 16.dp,
+                        innerPadding = 2.dp,
+                        color = themeColours.syntaxColor.stringLiteral,
+                        modifier = Modifier
+                            .offset(
+                                x = (lineNumberColumnWidth + showCopyPositionAt.first).toDp(), // this button is floating above the `Box` containing line number view and the BigTextLabel
+                                y = showCopyPositionAt.second.toDp() + 2.dp
+                            )
+                    )
                 }
             }
             VerticalScrollbar(

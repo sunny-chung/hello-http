@@ -15,3 +15,11 @@ inline fun <T1, T2, T3, R> let(a1: T1?, a2: T2?, a3: T3?, compute: (T1, T2, T3) 
         null
     }
 }
+
+inline fun <T> letIf(condition: Boolean, block: () -> T) : T? {
+    return if (condition) {
+        block()
+    } else {
+        null
+    }
+}

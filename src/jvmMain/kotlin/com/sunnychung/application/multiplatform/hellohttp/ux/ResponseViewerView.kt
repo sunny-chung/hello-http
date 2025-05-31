@@ -633,6 +633,10 @@ fun BodyViewerView(
                     initialText = prettifyResult.prettyString,
                     collapsableLines = prettifyResult.collapsableLineRange,
                     collapsableChars = prettifyResult.collapsableCharRange,
+                    isShowCopyLiteralButton = true,
+                    literalChars = prettifyResult.literalRange.also {
+                        log.v { "literalRanges = $it" }
+                    },
                     syntaxHighlight = if (selectedView.prettifier!!.formatName.contains("JSON")) SyntaxHighlight.Json else SyntaxHighlight.None,
                     onMeasured = { textFieldPositionTop = it },
                     testTag = TestTag.ResponseBody.name,

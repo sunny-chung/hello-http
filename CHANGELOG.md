@@ -12,6 +12,7 @@ _Changes since 1.7.3_
 - Cookie support (Default disabled. Enable in the Subproject Configuration Dialog)
 - On pre-flight, update environment variables according to request headers, query parameters and bodies
 - A "Save Raw" button at the response viewer to save raw response body to a file
+- A floating copy button, next to a literal value under the mouse cursor and in the response body JSON, for copying the literal value
 
 ### Changed
 - The "Copy All" button near the response body viewer has been relocated to the upper level, as it copies the whole Request and Response rather than only response body

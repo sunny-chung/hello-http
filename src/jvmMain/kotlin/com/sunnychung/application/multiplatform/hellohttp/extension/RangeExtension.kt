@@ -35,3 +35,6 @@ fun IntRange.toNonEmptyRange(): IntRange {
 
 val IntRange.length: Int
     get() = this.endInclusive - this.start + 1
+
+val IntRange.isNotEmpty: Boolean
+    get() = length > 0

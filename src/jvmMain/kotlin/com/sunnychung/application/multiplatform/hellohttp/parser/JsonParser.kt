@@ -4,6 +4,7 @@ import com.dslplatform.json.DslJson
 import com.dslplatform.json.ObjectConverter
 import com.dslplatform.json.StringConverter
 import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 
 private val WHITESPACE_BYTES: Set<Byte> = listOf(' ', '\n', '\r', '\t').map { it.code.toByte() }.toSet()
 
@@ -35,6 +36,7 @@ class JsonParser(jsonBytes: ByteArray) {
         val startLineStack = mutableListOf<Int>()
         val charGroups = mutableListOf<IntRange>()
         val startCharStack = mutableListOf<Int>()
+        val literalRange = mutableListOf<IntRange>()
 
         return PrettifyResult(
             prettyString = buildString {
@@ -107,11 +109,23 @@ class JsonParser(jsonBytes: ByteArray) {
 //                        parser.serialize(node, baos)
 //                        append(baos.toByteArray().decodeToString())
 
+                        val start = lastIndex + 1
+
                         StringConverter.serialize(node, writer)
                         append(writer.toString())
                         writer.reset()
+
+                        val end = lastIndex
+                        log.v { "literalRange += $start .. $end" }
+
+                        literalRange += start .. end
                     } else {
+                        val start = lastIndex + 1
+
                         append(node.toString())
+
+                        literalRange += start .. lastIndex
+
 //                    } else {
 //                        throw RuntimeException("what is this? -- $node")
                     }
@@ -121,6 +135,7 @@ class JsonParser(jsonBytes: ByteArray) {
             },
             collapsableLineRange = lineGroups,
             collapsableCharRange = charGroups,
+            literalRange = literalRange,
         )
     }
 
