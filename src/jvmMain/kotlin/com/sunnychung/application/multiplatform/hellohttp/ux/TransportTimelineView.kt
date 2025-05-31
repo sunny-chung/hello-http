@@ -220,7 +220,7 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
             }
             Spacer(modifier = Modifier.weight(1f))
             AppTextButton(
-                text = "Copy All",
+                text = "Copy",
                 modifier = Modifier.padding(vertical = 4.dp),
             ) {
                 val textToCopy = response.describeTransportLayer(isRelativeTimeDisplay = isRelativeTimeDisplay)
