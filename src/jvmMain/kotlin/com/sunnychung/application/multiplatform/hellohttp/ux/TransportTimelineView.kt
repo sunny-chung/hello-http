@@ -51,7 +51,9 @@ import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolVersion
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.model.describeHeading
 import com.sunnychung.application.multiplatform.hellohttp.model.describeTransportLayer
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLast
@@ -67,7 +69,7 @@ private val TIMESTAMP_COLUMN_WIDTH_DP = 110.dp
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersion?, exchange: RawExchange, response: UserResponse) {
+fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersion?, exchange: RawExchange, response: UserResponse, request: UserRequestTemplate?) {
     val timestampColumnWidthDp = TIMESTAMP_COLUMN_WIDTH_DP
     val density = LocalDensity.current
     val clipboardManager = LocalClipboardManager.current
@@ -223,7 +225,8 @@ fun TransportTimelineView(modifier: Modifier = Modifier, protocol: ProtocolVersi
                 text = "Copy",
                 modifier = Modifier.padding(vertical = 4.dp),
             ) {
-                val textToCopy = response.describeTransportLayer(isRelativeTimeDisplay = isRelativeTimeDisplay)
+                val textToCopy = (request?.describeHeading(response.requestExampleId) ?: "") +
+                    response.describeTransportLayer(isRelativeTimeDisplay = isRelativeTimeDisplay)
                 clipboardManager.setText(AnnotatedString(textToCopy))
                 AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
             }

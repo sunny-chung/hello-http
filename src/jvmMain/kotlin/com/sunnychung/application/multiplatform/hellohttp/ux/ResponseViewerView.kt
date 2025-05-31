@@ -57,8 +57,10 @@ import com.sunnychung.application.multiplatform.hellohttp.model.PrettifyResult
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
 import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
+import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
 import com.sunnychung.application.multiplatform.hellohttp.model.describeApplicationLayer
+import com.sunnychung.application.multiplatform.hellohttp.model.describeHeading
 import com.sunnychung.application.multiplatform.hellohttp.model.hasSomethingToCopy
 import com.sunnychung.application.multiplatform.hellohttp.model.warnings
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
@@ -82,7 +84,7 @@ import java.io.ByteArrayInputStream
 import java.io.File
 
 @Composable
-fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatus) {
+fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatus, request: UserRequestTemplate?) {
     val colors = LocalColor.current
     val clipboardManager = LocalClipboardManager.current
 
@@ -195,7 +197,8 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                     text = "Copy All",
                     image = "copy-to-clipboard.svg",
                     onClick = {
-                        val textToCopy = response.describeApplicationLayer()
+                        val textToCopy = (request?.describeHeading(response.requestExampleId) ?: "") +
+                            response.describeApplicationLayer()
                         clipboardManager.setText(AnnotatedString(textToCopy))
                         AppContext.ErrorMessagePromptViewModel.showSuccessMessage("Copied text")
                     },
@@ -225,7 +228,7 @@ fun ResponseViewerView(response: UserResponse, connectionStatus: ConnectionStatu
                 }
 
                 ResponseTab.Raw ->
-                    TransportTimelineView(protocol = response.protocol, exchange = response.rawExchange.copy(), response = response, modifier = Modifier.fillMaxSize())
+                    TransportTimelineView(protocol = response.protocol, exchange = response.rawExchange.copy(), response = response, request = request, modifier = Modifier.fillMaxSize())
             }
         }
     }
@@ -265,7 +268,8 @@ fun ResponseViewerViewPreview() {
                 )
             )
         },
-        connectionStatus = ConnectionStatus.DISCONNECTED
+        connectionStatus = ConnectionStatus.DISCONNECTED,
+        request = null,
     )
 }
 
@@ -284,7 +288,8 @@ fun ResponseViewerViewPreview_EmptyBody() {
             headers = listOf("Content-Type" to "application/json")
             rawExchange = RawExchange(mutableListOf())
         },
-        connectionStatus = ConnectionStatus.DISCONNECTED
+        connectionStatus = ConnectionStatus.DISCONNECTED,
+        request = null,
     )
 }
 
@@ -331,7 +336,8 @@ fun WebSocketResponseViewerViewPreview() {
                     ),
                 )
         },
-        connectionStatus = ConnectionStatus.OPEN_FOR_STREAMING
+        connectionStatus = ConnectionStatus.OPEN_FOR_STREAMING,
+        request = null,
     )
 }
 

@@ -680,3 +680,17 @@ data class GraphqlBody(val document: String, val variables: String, val operatio
         return null
     }
 }
+
+fun UserRequestTemplate.describeHeading(exampleId: String): String {
+    val example = examples.firstOrNull { it.id == exampleId } ?: return ""
+
+    val title = buildString {
+        append(name)
+        if (!isExampleBase(example)) {
+            append(" - ")
+            append(example.name)
+        }
+    }
+
+    return "$title\n${"=".repeat(title.length)}\n\n"
+}

@@ -60,6 +60,9 @@ The copied text is in a markdown-like format for readability.
 
 Sample of copied text of a simple HTTP call:
 ``````markdown
+Test POST Request - with Unicode JSON body
+==========================================
+
 Request
 -------
 Start Time: 2024-02-18 23:33:31.426 (+08:00)
@@ -136,6 +139,9 @@ Body:
 
 Sample of copied text of a GraphQL subscription call:
 ``````markdown
+Test GraphQL subscription - Intervals
+=====================================
+
 Request
 -------
 Start Time: 2024-02-18 23:35:03.259 (+08:00)
@@ -217,6 +223,9 @@ Closed by us with code 1000
 
 Sample of copied text of a gRPC bidirectional call:
 ``````markdown
+My gRPC Request - Bidirectional
+===============================
+
 Request
 -------
 Start Time: 2024-02-18 23:49:43.670 (+08:00)
@@ -304,12 +313,15 @@ grpc-status: 0
 
 ### Copy Entire Transport Log
 
-Click "Copy All" button in the "Raw" tab.
+Click "Copy" button in the "Raw" tab.
 
 Copied texts are in a table format. It can be imported into spreadsheet softwares, or selected or manipulated in major code editors that support vertical selections, for example, Sublime Text. Don't forget to turn off "word wrap" while viewing the table in code editors.
 
 Sample of copied text:
 ``````
+Test POST Request - with Unicode JSON body
+==========================================
+
 Time                             | Dir | Stream | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 =================================|=====|========|===============================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
 2024-02-18 23:33:31.432 (+08:00) | -   | *      | DNS resolution of domain [httpbin.org] started

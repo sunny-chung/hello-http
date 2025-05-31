@@ -709,6 +709,7 @@ fun AppContentView() {
                                 connectionStatus = selectedRequestExampleId
                                     ?.let(networkClientManager::getStatusByRequestExampleId)
                                     ?: ConnectionStatus.DISCONNECTED,
+                                request = request
                             )
                         }
                     }
