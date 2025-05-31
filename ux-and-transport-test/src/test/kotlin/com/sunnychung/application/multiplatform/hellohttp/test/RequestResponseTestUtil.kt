@@ -2,6 +2,10 @@
 
 package com.sunnychung.application.multiplatform.hellohttp.test
 
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -28,6 +32,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyPress
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -54,6 +59,7 @@ import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestDa
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownDisplayTexts
+import com.sunnychung.application.multiplatform.hellohttp.ux.IsChecked
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
@@ -438,6 +444,52 @@ suspend fun DesktopComposeUiTest.selectEnvironment(environment: TestEnvironment)
     selectDropdownItem(TestTagPart.EnvironmentDropdown.name, environment.displayName)
     delayShort()
     waitForIdle()
+}
+
+@OptIn(InternalComposeUiApi::class)
+suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
+    println("enableCookieForCurrentSubproject")
+
+    onNodeWithTag(TestTag.EditSubprojectButton.name)
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+
+    waitUntil {
+        waitForIdle()
+
+        onAllNodes(
+            hasTestTag(TestTag.SubprojectEditorCookieCheckbox.name)
+                .and(isFocusable()),
+            useUnmergedTree = true
+        )
+            .fetchSemanticsNodesWithRetry(this)
+            .isNotEmpty()
+    }
+
+    val checkbox = onNodeWithTag(TestTag.SubprojectEditorCookieCheckbox.name)
+        .assertIsDisplayedWithRetry(this)
+
+    val checkboxNode = checkbox.fetchSemanticsNodeWithRetry(this)
+
+    if (checkboxNode.config.getOrNull(IsChecked) != true) {
+        checkbox.performClickWithRetry(this)
+        waitForIdle()
+    }
+
+    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyDown))
+    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyUp))
+
+    waitUntil {
+        waitForIdle()
+
+        onAllNodes(
+            hasTestTag(TestTag.SubprojectEditorCookieCheckbox.name)
+                .and(isFocusable()),
+            useUnmergedTree = true
+        )
+            .fetchSemanticsNodesWithRetry(this)
+            .isEmpty()
+    }
 }
 
 /**

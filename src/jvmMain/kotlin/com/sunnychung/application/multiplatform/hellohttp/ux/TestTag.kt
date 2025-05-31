@@ -8,6 +8,8 @@ enum class TestTag {
     ProjectNameAndSubprojectNameDialogDoneButton,
     FirstTimeCreateProjectButton,
     FirstTimeCreateSubprojectButton,
+    EditSubprojectButton,
+    SubprojectEditorCookieCheckbox,
     EditEnvironmentsButton,
     EnvironmentDialogCreateButton,
     EnvironmentDialogEnvNameTextField,
