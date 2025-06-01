@@ -777,7 +777,7 @@ class GrpcTransportClient(networkClientManager: NetworkClientManager) : Abstract
                     call.end()
                 }
             } catch (e: Throwable) {
-                log.d(e) { "Grpc Outer Error" }
+                log.w(e) { "Grpc Outer Error" }
 
                 call.status = ConnectionStatus.DISCONNECTED
                 out.errorMessage = e.message

@@ -248,7 +248,7 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                         out.body = body
                     }
             } catch (e: Throwable) {
-                log.i(e) { "Encountered error during HTTP call via WebClient" }
+                log.w(e) { "Encountered error during HTTP call via WebClient" }
                 out.errorMessage = e.message
                 out.isError = true
             } finally {

@@ -151,7 +151,7 @@ open class WebSocketTransportClient(networkClientManager: NetworkClientManager) 
             try {
                 client.send(it)
             } catch (e: Throwable) {
-                log.d(e) { "Cannot send payload" }
+                log.w(e) { "Cannot send payload" }
             }
         }
         data.status = ConnectionStatus.CONNECTING

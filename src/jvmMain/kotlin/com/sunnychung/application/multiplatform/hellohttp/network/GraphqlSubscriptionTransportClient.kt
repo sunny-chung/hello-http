@@ -225,7 +225,7 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
                 }
 
             } catch (e: Throwable) {
-                log.d(e) { "Got error in GraphQL subscription communication" }
+                log.w(e) { "Got error in GraphQL subscription communication" }
                 emitEvent(callId, "Error: ${e.message}")
             } finally {
                 out.isCommunicating = false
