@@ -54,7 +54,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.runBlocking
-import okhttp3.internal.http2.Http2.CONNECTION_PREFACE
+//import okhttp3.internal.http2.Http2.CONNECTION_PREFACE
 import reactor.core.publisher.Mono
 import reactor.netty.ByteBufFlux
 import reactor.netty.NettyPipeline
@@ -71,8 +71,10 @@ import java.nio.file.Path
 import java.util.Deque
 import java.util.LinkedList
 
+const val HTTP2_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
 private const val REQUEST_CHUNK_SIZE = 8192
-private val HTTP2_CONNECTION_PREFACE_BYTES = CONNECTION_PREFACE.toByteArray()
+private val HTTP2_CONNECTION_PREFACE_BYTES = HTTP2_CONNECTION_PREFACE.toByteArray()
 
 open class ReactorNettyHttpTransportClient(networkClientManager: NetworkClientManager) : AbstractTransportClient(networkClientManager) {
 

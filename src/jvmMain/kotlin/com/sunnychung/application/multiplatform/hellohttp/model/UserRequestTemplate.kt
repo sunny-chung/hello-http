@@ -10,13 +10,13 @@ import graphql.parser.InvalidSyntaxException
 import graphql.parser.Parser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import okhttp3.FormBody
-import okhttp3.MediaType
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
+//import okhttp3.FormBody
+//import okhttp3.MediaType
+//import okhttp3.MediaType.Companion.toMediaType
+//import okhttp3.MultipartBody
+//import okhttp3.RequestBody
+//import okhttp3.RequestBody.Companion.asRequestBody
+//import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.net.URI
 
@@ -537,14 +537,14 @@ enum class FieldValueType {
 
 @Serializable
 sealed interface UserRequestBody {
-    fun toOkHttpBody(mediaType: MediaType?): RequestBody
+//    fun toOkHttpBody(mediaType: MediaType?): RequestBody
 }
 
 @Persisted
 @Serializable
 @SerialName("StringBody")
 class StringBody(val value: String) : UserRequestBody {
-    override fun toOkHttpBody(mediaType: MediaType?): RequestBody = value.toRequestBody(mediaType)
+//    override fun toOkHttpBody(mediaType: MediaType?): RequestBody = value.toRequestBody(mediaType)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -572,11 +572,11 @@ interface RequestBodyWithKeyValuePairs {
 @Serializable
 @SerialName("FormUrlEncodedBody")
 class FormUrlEncodedBody(override val value: List<UserKeyValuePair>) : UserRequestBody, RequestBodyWithKeyValuePairs {
-    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
-        val builder = FormBody.Builder()
-        value.forEach { builder.add(it.key, it.value) }
-        return builder.build()
-    }
+//    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
+//        val builder = FormBody.Builder()
+//        value.forEach { builder.add(it.key, it.value) }
+//        return builder.build()
+//    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -596,19 +596,19 @@ class FormUrlEncodedBody(override val value: List<UserKeyValuePair>) : UserReque
 @Serializable
 @SerialName("MultipartBody")
 class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBody, RequestBodyWithKeyValuePairs {
-    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
-        val b = MultipartBody.Builder()
-        value.filter { it.isEnabled }.forEach {
-            when (it.valueType) {
-                FieldValueType.String -> b.addFormDataPart(it.key, it.value)
-                FieldValueType.File -> {
-                    val f = File(it.value)
-                    b.addFormDataPart(name = it.key, filename = f.name, body = f.asRequestBody("application/octet-stream".toMediaType()))
-                }
-            }
-        }
-        return b.build()
-    }
+//    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
+//        val b = MultipartBody.Builder()
+//        value.filter { it.isEnabled }.forEach {
+//            when (it.valueType) {
+//                FieldValueType.String -> b.addFormDataPart(it.key, it.value)
+//                FieldValueType.File -> {
+//                    val f = File(it.value)
+//                    b.addFormDataPart(name = it.key, filename = f.name, body = f.asRequestBody("application/octet-stream".toMediaType()))
+//                }
+//            }
+//        }
+//        return b.build()
+//    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -628,9 +628,9 @@ class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBod
 @Serializable
 @SerialName("FileBody")
 class FileBody(val filePath: String?) : UserRequestBody {
-    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
-        return filePath?.let { File(it).asRequestBody(mediaType) } ?: byteArrayOf().toRequestBody(mediaType)
-    }
+//    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
+//        return filePath?.let { File(it).asRequestBody(mediaType) } ?: byteArrayOf().toRequestBody(mediaType)
+//    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -650,7 +650,7 @@ class FileBody(val filePath: String?) : UserRequestBody {
 @Serializable
 @SerialName("GraphqlBody")
 data class GraphqlBody(val document: String, val variables: String, val operationName: String?) : UserRequestBody {
-    override fun toOkHttpBody(mediaType: MediaType?): RequestBody = throw NotImplementedError()
+//    override fun toOkHttpBody(mediaType: MediaType?): RequestBody = throw NotImplementedError()
 
     fun getAllOperations(isThrowError: Boolean = false): List<OperationDefinition> {
         try {

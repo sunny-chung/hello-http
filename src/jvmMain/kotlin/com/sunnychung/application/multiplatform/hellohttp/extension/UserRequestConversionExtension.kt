@@ -27,16 +27,16 @@ import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
 import com.sunnychung.application.multiplatform.hellohttp.util.emptyToNull
 import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 import graphql.language.OperationDefinition
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
-import org.apache.hc.client5.http.entity.mime.HttpMultipartMode
-import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
-import org.apache.hc.core5.http.ContentType
-import org.apache.hc.core5.http.message.BasicNameValuePair
-import org.apache.hc.core5.http.nio.AsyncRequestProducer
-import org.apache.hc.core5.http.nio.entity.AsyncEntityProducers
-import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder
+//import okhttp3.HttpUrl.Companion.toHttpUrl
+//import okhttp3.MediaType.Companion.toMediaType
+//import okhttp3.Request
+//import org.apache.hc.client5.http.entity.mime.HttpMultipartMode
+//import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
+//import org.apache.hc.core5.http.ContentType
+//import org.apache.hc.core5.http.message.BasicNameValuePair
+//import org.apache.hc.core5.http.nio.AsyncRequestProducer
+//import org.apache.hc.core5.http.nio.entity.AsyncEntityProducers
+//import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder
 import org.apache.hc.core5.net.URIBuilder
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -175,7 +175,7 @@ data class GrpcRequestExtra(
     val apiSpec: GrpcApiSpec? = null,
 )
 
-fun HttpRequest.toOkHttpRequest(): Request {
+/*fun HttpRequest.toOkHttpRequest(): Request {
     val req = this
 
     var b = Request.Builder()
@@ -197,9 +197,9 @@ fun HttpRequest.toOkHttpRequest(): Request {
         .forEach { b = b.addHeader(it.first, it.second) }
 
     return b.build()
-}
+}*/
 
-fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
+/*fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
 //    val b = BasicClassicHttpRequest(
 //        method,
 //        URIBuilder(url)
@@ -269,7 +269,7 @@ fun HttpRequest.toApacheHttpRequest(): Pair<AsyncRequestProducer, Long> {
         b.entity = entity
     }
     return Pair(b.build(), approximateContentSize ?: entity?.contentLength ?: 0L)
-}
+}*/
 
 class CommandGenerator(val os: OS) {
 

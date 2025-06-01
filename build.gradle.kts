@@ -44,11 +44,13 @@ kotlin {
 
                 implementation("io.github.sunny-chung:httpclient5:5.2.1-inspect-patch5")
 //                implementation("com.squareup.okhttp3:okhttp:4.11.0")
-                implementation("io.github.sunny-chung:okhttp:4.11.0-patch-1")
-//                implementation("com.github.sunny-chung:okhttp:patch~4.11.0-SNAPSHOT")
-                implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") {
-                    exclude(group = "com.squareup.okhttp3", module = "okhttp")
-                }
+
+//                implementation("io.github.sunny-chung:okhttp:4.11.0-patch-1")
+//                implementation("com.squareup.okhttp3:logging-interceptor:4.11.0") {
+//                    exclude(group = "com.squareup.okhttp3", module = "okhttp")
+//                }
+                implementation("com.squareup.okio:okio:3.2.0")
+
                 implementation("io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion")
                 implementation("io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion")
                 implementation("org.springframework.boot:spring-boot-starter-webflux:3.2.6")

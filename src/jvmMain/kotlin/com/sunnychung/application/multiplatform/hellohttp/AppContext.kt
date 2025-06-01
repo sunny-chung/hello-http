@@ -1,6 +1,5 @@
 package com.sunnychung.application.multiplatform.hellohttp
 
-import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.manager.AutoBackupManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.FileManager
 import com.sunnychung.application.multiplatform.hellohttp.network.GraphqlSubscriptionTransportClient
@@ -13,7 +12,6 @@ import com.sunnychung.application.multiplatform.hellohttp.manager.PrettifierMana
 import com.sunnychung.application.multiplatform.hellohttp.manager.ResourceManager
 import com.sunnychung.application.multiplatform.hellohttp.manager.SingleInstanceProcessService
 import com.sunnychung.application.multiplatform.hellohttp.network.GrpcTransportClient
-import com.sunnychung.application.multiplatform.hellohttp.network.ReactorNettyHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.SpringWebClientTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.WebSocketTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.repository.ApiSpecificationCollectionRepository
