@@ -11,6 +11,7 @@ import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
+import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 
 @Composable
@@ -34,7 +35,7 @@ fun BigTextFieldLayout(
     contents[TextFieldId] = textField
     contents[LeadingId] = leadingIcon
     contents[PlaceholderId] = placeholder
-    println("btfl $modifier")
+    log.d { "btfl $modifier" }
     Layout(
         modifier = modifier
             .runIf(!isDisableMerging) {
