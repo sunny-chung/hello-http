@@ -22,11 +22,15 @@ class ProjectCollectionRepository : BaseCollectionRepository<ProjectCollection, 
 
     override fun relativeFilePath(id: ProjectAndEnvironmentsDI): String = "projects.db"
 
-    fun updateSubproject(di: ProjectAndEnvironmentsDI, update: Subproject) {
+    fun updateSubproject(di: ProjectAndEnvironmentsDI, subprojectId: String) {
         CoroutineScope(Dispatchers.Main.immediate).launch {
             notifyUpdated(di)
-            publishNonPersistedSubprojectUpdates.emit(Pair(update.id, uuidString()))
+            publishNonPersistedSubprojectUpdates.emit(Pair(subprojectId, uuidString()))
         }
+    }
+
+    fun updateSubproject(di: ProjectAndEnvironmentsDI, update: Subproject) {
+        updateSubproject(di, update.id)
     }
 
     suspend fun readSubproject(di: ProjectAndEnvironmentsDI, subprojectId: String): Subproject {

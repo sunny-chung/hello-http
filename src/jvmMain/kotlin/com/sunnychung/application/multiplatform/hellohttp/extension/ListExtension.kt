@@ -133,3 +133,17 @@ fun <T : Comparable<T>> MutableList<T>.addToThisAscendingListWithoutDuplicate(ne
     }
     this.add(newElement)
 }
+
+fun <T, K> List<T>.distinctMergeBy(key: (T) -> K, mergeFunction: (T, T) -> T): List<T> {
+    val result = linkedMapOf<K, T>()
+    forEach {
+        val key = key(it)
+        val existing = result[key]
+        result[key] = if (existing == null) {
+            it
+        } else {
+            mergeFunction(existing, it)
+        }
+    }
+    return result.values.toList()
+}

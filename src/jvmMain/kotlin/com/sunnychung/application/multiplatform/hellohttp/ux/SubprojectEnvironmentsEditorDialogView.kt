@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,9 +33,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -43,7 +42,10 @@ import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CookieJar
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithIndexedChange
 import com.sunnychung.application.multiplatform.hellohttp.util.copyWithRemoval
@@ -56,9 +58,14 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
+import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 import com.sunnychung.lib.multiplatform.bigtext.ux.extra.PasswordIncrementalTransformation
 import com.sunnychung.lib.multiplatform.bigtext.ux.rememberConcurrentLargeAnnotatedBigTextFieldState
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
+import com.sunnychung.lib.multiplatform.kdatetime.extension.days
+import com.sunnychung.lib.multiplatform.kdatetime.toKZonedDateTime
+import kotlinx.coroutines.FlowPreview
 import java.io.File
 
 @Composable
@@ -76,7 +83,7 @@ fun SubprojectEnvironmentsEditorDialogView(
     val selectedEnvironment = selectedEnvironmentId?.let { id -> subproject.environments.firstOrNull { it.id == id } }
 
     Row(modifier = modifier) {
-        Column(modifier = Modifier.weight(0.25f).defaultMinSize(minWidth = 160.dp)) {
+        Column(modifier = Modifier.weight(0.2f).defaultMinSize(minWidth = 120.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
                 AppText(text = "Environments", modifier = Modifier.weight(1f))
                 AppImageButton(resource = "add.svg", size = 24.dp, onClick = {
@@ -108,9 +115,10 @@ fun SubprojectEnvironmentsEditorDialogView(
                 }
             }
         }
-        val remainModifier = Modifier.padding(start = 10.dp).weight(0.75f)
+        val remainModifier = Modifier.padding(start = 10.dp).weight(0.8f)
         selectedEnvironment?.let { env ->
             EnvironmentEditorView(
+                subprojectConfig = subproject.configuration,
                 environment = env,
                 onUpdateEnvironment = { newEnv ->
                     val index = subproject.environments.indexOfFirst { it.id == newEnv.id }
@@ -143,6 +151,7 @@ fun SubprojectEnvironmentsEditorDialogView(
 @Composable
 fun EnvironmentEditorView(
     modifier: Modifier = Modifier,
+    subprojectConfig: SubprojectConfiguration,
     environment: Environment,
     onUpdateEnvironment: (Environment) -> Unit,
     onDuplicateEnvironment: (Environment) -> Unit,
@@ -213,7 +222,8 @@ fun EnvironmentEditorView(
                 EnvironmentVariableTabContent(
                     environment = environment,
                     updateEnvVariable = updateEnvVariable,
-                    modifier = modifier.verticalScroll(rememberScrollState()),
+                    modifier = modifier.verticalScroll(rememberScrollState())
+                        .testTag(TestTag.EnvironmentEditorVariableTabContent.name)
                 )
             }
 
@@ -227,6 +237,13 @@ fun EnvironmentEditorView(
                 environment = environment,
                 onUpdateEnvironment = onUpdateEnvironment,
                 modifier = modifier.verticalScroll(rememberScrollState()).testTag(TestTag.EnvironmentEditorSslTabContent.name),
+            )
+
+            EnvironmentEditorTab.Cookies -> EnvironmentCookiesTabContent(
+                subprojectConfig = subprojectConfig,
+                environment = environment,
+                onUpdateEnvironment = onUpdateEnvironment,
+                modifier = modifier.verticalScroll(rememberScrollState()),
             )
 
             EnvironmentEditorTab.`User Files` -> EnvironmentUserFilesTabContent(
@@ -273,6 +290,8 @@ fun EnvironmentVariableTabContent(
             }
         },
         onDisableChange = { _ -> },
+        testTagPart1 = TestTagPart.EnvironmentEditorVariableKeyValue,
+        testTagPart2 = TestTagPart.Current,
         modifier = modifier,
     )
 }
@@ -968,12 +987,226 @@ fun ImportUserFileForm(modifier: Modifier = Modifier, key: String, onImportFile:
     }
 }
 
+private val CookieTableColumnsToRatio = linkedMapOf(
+    "Domain" to 0.15f,
+    "Path" to 0.1f,
+    "Name" to 0.16f,
+    "Value" to 0.3f,
+    "Expires" to 0.16f,
+    "Attributes" to 0.13f,
+)
+
+@OptIn(FlowPreview::class)
+@Composable
+fun EnvironmentCookiesTabContent(
+    modifier: Modifier = Modifier,
+    subprojectConfig: SubprojectConfiguration,
+    environment: Environment,
+    onUpdateEnvironment: (Environment) -> Unit,
+) {
+    @Composable
+    fun TitleCell(content: String, modifier: Modifier = Modifier) {
+        val colours = LocalColor.current
+        AppText(content, fontWeight = FontWeight.Bold, modifier = modifier.fillMaxSize().border(width = 1.dp, colours.primary).padding(6.dp))
+    }
+
+    @Composable
+    fun ContentCell(content: String, modifier: Modifier = Modifier) {
+        val colours = LocalColor.current
+        AppText(content, modifier = modifier.fillMaxSize().border(width = 1.dp, colours.primary).padding(6.dp))
+//        val style = LocalTextStyle.current
+//        BigTextLabel(
+//            text = BigText.createFromSmallString(content),
+//            fontSize = LocalFont.current.bodyFontSize,
+//            fontFamily = style.fontFamily!!,
+//            color = colours.text,
+//            padding = PaddingValues(0.dp),
+//            modifier = modifier.fillMaxSize().border(width = 1.dp, color.primary).padding(8.dp)
+//        )
+    }
+
+    if (!subprojectConfig.isCookieEnabled()) {
+        return CookieDisabledText()
+    }
+
+    val colours = LocalColor.current
+
+    val focusRequester = remember { FocusRequester() }
+
+//    val searchTextFieldState by rememberConcurrentLargeAnnotatedBigTextFieldState()
+//    val searchText = searchTextFieldState.valueChangesFlow.onEach { log.w("BT onEach") }.debounce(50L).collectAsState(null).value?.bigText?.buildString() ?: ""
+    var searchText by remember { mutableStateOf("") }
+    var editCookie by remember { mutableStateOf<Cookie?>(null) }
+
+    log.v { "searchText: $searchText" }
+
+    val cookies = environment.cookieJar.getAllNonExpiredCookies()
+        .runIf(searchText.isNotEmpty()) {
+            filter { cookie ->
+                val searchWords = searchText.split("\\s+".toRegex())
+                searchWords.all {
+                    cookie.domain.contains(it, ignoreCase = true) ||
+                        cookie.path.contains(it, ignoreCase = true) ||
+                        cookie.name.contains(it, ignoreCase = true) ||
+                        cookie.value.contains(it, ignoreCase = true)
+                }
+            }.also { log.v("filtered: ${it.size}") }
+        }
+
+    val columns = CookieTableColumnsToRatio.toList()
+
+    CookieEditDialog(
+        cookie = editCookie ?: Cookie("", "", "__"),
+        knownVariables = environment.variables.filter { it.isEnabled }.associate { it.key to it.value },
+        isVisible = editCookie != null,
+        onSave = { edited ->
+            val editIndex = cookies.indexOf(editCookie)
+            val newCookies = if (editIndex >= 0) {
+                cookies.copyWithIndexedChange(editIndex, edited)
+            } else {
+                cookies + edited
+            }
+            onUpdateEnvironment(environment.copy(
+                cookieJar = CookieJar(newCookies),
+            ))
+        },
+        onDismiss = {
+            editCookie = null
+            focusRequester.requestFocus()
+        },
+    )
+
+    var isShowDeleteAllCookieDialog by remember { mutableStateOf(false) }
+
+    BinaryDialog(
+        key = "DeleteAllCookieConfirmationDialog",
+        isVisible = isShowDeleteAllCookieDialog,
+        content = "Confirm to delete all cookies?",
+        positiveButtonColor = LocalColor.current.backgroundStopButton,
+        onClickPositiveButton = {
+            onUpdateEnvironment(environment.copy(
+                cookieJar = CookieJar(),
+            ))
+        },
+        onDismiss = { isShowDeleteAllCookieDialog = false },
+    )
+
+    Column(modifier) {
+        AppTextField(
+            key = "Cookie/SearchText",
+            value = searchText,
+            onValueChange = {
+                log.v("BT onValueChange")
+//                searchText = it.buildString()
+                searchText = it
+            },
+            leadingIcon = {
+                AppImage(resource = "search.svg", size = 16.dp, modifier = Modifier.padding(end = 4.dp))
+            },
+            placeholder = {
+                AppText("Search by Domain / Path / Name / Value", color = colours.placeholder)
+            },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).focusRequester(focusRequester)
+        )
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            CookieTableColumnsToRatio.forEach { (name, ratio) ->
+                Column(Modifier.weight(ratio)) {
+                    TitleCell(name)
+                }
+            }
+            Row(Modifier.width(4.dp + 16.dp + 2.dp + 16.dp + 2.dp + 16.dp).fillMaxHeight()) {
+                Spacer(Modifier.width(4.dp))
+                AppImageButton(
+                    resource = "add.svg",
+                    size = 30.dp,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                ) {
+                    editCookie = Cookie("", "", "")
+                }
+            }
+        }
+        cookies.forEach { cookie ->
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                var col = 0
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(cookie.domain)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(cookie.path)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(cookie.name)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(cookie.value)
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    val expires = cookie.expires
+                    if (expires != null) {
+                        val expiryDateTime = expires.atLocalZoneOffset().toKZonedDateTime()
+                        // TODO modify KDateTime to add KZonedDateTime comparison
+                        val display = if (expiryDateTime.toKInstant() >= (KZonedInstant.nowAtLocalZoneOffset() + 1.days()).startOfDay()) {
+                            expiryDateTime.format("yyyy-MM-dd")
+                        } else {
+                            expiryDateTime.format("HH:mm:ss")
+                        }
+                        ContentCell(display)
+                    } else {
+                        ContentCell("Session")
+                    }
+                }
+                Column(Modifier.weight(columns[col++].second)) {
+                    ContentCell(cookie.toAttributeString())
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically)
+                ) {
+                    AppCheckbox(
+                        checked = cookie.isEnabled,
+                        size = 16.dp,
+                        onCheckedChange = { isChecked ->
+                            onUpdateEnvironment(environment.copy(
+                                cookieJar = CookieJar(cookies.copyWithIndexedChange(
+                                    cookies.indexOf(cookie),
+                                    cookie.copy(isEnabled = isChecked)
+                                )),
+                            ))
+                        }
+                    )
+                    AppImageButton(
+                        resource = "edit.svg",
+                        size = 16.dp,
+                    ) {
+                        editCookie = cookie
+                    }
+                    AppDeleteButton(size = 16.dp) {
+                        onUpdateEnvironment(environment.copy(
+                            cookieJar = CookieJar(cookies.copyWithRemoval { it == cookie }),
+                        ))
+                    }
+                }
+            }
+        }
+
+        if (cookies.isNotEmpty()) {
+            AppTextButton(
+                text = "Delete All Cookies",
+                backgroundColor = colours.backgroundStopButton,
+                modifier = Modifier.padding(12.dp)
+            ) {
+                isShowDeleteAllCookieDialog = true
+            }
+        }
+    }
+}
+
 private enum class CertificateKeyPairFileChooserType {
     None, Certificate, PrivateKey, Bundle
 }
 
 private enum class EnvironmentEditorTab {
-    Variables, HTTP, SSL, `User Files`
+    Variables, HTTP, SSL, Cookies, `User Files`
 }
 
 private enum class BooleanConfigValueText(val value: Boolean?) {

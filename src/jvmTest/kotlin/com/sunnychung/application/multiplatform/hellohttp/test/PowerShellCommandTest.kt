@@ -11,6 +11,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
@@ -44,7 +45,7 @@ class PowerShellCommandTest {
             )
         )
         val generatedCommand = with (CommandGenerator(WindowsOS)) {
-            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null)
+            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null, SubprojectConfiguration(subprojectId = ""))
         }
         assertEquals("""
             Invoke-WebRequest `
@@ -76,7 +77,7 @@ class PowerShellCommandTest {
             )
         )
         val generatedCommand = with (CommandGenerator(WindowsOS)) {
-            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null)
+            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null, SubprojectConfiguration(subprojectId = ""))
         }
         assertEquals("""
             Invoke-WebRequest `
@@ -117,7 +118,7 @@ class PowerShellCommandTest {
             )
         )
         val generatedCommand = with (CommandGenerator(WindowsOS)) {
-            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null)
+            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null, SubprojectConfiguration(subprojectId = ""))
         }
         assertEquals("""
             Invoke-WebRequest `
@@ -157,7 +158,7 @@ class PowerShellCommandTest {
             )
         )
         val generatedCommand = with (CommandGenerator(WindowsOS)) {
-            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null)
+            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null, SubprojectConfiguration(subprojectId = ""))
         }
         assertEquals("""
             Invoke-WebRequest `
@@ -197,7 +198,7 @@ class PowerShellCommandTest {
             )
         )
         val generatedCommand = with (CommandGenerator(WindowsOS)) {
-            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null)
+            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, null, SubprojectConfiguration(subprojectId = ""))
         }
         assertEquals("""
             Invoke-WebRequest `
@@ -240,7 +241,7 @@ class PowerShellCommandTest {
             httpConfig = HttpConfig(protocolVersion = HttpConfig.HttpProtocolVersion.Http2Only),
         )
         val generatedCommand = with (CommandGenerator(WindowsOS)) {
-            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, env)
+            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, env, SubprojectConfiguration(subprojectId = ""))
         }
         assertEquals("""
             Invoke-WebRequest `
@@ -281,7 +282,7 @@ class PowerShellCommandTest {
             sslConfig = SslConfig(isInsecure = true)
         )
         val generatedCommand = with (CommandGenerator(WindowsOS)) {
-            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, env)
+            request.toPowerShellInvokeWebRequestCommand(request.examples.first().id, env, SubprojectConfiguration(subprojectId = ""))
         }
         assertEquals("""
             Invoke-WebRequest `

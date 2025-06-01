@@ -4,13 +4,12 @@ import com.sunnychung.application.multiplatform.hellohttp.annotation.Persisted
 import com.sunnychung.application.multiplatform.hellohttp.document.Identifiable
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
-import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownable
+import com.sunnychung.lib.multiplatform.bigtext.extension.runIf
 import graphql.language.OperationDefinition
 import graphql.parser.InvalidSyntaxException
 import graphql.parser.Parser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import okhttp3.FormBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -19,6 +18,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import java.net.URI
 
 @Persisted
 @Serializable
@@ -42,6 +42,10 @@ data class UserRequestTemplate(
 
     fun isExampleBase(example: UserRequestExample): Boolean {
         return examples.indexOfFirst { it.id == example.id } == 0
+    }
+
+    fun isExampleIdBase(exampleId: String): Boolean {
+        return examples.indexOfFirst { it.id == exampleId } == 0
     }
 
     fun copyForApplication(application: ProtocolApplication, method: String) =
@@ -128,10 +132,18 @@ data class UserRequestTemplate(
                 it.copy(
                     id = uuidString(),
                     headers = it.headers.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                    cookies = it.cookies.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     queryParameters = it.queryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     body = it.body?.deepCopyWithNewId(isSaveIdMapping = index == 0),
                     variables = it.variables.deepCopyWithNewId(isSaveIdMapping = index == 0),
-                    preFlight = it.preFlight.copy(),
+                    preFlight = with(it.preFlight) {
+                        copy(
+                            updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromGraphqlVariables = updateVariablesFromGraphqlVariables.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                            updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(isSaveIdMapping = index == 0),
+                        )
+                    },
                     postFlight = with (it.postFlight) {
                         copy(
                             updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(isSaveIdMapping = index == 0),
@@ -141,8 +153,10 @@ data class UserRequestTemplate(
                     overrides = it.overrides?.let { o ->
                         o.copy(
                             disabledHeaderIds = o.disabledHeaderIds.map { idMapping[it]!! }.toSet(),
+                            disabledCookieIds = o.disabledCookieIds.map { idMapping[it]!! }.toSet(),
                             disabledQueryParameterIds = o.disabledQueryParameterIds.map { idMapping[it]!! }.toSet(),
                             disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { idMapping[it]!! }.toSet(),
+                            disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
                             disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { idMapping[it]!! }.toSet(),
                             disabledVariables = o.disabledVariables.map { idMapping[it]!! }.toSet(),
                         )
@@ -167,22 +181,56 @@ data class UserRequestTemplate(
 
         fun getMergedKeyValues(
             propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?,
-            disabledIds: Set<String>?
+            disabledIds: Set<String>?,
+            isResolveKeyVariable: Boolean = true,
+            isUniqueKey: Boolean = false,
+            environmentPropertyGetter: (Environment) -> List<UserKeyValuePair> = { emptyList() },
         ): List<UserKeyValuePair> {
-            if (selectedExample.id == baseExample.id) { // the Base example is selected
-                return propertyGetter(baseExample)?.filter { it.isEnabled }
-                    ?.map { it.copy(key = it.key.resolveVariables(), value = it.value.resolveVariables()) }
-                    ?: emptyList() // TODO reduce code duplication
-            }
+            val envValues = (variableResolver.environment?.let { env -> environmentPropertyGetter(env) } ?: emptyList())
+                .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
 
-            val baseValues = (propertyGetter(baseExample) ?: emptyList())
+            val baseValues = (baseExample.takeIf { selectedExample.id != baseExample.id }?.let { propertyGetter(it) } ?: emptyList())
                 .filter { it.isEnabled && (disabledIds == null || !disabledIds.contains(it.id)) }
 
             val currentValues = (propertyGetter(selectedExample) ?: emptyList())
                 .filter { it.isEnabled }
 
-            return (baseValues + currentValues)
-                .map { it.copy(key = it.key.resolveVariables(), value = it.value.resolveVariables()) }
+            return (envValues + baseValues + currentValues)
+                .map { it.copy(
+                    key = it.key.let { if (isResolveKeyVariable) it.resolveVariables() else it },
+                    value = it.value.resolveVariables(),
+                ) }
+                .runIf(isUniqueKey) {
+                    val keys = mutableSetOf<String>()
+                    val remainingReversedList = mutableListOf<UserKeyValuePair>()
+                    asReversed().forEach {
+                        val key = it.key
+                        if (key !in keys) {
+                            remainingReversedList += it
+                            keys += key
+                        }
+                    }
+                    remainingReversedList.reversed()
+                }
+        }
+
+        fun getApplicableCookiesForUrl(url: String): List<UserKeyValuePair> {
+            return getMergedKeyValues(
+                propertyGetter = { it.cookies },
+                disabledIds = selectedExample.overrides?.disabledCookieIds,
+                isResolveKeyVariable = false,
+                isUniqueKey = true,
+                environmentPropertyGetter = { environment ->
+                    try {
+                        environment.cookieJar.getCookiesFor(
+                            URI(url)
+                        )
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                        .map { UserKeyValuePair("env/${it.name}", it.name, it.value, FieldValueType.String, true) }
+                }
+            )
         }
     }
 
@@ -191,6 +239,39 @@ data class UserRequestTemplate(
         val selectedExample = examples.first { it.id == exampleId }
 
         return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode)).action()
+    }
+
+    fun getPreFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
+        val headerVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromHeader },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val bodyVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromBody },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val queryParamVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromQueryParameters },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        val graphqlVariables = getMergedKeyValues(
+            propertyGetter = { it.preFlight.updateVariablesFromGraphqlVariables },
+            disabledIds = selectedExample.overrides?.disablePreFlightUpdateVarIds
+        )
+            .filter { it.key.isNotBlank() }
+
+        PreFlightSpec(
+            updateVariablesFromHeader = headerVariables,
+            updateVariablesFromQueryParameters = queryParamVariables,
+            updateVariablesFromBody = bodyVariables,
+            updateVariablesFromGraphqlVariables = graphqlVariables,
+        )
     }
 
     fun getPostFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {
@@ -245,6 +326,7 @@ data class UserRequestExample(
     val name: String,
     val contentType: ContentType = ContentType.None,
     val headers: List<UserKeyValuePair> = mutableListOf(),
+    val cookies: List<UserKeyValuePair> = mutableListOf(),
     val queryParameters: List<UserKeyValuePair> = mutableListOf(),
     val body: UserRequestBody? = null,
     val variables: List<UserKeyValuePair> = mutableListOf(),
@@ -258,6 +340,7 @@ data class UserRequestExample(
     data class Overrides(
         val disabledHeaderIds: Set<String> = emptySet(),
         val disabledQueryParameterIds: Set<String> = emptySet(),
+        val disabledCookieIds: Set<String> = emptySet(),
         val disabledVariables: Set<String> = emptySet(),
 
         /**
@@ -278,6 +361,8 @@ data class UserRequestExample(
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
 
         val isOverridePreFlightScript: Boolean = true,
+
+        val disablePreFlightUpdateVarIds: Set<String> = emptySet(),
 
         val disablePostFlightUpdateVarIds: Set<String> = emptySet(),
     ) {
@@ -308,10 +393,18 @@ data class UserRequestExample(
         return copy(
             id = uuidString(),
             headers = headers.deepCopyWithNewId(),
+            cookies = cookies.deepCopyWithNewId(),
             queryParameters = queryParameters.deepCopyWithNewId(),
             body = body?.deepCopyWithNewId(),
             variables = variables.deepCopyWithNewId(),
-            preFlight = preFlight.copy(),
+            preFlight = with(preFlight) {
+                copy(
+                    updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
+                    updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(),
+                    updateVariablesFromGraphqlVariables = updateVariablesFromGraphqlVariables.deepCopyWithNewId(),
+                    updateVariablesFromQueryParameters = updateVariablesFromQueryParameters.deepCopyWithNewId(),
+                )
+            },
             postFlight = with (postFlight) {
                 copy(
                     updateVariablesFromHeader = updateVariablesFromHeader.deepCopyWithNewId(),
@@ -321,8 +414,10 @@ data class UserRequestExample(
             overrides = overrides?.let { o ->
                 o.copy(
                     disabledHeaderIds = o.disabledHeaderIds.map { it }.toSet(),
+                    disabledCookieIds = o.disabledCookieIds.map { it }.toSet(),
                     disabledQueryParameterIds = o.disabledQueryParameterIds.map { it }.toSet(),
                     disabledBodyKeyValueIds = o.disabledBodyKeyValueIds.map { it }.toSet(),
+                    disablePreFlightUpdateVarIds = o.disablePreFlightUpdateVarIds.map { it }.toSet(),
                     disablePostFlightUpdateVarIds = o.disablePostFlightUpdateVarIds.map { it }.toSet(),
                     disabledVariables = o.disabledVariables.map { it }.toSet(),
                 )
@@ -373,9 +468,23 @@ data class PayloadExample(
 @Persisted
 @Serializable
 data class PreFlightSpec(
-    val executeCode: String = ""
+    val executeCode: String = "",
+    val updateVariablesFromHeader: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromQueryParameters: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromBody: List<UserKeyValuePair> = mutableListOf(),
+    val updateVariablesFromGraphqlVariables: List<UserKeyValuePair> = mutableListOf(),
 ) {
-    fun isNotEmpty(): Boolean = executeCode.isNotEmpty()
+    fun isNotEmpty(): Boolean = executeCode.isNotEmpty() ||
+        updateVariablesFromHeader.isNotEmpty() ||
+        updateVariablesFromQueryParameters.isNotEmpty() ||
+        updateVariablesFromBody.isNotEmpty() ||
+        updateVariablesFromGraphqlVariables.isNotEmpty()
+
+    fun hasUpdateVariables(): Boolean =
+        updateVariablesFromHeader.isNotEmpty() ||
+        updateVariablesFromQueryParameters.isNotEmpty() ||
+        updateVariablesFromBody.isNotEmpty() ||
+        updateVariablesFromGraphqlVariables.isNotEmpty()
 }
 
 @Persisted
@@ -570,4 +679,18 @@ data class GraphqlBody(val document: String, val variables: String, val operatio
         }
         return null
     }
+}
+
+fun UserRequestTemplate.describeHeading(exampleId: String): String {
+    val example = examples.firstOrNull { it.id == exampleId } ?: return ""
+
+    val title = buildString {
+        append(name)
+        if (!isExampleBase(example)) {
+            append(" - ")
+            append(example.name)
+        }
+    }
+
+    return "$title\n${"=".repeat(title.length)}\n\n"
 }

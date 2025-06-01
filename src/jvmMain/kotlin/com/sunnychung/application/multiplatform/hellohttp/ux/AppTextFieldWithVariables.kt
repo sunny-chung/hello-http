@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.ux
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.TextFieldColors
 import androidx.compose.material.TextFieldDefaults
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.util.letIf
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppUX.ENV_VAR_VALUE_MAX_DISPLAY_LENGTH
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -123,8 +125,8 @@ fun AppTextFieldWithVariables(
             singleLine = singleLine,
             colors = colors,
             contentPadding = contentPadding,
-            onPointerEvent = if (isSupportVariables) {
-                { event, tag ->
+            onPointerEvent = letIf(isSupportVariables) {
+                { event, _, tag ->
                     log.v { "onPointerEventOnAnnotatedTag $tag $event" }
                     mouseHoverVariable =
                         if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
@@ -133,13 +135,11 @@ fun AppTextFieldWithVariables(
                             null
                         }
                 }
-            } else {
-                null
             },
             interactionSource = interactionSource,
             onFinishInit = onFinishInit,
             isDisableMerging = true,
-            modifier = Modifier.fillMaxSize()
+            modifier = if (!singleLine) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
         )
 
     }

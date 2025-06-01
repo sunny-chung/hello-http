@@ -51,6 +51,7 @@ fun KeyValueEditorView(
     disabledIds: Set<String>,
     isSupportFileValue: Boolean = false,
     isSupportVariables: Boolean = false,
+    isSupportVariablesInValuesOnly: Boolean = false,
     isSupportDisable: Boolean = true,
     knownVariables: Map<String, String> = emptyMap(),
     onItemChange: (index: Int, item: UserKeyValuePair) -> Unit,
@@ -147,7 +148,7 @@ fun KeyValueEditorView(
                                 hiddenFocusRequester.requestFocus()
                             }
                         },
-                        isSupportVariables = isSupportVariables,
+                        isSupportVariables = isSupportVariables && !isSupportVariablesInValuesOnly,
                         variables = knownVariables,
                         readOnly = isInheritedView,
                         textColor = if (isEnabled) colors.primary else colors.disabled,

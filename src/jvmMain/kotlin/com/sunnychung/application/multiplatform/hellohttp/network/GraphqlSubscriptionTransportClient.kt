@@ -6,6 +6,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sunnychung.application.multiplatform.hellohttp.error.ProtocolError
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpRequest
@@ -51,6 +52,7 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
         postFlightAction: ((UserResponse) -> Unit)?,
         httpConfig: HttpConfig,
         sslConfig: SslConfig,
+        environment: Environment?,
         subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val payload = request.extra as GraphqlRequestBody
@@ -61,6 +63,7 @@ class GraphqlSubscriptionTransportClient(networkClientManager: NetworkClientMana
             requestId = requestId,
             subprojectId = subprojectId,
             sslConfig = sslConfig,
+            environment = environment,
             subprojectConfig = subprojectConfig,
         )
         val callId = data.id

@@ -9,16 +9,20 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecCollec
 import com.sunnychung.application.multiplatform.hellohttp.document.ApiSpecDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
 import com.sunnychung.application.multiplatform.hellohttp.error.PostflightError
+import com.sunnychung.application.multiplatform.hellohttp.error.PreflightError
 import com.sunnychung.application.multiplatform.hellohttp.extension.GrpcRequestExtra
 import com.sunnychung.application.multiplatform.hellohttp.extension.toHttpRequest
 import com.sunnychung.application.multiplatform.hellohttp.helper.CustomCodeExecutor
 import com.sunnychung.application.multiplatform.hellohttp.helper.VariableResolver
+import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.FieldValueType
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.PayloadMessage
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
+import com.sunnychung.application.multiplatform.hellohttp.model.RequestBodyWithKeyValuePairs
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
@@ -28,6 +32,7 @@ import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStat
 import com.sunnychung.application.multiplatform.hellohttp.network.LiteCallData
 import com.sunnychung.application.multiplatform.hellohttp.network.NetworkEvent
 import com.sunnychung.application.multiplatform.hellohttp.network.hostFromUrl
+import com.sunnychung.application.multiplatform.hellohttp.network.util.Cookie
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.upsert
@@ -46,6 +51,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -81,20 +87,36 @@ class NetworkClientManager : CallDataStore {
     override fun provideCallDataStore(): ConcurrentHashMap<String, CallData> = callDataMap
     override fun provideLiteCallDataStore(): ConcurrentHashMap<String, LiteCallData> = liteCallDataMap
 
+    private fun setEnvironmentVariable(environment: Environment, key: String, value: String) {
+        val variable = environment.variables.firstOrNull { it.key == key }
+        if (variable != null) {
+            variable.value = value
+        } else {
+            environment.variables += UserKeyValuePair(
+                id = uuidString(),
+                key = key,
+                value = value,
+                valueType = FieldValueType.String,
+                isEnabled = true
+            )
+        }
+    }
+
     fun fireRequest(request: UserRequestTemplate, requestExampleId: String, environment: Environment?, projectId: String, subprojectId: String, subprojectConfig: SubprojectConfiguration) {
-        val callData = try {
-            val networkRequest = request.toHttpRequest(
-                exampleId = requestExampleId,
-                environment = environment
-            ).run {
-                if (request.application == ProtocolApplication.Grpc) {
-                    val apiSpec = runBlocking { apiSpecificationCollectionRepository.read(ApiSpecDI(projectId)) }!!
-                        .grpcApiSpecs.first { it.id == request.grpc!!.apiSpecId }
-                    copy(extra = (extra as GrpcRequestExtra).copy(apiSpec = apiSpec))
-                } else {
-                    this
-                }
+        val networkRequest = request.toHttpRequest(
+            exampleId = requestExampleId,
+            environment = environment,
+            subprojectConfig = subprojectConfig,
+        ).run {
+            if (request.application == ProtocolApplication.Grpc) {
+                val apiSpec = runBlocking { apiSpecificationCollectionRepository.read(ApiSpecDI(projectId)) }!!
+                    .grpcApiSpecs.first { it.id == request.grpc!!.apiSpecId }
+                copy(extra = (extra as GrpcRequestExtra).copy(apiSpec = apiSpec))
+            } else {
+                this
             }
+        }
+        val callData = try {
             request.examples.firstOrNull { it.id == requestExampleId }?.let {
                 if (!request.isExampleBase(it) && it.overrides?.isOverridePreFlightScript == false) {
                     request.examples.first()
@@ -110,6 +132,84 @@ class NetworkClientManager : CallDataStore {
                 }
             }
 
+            val preFlightVars = request.getPreFlightVariables(
+                exampleId = requestExampleId,
+                environment = environment
+            )
+            val preFlightHeaderVars = preFlightVars.updateVariablesFromHeader
+            val preFlightBodyVars = preFlightVars.updateVariablesFromBody
+            val preFlightQueryParamVars = preFlightVars.updateVariablesFromQueryParameters
+            val graphqlVars = preFlightVars.updateVariablesFromGraphqlVariables
+            if (environment != null) {
+                preFlightHeaderVars.forEach { v -> // O(n^2)
+                    try {
+                        val value = networkRequest.headers.firstOrNull { it.first == v.value }?.second
+                        if (value != null) {
+                            setEnvironmentVariable(environment = environment, key = v.key, value = value)
+                        }
+                    } catch (e: Throwable) {
+                        throw PreflightError(variable = v.key, cause = e)
+                    }
+                }
+                preFlightQueryParamVars.forEach { v -> // O(n^2)
+                    try {
+                        val value = networkRequest.queryParameters.firstOrNull { it.first == v.value }?.second
+                        if (value != null) {
+                            setEnvironmentVariable(environment = environment, key = v.key, value = value)
+                        }
+                    } catch (e: Throwable) {
+                        throw PreflightError(variable = v.key, cause = e)
+                    }
+                }
+                if (preFlightBodyVars.isNotEmpty()) {
+                    val jsonBodyContext = if (networkRequest.contentType == ContentType.Json) {
+                        JsonPath.parse((networkRequest.body as StringBody).value)
+                    } else null
+                    val requestParameterMap = if(networkRequest.body is RequestBodyWithKeyValuePairs) {
+                        (networkRequest.body as RequestBodyWithKeyValuePairs).value.associate {
+                            it.key to it.value
+                        }
+                    } else null
+                    preFlightBodyVars.forEach { v ->
+                        try {
+                            val value = (v.value).let {
+                                if (networkRequest.contentType == ContentType.Json) {
+                                    if (it.startsWith("$.")) {
+                                        jsonBodyContext?.read<Any?>(it)?.toString()
+                                    } else if (it == "$") {
+                                        (networkRequest.body as? StringBody)?.value
+                                    } else {
+                                        null
+                                    }
+                                } else {
+                                    requestParameterMap?.get(it)
+                                }
+                            }
+                            if (value != null) {
+                                setEnvironmentVariable(environment = environment, key = v.key, value = value)
+                            }
+                        } catch (e: Throwable) {
+                            throw PreflightError(variable = v.key, cause = e)
+                        }
+                    }
+                }
+                if (graphqlVars.isNotEmpty()) {
+                    val jsonBodyContext = JsonPath.parse((networkRequest.body as StringBody).value)
+                    graphqlVars.forEach { v ->
+                        try {
+                            val value = (v.value).let {
+                                jsonBodyContext?.read<Any?>(it.replaceFirst("$.", "$.variables."))?.toString()
+                            }
+                            if (value != null) {
+                                setEnvironmentVariable(environment = environment, key = v.key, value = value)
+                            }
+                        } catch (e: Throwable) {
+                            throw PreflightError(variable = v.key, cause = e)
+                        }
+                    }
+                }
+            }
+
             val (postFlightHeaderVars, postFlightBodyVars) = request.getPostFlightVariables(
                 exampleId = requestExampleId,
                 environment = environment
@@ -121,19 +221,8 @@ class NetworkClientManager : CallDataStore {
                     { resp: UserResponse ->
                         postFlightHeaderVars.forEach { v -> // O(n^2)
                             try {
-                                val variable = postFlightEnvironment.variables.firstOrNull { it.key == v.key }
                                 val value = resp.headers?.first { it.first == v.value }?.second ?: ""
-                                if (variable != null) {
-                                    variable.value = value
-                                } else {
-                                    postFlightEnvironment.variables += UserKeyValuePair(
-                                        id = uuidString(),
-                                        key = v.key,
-                                        value = value,
-                                        valueType = FieldValueType.String,
-                                        isEnabled = true
-                                    )
-                                }
+                                setEnvironmentVariable(environment = postFlightEnvironment, key = v.key, value = value)
                             } catch (e: Throwable) {
                                 throw PostflightError(variable = v.key, cause = e)
                             }
@@ -156,7 +245,6 @@ class NetworkClientManager : CallDataStore {
                             }
                             postFlightBodyVars.forEach { v ->
                                 try {
-                                    val variable = postFlightEnvironment.variables.firstOrNull { it.key == v.key }
                                     val value = v.value.let {
                                         if (it == "$") {
                                             responseBody
@@ -164,17 +252,7 @@ class NetworkClientManager : CallDataStore {
                                             context?.read<Any?>(it)?.toString()
                                         }
                                     } ?: ""
-                                    if (variable != null) {
-                                        variable.value = value
-                                    } else {
-                                        postFlightEnvironment.variables += UserKeyValuePair(
-                                            id = uuidString(),
-                                            key = v.key,
-                                            value = value,
-                                            valueType = FieldValueType.String,
-                                            isEnabled = true
-                                        )
-                                    }
+                                    setEnvironmentVariable(environment = postFlightEnvironment, key = v.key, value = value)
                                 } catch (e: Throwable) {
                                     throw PostflightError(variable = v.key, cause = e)
                                 }
@@ -201,6 +279,7 @@ class NetworkClientManager : CallDataStore {
                 postFlightAction = postFlightAction,
                 httpConfig = environment?.httpConfig ?: HttpConfig(),
                 sslConfig = environment?.sslConfig ?: SslConfig(),
+                environment = environment,
                 subprojectConfig = subprojectConfig,
             )
         } catch (error: Throwable) {
@@ -237,10 +316,33 @@ class NetworkClientManager : CallDataStore {
             }
         }
         callIdFlow.value = callData.id
+        if (environment != null && subprojectConfig.isCookieEnabled()) { // set cookie after flight
+            val originalCallDataEnd = callData.end
+            callData.end = {
+                val setCookieHeaders = callData.response.headers
+                    ?.filter { it.first.equals("Set-Cookie", ignoreCase = true) && it.second.isNotBlank() }
+                    ?: emptyList()
+
+                if (setCookieHeaders.isNotEmpty()) {
+                    val uri = URI(networkRequest.url)
+                    environment.cookieJar.store(uri, setCookieHeaders.map { it.second }, ::verifyCookie)
+                    log.d { "Cookie JAR = " + environment.cookieJar.toString() }
+                    persistResponseManager.updateSubproject(subprojectId)
+                }
+
+                originalCallDataEnd?.invoke()
+            }
+        }
         persistResponseManager.registerCall(callData)
         if (!callData.response.isError) {
             callData.isPrepared = true
         }
+    }
+
+    fun verifyCookie(cookie: Cookie): Boolean {
+        if (cookie.value.contains("\\\$\\{\\{.*\\}\\}".toRegex())) return false
+        if (cookie.value.contains("\\\$\\(\\(.*\\)\\)".toRegex())) return false
+        return true
     }
 
     fun sendPayload(request: UserRequestTemplate, selectedRequestExampleId: String, payload: String, environment: Environment?) {

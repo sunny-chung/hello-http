@@ -3,7 +3,9 @@ package com.sunnychung.application.multiplatform.hellohttp.network
 import com.sunnychung.application.multiplatform.hellohttp.extension.emptyToNull
 import com.sunnychung.application.multiplatform.hellohttp.manager.CallDataStore
 import com.sunnychung.application.multiplatform.hellohttp.model.DEFAULT_PAYLOAD_STORAGE_SIZE_LIMIT
+import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.RawExchange
+import com.sunnychung.application.multiplatform.hellohttp.model.RequestConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.SubprojectConfiguration
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
@@ -150,6 +152,7 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
         requestId: String,
         subprojectId: String,
         sslConfig: SslConfig,
+        environment: Environment?,
         subprojectConfig: SubprojectConfiguration,
     ): CallData {
         val outgoingBytesFlow = MutableSharedFlow<RawPayload>()
@@ -173,7 +176,15 @@ abstract class AbstractTransportClient internal constructor(callDataStore: CallD
             outgoingBytes = outgoingBytesFlow,
             incomingBytes = incomingBytesFlow,
             optionalResponseSize = optionalResponseSize,
-            response = UserResponse(id = uuidString(), requestId = requestId, requestExampleId = requestExampleId),
+            response = UserResponse(
+                id = uuidString(),
+                requestId = requestId,
+                requestExampleId = requestExampleId,
+                requestConfig = RequestConfig(
+                    isCookieEnabled = subprojectConfig.isCookieEnabled(),
+                    environmentId = environment?.id,
+                )
+            ),
             cancel = {}
         )
         log.d { "Registering call #$callId" }

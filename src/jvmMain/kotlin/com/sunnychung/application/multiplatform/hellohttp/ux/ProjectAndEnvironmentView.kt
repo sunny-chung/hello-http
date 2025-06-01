@@ -360,6 +360,7 @@ fun ProjectAndEnvironmentViewV2(
                                 dialogTextFieldValue = selectedSubproject!!.name
                                 dialogIsCreate = false
                             },
+                            modifier = Modifier.testTag(TestTag.EditSubprojectButton.name)
                         )
                         AppDeleteButton {
                             selectedSubproject ?: return@AppDeleteButton

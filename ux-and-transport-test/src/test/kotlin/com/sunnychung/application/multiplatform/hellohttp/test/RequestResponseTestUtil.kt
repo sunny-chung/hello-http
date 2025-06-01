@@ -2,6 +2,10 @@
 
 package com.sunnychung.application.multiplatform.hellohttp.test
 
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -17,6 +21,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasRequestFocusAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTextExactly
@@ -27,6 +32,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyPress
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -45,6 +51,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
+import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.platform.isMacOs
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.Parameter
@@ -52,19 +59,17 @@ import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestDa
 import com.sunnychung.application.multiplatform.hellohttp.util.executeWithTimeout
 import com.sunnychung.application.multiplatform.hellohttp.ux.AppView
 import com.sunnychung.application.multiplatform.hellohttp.ux.DropDownDisplayTexts
+import com.sunnychung.application.multiplatform.hellohttp.ux.IsChecked
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.testChooseFile
-import com.sunnychung.lib.multiplatform.bigtext.ux.BigTextCoroutineContexts
 import com.sunnychung.lib.multiplatform.bigtext.ux.clearAllBigTextWorkerCoroutineContexts
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
 import com.sunnychung.lib.multiplatform.kdatetime.KZonedInstant
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
-import kotlinx.coroutines.CloseableCoroutineDispatcher
-import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
@@ -77,8 +82,6 @@ import java.awt.Robot
 import java.awt.Toolkit
 import java.io.File
 import java.net.URL
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.TimeUnit
 
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
     try {
@@ -443,6 +446,52 @@ suspend fun DesktopComposeUiTest.selectEnvironment(environment: TestEnvironment)
     waitForIdle()
 }
 
+@OptIn(InternalComposeUiApi::class)
+suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
+    println("enableCookieForCurrentSubproject")
+
+    onNodeWithTag(TestTag.EditSubprojectButton.name)
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+
+    waitUntil {
+        waitForIdle()
+
+        onAllNodes(
+            hasTestTag(TestTag.SubprojectEditorCookieCheckbox.name)
+                .and(isFocusable()),
+            useUnmergedTree = true
+        )
+            .fetchSemanticsNodesWithRetry(this)
+            .isNotEmpty()
+    }
+
+    val checkbox = onNodeWithTag(TestTag.SubprojectEditorCookieCheckbox.name)
+        .assertIsDisplayedWithRetry(this)
+
+    val checkboxNode = checkbox.fetchSemanticsNodeWithRetry(this)
+
+    if (checkboxNode.config.getOrNull(IsChecked) != true) {
+        checkbox.performClickWithRetry(this)
+        waitForIdle()
+    }
+
+    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyDown))
+    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyUp))
+
+    waitUntil {
+        waitForIdle()
+
+        onAllNodes(
+            hasTestTag(TestTag.SubprojectEditorCookieCheckbox.name)
+                .and(isFocusable()),
+            useUnmergedTree = true
+        )
+            .fetchSemanticsNodesWithRetry(this)
+            .isEmpty()
+    }
+}
+
 /**
  * @param name A unique name.
  */
@@ -602,6 +651,9 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
 
     if (request.application == ProtocolApplication.Http && request.method != "GET") {
         selectRequestMethod(request.method)
+        delayShort()
+    } else if (request.application == ProtocolApplication.Graphql) {
+        selectRequestMethod("GraphQL")
         delayShort()
     }
 
@@ -792,67 +844,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
 
             ContentType.FormUrlEncoded -> {
                 val body = (baseExample.body as FormUrlEncodedBody).value
-                body.forEachIndexed { index, it ->
-                    waitUntilExactlyOneExists(this,
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
-                        )
-                    )
-                    waitUntilExactlyOneExists(this,
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Value,
-                                index
-                            )!!
-                        )
-                    )
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
-                        )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(this, it.key)
-                    delayShort()
-
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Key,
-                                index
-                            )!!
-                        )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .assertTextEquals(it.key)
-                    onNode(
-                        hasTestTag(
-                            buildTestTag(
-                                TestTagPart.RequestBodyFormUrlEncodedForm,
-                                TestTagPart.Current,
-                                TestTagPart.Value,
-                                index
-                            )!!
-                        )
-                    )
-                        .assertIsDisplayedWithRetry(this)
-                        .performTextInput(this, it.value)
-                    delayShort()
-                }
+                fillRequestKeyValueEditor(keyValues = body, testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm)
             }
 
             ContentType.BinaryFile -> {
@@ -880,102 +872,15 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
-        baseExample.queryParameters.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Value,
-                        index
-                    )!!
-                )
-            )
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.key)
-            delayShort()
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .assertTextEquals(it.key)
-            onNode(
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestQueryParameter,
-                        TestTagPart.Current,
-                        TestTagPart.Value,
-                        index
-                    )!!
-                )
-            )
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.value)
-            delayShort()
-        }
+        fillRequestKeyValueEditor(baseExample.queryParameters, TestTagPart.RequestQueryParameter)
     }
 
     if (baseExample.headers.isNotEmpty()) {
         onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
-        baseExample.headers.forEachIndexed { index, it ->
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestHeader,
-                        TestTagPart.Current,
-                        TestTagPart.Key,
-                        index
-                    )!!
-                )
-            )
-            waitUntilExactlyOneExists(this,
-                hasTestTag(
-                    buildTestTag(
-                        TestTagPart.RequestHeader,
-                        TestTagPart.Current,
-                        TestTagPart.Value,
-                        index
-                    )!!
-                )
-            )
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Key, index)!!))
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.key)
-            delayShort()
-            onNode(hasTestTag(buildTestTag(TestTagPart.RequestHeader, TestTagPart.Current, TestTagPart.Value, index)!!))
-                .assertIsDisplayedWithRetry(this)
-                .performTextInput(this, it.value)
-            delayShort()
-        }
+
+        fillRequestKeyValueEditor(baseExample.headers, TestTagPart.RequestHeader)
     }
 
     if (baseExample.preFlight.isNotEmpty()) {
@@ -985,16 +890,149 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
 
         waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
 
-        onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
-            .assertIsDisplayedWithRetry(this)
-            .performTextInput(this, baseExample.preFlight.executeCode)
-
-        waitUntil {
+        if (baseExample.preFlight.executeCode.isNotEmpty()) {
             onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
-                .fetchSemanticsNodeWithRetry(this)
-                .getTexts()
-                .joinToString("") == baseExample.preFlight.executeCode
+                .assertIsDisplayedWithRetry(this)
+                .performTextInput(this, baseExample.preFlight.executeCode)
+
+            waitUntil {
+                onNode(hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
+                    .fetchSemanticsNodeWithRetry(this)
+                    .getTexts()
+                    .joinToString("") == baseExample.preFlight.executeCode
+            }
         }
+
+        if (baseExample.preFlight.updateVariablesFromHeader.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromHeader,
+                testTagPart = TestTagPart.PreflightUpdateEnvByHeader,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
+            )
+        }
+
+        if (baseExample.preFlight.updateVariablesFromQueryParameters.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromQueryParameters,
+                testTagPart = TestTagPart.PreflightUpdateEnvByQueryParameter,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
+            )
+        }
+
+        if (baseExample.preFlight.updateVariablesFromBody.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromBody,
+                testTagPart = TestTagPart.PreflightUpdateEnvByBody,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
+            )
+        }
+
+        if (baseExample.preFlight.updateVariablesFromGraphqlVariables.isNotEmpty()) {
+            fillRequestKeyValueEditor(
+                keyValues = baseExample.preFlight.updateVariablesFromGraphqlVariables,
+                testTagPart = TestTagPart.PreflightUpdateEnvByGraphqlVariables,
+                parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
+            )
+        }
+    }
+}
+
+private suspend fun DesktopComposeUiTest.fillRequestKeyValueEditor(
+    keyValues: List<UserKeyValuePair>,
+    testTagPart: TestTagPart,
+    parentScrollableNode: SemanticsNodeInteraction? = null,
+) {
+    keyValues.forEachIndexed { index, it ->
+        parentScrollableNode?.performScrollToNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+
+        waitUntilExactlyOneExists(
+            this,
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+        waitUntilExactlyOneExists(
+            this,
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Value,
+                    index
+                )!!
+            )
+        )
+        waitUntil(3.seconds().millis) {
+            try {
+                onNode(
+                    hasTestTag(
+                        buildTestTag(
+                            testTagPart,
+                            TestTagPart.Current,
+                            TestTagPart.Key,
+                            index
+                        )!!
+                    ).and(hasSetTextAction())
+                ).assertIsDisplayedWithRetry(this)
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
+
+        onNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+            .assertIsDisplayedWithRetry(this)
+            .performTextInput(this, it.key)
+        delayShort()
+
+        onNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Key,
+                    index
+                )!!
+            )
+        )
+            .assertIsDisplayedWithRetry(this)
+            .assertTextEquals(it.key)
+        onNode(
+            hasTestTag(
+                buildTestTag(
+                    testTagPart,
+                    TestTagPart.Current,
+                    TestTagPart.Value,
+                    index
+                )!!
+            )
+        )
+            .assertIsDisplayedWithRetry(this)
+            .performTextInput(this, it.value)
+        delayShort()
     }
 }
 
@@ -1028,10 +1066,14 @@ suspend fun DesktopComposeUiTest.createAndSendHttpRequest(request: UserRequestTe
     }
 }
 
-suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment?, ignoreAssertQueryParameters: Set<String> = emptySet()): RequestData {
+suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment?, ignoreAssertQueryParameters: Set<String> = emptySet(), assertEnvVariables: Map<String, String> = emptyMap()): RequestData {
     val baseExample = request.examples.first()
     val isAssertBodyContent = request.url.endsWith("/rest/echo")
     createAndSendHttpRequest(request = request, timeout = timeout, environment = environment, isExpectResponseBody = true)
+
+    if (assertEnvVariables.isNotEmpty()) {
+        assertPreflightHaveUpdatedEnvironmentVariables(request, assertEnvVariables)
+    }
 
     onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
@@ -1105,6 +1147,54 @@ suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(r
         }
     }
     return resp
+}
+
+fun DesktopComposeUiTest.assertPreflightHaveUpdatedEnvironmentVariables(request: UserRequestTemplate, expectedVariables: Map<String, String>) {
+    val baseExample = request.examples.first()
+    if (baseExample.preFlight.hasUpdateVariables()) {
+        onNodeWithTag(TestTag.EditEnvironmentsButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+
+        waitUntil {
+            onAllNodes(
+                hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                    .and(isFocusable())
+            )
+                .fetchSemanticsNodesWithRetry(this)
+                .isNotEmpty()
+        }
+
+        listOf(
+            baseExample.preFlight.updateVariablesFromHeader,
+            baseExample.preFlight.updateVariablesFromBody,
+            baseExample.preFlight.updateVariablesFromGraphqlVariables,
+            baseExample.preFlight.updateVariablesFromQueryParameters,
+        ).flatten().forEach {
+            val testTagOfKeyTextField = onAllNodes(hasTextExactly(it.key))
+                .fetchSemanticsNodesWithRetry(this)
+                .map { it.config[SemanticsProperties.TestTag] }
+                .firstOrNull { it.startsWith("EnvironmentEditorVariableKeyValue/") }
+                ?: throw NoSuchElementException("Cannot find a match for '${it.key}'")
+
+            onNodeWithTag(testTagOfKeyTextField).assertIsDisplayedWithRetry(this)
+
+            onNode(
+                hasTestTag(
+                    testTagOfKeyTextField.replace(
+                        "/Key/",
+                        "/Value/"
+                    )
+                ).and(hasTextExactly(expectedVariables[it.key]!!))
+            ).assertIsDisplayedWithRetry(this)
+        }
+
+        onNodeWithTag(TestTag.DialogCloseButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+        waitUntil { onAllNodesWithTag(TestTag.DialogCloseButton.name).fetchSemanticsNodesWithRetry(this).isEmpty() }
+        waitForIdle()
+    }
 }
 
 suspend fun DesktopComposeUiTest.sendPayload(payload: String, isCreatePayloadExample: Boolean = true) {
@@ -1249,6 +1339,8 @@ fun SemanticsNodeInteraction.assertIsDisplayedWithRetry(host: ComposeUiTest): Se
                 assertIsDisplayed()
             }
             return this
+        } catch (e: AssertionError) {
+            throw AssertionError("Assert failed -- ${host.runOnUiThread { fetchSemanticsNodeWithRetry(host).config.getOrNull(SemanticsProperties.TestTag) } }", e)
         } catch (e: IllegalArgumentException) {
             host.waitForIdle()
         }

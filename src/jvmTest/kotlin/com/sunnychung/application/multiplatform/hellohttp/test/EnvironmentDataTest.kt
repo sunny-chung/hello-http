@@ -7,9 +7,11 @@ import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.ImportedFile
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
+import com.sunnychung.application.multiplatform.hellohttp.network.util.CookieJar
 import com.sunnychung.application.multiplatform.hellohttp.test.util.ObjectReferenceTracker
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.lib.multiplatform.kdatetime.KInstant
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -78,6 +80,10 @@ class EnvironmentDataTest {
                     content = ByteArray(it) { it.toByte() },
                 )
             },
+            cookieJar = CookieJar().apply {
+                store(URI("http://example.com"), listOf("a=b", "c=de"))
+                store(URI("http://example.com"), listOf("fg=hi"))
+            }
         )
 
         val subjectRequestTracker = ObjectReferenceTracker(subject)

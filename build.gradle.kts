@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.sunnychung.application"
-version = "1.7.3" // must be in 'x.y.z' for native distributions
+version = "1.8.0-SNAPSHOT" // must be in 'x.y.z' for native distributions
 
 repositories {
     google()
@@ -94,7 +94,10 @@ kotlin {
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
 
                 // text field
-                api("io.github.sunny-chung:bigtext-ui-composable:2.2.0")
+                api("io.github.sunny-chung:bigtext-ui-composable:2.3.0")
+
+                // for proguard to understand the code
+//                implementation("com.github.luben:zstd-jni:1.5.5-11")
             }
 
             resources.srcDir("$buildDir/resources")
@@ -215,6 +218,11 @@ compose.desktop {
             linux {
                 iconFile.set(project.file("appicon/appicon.png"))
             }
+        }
+
+        buildTypes.release.proguard {
+            version.set("7.5.0")
+            configurationFiles.from(project.file("proguard.pro"))
         }
     }
 }

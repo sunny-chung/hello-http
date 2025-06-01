@@ -6,6 +6,8 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.loadNativeLibraries
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
@@ -14,11 +16,13 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
+import com.sunnychung.application.multiplatform.hellohttp.model.PreFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.network.ReactorNettyHttpTransportClient
+import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
@@ -127,6 +131,7 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
     val earlyErrorUrl = "$httpUrlPrefix/rest/earlyError"
     val errorUrl = "$httpUrlPrefix/rest/error"
     val bigDocumentUrl = "$httpUrlPrefix/rest/bigDocument"
+    val cookieUrl = "$httpUrlPrefix/rest/cookie"
     val environment = environment(httpVersion = httpVersion, isSsl = isSsl, isMTls = isMTls)
 
     @JvmField
@@ -346,6 +351,50 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
     }
 
     @Test
+    fun preflightSaveJsonFieldToEnvironment() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Json,
+                        body = StringBody("""
+                            {
+                                "s": "abcdefgh中文字_;-+",
+                                "abc": 123,
+                                "de": true,
+                                "fgh": 45.67,
+                                "obj": {
+                                    "wxyz": "X"
+                                }
+                            }
+                        """.trimIndent()),
+                        preFlight = PreFlightSpec(
+                            updateVariablesFromBody = listOf(
+                                UserKeyValuePair("eB1", "\$.de"),
+                                UserKeyValuePair("eB2", "\$.s"),
+                                UserKeyValuePair("eQ1", "\$.fgh"), // reuse env var name to avoid the need of scrolling in tests
+                                UserKeyValuePair("eQ2", "\$.obj.wxyz"), // reuse env var name to avoid the need of scrolling in tests
+                            ),
+                        )
+                    )
+                )
+            ),
+            environment = environment,
+            assertEnvVariables = mapOf(
+                "eB1" to "true",
+                "eB2" to "abcdefgh中文字_;-+",
+                "eQ1" to "45.67",
+                "eQ2" to "X",
+            ),
+        )
+    }
+
+    @Test
     fun echoPostWithJsonBodyAndHeaderAndQueryParameters() = runTest {
         createAndSendRestEchoRequestAndAssertResponse(
             UserRequestTemplate(
@@ -435,6 +484,57 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
                 )
             ),
             environment = environment,
+        )
+    }
+
+    @Test
+    fun preflightSaveHeaderAndQueryParametersAndFormParametersToEnvironment() = runTest {
+        createAndSendRestEchoRequestAndAssertResponse(
+            UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = echoUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        headers = listOf(
+                            UserKeyValuePair("h1", "abcd"),
+                            UserKeyValuePair("x-My-Header", "defg HIjk"),
+                        ),
+                        queryParameters = listOf(
+                            UserKeyValuePair("abc", "中文字"),
+                            UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                        ),
+                        contentType = ContentType.FormUrlEncoded,
+                        body = FormUrlEncodedBody(listOf(
+                            UserKeyValuePair("abcc", "中文字123"),
+                            UserKeyValuePair("MyFormParam", "abcc def_gh+i=?j/k"),
+                            UserKeyValuePair("emoj", "a\uD83D\uDE0EBC"),
+                        )),
+                        preFlight = PreFlightSpec(
+                            updateVariablesFromHeader = listOf(
+                                UserKeyValuePair("eMyHeader", "x-My-Header"),
+                            ),
+                            updateVariablesFromQueryParameters = listOf(
+                                UserKeyValuePair("eQ1", "MyQueryParam"),
+                                UserKeyValuePair("eQ2", "emoji"),
+                            ),
+                            updateVariablesFromBody = listOf(
+                                UserKeyValuePair("eB1", "abcc"),
+                            ),
+                        ),
+                    )
+                )
+            ),
+            environment = environment,
+            assertEnvVariables = mapOf(
+                "eMyHeader" to "defg HIjk",
+                "eQ1" to "abc def_gh+i=?j/k",
+                "eQ2" to "A\uD83D\uDE0Eb",
+                "eB1" to "中文字123",
+            ),
         )
     }
 
@@ -650,6 +750,92 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
             timeout = 35.seconds(),
             environment = environment,
         )
+    }
+
+    @Test
+    fun receiveAndSendCookie() = runTest {
+        run {
+            createProjectIfNeeded()
+            enableCookieForCurrentSubproject()
+        }
+
+        run {
+            val setCookieRequest = UserRequestTemplate(
+                id = uuidString(),
+                method = "POST",
+                url = cookieUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.Json,
+                        body = StringBody(
+                            """
+                            {
+                                "cook1": "abcdeeeee",
+                                "auth": "asgfa2980jngfnGsbXsMGKLFeo4acbkmloe421TtjTERSjfgnngkVMZKNo39r/ghsIOWhP=="
+                            }
+                        """.trimIndent()
+                        ),
+                    )
+                )
+            )
+
+            createAndSendHttpRequest(
+                request = setCookieRequest,
+                timeout = 2500.milliseconds(),
+                environment = environment,
+                isExpectResponseBody = false,
+            )
+
+            onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("204 No Content")
+//            val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
+//                .getTexts()
+//                .single()
+//            println("responseBody = $responseBody")
+//            assertEquals("", responseBody)
+        }
+
+        run {
+            val getCookieRequest = UserRequestTemplate(
+                id = uuidString(),
+                method = "GET",
+                url = cookieUrl,
+                examples = listOf(
+                    UserRequestExample(
+                        id = uuidString(),
+                        name = "Base",
+                        contentType = ContentType.None,
+                        body = null,
+                    )
+                )
+            )
+
+            createAndSendHttpRequest(
+                request = getCookieRequest,
+                timeout = 2500.milliseconds(),
+                environment = environment,
+                isExpectResponseBody = true
+            )
+
+            onNodeWithTag(TestTag.ResponseStatus.name).assertTextEquals("200 OK")
+            val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
+                .getTexts()
+                .single()
+            println(responseBody)
+
+            data class NameValuePair(val name: String, val value: String)
+
+            val resp = jacksonObjectMapper().readValue(responseBody, object : TypeReference<List<Pair<String, List<NameValuePair>>>>() {})!!
+            resp.first { it.first == "cook1" }.second.let {
+                assertEquals(1, it.size)
+                assertEquals("abcdeeeee", it.first().value)
+            }
+            resp.first { it.first == "auth" }.second.let {
+                assertEquals(1, it.size)
+                assertEquals("asgfa2980jngfnGsbXsMGKLFeo4acbkmloe421TtjTERSjfgnngkVMZKNo39r/ghsIOWhP==", it.first().value)
+            }
+        }
     }
 
     /************** Special Cases **************/

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -134,6 +135,19 @@ private fun ConfigurationEditor(
     onSubprojectUpdate: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier.verticalScroll(rememberScrollState())) {
+        ConfigurationRow(
+            title = "Is Cookie Enabled",
+        ) {
+            AppCheckbox(
+                checked = subproject.configuration.isCookieEnabled(),
+                onCheckedChange = {
+                    subproject.configuration.isCookieEnabled = it
+                    onSubprojectUpdate()
+                },
+                size = 24.dp,
+                modifier = Modifier.testTag(TestTag.SubprojectEditorCookieCheckbox.name)
+            )
+        }
         PayloadLimitEditorView(
             title = "Display Limit per Outbound Payload in Raw Transport Log",
             hint = "Maximum no. of bytes to be displayed and persisted for each outbound payload in Raw Transport Timeline. If the limit is exceeded, the payload would be truncated to this limit.\n\nIn HTTP/2, it is common to have multiple payloads if the request data size is large, whereas in HTTP/1 it is usually only maximum one payload per direction.\n\nThis setting only applies to new calls, and does not affect data transmission.",
@@ -194,6 +208,41 @@ private fun PayloadLimitEditorView(
     var textValue by rememberLast(subproject.id) {
         mutableStateOf(propertyGetter().toString())
     }
+    ConfigurationRow(
+        modifier = modifier,
+        title = title,
+        hint = hint,
+        remark = "Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default ($defaultValue)",
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            AppTextField(
+                key = "Subproject/${subproject.id}/Configuration/PayloadLimit/$title",
+                value = textValue,
+                onValueChange = {
+                    if (it.length > "104857600".length) return@AppTextField
+                    if (!it.matches("-?[0-9]*".toRegex())) return@AppTextField
+
+                    textValue = it
+                    it.toLongOrNull()?.let {
+                        if (it < 0 || it in (8 * 1024)..(100 * 1024 * 1024)) {
+                            propertySetter(it)
+                        }
+                    }
+                }
+            )
+            AppText("bytes")
+        }
+    }
+}
+
+@Composable
+private fun ConfigurationRow(
+    modifier: Modifier = Modifier,
+    title: String,
+    hint: String? = null,
+    remark: String? = null,
+    content: @Composable () -> Unit,
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.fillMaxWidth()) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.width(HEADER_COLUMN_WIDTH)) {
             AppText(text = title, modifier = Modifier.weight(1f))
@@ -204,25 +253,10 @@ private fun PayloadLimitEditorView(
             }
         }
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                AppTextField(
-                    key = "Subproject/${subproject.id}/Configuration/PayloadLimit/$title",
-                    value = textValue,
-                    onValueChange = {
-                        if (it.length > "104857600".length) return@AppTextField
-                        if (!it.matches("-?[0-9]*".toRegex())) return@AppTextField
-
-                        textValue = it
-                        it.toLongOrNull()?.let {
-                            if (it < 0 || it in (8 * 1024)..(100 * 1024 * 1024)) {
-                                propertySetter(it)
-                            }
-                        }
-                    }
-                )
-                AppText("bytes")
+            content()
+            if (remark != null) {
+                AppText(remark)
             }
-            AppText("Acceptable range: 8192 (8 KB) ~ 104857600 (100 MB);\nNegative = use default ($defaultValue)")
         }
     }
 }

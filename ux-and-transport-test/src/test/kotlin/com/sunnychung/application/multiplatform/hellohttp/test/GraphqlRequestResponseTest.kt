@@ -7,15 +7,20 @@ import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasTextExactly
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.HttpConfig
+import com.sunnychung.application.multiplatform.hellohttp.model.PreFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
@@ -30,6 +35,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.buildTestTag
 import com.sunnychung.lib.multiplatform.kdatetime.KDuration
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
+import kotlinx.coroutines.delay
 import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -143,6 +149,72 @@ class GraphqlRequestResponseTest(testName: String, httpVersion: HttpConfig.HttpP
                 )
             )
         ), environment = environment)
+        val body = assertHttpSuccessResponseAndGetResponseBody()
+        val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<SomeOutputResource>>(body!!)
+        assertEquals("abcd", resp.data.sum.a)
+        assertEquals(15, resp.data.sum.sum)
+    }
+
+    @Test
+    fun preflightSaveVariablesToEnvironment() = runTest {
+        createAndSendGraphqlRequest(UserRequestTemplate(
+            id = uuidString(),
+            method = "POST",
+            application = ProtocolApplication.Graphql,
+            url = graphqlUrl,
+            examples = listOf(
+                UserRequestExample(
+                    id = uuidString(),
+                    name = "Base",
+                    contentType = ContentType.Graphql,
+                    queryParameters = listOf(
+                        UserKeyValuePair("abc", "中文字"),
+                        UserKeyValuePair("MyQueryParam", "abc def_gh+i=?j/k"),
+                        UserKeyValuePair("emoji", "A\uD83D\uDE0Eb"),
+                    ),
+                    headers = listOf(UserKeyValuePair("my-time", "2025-05-18T12:34:56.789")),
+                    body = GraphqlBody(
+                        document = """
+                            query MyQuery(${'$'}in: SomeInput!) {
+                              sum(input: ${'$'}in) {
+                                a
+                                sum
+                              }
+                            }
+                        """.trimIndent(),
+                        variables = """
+                            {
+                                "in": {
+                                    "a": "abcd",
+                                    "b": 12,
+                                    "c": 3
+                                }
+                            }
+                        """.trimIndent(),
+                        operationName = null,
+                    ),
+                    preFlight = PreFlightSpec(
+                        updateVariablesFromHeader = listOf(
+                            UserKeyValuePair("eMyHeader", "my-time"),
+                        ),
+                        updateVariablesFromQueryParameters = listOf(
+                            UserKeyValuePair("eQ1", "MyQueryParam"),
+                            UserKeyValuePair("eQ2", "emoji"),
+                        ),
+                        updateVariablesFromGraphqlVariables = listOf(
+                            UserKeyValuePair("eB1", "\$.in.a"),
+                            UserKeyValuePair("eB2", "\$.in.c"),
+                        ),
+                    ),
+                )
+            )
+        ), environment = environment, assertEnvVariables = mapOf(
+            "eMyHeader" to "2025-05-18T12:34:56.789",
+            "eQ1" to "abc def_gh+i=?j/k",
+            "eQ2" to "A\uD83D\uDE0Eb",
+            "eB1" to "abcd",
+            "eB2" to "3",
+        ))
         val body = assertHttpSuccessResponseAndGetResponseBody()
         val resp = jacksonObjectMapper().readValue<GraphqlResponseBody<SomeOutputResource>>(body!!)
         assertEquals("abcd", resp.data.sum.a)
@@ -306,7 +378,14 @@ class GraphqlRequestResponseTest(testName: String, httpVersion: HttpConfig.HttpP
 
 suspend fun DesktopComposeUiTest.createGraphqlRequest(request: UserRequestTemplate, environment: TestEnvironment) {
     createRequest(request = request, environment = environment)
-    selectRequestMethod("GraphQL")
+
+    onNodeWithTag(TestTag.RequestParameterTypeTabContainer.name, useUnmergedTree = true)
+        .performScrollToIndex(0)
+    delay(3.seconds().millis)
+
+    onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Body")))
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
     delayShort()
 
     onNodeWithTag(buildTestTag(TestTagPart.RequestGraphqlOperationName.name, TestTagPart.DropdownButton)!!)
@@ -344,7 +423,7 @@ suspend fun DesktopComposeUiTest.createGraphqlRequest(request: UserRequestTempla
     }
 }
 
-suspend fun DesktopComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment) {
+suspend fun DesktopComposeUiTest.createAndSendGraphqlRequest(request: UserRequestTemplate, timeout: KDuration = 2500.milliseconds(), environment: TestEnvironment, assertEnvVariables: Map<String, String> = emptyMap()) {
     createGraphqlRequest(request = request, environment = environment)
 
     delayShort()
@@ -358,6 +437,10 @@ suspend fun DesktopComposeUiTest.createAndSendGraphqlRequest(request: UserReques
     // wait for response
     waitUntil(5.seconds().toMilliseconds()) { onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodes().isNotEmpty() }
     waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodes().isEmpty() }
+
+    if (assertEnvVariables.isNotEmpty()) {
+        assertPreflightHaveUpdatedEnvironmentVariables(request, assertEnvVariables)
+    }
 }
 
 fun DesktopComposeUiTest.assertHttpSuccessResponseAndGetResponseBody(isSubscriptionRequest: Boolean = false): String? {

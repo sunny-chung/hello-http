@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
@@ -28,7 +30,11 @@ fun AppCheckbox(
     Row(
         horizontalArrangement = Arrangement.spacedBy(spacingWithLabel),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.clickable(onClick = clickAction),
+        modifier = modifier
+            .clickable(onClick = clickAction)
+            .semantics {
+                set(IsChecked, checked)
+            }
     ) {
         AppImageButton(
             resource = if (checked) {
@@ -54,3 +60,5 @@ fun AppCheckbox(
         label?.invoke()
     }
 }
+
+val IsChecked = SemanticsPropertyKey<Boolean>("IsChecked")
