@@ -3,6 +3,7 @@ package com.sunnychung.application.multiplatform.hellohttp.model
 //import org.apache.hc.core5.net.URIBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
+import java.net.URLEncoder
 
 class HttpRequest(
     val method: String = "",
@@ -32,16 +33,22 @@ class HttpRequest(
     val headers get() = initialHeaders + newHeaders
     val queryParameters get() = initialQueryParameters + newQueryParameters
 
-    fun getResolvedUri(): URI {
+    fun getResolvedUri(): URI { // see com.sunnychung.application.multiplatform.hellohttp.test.HttpRequestTest
         return UriComponentsBuilder.fromUriString(url.replace(" ", "+"))
+            .encode()
+            .build()
+            .toString()
             .run {
-                var b = this
+//                var b = this
+//                println(this)
+                var b = UriComponentsBuilder.fromUriString(this)
                 queryParameters.forEach {
-                    b = b.queryParam(it.first, it.second)
+                    b = b.queryParam(it.first, URLEncoder.encode(it.second, Charsets.UTF_8))
+//                    b = b.queryParam(it.first, it.second)
                 }
                 b
             }
-            .encode()
+//            .encode()
             .build()
             .let { URI.create(it.toString()) }
     }
