@@ -79,3 +79,32 @@
 -keep class com.fasterxml.jackson.module.kotlin.KotlinModule {
     <init>(...);
 }
+
+# fix: class com.jayway.jsonpath.Option not an enum
+-keep enum com.jayway.jsonpath.Option
+
+# fix: io.grpc.ManagedChannelProvider: Provider io.grpc.netty.shaded.io.grpc.netty.NettyChannelProvider not found
+# fix: io.grpc.ManagedChannelProvider: Provider io.grpc.netty.shaded.io.grpc.netty.UdsNettyChannelProvider not found
+-keep class * extends io.grpc.ManagedChannelProvider
+
+# fix: io.grpc.NameResolverProvider: Provider io.grpc.netty.shaded.io.grpc.netty.UdsNameResolverProvider not found
+-keep class * extends io.grpc.NameResolverProvider
+
+# fix: Could not initialize class io.grpc.netty.shaded.io.grpc.netty.ProtocolNegotiators
+# Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.ClassCastException: class io.grpc.TlsChannelCredentials$Feature not an enum
+# and java.lang.ClassCastException: class io.grpc.TlsChannelCredentials$Feature not an enum
+-keepclassmembers class * extends java.lang.Enum {
+    <fields>;
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+-keep enum io.grpc.TlsChannelCredentials$Feature {
+    *;
+    static *;
+}
+#-keep class io.grpc.TlsChannelCredentials { *; }
+#-keep class java.lang.Enum { *; }
+
+# fix: java.util.ServiceConfigurationError: io.grpc.LoadBalancerProvider: Provider io.grpc.protobuf.services.internal.HealthCheckingRoundRobinLoadBalancerProvider not found
+# fix: io.grpc.LoadBalancerProvider: Provider io.grpc.util.OutlierDetectionLoadBalancerProvider not found
+-keep class * extends io.grpc.LoadBalancerProvider
