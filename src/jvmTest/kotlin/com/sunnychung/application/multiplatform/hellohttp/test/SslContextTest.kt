@@ -3,10 +3,11 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 import com.sunnychung.application.multiplatform.hellohttp.manager.NetworkClientManager
 import com.sunnychung.application.multiplatform.hellohttp.model.ClientCertificateKeyPair
 import com.sunnychung.application.multiplatform.hellohttp.model.SslConfig
+import com.sunnychung.application.multiplatform.hellohttp.network.SpringWebClientTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.util.importCaCertificates
 import com.sunnychung.application.multiplatform.hellohttp.util.importFrom
 import com.sunnychung.application.multiplatform.hellohttp.util.parseCaCertificates
-import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
+//import com.sunnychung.application.multiplatform.hellohttp.network.ApacheHttpTransportClient
 import com.sunnychung.application.multiplatform.hellohttp.network.util.DenyAllSslCertificateManager
 import com.sunnychung.application.multiplatform.hellohttp.network.util.MultipleTrustCertificateManager
 import java.io.File
@@ -17,7 +18,8 @@ import kotlin.test.assertFailsWith
 
 class SslContextTest {
 
-    val httpClient = ApacheHttpTransportClient(NetworkClientManager())
+//    val httpClient = ApacheHttpTransportClient(NetworkClientManager())
+    val httpClient = SpringWebClientTransportClient(NetworkClientManager())
 
     private fun verifyGoogleCertificates(trustManager: X509TrustManager) {
         trustManager.checkServerTrusted(
