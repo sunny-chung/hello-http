@@ -1,6 +1,7 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import java.io.ByteArrayOutputStream
 import java.util.Properties
 
@@ -224,5 +225,12 @@ compose.desktop {
             version.set("7.5.0")
             configurationFiles.from(project.file("proguard.pro"))
         }
+    }
+}
+
+// set the icon of the `.dmg` image
+tasks.withType<AbstractJPackageTask>().all {
+    if (targetFormat == TargetFormat.Dmg) {
+        freeArgs.addAll("--icon", "appicon/appicon.icns")
     }
 }
