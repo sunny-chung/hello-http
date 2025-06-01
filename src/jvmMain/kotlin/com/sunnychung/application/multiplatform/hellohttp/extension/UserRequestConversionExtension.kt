@@ -37,9 +37,11 @@ import graphql.language.OperationDefinition
 //import org.apache.hc.core5.http.nio.AsyncRequestProducer
 //import org.apache.hc.core5.http.nio.entity.AsyncEntityProducers
 //import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder
-import org.apache.hc.core5.net.URIBuilder
+//import org.apache.hc.core5.net.URIBuilder
+import org.springframework.web.util.UriComponentsBuilder
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
@@ -147,16 +149,18 @@ fun UserRequestTemplate.toHttpRequest(
                 body = body,
             )
         } else {
+            val uri = URI(req.url)
             req.copy(
                 extra = graphqlRequest,
-                url = URIBuilder(req.url)
+                url = UriComponentsBuilder.fromUri(uri)
                     .run {
-                        setScheme(when (scheme) {
+                        scheme(when (uri.scheme) {
                             "http", "ws" -> "ws"
                             "https", "wss" -> "wss"
                             else -> throw IllegalArgumentException("Unknown scheme")
                         })
                     }
+                    .encode()
                     .build()
                     .toString()
             )

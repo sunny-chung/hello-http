@@ -22,6 +22,9 @@ _Changes since 1.7.3_
 ### Fixed
 - Crash when selecting the last tab of a HTTP request then switching to a gRPC or WS request
 
+### Optimized
+- The app is minified. The app size is decreased by about 1/3.
+
 
 ## [1.7.3] -- 2025-04-29
 

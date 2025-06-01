@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.model
 
-import org.apache.hc.core5.net.URIBuilder
+//import org.apache.hc.core5.net.URIBuilder
+import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 
 class HttpRequest(
@@ -32,16 +33,17 @@ class HttpRequest(
     val queryParameters get() = initialQueryParameters + newQueryParameters
 
     fun getResolvedUri(): URI {
-        return URIBuilder(url.replace(" ", "+"))
+        return UriComponentsBuilder.fromUriString(url.replace(" ", "+"))
             .run {
                 var b = this
                 queryParameters.forEach {
-                    b = b.addParameter(it.first, it.second)
+                    b = b.queryParam(it.first, it.second)
                 }
                 b
             }
+            .encode()
             .build()
-            .let { URI.create(it.toASCIIString()) }
+            .let { URI.create(it.toString()) }
     }
 
     fun addHeader(key: String, value: String) {
