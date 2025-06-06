@@ -108,3 +108,24 @@
 # fix: java.util.ServiceConfigurationError: io.grpc.LoadBalancerProvider: Provider io.grpc.protobuf.services.internal.HealthCheckingRoundRobinLoadBalancerProvider not found
 # fix: io.grpc.LoadBalancerProvider: Provider io.grpc.util.OutlierDetectionLoadBalancerProvider not found
 -keep class * extends io.grpc.LoadBalancerProvider
+
+### Windows only -- Begin
+# fix: java.lang.UnsatisfiedLinkError: Can't obtain static method fromNative(Class, Object) from class com.sun.jna.Native [in thread "main"]
+-keep class com.sun.jna.Native {
+    static *** *(...);
+}
+# fix: java.lang.ExceptionInInitializerError: Exception java.lang.UnsatisfiedLinkError: Can't obtain static newInstance method for class com.sun.jna.Structure
+-keep class com.sun.jna.Structure {
+    static *** *(...);
+}
+# fix: java.lang.UnsatisfiedLinkError: Can't obtain class com.sun.jna.CallbackReference.AttachOptions
+-keep class com.sun.jna.CallbackReference$AttachOptions
+# fix: java.lang.UnsatisfiedLinkError: Can't obtain static method initializeThread from class com.sun.jna.CallbackReference
+-keep class com.sun.jna.CallbackReference {
+    static *** *(...);
+}
+# fix: java.lang.UnsatisfiedLinkError: Can't obtain invoke method from class com.sun.jna.Native$ffi_callback
+-keep interface com.sun.jna.Native$ffi_callback {
+    <methods>;
+}
+### Windows only -- End
