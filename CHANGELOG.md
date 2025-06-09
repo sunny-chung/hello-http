@@ -22,6 +22,7 @@ _Changes since 1.7.3_
 
 ### Fixed
 - Crash when selecting the last tab of a HTTP request then switching to a gRPC or WS request
+- Crash when firing a GraphQL with an invalid variable JSON
 
 ### Optimized
 - The app is minified. The app size is decreased by about 1/3.

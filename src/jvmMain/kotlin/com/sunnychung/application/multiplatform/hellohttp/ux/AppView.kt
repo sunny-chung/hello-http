@@ -529,14 +529,18 @@ fun AppContentView() {
                             val requestEditorModifier = Modifier.fillMaxWidth()
                             request?.let { requestNonNull ->
                                 fun onClickSendOrConnect() {
-                                    networkClientManager.fireRequest(
-                                        request = requestNonNull,
-                                        requestExampleId = selectedRequestExampleId!!,
-                                        environment = selectedEnvironment,
-                                        projectId = selectedProject!!.id,
-                                        subprojectId = selectedSubproject!!.id,
-                                        subprojectConfig = selectedSubproject.configuration.copy(),
-                                    )
+                                    try {
+                                        networkClientManager.fireRequest(
+                                            request = requestNonNull,
+                                            requestExampleId = selectedRequestExampleId!!,
+                                            environment = selectedEnvironment,
+                                            projectId = selectedProject!!.id,
+                                            subprojectId = selectedSubproject!!.id,
+                                            subprojectConfig = selectedSubproject.configuration.copy(),
+                                        )
+                                    } catch (e: Throwable) {
+                                        errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                    }
                                 }
 
                                 RequestEditorView(
