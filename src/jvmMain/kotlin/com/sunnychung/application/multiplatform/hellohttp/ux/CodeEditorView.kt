@@ -551,97 +551,109 @@ fun CodeEditorView(
                         }
                 )
 
-                if (isReadOnly) {
-                    val collapseIncrementalTransformation = remember(bigTextFieldState) {
-                        CollapseIncrementalTransformation(themeColours, collapsedChars.values.toList())
-                    }
-                    var transformedText by remember(bigTextFieldState) { mutableStateOf<BigTextTransformed?>(null) }
+                var mouseHoverVariable by remember(bigTextFieldState) { mutableStateOf<String?>(null) }
+                AppTooltipArea(
+                    isVisible = mouseHoverVariable != null && mouseHoverVariable in knownVariables,
+                    tooltipText = mouseHoverVariable?.let {
+                        val s = knownVariables[it] ?: return@let null
+                        if (s.length > ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) {
+                            s.substring(0, ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) + " ..."
+                        } else {
+                            s
+                        }
+                    } ?: "",
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    if (isReadOnly) {
+                        val collapseIncrementalTransformation = remember(bigTextFieldState) {
+                            CollapseIncrementalTransformation(themeColours, collapsedChars.values.toList())
+                        }
+                        var transformedText by remember(bigTextFieldState) { mutableStateOf<BigTextTransformed?>(null) }
 
-                    transformedText?.let { transformedText ->
-                        collapseIncrementalTransformation.update(collapsedChars.values.toList(), bigTextFieldState.viewState)
-                    }
+                        transformedText?.let { transformedText ->
+                            collapseIncrementalTransformation.update(
+                                collapsedChars.values.toList(),
+                                bigTextFieldState.viewState
+                            )
+                        }
 
-                    BigTextLabel(
-                        text = bigTextValue,
-                        color = textColor,
-                        padding = PaddingValues(4.dp),
-                        inputFilter = inputFilter,
-                        textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
-                            MultipleIncrementalTransformation(listOf(
-                                collapseIncrementalTransformation,
-                            ))
-                        },
-                        textDecorator = //rememberLast(bigTextFieldState, syntaxHighlightDecorators, searchDecorators) {
-                            MultipleTextDecorator(syntaxHighlightDecorators + searchDecorators)
-                        //},
-                        ,
-                        fontSize = fonts.codeEditorBodyFontSize,
-                        fontFamily = fonts.monospaceFontFamily,
-                        isSoftWrapEnabled = true,
-                        isSelectable = true,
-                        scrollState = scrollState,
-                        viewState = bigTextFieldState.viewState,
-                        onPointerEvent = letIf(onPointerEvent != null || isShowCopyLiteralButton) {
-                            { event: PointerEvent, charIndex: Int, _ ->
-                                log.v { "CEV onPointerEvent $event" }
-                                mouseHoverCharIndex = charIndex
-                                onPointerEvent?.invoke(event, charIndex)
-                            }
-                        },
-                        onTextLayout = { layoutResult = it },
-                        onTransformInit = { transformedText = it },
-                        contextMenu = AppBigTextFieldContextMenu,
-                        modifier = Modifier.fillMaxSize()
-                            .focusRequester(textFieldFocusRequester)
-                            .run {
-                                if (testTag != null) {
-                                    testTag(testTag)
-                                } else {
-                                    this
+                        BigTextLabel(
+                            text = bigTextValue,
+                            color = textColor,
+                            padding = PaddingValues(4.dp),
+                            inputFilter = inputFilter,
+                            textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
+                                MultipleIncrementalTransformation(
+                                    listOf(
+                                        collapseIncrementalTransformation,
+                                    ) + variableTransformations
+                                )
+                            },
+                            textDecorator = //rememberLast(bigTextFieldState, syntaxHighlightDecorators, searchDecorators) {
+                                MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
+                            //},
+                            ,
+                            fontSize = fonts.codeEditorBodyFontSize,
+                            fontFamily = fonts.monospaceFontFamily,
+                            isSoftWrapEnabled = true,
+                            isSelectable = true,
+                            scrollState = scrollState,
+                            viewState = bigTextFieldState.viewState,
+                            onPointerEvent = { event, charIndex, tag ->
+                                log.v { "onPointerEventOnAnnotatedTag $tag $event" }
+                                if (isShowCopyLiteralButton) {
+                                    mouseHoverCharIndex = charIndex
                                 }
-                            }
-                    )
-//                    return@Row // compose bug: return here would crash
-                } else {
-                    LaunchedEffect(bigTextFieldState, onTextChange) { // FIXME the flow is frequently recreated
-                        log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
-                        withContext(Dispatchers.IO) {
-                            bigTextFieldState.valueChangesFlow
-                                .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
-                                .chunkedLatest(200.milliseconds())
-                                .collect {
-                                    log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
-                                    withContext(NonCancellable) { // continue to complete the current collect block even the flow is cancelled
-                                        onTextChange?.let { onTextChange ->
-                                            val string = it.bigText.buildCharSequence() as AnnotatedString
-                                            withContext(Dispatchers.Main) {
-                                                log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
-                                                onTextChange(string.text)
-                                                log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
-                                            }
-                                        }
-                                        bigTextValueId = it.changeId
-                                        searchTrigger.trySend(Unit)
 
-                                        bigTextFieldState.markConsumed(it.sequence)
+                                mouseHoverVariable =
+                                    if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
+                                        tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
+                                    } else {
+                                        null
+                                    }
+
+                                onPointerEvent?.invoke(event, charIndex)
+                            },
+                            onTextLayout = { layoutResult = it },
+                            onTransformInit = { transformedText = it },
+                            contextMenu = AppBigTextFieldContextMenu,
+                            modifier = Modifier.fillMaxSize()
+                                .focusRequester(textFieldFocusRequester)
+                                .run {
+                                    if (testTag != null) {
+                                        testTag(testTag)
+                                    } else {
+                                        this
                                     }
                                 }
-                        }
-                    }
+                        )
+//                    return@Row // compose bug: return here would crash
+                    } else {
+                        LaunchedEffect(bigTextFieldState, onTextChange) { // FIXME the flow is frequently recreated
+                            log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
+                            withContext(Dispatchers.IO) {
+                                bigTextFieldState.valueChangesFlow
+                                    .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
+                                    .chunkedLatest(200.milliseconds())
+                                    .collect {
+                                        log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
+                                        withContext(NonCancellable) { // continue to complete the current collect block even the flow is cancelled
+                                            onTextChange?.let { onTextChange ->
+                                                val string = it.bigText.buildCharSequence() as AnnotatedString
+                                                withContext(Dispatchers.Main) {
+                                                    log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                                    onTextChange(string.text)
+                                                    log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                                }
+                                            }
+                                            bigTextValueId = it.changeId
+                                            searchTrigger.trySend(Unit)
 
-                    var mouseHoverVariable by remember(bigTextFieldState) { mutableStateOf<String?>(null) }
-                    AppTooltipArea(
-                        isVisible = mouseHoverVariable != null && mouseHoverVariable in knownVariables,
-                        tooltipText = mouseHoverVariable?.let {
-                            val s = knownVariables[it] ?: return@let null
-                            if (s.length > ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) {
-                                s.substring(0, ENV_VAR_VALUE_MAX_DISPLAY_LENGTH) + " ..."
-                            } else {
-                                s
+                                            bigTextFieldState.markConsumed(it.sequence)
+                                        }
+                                    }
                             }
-                        } ?: "",
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
+                        }
                         BigTextField(
                             textFieldState = bigTextFieldState,
                             inputFilter = inputFilter,
@@ -651,7 +663,7 @@ fun CodeEditorView(
                                 )
                             },
                             textDecorator = //rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex, syntaxHighlightDecorator) {
-                            MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
+                                MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
                             //},
                             ,
                             color = textColor,
@@ -696,11 +708,12 @@ fun CodeEditorView(
                             },
                             onPointerEvent = { event, charIndex, tag ->
                                 log.v { "onPointerEventOnAnnotatedTag $tag $event" }
-                                mouseHoverVariable = if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
-                                    tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
-                                } else {
-                                    null
-                                }
+                                mouseHoverVariable =
+                                    if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
+                                        tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
+                                    } else {
+                                        null
+                                    }
                                 onPointerEvent?.invoke(event, charIndex)
                             },
                             modifier = Modifier.fillMaxSize()

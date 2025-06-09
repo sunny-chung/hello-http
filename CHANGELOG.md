@@ -18,6 +18,7 @@ _Changes since 1.7.3_
 - The "Copy All" button near the response body viewer has been relocated to the upper level, as it copies the whole Request and Response rather than only response body
 - The "Copy All" button under the response tab "Raw" has been renamed to "Copy"
 - The copying content of the above two copy functions now includes the request name and example name as the heading
+- Variables in request bodies inherited from the Base example are now resolved in the display
 
 ### Fixed
 - Crash when selecting the last tab of a HTTP request then switching to a gRPC or WS request
