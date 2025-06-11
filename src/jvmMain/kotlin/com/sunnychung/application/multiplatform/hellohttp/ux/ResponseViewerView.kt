@@ -407,7 +407,23 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateT
     } else {
         "${duration.toMilliseconds()} ms"
     }
-    DataLabel(modifier = modifier.testTag(TestTag.ResponseDuration.name), text = text)
+    AppTooltipArea(
+        tooltipText = "",
+        tooltipContent = {
+            val dateTimeFormat = KDateTimeFormat("yyyy-MM-dd HH:mm:ss.lll Z")
+            val timezone = KZoneOffset.local()
+            val tooltipText = buildString {
+                append("Start: ${dateTimeFormat.format(startAt.atZoneOffset(timezone))}")
+                val endAt = response.endAt
+                if (endAt != null) {
+                    append("\nEnd: ${dateTimeFormat.format(endAt.atZoneOffset(timezone))}")
+                }
+            }
+            AppText(tooltipText, modifier = Modifier.padding(horizontal = 4.dp))
+        }
+    ) {
+        DataLabel(modifier = modifier.testTag(TestTag.ResponseDuration.name), text = text)
+    }
 }
 
 @Composable

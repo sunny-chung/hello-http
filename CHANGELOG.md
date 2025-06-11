@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 _Changes since 1.7.3_
 
 ### Added
-- Cookie support (Default disabled. Enable in the Subproject Configuration Dialog)
+- [Cookie support](https://sunny-chung.github.io/hello-http/features/cookie) (Default disabled. Enable in the Subproject Configuration Dialog) (#1)
 - On pre-flight, update environment variables according to request headers, query parameters and bodies
 - A "Save Raw" button at the response viewer to save raw response body to a file
 - A floating copy button, next to a literal value under the mouse cursor and in the response body JSON, for copying the literal value
@@ -18,11 +18,12 @@ _Changes since 1.7.3_
 - The "Copy All" button near the response body viewer has been relocated to the upper level, as it copies the whole Request and Response rather than only response body
 - The "Copy All" button under the response tab "Raw" has been renamed to "Copy"
 - The copying content of the above two copy functions now includes the request name and example name as the heading
-- Variables in request bodies inherited from the Base example are now resolved in the display
+- Variables inherited from the Base example are now resolved in the Request Body Editor
+- Mouse hovering the Duration label in the Response Viewer now shows the flight start and end date time
 
 ### Fixed
 - Crash when selecting the last tab of a HTTP request then switching to a gRPC or WS request
-- Crash when firing a GraphQL with an invalid variable JSON
+- Crash when firing a GraphQL request with an invalid variable JSON
 
 ### Optimized
 - The app is minified. The app size is decreased by about 1/3.
