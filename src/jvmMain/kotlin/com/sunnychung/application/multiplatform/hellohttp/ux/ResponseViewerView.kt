@@ -410,7 +410,7 @@ fun DurationLabel(modifier: Modifier = Modifier, response: UserResponse, updateT
     AppTooltipArea(
         tooltipText = "",
         tooltipContent = {
-            val dateTimeFormat = KDateTimeFormat("yyyy-MM-dd HH:mm:ss.lll Z")
+            val dateTimeFormat = KDateTimeFormat("yyyy-MM-dd HH:mm:ss.lll (z)")
             val timezone = KZoneOffset.local()
             val tooltipText = buildString {
                 append("Start: ${dateTimeFormat.format(startAt.atZoneOffset(timezone))}")
