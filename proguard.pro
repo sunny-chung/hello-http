@@ -129,3 +129,8 @@
     <methods>;
 }
 ### Windows only -- End
+
+# fix: response was serialized as an empty object when there is an GraphQL error
+-keep class com.sunnychung.application.multiplatform.hellohttp.model.payload.GraphqlErrorPayload {
+    *;
+}
