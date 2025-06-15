@@ -38,6 +38,7 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.reactive.function.BodyInserter
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.WebClientRequestException
 import org.springframework.web.reactive.function.client.awaitBodyOrNull
 import org.springframework.web.reactive.function.client.awaitExchangeOrNull
 import reactor.core.publisher.Flux
@@ -46,6 +47,7 @@ import reactor.netty.http.client.HttpClientRequest
 import reactor.netty.http.client.HttpClientResponse
 import java.io.File
 import java.io.FileInputStream
+import java.nio.file.NoSuchFileException
 
 @Reflection private val DefaultClientResponseClass = Class.forName("org.springframework.web.reactive.function.client.DefaultClientResponse")
 @Reflection private val DefaultClientResponseFieldResponse = DefaultClientResponseClass.getDeclaredField("response").also { it.isAccessible = true }
@@ -249,7 +251,14 @@ class SpringWebClientTransportClient(networkClientManager: NetworkClientManager)
                     }
             } catch (e: Throwable) {
                 log.w(e) { "Encountered error during HTTP call via WebClient" }
-                out.errorMessage = e.message
+                val errorMessage = if (e is WebClientRequestException && e.cause is NoSuchFileException) {
+                    "File not found: ${e.cause?.message}"
+                } else if (e is NoSuchFileException) {
+                    "File not found: ${e.message}"
+                } else {
+                    e.message
+                }
+                out.errorMessage = errorMessage
                 out.isError = true
             } finally {
                 out.endAt = KInstant.now()

@@ -20,6 +20,7 @@ _Changes since 1.7.3_
 - The copying content of the above two copy functions now includes the request name and example name as the heading
 - Variables inherited from the Base example are now resolved in the Request Body Editor
 - Mouse hovering the Duration label in the Response Viewer now shows the flight start and end date time
+- The error message of file not found from the HTTP request has been improved
 
 ### Fixed
 - Crash when renaming a project
