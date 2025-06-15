@@ -136,6 +136,7 @@ fun ProjectAndEnvironmentViewV2(
             when (showDialogType) {
                 EditDialogType.Project -> selectedProject!!.id
                 EditDialogType.CreateSubproject -> selectedSubproject!!.id
+                EditDialogType.None -> return@MainWindowDialog
                 else -> throw UnsupportedOperationException()
             }
         }

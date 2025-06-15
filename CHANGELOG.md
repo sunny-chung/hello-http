@@ -22,6 +22,7 @@ _Changes since 1.7.3_
 - Mouse hovering the Duration label in the Response Viewer now shows the flight start and end date time
 
 ### Fixed
+- Crash when renaming a project
 - Crash when selecting the last tab of a HTTP request then switching to a gRPC or WS request
 - Crash when firing a GraphQL request with an invalid variable JSON
 
