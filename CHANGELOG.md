@@ -26,6 +26,7 @@ _Changes since 1.7.3_
 - Crash when renaming a project
 - Crash when selecting the last tab of a HTTP request then switching to a gRPC or WS request
 - Crash when firing a GraphQL request with an invalid variable JSON
+- gRPC API spec in the subproject dialog could not be shown
 
 ### Optimized
 - The app is minified. The app size is decreased by about 1/3.

@@ -320,6 +320,7 @@ private fun GrpcApiSpecEditor(
                             onProjectApiSpecUpdate()
                         },
                         placeholder = { AppText(text = "API Spec Name", color = colours.placeholder) },
+                        singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
                     AppDeleteButton(size = 24.dp) {
