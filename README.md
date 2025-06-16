@@ -38,7 +38,20 @@ applications for each OS.
 If you are concerned about security, you may grab the source code and build an executable on your own, or
 make a sponsorship if you admire Hello HTTP.
 
-To build an executable, grab the code, make sure there is a JDK 17+ and git installed, and run:
+### Build a release manually
+
+To build an executable, grab the code, make sure there is a JDK 17+ and git installed. Then, run below to build a release version:
+
+```shell
+./gradlew createReleaseDistributable packageReleaseDistributionForCurrentOS
+```
+
+The build will be available at `$projectDir/build/compose/binaries/main-release/app`.
+
+### Build a non-minified version manually
+
+If there is a problem with the minified version, build a non-release version by running:
+
 ```shell
 ./gradlew createDistributable packageDistributionForCurrentOS
 ```
@@ -67,7 +80,6 @@ express your desired priorities in the issue tracker.
 - Binary request editor
 - Overriding default headers
 - Checking for version updates
-- Establish release builds (minified and without debug logs and symbols)
 
 ## Development
 
