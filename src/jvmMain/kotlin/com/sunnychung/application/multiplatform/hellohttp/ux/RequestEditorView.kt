@@ -606,30 +606,52 @@ fun RequestEditorView(
         }
 
         fun List<UserKeyValuePair>.countActive() = count { it.isEnabled }
+        fun UserRequestTemplate.Scope.countActive(
+            propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?,
+            disabledIds: Set<String>?,
+            environmentPropertyGetter: (Environment) -> List<UserKeyValuePair> = { emptyList() },
+        ) = concatActiveValues(propertyGetter, disabledIds, environmentPropertyGetter).count()
 
-        val tabBadgeNum = { tab: RequestTab -> when (tab) {
-            RequestTab.Body -> when (val body = selectedExample.body) {
-                is FileBody -> isApplicable { it.overrides?.isOverrideBody } * body.filePath.countNotBlank()
-                is FormUrlEncodedBody -> body.value.countActive()
-                is MultipartBody -> body.value.countActive()
-                is GraphqlBody -> isApplicable { it.overrides?.isOverrideBodyContent } * body.document.countNotBlank() +
-                        isApplicable { it.overrides?.isOverrideBodyVariables } * body.variables.countNotBlank()
-                is StringBody -> isApplicable { it.overrides?.isOverrideBody } * body.value.countNotBlank()
-                null -> 0
+        fun UserRequestTemplate.Scope.countNotBlank(
+            propertyGetter: (UserRequestExample) -> String?,
+            isOverride: Boolean?
+        ): Int {
+            val example = if (isOverride == true) {
+                selectedExample
+            } else {
+                baseExample
             }
-            RequestTab.Query -> selectedExample.queryParameters.countActive()
-            RequestTab.Header -> selectedExample.headers.countActive()
-            RequestTab.PreFlight -> isApplicable { it.overrides?.isOverridePreFlightScript } *
-                selectedExample.preFlight.executeCode.countNotBlank() +
-                selectedExample.preFlight.updateVariablesFromHeader.countActive() +
-                selectedExample.preFlight.updateVariablesFromQueryParameters.countActive() +
-                selectedExample.preFlight.updateVariablesFromBody.countActive() +
-                selectedExample.preFlight.updateVariablesFromGraphqlVariables.countActive()
-            RequestTab.PostFlight -> selectedExample.postFlight.updateVariablesFromHeader.countActive() +
-                selectedExample.postFlight.updateVariablesFromBody.countActive()
-            RequestTab.Cookie -> if (subprojectConfig.isCookieEnabled()) applicableCookies.countActive() else 0
-            RequestTab.Variable -> selectedExample.variables.countActive()
-        } }
+            return propertyGetter(example).countNotBlank()
+        }
+
+        val scope = request.createScope(selectedExample.id, environment)
+
+        val tabBadgeNum = with(scope) {
+            val overrides = selectedExample.overrides
+            { tab: RequestTab -> when (tab) {
+                RequestTab.Body -> when (selectedExample.body) {
+                    is FileBody -> countNotBlank({ (it.body as? FileBody)?.filePath }, overrides?.isOverrideBody)
+                    is FormUrlEncodedBody -> countActive({ (it.body as? FormUrlEncodedBody)?.value }, overrides?.disabledBodyKeyValueIds)
+                    is MultipartBody -> countActive({ (it.body as? MultipartBody)?.value }, overrides?.disabledBodyKeyValueIds)
+                    is GraphqlBody -> countNotBlank({ (it.body as? GraphqlBody)?.document }, overrides?.isOverrideBodyContent) +
+                        countNotBlank({ (it.body as? GraphqlBody)?.variables }, overrides?.isOverrideBodyVariables)
+                    is StringBody -> countNotBlank({ (it.body as? StringBody)?.value }, overrides?.isOverrideBody)
+                    null -> 0
+                }
+                RequestTab.Query -> countActive({ it.queryParameters }, overrides?.disabledQueryParameterIds)
+                RequestTab.Header -> countActive({ it.headers }, overrides?.disabledHeaderIds)
+                RequestTab.PreFlight ->
+                    countNotBlank({ it.preFlight.executeCode }, overrides?.isOverridePreFlightScript) +
+                    countActive({ it.preFlight.updateVariablesFromHeader }, overrides?.disablePreFlightUpdateVarIds) +
+                    countActive({ it.preFlight.updateVariablesFromBody }, overrides?.disablePreFlightUpdateVarIds) +
+                    countActive({ it.preFlight.updateVariablesFromQueryParameters }, overrides?.disablePreFlightUpdateVarIds) +
+                    countActive({ it.preFlight.updateVariablesFromGraphqlVariables }, overrides?.disablePreFlightUpdateVarIds)
+                RequestTab.PostFlight -> countActive({ it.postFlight.updateVariablesFromHeader }, overrides?.disablePostFlightUpdateVarIds) +
+                    countActive({ it.postFlight.updateVariablesFromBody }, overrides?.disablePostFlightUpdateVarIds)
+                RequestTab.Cookie -> if (subprojectConfig.isCookieEnabled()) applicableCookies.countActive() else 0
+                RequestTab.Variable -> request.getAllVariables(selectedExampleId, environment).count()
+            } }
+        }
 
         TabsView(
             modifier = Modifier.fillMaxWidth().background(color = colors.backgroundLight).testTag(TestTag.RequestParameterTypeTabContainer.name),

@@ -179,11 +179,9 @@ data class UserRequestTemplate(
     data class Scope(val baseExample: UserRequestExample, val selectedExample: UserRequestExample, val variableResolver: VariableResolver) {
         fun String.resolveVariables(): String = variableResolver.resolve(this)
 
-        fun getMergedKeyValues(
+        fun concatActiveValues(
             propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?,
             disabledIds: Set<String>?,
-            isResolveKeyVariable: Boolean = true,
-            isUniqueKey: Boolean = false,
             environmentPropertyGetter: (Environment) -> List<UserKeyValuePair> = { emptyList() },
         ): List<UserKeyValuePair> {
             val envValues = (variableResolver.environment?.let { env -> environmentPropertyGetter(env) } ?: emptyList())
@@ -196,6 +194,20 @@ data class UserRequestTemplate(
                 .filter { it.isEnabled }
 
             return (envValues + baseValues + currentValues)
+        }
+
+        fun getMergedKeyValues(
+            propertyGetter: (UserRequestExample) -> List<UserKeyValuePair>?,
+            disabledIds: Set<String>?,
+            isResolveKeyVariable: Boolean = true,
+            isUniqueKey: Boolean = false,
+            environmentPropertyGetter: (Environment) -> List<UserKeyValuePair> = { emptyList() },
+        ): List<UserKeyValuePair> {
+            return concatActiveValues(
+                propertyGetter = propertyGetter,
+                environmentPropertyGetter = environmentPropertyGetter,
+                disabledIds = disabledIds
+            )
                 .map { it.copy(
                     key = it.key.let { if (isResolveKeyVariable) it.resolveVariables() else it },
                     value = it.value.resolveVariables(),
@@ -234,11 +246,15 @@ data class UserRequestTemplate(
         }
     }
 
-    fun <R> withScope(exampleId: String, environment: Environment?, resolveVariableMode: ResolveVariableMode = ExpandByEnvironment, action: Scope.() -> R): R {
+    fun createScope(exampleId: String, environment: Environment?, resolveVariableMode: ResolveVariableMode = ExpandByEnvironment): Scope {
         val baseExample = examples.first()
         val selectedExample = examples.first { it.id == exampleId }
 
-        return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode)).action()
+        return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode))
+    }
+
+    fun <R> withScope(exampleId: String, environment: Environment?, resolveVariableMode: ResolveVariableMode = ExpandByEnvironment, action: Scope.() -> R): R {
+        return createScope(exampleId, environment, resolveVariableMode).action()
     }
 
     fun getPreFlightVariables(exampleId: String, environment: Environment?) = withScope(exampleId, environment) {

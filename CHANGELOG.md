@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+The current behavior of badge numbers, in the Request Editor, that do not count inherited properties does not bring convenience in practical. This behavior is changed starting from this version.
+
+### Changed
+
+- The badge numbers of Body, Query, Header, Pre Flight, Post Flight tabs in the Request Editor now count inherited entries
+- The badge number of the Variable tab in the Request Editor now counts inherited and environment variables
 
 
 ## [1.8.0] -- 2025-06-16
