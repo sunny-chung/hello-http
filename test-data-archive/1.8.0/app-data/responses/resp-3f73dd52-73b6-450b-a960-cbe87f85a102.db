@@ -1,0 +1,777 @@
+hello-http;1;¿bid¿dtypeiResponseslsubprojectIdx$3f73dd52-73b6-450b-a960-cbe87f85a102ÿiresponses¿x$f59378f9-f52e-4a27-be98-55d52760b8e6¿bidx$f6c6f4a8-eeb5-4dd3-96f7-b97bd8c78b4firequestIdx$d540ba75-1d36-40af-9b9d-41cc7bee5635prequestExampleIdx$5f2c7e71-3c42-4a7a-9e7b-1d3e386da359hprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T13:56:15.699ZeendAtx2024-07-05T13:56:15.802ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesÛdbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/x-www-form-urlencoded"},{"name":"Content-Length","value":"11"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"q1","value":"v1"}],"formData":[{"name":"k1","value":"v1"},{"name":"k2","value":"v2"}],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc475ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:56:15.699ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.714ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.720ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.722ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.777ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxüEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'http/1.1'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.785ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPOST /rest/echo?q1=v1 HTTP/1.1
+my-Header: header
+User-Agent: Hello-HTTP/1.5.2
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+Host: testserver.net:18084
+Connection: keep-alive
+
+k1=v1&k2=v2ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.789ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 475
+
+{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/x-www-form-urlencoded"},{"name":"Content-Length","value":"11"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"q1","value":"v1"}],"formData":[{"name":"k1","value":"v1"},{"name":"k2","value":"v2"}],"multiparts":[],"body":null}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.802ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxExecuting Post Flight ActionshstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.802ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxPost Flight Actions CompletedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:56:15.804ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx,https://testserver.net:18084/rest/echo?q1=v1gheadersŸ¿efirstimy-Headerfsecondfheaderÿ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstlContent-Typefsecondx!application/x-www-form-urlencodedÿ¿efirstnContent-Lengthfsecondb11ÿ¿efirstdHostfsecondttestserver.net:18084ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸk1=v1&k2=v2ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$f4e0812f-9e2e-4574-9a7d-b83fc8a3a174¿bidx$27b43369-f862-49ec-8b86-f5c4b5f89fb0irequestIdx$d540ba75-1d36-40af-9b9d-41cc7bee5635prequestExampleIdx$3c3a40f3-7c18-4239-93ec-83aea57da2a2hprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T13:54:24.796ZeendAtx2024-07-05T13:54:24.891ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes•dbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/json"},{"name":"Content-Length","value":"22"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\n  \"body\": \"base\"  \n}"}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc405ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:54:24.796ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.812ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.813ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.828ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.875ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxüEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'http/1.1'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.875ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPOST /rest/echo HTTP/1.1
+my-Header: header
+User-Agent: Hello-HTTP/1.5.2
+Content-Type: application/json
+Content-Length: 22
+Host: testserver.net:18084
+Connection: keep-alive
+
+{
+  "body": "base"  
+}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.891ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 405
+
+{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/json"},{"name":"Content-Length","value":"22"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\n  \"body\": \"base\"  \n}"}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.891ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxExecuting Post Flight ActionshstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.903ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxPost Flight Actions CompletedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:54:24.920ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstimy-Headerfsecondfheaderÿ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondb22ÿ¿efirstdHostfsecondttestserver.net:18084ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸ{
+  "body": "base"  
+}ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$e063ba40-5b70-4bef-aa36-206bad0f1cda¿bidx$2d04a7ff-260f-404d-ad08-a20c13075360irequestIdx$f6c8c12d-d370-4f05-bdb5-5d0e4df452c3prequestExampleIdx$b21098b6-9d53-4df5-bc0d-f75289c9cd09hprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T14:40:02.620ZeendAtx2024-07-05T14:40:02.681ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes…dbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"multipart/form-data; charset=ISO-8859-1; boundary=QwU5v5mtfOpkFzwORg4HczR1b_GeTlA9OQlepZIC"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":4,"data":"val1"},{"name":"fil2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"fil2\"; filename=\"%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2,"data":"hi"}],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc901ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:40:02.620ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.620ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.622ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.622ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.653ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxöEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'h2'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.660ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPRI * HTTP/2.0
+
+SM
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.667ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.667ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.669ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.671ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.671ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 124
+[INDEXED        (3)] :method: POST
+[INDEXED        (7)] :scheme: https
+[NAME INDEXED   (1)] :authority: testserver.net:18084
+[NAME INDEXED   (4)] :path: /rest/echo
+[+ NEW INDEX       ] auth: abcDEF
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+[NAME INDEXED  (31)] content-type: multipart/form-data; charset=ISO-8859-1; boundary=QwU5v5mtfOpkFzwORg4HczR1b_GeTlA9OQlepZIC
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.671ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: (0x0); length: 372
+--QwU5v5mtfOpkFzwORg4HczR1b_GeTlA9OQlepZIC
+Content-Disposition: form-data; name="key1"
+Content-Type: text/plain; charset=UTF-8
+
+val1
+--QwU5v5mtfOpkFzwORg4HczR1b_GeTlA9OQlepZIC
+Content-Disposition: form-data; name="fil2"; filename="%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt"
+Content-Type: application/octet-stream
+
+hi
+--QwU5v5mtfOpkFzwORg4HczR1b_GeTlA9OQlepZIC--
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.671ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.681ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.681ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 901
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.681ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 901
+{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"multipart/form-data; charset=ISO-8859-1; boundary=QwU5v5mtfOpkFzwORg4HczR1b_GeTlA9OQlepZIC"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":4,"data":"val1"},{"name":"fil2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"fil2\"; filename=\"%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2,"data":"hi"}],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:02.692ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:03.696ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 53
+Last stream 0
+Code NO_ERROR
+Timeout due to inactivity (1000 MILLISECONDS)
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:03.701ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstg:methodfseconddPOSTÿ¿efirstg:schemefsecondehttpsÿ¿efirstj:authorityfsecondttestserver.net:18084ÿ¿efirste:pathfsecondj/rest/echoÿ¿efirstdauthfsecondfabcDEFÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿ¿efirstlcontent-typefsecondxZmultipart/form-data; charset=ISO-8859-1; boundary=QwU5v5mtfOpkFzwORg4HczR1b_GeTlA9OQlepZICÿÿdbodyŸ--n9Nwg2d7KdvF35zJcFvc_crbzn9jWZ7XiGaggTT
+Content-Disposition: form-data; name="key1"
+Content-Type: text/plain; charset=UTF-8
+
+val1
+--n9Nwg2d7KdvF35zJcFvc_crbzn9jWZ7XiGaggTT
+Content-Disposition: form-data; name="fil2"; filename="%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt"
+Content-Type: application/octet-stream
+
+hi
+--n9Nwg2d7KdvF35zJcFvc_crbzn9jWZ7XiGaggTT--
+ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$dbfee19c-46a6-4fbf-bbcb-5cb0cf688c96¿bidx$45e4618f-e0f2-49f8-91be-7a0cca3d4be7irequestIdx$f9f77106-55eb-4ba5-83f6-251a5bd3074dprequestExampleIdx$cfcbea8a-c9c0-457c-bb56-1e752dff1e55hprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T13:45:51.383ZeendAtx2024-07-05T13:45:51.556ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesÇdbodyŸ{"path":"/rest/echo","method":"GET","headers":[{"name":"x-http2-scheme","value":"http"},{"name":"host","value":"testserver.net:18081"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"key_example1","value":"this+value+1"},{"name":"key_new2","value":"value 2"}],"formData":[],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc455ÿÿrconnectionSecurity¿hsecuritykUnencryptedxclientCertificatePrincipalöxpeerCertificatePrincipalöÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:45:51.383ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.398ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.415ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18081hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.415ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18081 with HTTP/2.0hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.439ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.439ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.470ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.470ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.478ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.493ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_STREAM END_HEADERS (0x5); length: 107
+[INDEXED        (2)] :method: GET
+[INDEXED        (6)] :scheme: http
+[NAME INDEXED   (1)] :authority: testserver.net:18081
+[NAME INDEXED   (4)] :path: /rest/echo?key_inherited1=v1&key_inherited2=value2&key_example1=this%2Bvalue%2B1&key_new2=value%202
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.540ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 455
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.540ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 455
+{"path":"/rest/echo","method":"GET","headers":[{"name":"x-http2-scheme","value":"http"},{"name":"host","value":"testserver.net:18081"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"key_example1","value":"this+value+1"},{"name":"key_new2","value":"value 2"}],"formData":[],"multiparts":[],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.557ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:45:51.557ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethodcGETcurlx~http://testserver.net:18081/rest/echo?key_inherited1=v1&key_inherited2=value2&key_example1=this%2Bvalue%2B1&key_new2=value%202gheadersŸ¿efirstg:methodfsecondcGETÿ¿efirstg:schemefseconddhttpÿ¿efirstj:authorityfsecondttestserver.net:18081ÿ¿efirste:pathfsecondxc/rest/echo?key_inherited1=v1&key_inherited2=value2&key_example1=this%2Bvalue%2B1&key_new2=value%202ÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿÿdbodyŸÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$ffefa90d-09cf-4f41-a106-57e270509f74¿bidx$2a4f6023-60bf-41ee-87ad-9acef8c63939irequestIdx$d540ba75-1d36-40af-9b9d-41cc7bee5635prequestExampleIdx$97f21da3-2e3f-482b-b094-b5cd87e7d5e5hprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T13:53:46.692ZeendAtx2024-07-05T13:53:46.783ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes•dbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/json"},{"name":"Content-Length","value":"22"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\n  \"body\": \"base\"  \n}"}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc405ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:53:46.692ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.708ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.708ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.708ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.755ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxüEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'http/1.1'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.767ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPOST /rest/echo HTTP/1.1
+my-Header: header
+User-Agent: Hello-HTTP/1.5.2
+Content-Type: application/json
+Content-Length: 22
+Host: testserver.net:18084
+Connection: keep-alive
+
+{
+  "body": "base"  
+}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.773ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 405
+
+{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/json"},{"name":"Content-Length","value":"22"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\n  \"body\": \"base\"  \n}"}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.783ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxExecuting Post Flight ActionshstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.799ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxpPost Flight Actions Stopped with Error -- Variable 'len': Collection contains no element matching the predicate.hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:53:46.799ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstimy-Headerfsecondfheaderÿ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondb22ÿ¿efirstdHostfsecondttestserver.net:18084ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸ{
+  "body": "base"  
+}ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$fd8527e3-3177-494a-9afa-3fb964e24e63¿bidx$1f550dfe-e90c-4c23-a3d4-4af9d74c5980irequestIdx$d540ba75-1d36-40af-9b9d-41cc7bee5635prequestExampleIdx$9d45607e-9776-4329-81ce-409a356123eehprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T14:04:45.016ZeendAtx2024-07-05T14:04:45.097ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInByteshdbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Transfer-Encoding","value":"chunked"},{"name":"Content-Type","value":"multipart/form-data; charset=ISO-8859-1; boundary=WuMJB2OR9E73Ve7wFvEUGi3_qcXTTY5FMuPsyI21"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"text2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"text2\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":6,"data":"value2"},{"name":"file1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"file1\"; filename=\"%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2,"data":"hi"}],"body":null}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc872ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:04:45.016ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.032ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.034ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.034ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.065ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxüEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'http/1.1'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.078ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPOST /rest/echo HTTP/1.1
+my-Header: header
+User-Agent: Hello-HTTP/1.5.2
+Transfer-Encoding: chunked
+Content-Type: multipart/form-data; charset=ISO-8859-1; boundary=WuMJB2OR9E73Ve7wFvEUGi3_qcXTTY5FMuPsyI21
+Host: testserver.net:18084
+Connection: keep-alive
+
+178
+--WuMJB2OR9E73Ve7wFvEUGi3_qcXTTY5FMuPsyI21
+Content-Disposition: form-data; name="file1"; filename="%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt"
+Content-Type: application/octet-stream
+
+hi
+--WuMJB2OR9E73Ve7wFvEUGi3_qcXTTY5FMuPsyI21
+Content-Disposition: form-data; name="text2"
+Content-Type: text/plain; charset=UTF-8
+
+value2
+--WuMJB2OR9E73Ve7wFvEUGi3_qcXTTY5FMuPsyI21--
+
+0
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.085ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 872
+
+{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Transfer-Encoding","value":"chunked"},{"name":"Content-Type","value":"multipart/form-data; charset=ISO-8859-1; boundary=WuMJB2OR9E73Ve7wFvEUGi3_qcXTTY5FMuPsyI21"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"text2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"text2\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":6,"data":"value2"},{"name":"file1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"file1\"; filename=\"%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2,"data":"hi"}],"body":null}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.097ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxExecuting Post Flight ActionshstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.097ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxPost Flight Actions CompletedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:04:45.105ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstimy-Headerfsecondfheaderÿ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstqTransfer-Encodingfsecondgchunkedÿ¿efirstlContent-TypefsecondxZmultipart/form-data; charset=ISO-8859-1; boundary=WuMJB2OR9E73Ve7wFvEUGi3_qcXTTY5FMuPsyI21ÿ¿efirstdHostfsecondttestserver.net:18084ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸ--82kxQyhCMw_N3uuRsBG2_bXLSJYV_By
+Content-Disposition: form-data; name="file1"; filename="%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt"
+Content-Type: application/octet-stream
+
+hi
+--82kxQyhCMw_N3uuRsBG2_bXLSJYV_By
+Content-Disposition: form-data; name="text2"
+Content-Type: text/plain; charset=UTF-8
+
+value2
+--82kxQyhCMw_N3uuRsBG2_bXLSJYV_By--
+ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$00ff00d4-7508-4c45-a4bd-75cf5207179b¿bidx$a530d9e1-eeea-4e3e-af3e-75c166262138irequestIdx$f6c8c12d-d370-4f05-bdb5-5d0e4df452c3prequestExampleIdx$f9343b8e-e7c0-4d54-abf6-b9d3f01eba9ahprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T14:40:16.938ZeendAtx2024-07-05T14:40:17.013ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesÓdbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"application/x-www-form-urlencoded"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[{"name":"abc","value":"def"}],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc467ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:40:16.938ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.938ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.940ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.940ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.971ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxöEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'h2'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.987ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPRI * HTTP/2.0
+
+SM
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.992ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.992ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.996ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.997ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.998ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 79
+[INDEXED        (3)] :method: POST
+[INDEXED        (7)] :scheme: https
+[NAME INDEXED   (1)] :authority: testserver.net:18084
+[NAME INDEXED   (4)] :path: /rest/echo
+[+ NEW INDEX       ] auth: abcDEF
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+[NAME INDEXED  (31)] content-type: application/x-www-form-urlencoded
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.999ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: (0x0); length: 7
+abc=def
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:16.999ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:17.005ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:17.005ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 467
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:17.005ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 467
+{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"application/x-www-form-urlencoded"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[{"name":"abc","value":"def"}],"multiparts":[],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:17.013ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:19.014ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 53
+Last stream 0
+Code NO_ERROR
+Timeout due to inactivity (1000 MILLISECONDS)
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:19.018ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstg:methodfseconddPOSTÿ¿efirstg:schemefsecondehttpsÿ¿efirstj:authorityfsecondttestserver.net:18084ÿ¿efirste:pathfsecondj/rest/echoÿ¿efirstdauthfsecondfabcDEFÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿ¿efirstlcontent-typefsecondx!application/x-www-form-urlencodedÿÿdbodyŸabc=defÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$dfe74b91-d52b-47bb-bc2f-d0a32118be65¿bidx$3caa4d36-7b95-46d3-8a9a-67770711f235irequestIdx$d540ba75-1d36-40af-9b9d-41cc7bee5635prequestExampleIdx$98bf662e-0a7b-46ec-a90e-a1a2a0379f37hprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T13:55:06.732ZeendAtx2024-07-05T13:55:06.830ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes˜dbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/json"},{"name":"Content-Length","value":"25"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\n  \"different\": \"body\"\n}"}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc408ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:55:06.732ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.748ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.764ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.764ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.811ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxüEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'http/1.1'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.817ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPOST /rest/echo HTTP/1.1
+my-Header: header
+User-Agent: Hello-HTTP/1.5.2
+Content-Type: application/json
+Content-Length: 25
+Host: testserver.net:18084
+Connection: keep-alive
+
+{
+  "different": "body"
+}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.822ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 408
+
+{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Content-Type","value":"application/json"},{"name":"Content-Length","value":"25"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\n  \"different\": \"body\"\n}"}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.830ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxExecuting Post Flight ActionshstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.831ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxPost Flight Actions CompletedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:55:06.833ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstimy-Headerfsecondfheaderÿ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondb25ÿ¿efirstdHostfsecondttestserver.net:18084ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸ{
+  "different": "body"
+}ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$a88ff03e-183f-46c3-b027-917f98eb1ba3¿bidx$a7a5a6d0-8360-4eb6-8d68-e6d88c34b439irequestIdx$0a89a34b-9063-401e-94a7-100307d97214prequestExampleIdx$738d44d1-b0a3-4736-a751-ce67c1ca7c26hprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T13:40:59.480ZeendAtx2024-07-05T13:40:59.537ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesAdbodyŸ{"path":"/rest/echo","method":"GET","headers":[{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Host","value":"testserver.net:18081"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"key1","value":"value1"},{"name":"key2","value":"test value 2"}],"formData":[],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc321ÿÿrconnectionSecurity¿hsecuritykUnencryptedxclientCertificatePrincipalöxpeerCertificatePrincipalöÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:40:59.480ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:40:59.480ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:40:59.495ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18081hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:40:59.495ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18081 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:40:59.495ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸGET /rest/echo?key1=value1&key2=test%20value%202 HTTP/1.1
+User-Agent: Hello-HTTP/1.5.2
+Host: testserver.net:18081
+Connection: keep-alive
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:40:59.527ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 321
+
+{"path":"/rest/echo","method":"GET","headers":[{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Host","value":"testserver.net:18081"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"key1","value":"value1"},{"name":"key2","value":"test value 2"}],"formData":[],"multiparts":[],"body":null}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:40:59.538ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethodcGETcurlxGhttp://testserver.net:18081/rest/echo?key1=value1&key2=test%20value%202gheadersŸ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstdHostfsecondttestserver.net:18081ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$b2d48cae-6a9b-4d2a-ac61-f7148fc031c3¿bidx$ced597f4-e676-4f21-97bd-d86f0542869cirequestIdx$f9f77106-55eb-4ba5-83f6-251a5bd3074dprequestExampleIdx$ea506033-4569-42da-9fff-4ba463930c27hprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T13:46:00.629ZeendAtx2024-07-05T13:46:00.665ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes¸dbodyŸ{"path":"/rest/echo","method":"GET","headers":[{"name":"x-http2-scheme","value":"http"},{"name":"host","value":"testserver.net:18081"},{"name":"custom-header","value":"H1"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"ex3","value":"value3"}],"formData":[],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc440ÿÿrconnectionSecurity¿hsecuritykUnencryptedxclientCertificatePrincipalöxpeerCertificatePrincipalöÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:46:00.629ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.629ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.629ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18081hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.634ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18081 with HTTP/2.0hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.641ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.646ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.646ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.646ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.649ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_STREAM END_HEADERS (0x5); length: 94
+[INDEXED        (2)] :method: GET
+[INDEXED        (6)] :scheme: http
+[NAME INDEXED   (1)] :authority: testserver.net:18081
+[NAME INDEXED   (4)] :path: /rest/echo?key_inherited1=v1&key_inherited2=value2&ex3=value3
+[+ NEW INDEX       ] custom-header: H1
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.649ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.649ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 440
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.664ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 440
+{"path":"/rest/echo","method":"GET","headers":[{"name":"x-http2-scheme","value":"http"},{"name":"host","value":"testserver.net:18081"},{"name":"custom-header","value":"H1"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"ex3","value":"value3"}],"formData":[],"multiparts":[],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.666ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:00.666ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethodcGETcurlxXhttp://testserver.net:18081/rest/echo?key_inherited1=v1&key_inherited2=value2&ex3=value3gheadersŸ¿efirstg:methodfsecondcGETÿ¿efirstg:schemefseconddhttpÿ¿efirstj:authorityfsecondttestserver.net:18081ÿ¿efirste:pathfsecondx=/rest/echo?key_inherited1=v1&key_inherited2=value2&ex3=value3ÿ¿efirstmcustom-headerfsecondbH1ÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿÿdbodyŸÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$e495de98-d571-4361-879a-f70ad4de9df3¿bidx$27100c77-2e39-40ca-bd58-749f9aeeb36eirequestIdx$f6c8c12d-d370-4f05-bdb5-5d0e4df452c3prequestExampleIdx$bb486c87-37f6-4bc0-9992-46e41d6e36cehprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T14:40:21.429ZeendAtx2024-07-05T14:40:21.503ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesµdbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"application/json"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\"abc\": \"de\"}"}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc437ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:40:21.429ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.430ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.430ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.431ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.469ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxöEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'h2'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.469ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPRI * HTTP/2.0
+
+SM
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.482ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.482ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.482ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.482ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.487ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 66
+[INDEXED        (3)] :method: POST
+[INDEXED        (7)] :scheme: https
+[NAME INDEXED   (1)] :authority: testserver.net:18084
+[NAME INDEXED   (4)] :path: /rest/echo
+[+ NEW INDEX       ] auth: abcDEF
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+[NAME INDEXED  (31)] content-type: application/json
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.487ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: (0x0); length: 13
+{"abc": "de"}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.487ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.487ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.502ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 437
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.503ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 437
+{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"application/json"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[],"body":"{\"abc\": \"de\"}"}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:21.503ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:23.504ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 53
+Last stream 0
+Code NO_ERROR
+Timeout due to inactivity (1000 MILLISECONDS)
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:23.511ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstg:methodfseconddPOSTÿ¿efirstg:schemefsecondehttpsÿ¿efirstj:authorityfsecondttestserver.net:18084ÿ¿efirste:pathfsecondj/rest/echoÿ¿efirstdauthfsecondfabcDEFÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿ¿efirstlcontent-typefsecondpapplication/jsonÿÿdbodyŸ{"abc": "de"}ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$6ad8306d-a763-469f-940a-a9b79ac3b35f¿bidx$1c412ab7-869a-4a62-913e-5d5f42a29ed0irequestIdx$3e74a33d-1e21-4e96-8c18-a2e000c79df9prequestExampleIdx$9914812e-b819-48f2-bc6e-df62f1c9102fhprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T13:47:53.077ZeendAtx2024-07-05T13:47:53.132ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesÇdbodyŸ{"path":"/rest/echo","method":"GET","headers":[{"name":"header","value":"valuevalue"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Host","value":"testserver.net:18081"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"key_example1","value":"this+value+1"},{"name":"key_new2","value":"value 2"}],"formData":[],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc455ÿÿrconnectionSecurity¿hsecuritykUnencryptedxclientCertificatePrincipalöxpeerCertificatePrincipalöÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:47:53.077ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.093ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.108ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18081hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.109ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18081 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.109ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸGET /rest/echo?key_inherited1=v1&key_inherited2=value2&key_example1=this%2Bvalue%2B1&key_new2=value%202 HTTP/1.1
+header: valuevalue
+User-Agent: Hello-HTTP/1.5.2
+Host: testserver.net:18081
+Connection: keep-alive
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.119ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 455
+
+{"path":"/rest/echo","method":"GET","headers":[{"name":"header","value":"valuevalue"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Host","value":"testserver.net:18081"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"key_example1","value":"this+value+1"},{"name":"key_new2","value":"value 2"}],"formData":[],"multiparts":[],"body":null}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.132ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxExecuting Post Flight ActionshstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.179ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxPost Flight Actions CompletedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:47:53.196ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethodcGETcurlx~http://testserver.net:18081/rest/echo?key_inherited1=v1&key_inherited2=value2&key_example1=this%2Bvalue%2B1&key_new2=value%202gheadersŸ¿efirstfheaderfsecondjvaluevalueÿ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstdHostfsecondttestserver.net:18081ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$4cbbc38f-594d-4d03-b4b6-bef3b3b581c9¿bidx$5fc22bd1-87dc-4e1e-b1aa-398a322dfb77irequestIdx$fdc07f04-139e-46f8-9a95-31bc196929c7prequestExampleIdx$2f79aa48-1bef-49df-bb59-9d39bbf8daeahprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T14:41:58.490ZeendAtx2024-07-05T14:41:58.632ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes"dbodyŸ{"path":"/rest/echo","method":"CUS","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[],"formData":[],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc290ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:41:58.490ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.492ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.493ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.509ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.553ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxöEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'h2'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.562ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPRI * HTTP/2.0
+
+SM
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.563ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.563ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.579ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.579ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.590ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.590ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_STREAM END_HEADERS (0x5); length: 46
+[NAME INDEXED   (2)] :method: CUS
+[INDEXED        (7)] :scheme: https
+[NAME INDEXED   (1)] :authority: testserver.net:18084
+[NAME INDEXED   (4)] :path: /rest/echo
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.621ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 290
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.632ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 290
+{"path":"/rest/echo","method":"CUS","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[],"formData":[],"multiparts":[],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:58.633ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:59.637ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 53
+Last stream 0
+Code NO_ERROR
+Timeout due to inactivity (1000 MILLISECONDS)
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:41:59.638ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethodcCUScurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstg:methodfsecondcCUSÿ¿efirstg:schemefsecondehttpsÿ¿efirstj:authorityfsecondttestserver.net:18084ÿ¿efirste:pathfsecondj/rest/echoÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿÿdbodyŸÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$cfc5e985-3968-48be-9278-5237560d0577¿bidx$1dce311c-34b9-491a-9aec-a4799a512372irequestIdx$d540ba75-1d36-40af-9b9d-41cc7bee5635prequestExampleIdx$187a5f66-1ac9-4b7d-b380-134e225054e4hprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T14:01:29.206ZeendAtx2024-07-05T14:01:29.288ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesþdbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Transfer-Encoding","value":"chunked"},{"name":"Content-Type","value":"multipart/form-data; charset=ISO-8859-1; boundary=PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusb"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key3","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key3\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":15,"data":"enabled value 3"},{"name":"unicode","headers":[{"name":"Content-Disposition","value":"form-data; name=\"unicode\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":12,"data":"88G8R88i8x88R8h88z8|"},{"name":"form1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"form1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":6,"data":"value1"}],"body":null}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondd1022ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:01:29.206ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.207ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.207ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.209ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.262ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxüEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'http/1.1'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.266ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPOST /rest/echo HTTP/1.1
+my-Header: header
+User-Agent: Hello-HTTP/1.5.2
+Transfer-Encoding: chunked
+Content-Type: multipart/form-data; charset=ISO-8859-1; boundary=PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusb
+Host: testserver.net:18084
+Connection: keep-alive
+
+1e5
+--PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusb
+Content-Disposition: form-data; name="form1"
+Content-Type: text/plain; charset=UTF-8
+
+value1
+--PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusb
+Content-Disposition: form-data; name="key3"
+Content-Type: text/plain; charset=UTF-8
+
+enabled value 3
+--PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusb
+Content-Disposition: form-data; name="unicode"
+Content-Type: text/plain; charset=UTF-8
+
+88G8R88i8x88R8h88z8|
+--PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusb--
+
+0
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.273ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 1022
+
+{"path":"/rest/echo","method":"POST","headers":[{"name":"my-Header","value":"header"},{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Transfer-Encoding","value":"chunked"},{"name":"Content-Type","value":"multipart/form-data; charset=ISO-8859-1; boundary=PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusb"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key3","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key3\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":15,"data":"enabled value 3"},{"name":"unicode","headers":[{"name":"Content-Disposition","value":"form-data; name=\"unicode\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":12,"data":"88G8R88i8x88R8h88z8|"},{"name":"form1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"form1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":6,"data":"value1"}],"body":null}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.288ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxExecuting Post Flight ActionshstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.289ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxPost Flight Actions CompletedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:01:29.292ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstimy-Headerfsecondfheaderÿ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstqTransfer-Encodingfsecondgchunkedÿ¿efirstlContent-TypefsecondxZmultipart/form-data; charset=ISO-8859-1; boundary=PyLss9z6aMWcSDTTGvzhxtrEwtdMGb-dhhG6Kusbÿ¿efirstdHostfsecondttestserver.net:18084ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸ--ZHuFi0A4ONLMlJ6ngQjmkErNuNumIuQ3akG
+Content-Disposition: form-data; name="form1"
+Content-Type: text/plain; charset=UTF-8
+
+value1
+--ZHuFi0A4ONLMlJ6ngQjmkErNuNumIuQ3akG
+Content-Disposition: form-data; name="key3"
+Content-Type: text/plain; charset=UTF-8
+
+enabled value 3
+--ZHuFi0A4ONLMlJ6ngQjmkErNuNumIuQ3akG
+Content-Disposition: form-data; name="unicode"
+Content-Type: text/plain; charset=UTF-8
+
+88G8R88i8x88R8h88z8|
+--ZHuFi0A4ONLMlJ6ngQjmkErNuNumIuQ3akG--
+ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$63a74fa5-001c-4edf-a17f-a7648fb9c61d¿bidx$b5f931c3-c8bd-4d6f-a9eb-c137ddb06fc7irequestIdx$f6c8c12d-d370-4f05-bdb5-5d0e4df452c3prequestExampleIdx$f949df77-63fa-4638-b038-32c07e3f985bhprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T14:39:54.635ZeendAtx2024-07-05T14:39:54.801ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes~dbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"multipart/form-data; charset=ISO-8859-1; boundary=-UNs2m24jndoMnxDGXi_0MtkLBKFBFQIV"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":4,"data":"val1"},{"name":"fil2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"fil2\"; filename=\"%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2,"data":"hi"}],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc894ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:39:54.635ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.636ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.638ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.638ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.694ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxöEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'h2'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.702ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPRI * HTTP/2.0
+
+SM
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.708ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.709ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.756ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.767ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.767ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 118
+[INDEXED        (3)] :method: POST
+[INDEXED        (7)] :scheme: https
+[NAME INDEXED   (1)] :authority: testserver.net:18084
+[NAME INDEXED   (4)] :path: /rest/echo
+[+ NEW INDEX       ] auth: abcDEF
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+[NAME INDEXED  (31)] content-type: multipart/form-data; charset=ISO-8859-1; boundary=-UNs2m24jndoMnxDGXi_0MtkLBKFBFQIV
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.767ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.770ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: (0x0); length: 351
+---UNs2m24jndoMnxDGXi_0MtkLBKFBFQIV
+Content-Disposition: form-data; name="key1"
+Content-Type: text/plain; charset=UTF-8
+
+val1
+---UNs2m24jndoMnxDGXi_0MtkLBKFBFQIV
+Content-Disposition: form-data; name="fil2"; filename="%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt"
+Content-Type: application/octet-stream
+
+hi
+---UNs2m24jndoMnxDGXi_0MtkLBKFBFQIV--
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.770ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.785ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 894
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.801ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 894
+{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"multipart/form-data; charset=ISO-8859-1; boundary=-UNs2m24jndoMnxDGXi_0MtkLBKFBFQIV"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":4,"data":"val1"},{"name":"fil2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"fil2\"; filename=\"%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2,"data":"hi"}],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:54.802ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:56.815ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 53
+Last stream 0
+Code NO_ERROR
+Timeout due to inactivity (1000 MILLISECONDS)
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:39:56.820ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstg:methodfseconddPOSTÿ¿efirstg:schemefsecondehttpsÿ¿efirstj:authorityfsecondttestserver.net:18084ÿ¿efirste:pathfsecondj/rest/echoÿ¿efirstdauthfsecondfabcDEFÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿ¿efirstlcontent-typefsecondxSmultipart/form-data; charset=ISO-8859-1; boundary=-UNs2m24jndoMnxDGXi_0MtkLBKFBFQIVÿÿdbodyŸ--kv-w6Y7PE0CtEKItISEvHhVOIq9OweQR19wy7st
+Content-Disposition: form-data; name="key1"
+Content-Type: text/plain; charset=UTF-8
+
+val1
+--kv-w6Y7PE0CtEKItISEvHhVOIq9OweQR19wy7st
+Content-Disposition: form-data; name="fil2"; filename="%E4%B8%AD%E6%96%87%E6%AA%94%E5%90%8D.txt"
+Content-Type: application/octet-stream
+
+hi
+--kv-w6Y7PE0CtEKItISEvHhVOIq9OweQR19wy7st--
+ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$5ce5d3ad-bb61-4b29-b401-c0671084df11¿bidx$9f641264-9ae7-466c-982c-9088bffb232eirequestIdx$3e74a33d-1e21-4e96-8c18-a2e000c79df9prequestExampleIdx$bbfb5d8d-6881-4a1a-906d-469b8feec3f6hprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T13:46:24.493ZeendAtx2024-07-05T13:46:24.541ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytes¸dbodyŸ{"path":"/rest/echo","method":"GET","headers":[{"name":"x-http2-scheme","value":"http"},{"name":"host","value":"testserver.net:18081"},{"name":"custom-header","value":"H1"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"ex3","value":"value3"}],"formData":[],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondc440ÿÿrconnectionSecurity¿hsecuritykUnencryptedxclientCertificatePrincipalöxpeerCertificatePrincipalöÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:46:24.493ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.493ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.493ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18081hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.509ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18081 with HTTP/2.0hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.514ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.514ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.514ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.514ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.524ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.524ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_STREAM END_HEADERS (0x5); length: 94
+[INDEXED        (2)] :method: GET
+[INDEXED        (6)] :scheme: http
+[NAME INDEXED   (1)] :authority: testserver.net:18081
+[NAME INDEXED   (4)] :path: /rest/echo?key_inherited1=v1&key_inherited2=value2&ex3=value3
+[+ NEW INDEX       ] custom-header: H1
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.524ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 27
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 440
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.540ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 440
+{"path":"/rest/echo","method":"GET","headers":[{"name":"x-http2-scheme","value":"http"},{"name":"host","value":"testserver.net:18081"},{"name":"custom-header","value":"H1"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"x-http2-stream-id","value":"1"}],"queryParameters":[{"name":"key_inherited1","value":"v1"},{"name":"key_inherited2","value":"value2"},{"name":"ex3","value":"value3"}],"formData":[],"multiparts":[],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.541ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:46:24.541ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethodcGETcurlxXhttp://testserver.net:18081/rest/echo?key_inherited1=v1&key_inherited2=value2&ex3=value3gheadersŸ¿efirstg:methodfsecondcGETÿ¿efirstg:schemefseconddhttpÿ¿efirstj:authorityfsecondttestserver.net:18081ÿ¿efirste:pathfsecondx=/rest/echo?key_inherited1=v1&key_inherited2=value2&ex3=value3ÿ¿efirstmcustom-headerfsecondbH1ÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿÿdbodyŸÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$1ed48f9b-37df-4a29-ba96-d33129c659db¿bidx$34848051-3f6f-48c0-8d2a-30eac69d0c27irequestIdx$f6c8c12d-d370-4f05-bdb5-5d0e4df452c3prequestExampleIdx$86e54e82-2056-4b79-ae36-2d01ea100a47hprotocol¿hprotocoldHttpkversionNamec2.0emajoreminor ÿkapplicationdHttpgstartAtx2024-07-05T14:40:13.783ZeendAtx2024-07-05T14:40:13.888ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytestdbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"multipart/form-data; charset=ISO-8859-1; boundary=TwWQpxKNdcoDR96Kc6g9pCB7h7ylXukCQ2"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":4,"data":"val1"},{"name":"file2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"file2\"; filename=\"serverCACert.pem\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2025,"data":"-----BEGIN CERTIFICATE-----\nMIIFqzCCA5OgAwIBAgIJANSxzx8xm+F9MA0GCSqGSIb3DQEBCwUAMIGAMQswCQYD\nVQQGEwJYWDESMBAGA1UECAwJU3RhdGVOYW1lMREwDwYDVQQHDAhDaXR5TmFtZTEU\nMBIGA1UECgwLQ29tcGFueU5hbWUxGzAZBgNVBAsMEkNvbXBhbnlTZWN0aW9uTmFt\nZTEXMBUGA1UEAwwOVGVzdCBTZXJ2ZXIgQ0EwHhcNMjQwNTI2MDQyOTI0WhcNMzQw\nNTI0MDQyOTI0WjCBgDELMAkGA1UEBhMCWFgxEjAQBgNVBAgMCVN0YXRlTmFtZTER\nMA8GA1UEBwwIQ2l0eU5hbWUxFDASBgNVBAoMC0NvbXBhbnlOYW1lMRswGQYDVQQL\nDBJDb21wYW55U2VjdGlvbk5hbWUxFzAVBgNVBAMMDlRlc3QgU2VydmVyIENBMIIC\nIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAudGwLk6ZiJ4cR2VJGwX4WoNw\n9tNPsKIoQ374I/OGr6P3K5TIiTApssiEGckol0dLZbnLDFG1kPOjwgnlrhm0zDl4\nLp4o3JskRKe1ZBO/Ysb+u5qqA91dXukJy7L5mskV+WhaeWHdqyfd0J0yIugu65Ge\n7ipLm17/m6hX3zQ+slV9RYMiwR6dIdIDKHxkLsCpfq875BiG8803Vq3/sVM5L73O\nWag706IIvSyGiKUgBCQXIE37hkZgF2y6eQ9RG5PfXkkuuKX2Ec0y5efzpJlgC3ZQ\nPa0GAAVQx5UDy/HXyWbRClGRBmyDax3N06PYIt1QMuftdHTCx+IjZkgmE1LgTVWa\n+DeDBYr8Nzq0S5VD9y1EMitPvsQJvPKr9F8Q3QDrKFaOjV6beib2aAA/mTzMyuyC\njtO9gMmxVBz0bkuoDa/DbwX272fnJqfsymKl/TXzoBrqEMRXnvgvRyf+3z7G3VZl\nL4Ds5xU85La10rKNA0WAFaSo5OnmX11WV3xcGMWS1V/d0WzhtfgkZJnhSyp/dg4e\ndlTTYvRltDidsn/c1GyCqmMu6/svH3O+ii2nUgrPy2tPFbztydb51y+SpnBWivM5\n1mm0O1z8xgfdVZOsqLfK9TalImwjfBKYqplBdDiQBY+WuYuQi9Zf1m2rxcEkENEo\nUfMR4fJ3dVx1Yw7miEkCAwEAAaMmMCQwEgYDVR0TAQH/BAgwBgEB/wIBATAOBgNV\nHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQELBQADggIBAB/WwuMd3zgflz6vb63YHilt\nOr6pCc93Ii0e2W7x8FpI7tdhrnKmk+xxtbl6prPm/h1WbMI2XLeagLISKAnZ2GaQ\ni/6JKjxp5WkFCqIZAZ6C/G8lky7adt5CYdzTYaCGTWpFbYT/VaTKBEZa7bPnthqK\niALT0hUHCJy3XqOvs+7nsi7X0w3KYbcW9Gald/Qo6cBt8NbtPZwSfe6BcesAevty\nEtEv+GBXHchrIiiW/yLKi5LzV3QPPv7e7lb9PQHz0EBErpgM6ato6yd+UuHt5VS2\nplY5UL5FLz2BAGMi68bPr0Jql3DFoTe+VItO63X6p671RhNNt3oCAbPlDi2VTggI\nAgGla7DreRJIc7u/+eHoZJleGCfQBcyyZRCkyk0nCoFkimmooVNB4WnLrkDw0S0E\nLq6vqAZwYiOiJu0dZzZWinQC5Da/6gKyzHasLj0oO2vdcopHgBLu27iDeHr+7nc/\ni+2ubSsamhG9ZeKW2asSo/FGc4ithr/xzm4cWttkhAtnaLaS/VJJ/cZIAAz4DBXs\nZLlAYnXVdH3EI4gukByJrzcFYx2k73ztvxWpZiOKUpm3LOrLBscjXP2qTs8jB+Hm\nVAs6wzHxdiZzpDYxmjou9MbVWzX4/2hh5NT7Jaf6FiC289Qg4G75FVB1r8ZyQbtu\n5XQHMgcQjelbCZdPSoV5\n-----END CERTIFICATE-----\n"}],"body":null}ÿlerrorMessageögheadersŸ¿efirstlcontent-typefsecondpapplication/jsonÿ¿efirstncontent-lengthfsecondd2932ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T14:40:13.783ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.800ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.800ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.801ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.838ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxöEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'h2'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.845ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPRI * HTTP/2.0
+
+SM
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.850ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 36
+HEADER_TABLE_SIZE: 8192
+ENABLE_PUSH: 1
+MAX_CONCURRENT_STREAMS: 250
+INITIAL_WINDOW_SIZE: 65535
+MAX_FRAME_SIZE: 65536
+MAX_HEADER_LIST_SIZE: 16777215
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.852ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: WINDOW_UPDATE (0x8); flags: (0x0); length: 4
+Increment 2147418112
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.852ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: (0x0); length: 6
+MAX_HEADER_LIST_SIZE: 8192
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.856ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.857ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 119
+[INDEXED        (3)] :method: POST
+[INDEXED        (7)] :scheme: https
+[NAME INDEXED   (1)] :authority: testserver.net:18084
+[NAME INDEXED   (4)] :path: /rest/echo
+[+ NEW INDEX       ] auth: abcDEF
+[NAME INDEXED  (58)] user-agent: Hello-HTTP/1.5.2
+[NAME INDEXED  (31)] content-type: multipart/form-data; charset=ISO-8859-1; boundary=TwWQpxKNdcoDR96Kc6g9pCB7h7ylXukCQ2
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.857ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: (0x0); length: 2354
+--TwWQpxKNdcoDR96Kc6g9pCB7h7ylXukCQ2
+Content-Disposition: form-data; name="key1"
+Content-Type: text/plain; charset=UTF-8
+
+val1
+--TwWQpxKNdcoDR96Kc6g9pCB7h7ylXukCQ2
+Content-Disposition: form-data; name="file2"; filename="serverCACert.pem"
+Content-Type: application/octet-stream
+
+-----BEGIN CERTIFICATE-----
+MIIFqzCCA5OgAwIBAgIJANSxzx8xm+F9MA0GCSqGSIb3DQEBCwUAMIGAMQswCQYD
+VQQGEwJYWDESMBAGA1UECAwJU3RhdGVOYW1lMREwDwYDVQQHDAhDaXR5TmFtZTEU
+MBIGA1UECgwLQ29tcGFueU5hbWUxGzAZBgNVBAsMEkNvbXBhbnlTZWN0aW9uTmFt
+ZTEXMBUGA1UEAwwOVGVzdCBTZXJ2ZXIgQ0EwHhcNMjQwNTI2MDQyOTI0WhcNMzQw
+NTI0MDQyOTI0WjCBgDELMAkGA1UEBhMCWFgxEjAQBgNVBAgMCVN0YXRlTmFtZTER
+MA8GA1UEBwwIQ2l0eU5hbWUxFDASBgNVBAoMC0NvbXBhbnlOYW1lMRswGQYDVQQL
+DBJDb21wYW55U2VjdGlvbk5hbWUxFzAVBgNVBAMMDlRlc3QgU2VydmVyIENBMIIC
+IjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAudGwLk6ZiJ4cR2VJGwX4WoNw
+9tNPsKIoQ374I/OGr6P3K5TIiTApssiEGckol0dLZbnLDFG1kPOjwgnlrhm0zDl4
+Lp4o3JskRKe1ZBO/Ysb+u5qqA91dXukJy7L5mskV+WhaeWHdqyfd0J0yIugu65Ge
+7ipLm17/m6hX3zQ+slV9RYMiwR6dIdIDKHxkLsCpfq875BiG8803Vq3/sVM5L73O
+Wag706IIvSyGiKUgBCQXIE37hkZgF2y6eQ9RG5PfXkkuuKX2Ec0y5efzpJlgC3ZQ
+Pa0GAAVQx5UDy/HXyWbRClGRBmyDax3N06PYIt1QMuftdHTCx+IjZkgmE1LgTVWa
++DeDBYr8Nzq0S5VD9y1EMitPvsQJvPKr9F8Q3QDrKFaOjV6beib2aAA/mTzMyuyC
+jtO9gMmxVBz0bkuoDa/DbwX272fnJqfsymKl/TXzoBrqEMRXnvgvRyf+3z7G3VZl
+L4Ds5xU85La10rKNA0WAFaSo5OnmX11WV3xcGMWS1V/d0WzhtfgkZJnhSyp/dg4e
+dlTTYvRltDidsn/c1GyCqmMu6/svH3O+ii2nUgrPy2tPFbztydb51y+SpnBWivM5
+1mm0O1z8xgfdVZOsqLfK9TalImwjfBKYqplBdDiQBY+WuYuQi9Zf1m2rxcEkENEo
+UfMR4fJ3dVx1Yw7miEkCAwEAAaMmMCQwEgYDVR0TAQH/BAgwBgEB/wIBATAOBgNV
+HQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQELBQADggIBAB/WwuMd3zgflz6vb63YHilt
+Or6pCc93Ii0e2W7x8FpI7tdhrnKmk+xxtbl6prPm/h1WbMI2XLeagLISKAnZ2GaQ
+i/6JKjxp5WkFCqIZAZ6C/G8lky7adt5CYdzTYaCGTWpFbYT/VaTKBEZa7bPnthqK
+iALT0hUHCJy3XqOvs+7nsi7X0w3KYbcW9Gald/Qo6cBt8NbtPZwSfe6BcesAevty
+EtEv+GBXHchrIiiW/yLKi5LzV3QPPv7e7lb9PQHz0EBErpgM6ato6yd+UuHt5VS2
+plY5UL5FLz2BAGMi68bPr0Jql3DFoTe+VItO63X6p671RhNNt3oCAbPlDi2VTggI
+AgGla7DreRJIc7u/+eHoZJleGCfQBcyyZRCkyk0nCoFkimmooVNB4WnLrkDw0S0E
+Lq6vqAZwYiOiJu0dZzZWinQC5Da/6gKyzHasLj0oO2vdcopHgBLu27iDeHr+7nc/
+i+2ubSsamhG9ZeKW2asSo/FGc4ithr/xzm4cWttkhAtnaLaS/VJJ/cZIAAz4DBXs
+ZLlAYnXVdH3EI4gukByJrzcFYx2k73ztvxWpZiOKUpm3LOrLBscjXP2qTs8jB+Hm
+VAs6wzHxdiZzpDYxmjou9MbVWzX4/2hh5NT7Jaf6FiC289Qg4G75FVB1r8ZyQbtu
+5XQHMgcQjelbCZdPSoV5
+-----END CERTIFICATE-----
+
+--TwWQpxKNdcoDR96Kc6g9pCB7h7ylXukCQ2--
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.857ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸFrame: SETTINGS (0x4); flags: ACK (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.860ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 0
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.876ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: HEADERS (0x1); flags: END_HEADERS (0x4); length: 28
+Update dynamic table size to 8192
+[INDEXED        (8)] :status: 200
+[NAME INDEXED  (31)] content-type: application/json
+[NAME INDEXED  (28)] content-length: 2932
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.888ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdgpayloadŸFrame: DATA (0x0); flags: END_STREAM (0x1); length: 2932
+{"path":"/rest/echo","method":"POST","headers":[{"name":"x-http2-scheme","value":"https"},{"name":"host","value":"testserver.net:18084"},{"name":"auth","value":"abcDEF"},{"name":"user-agent","value":"Hello-HTTP/1.5.2"},{"name":"content-type","value":"multipart/form-data; charset=ISO-8859-1; boundary=TwWQpxKNdcoDR96Kc6g9pCB7h7ylXukCQ2"},{"name":"x-http2-stream-id","value":"1"},{"name":"transfer-encoding","value":"chunked"}],"queryParameters":[],"formData":[],"multiparts":[{"name":"key1","headers":[{"name":"Content-Disposition","value":"form-data; name=\"key1\""},{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"size":4,"data":"val1"},{"name":"file2","headers":[{"name":"Content-Disposition","value":"form-data; name=\"file2\"; filename=\"serverCACert.pem\""},{"name":"Content-Type","value":"application/octet-stream"}],"size":2025,"data":"-----BEGIN CERTIFICATE-----\nMIIFqzCCA5OgAwIBAgIJANSxzx8xm+F9MA0GCSqGSIb3DQEBCwUAMIGAMQswCQYD\nVQQGEwJYWDESMBAGA1UECAwJU3RhdGVOYW1lMREwDwYDVQQHDAhDaXR5TmFtZTEU\nMBIGA1UECgwLQ29tcGFueU5hbWUxGzAZBgNVBAsMEkNvbXBhbnlTZWN0aW9uTmFt\nZTEXMBUGA1UEAwwOVGVzdCBTZXJ2ZXIgQ0EwHhcNMjQwNTI2MDQyOTI0WhcNMzQw\nNTI0MDQyOTI0WjCBgDELMAkGA1UEBhMCWFgxEjAQBgNVBAgMCVN0YXRlTmFtZTER\nMA8GA1UEBwwIQ2l0eU5hbWUxFDASBgNVBAoMC0NvbXBhbnlOYW1lMRswGQYDVQQL\nDBJDb21wYW55U2VjdGlvbk5hbWUxFzAVBgNVBAMMDlRlc3QgU2VydmVyIENBMIIC\nIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAudGwLk6ZiJ4cR2VJGwX4WoNw\n9tNPsKIoQ374I/OGr6P3K5TIiTApssiEGckol0dLZbnLDFG1kPOjwgnlrhm0zDl4\nLp4o3JskRKe1ZBO/Ysb+u5qqA91dXukJy7L5mskV+WhaeWHdqyfd0J0yIugu65Ge\n7ipLm17/m6hX3zQ+slV9RYMiwR6dIdIDKHxkLsCpfq875BiG8803Vq3/sVM5L73O\nWag706IIvSyGiKUgBCQXIE37hkZgF2y6eQ9RG5PfXkkuuKX2Ec0y5efzpJlgC3ZQ\nPa0GAAVQx5UDy/HXyWbRClGRBmyDax3N06PYIt1QMuftdHTCx+IjZkgmE1LgTVWa\n+DeDBYr8Nzq0S5VD9y1EMitPvsQJvPKr9F8Q3QDrKFaOjV6beib2aAA/mTzMyuyC\njtO9gMmxVBz0bkuoDa/DbwX272fnJqfsymKl/TXzoBrqEMRXnvgvRyf+3z7G3VZl\nL4Ds5xU85La10rKNA0WAFaSo5OnmX11WV3xcGMWS1V/d0WzhtfgkZJnhSyp/dg4e\ndlTTYvRltDidsn/c1GyCqmMu6/svH3O+ii2nUgrPy2tPFbztydb51y+SpnBWivM5\n1mm0O1z8xgfdVZOsqLfK9TalImwjfBKYqplBdDiQBY+WuYuQi9Zf1m2rxcEkENEo\nUfMR4fJ3dVx1Yw7miEkCAwEAAaMmMCQwEgYDVR0TAQH/BAgwBgEB/wIBATAOBgNV\nHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQELBQADggIBAB/WwuMd3zgflz6vb63YHilt\nOr6pCc93Ii0e2W7x8FpI7tdhrnKmk+xxtbl6prPm/h1WbMI2XLeagLISKAnZ2GaQ\ni/6JKjxp5WkFCqIZAZ6C/G8lky7adt5CYdzTYaCGTWpFbYT/VaTKBEZa7bPnthqK\niALT0hUHCJy3XqOvs+7nsi7X0w3KYbcW9Gald/Qo6cBt8NbtPZwSfe6BcesAevty\nEtEv+GBXHchrIiiW/yLKi5LzV3QPPv7e7lb9PQHz0EBErpgM6ato6yd+UuHt5VS2\nplY5UL5FLz2BAGMi68bPr0Jql3DFoTe+VItO63X6p671RhNNt3oCAbPlDi2VTggI\nAgGla7DreRJIc7u/+eHoZJleGCfQBcyyZRCkyk0nCoFkimmooVNB4WnLrkDw0S0E\nLq6vqAZwYiOiJu0dZzZWinQC5Da/6gKyzHasLj0oO2vdcopHgBLu27iDeHr+7nc/\ni+2ubSsamhG9ZeKW2asSo/FGc4ithr/xzm4cWttkhAtnaLaS/VJJ/cZIAAz4DBXs\nZLlAYnXVdH3EI4gukByJrzcFYx2k73ztvxWpZiOKUpm3LOrLBscjXP2qTs8jB+Hm\nVAs6wzHxdiZzpDYxmjou9MbVWzX4/2hh5NT7Jaf6FiC289Qg4G75FVB1r8ZyQbtu\n5XQHMgcQjelbCZdPSoV5\n-----END CERTIFICATE-----\n"}],"body":null}
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:13.889ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 25
+Last stream 0
+Code NO_ERROR
+Graceful shutdown
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:14.899ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸFrame: GOAWAY (0x7); flags: (0x0); length: 53
+Last stream 0
+Code NO_ERROR
+Timeout due to inactivity (1000 MILLISECONDS)
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T14:40:14.899ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx&https://testserver.net:18084/rest/echogheadersŸ¿efirstg:methodfseconddPOSTÿ¿efirstg:schemefsecondehttpsÿ¿efirstj:authorityfsecondttestserver.net:18084ÿ¿efirste:pathfsecondj/rest/echoÿ¿efirstdauthfsecondfabcDEFÿ¿efirstjuser-agentfsecondpHello-HTTP/1.5.2ÿ¿efirstlcontent-typefsecondxTmultipart/form-data; charset=ISO-8859-1; boundary=TwWQpxKNdcoDR96Kc6g9pCB7h7ylXukCQ2ÿÿdbodyŸ--kfLwPNeNl0iExtrhrWkvKMn_EtgybPtZzgzV2o
+Content-Disposition: form-data; name="key1"
+Content-Type: text/plain; charset=UTF-8
+
+val1
+--kfLwPNeNl0iExtrhrWkvKMn_EtgybPtZzgzV2o
+Content-Disposition: form-data; name="file2"; filename="serverCACert.pem"
+Content-Type: application/octet-stream
+
+-----BEGIN CERTIFICATE-----
+MIIFqzCCA5OgAwIBAgIJANSxzx8xm+F9MA0GCSqGSIb3DQEBCwUAMIGAMQswCQYD
+VQQGEwJYWDESMBAGA1UECAwJU3RhdGVOYW1lMREwDwYDVQQHDAhDaXR5TmFtZTEU
+MBIGA1UECgwLQ29tcGFueU5hbWUxGzAZBgNVBAsMEkNvbXBhbnlTZWN0aW9uTmFt
+ZTEXMBUGA1UEAwwOVGVzdCBTZXJ2ZXIgQ0EwHhcNMjQwNTI2MDQyOTI0WhcNMzQw
+NTI0MDQyOTI0WjCBgDELMAkGA1UEBhMCWFgxEjAQBgNVBAgMCVN0YXRlTmFtZTER
+MA8GA1UEBwwIQ2l0eU5hbWUxFDASBgNVBAoMC0NvbXBhbnlOYW1lMRswGQYDVQQL
+DBJDb21wYW55U2VjdGlvbk5hbWUxFzAVBgNVBAMMDlRlc3QgU2VydmVyIENBMIIC
+IjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAudGwLk6ZiJ4cR2VJGwX4WoNw
+9tNPsKIoQ374I/OGr6P3K5TIiTApssiEGckol0dLZbnLDFG1kPOjwgnlrhm0zDl4
+Lp4o3JskRKe1ZBO/Ysb+u5qqA91dXukJy7L5mskV+WhaeWHdqyfd0J0yIugu65Ge
+7ipLm17/m6hX3zQ+slV9RYMiwR6dIdIDKHxkLsCpfq875BiG8803Vq3/sVM5L73O
+Wag706IIvSyGiKUgBCQXIE37hkZgF2y6eQ9RG5PfXkkuuKX2Ec0y5efzpJlgC3ZQ
+Pa0GAAVQx5UDy/HXyWbRClGRBmyDax3N06PYIt1QMuftdHTCx+IjZkgmE1LgTVWa
++DeDBYr8Nzq0S5VD9y1EMitPvsQJvPKr9F8Q3QDrKFaOjV6beib2aAA/mTzMyuyC
+jtO9gMmxVBz0bkuoDa/DbwX272fnJqfsymKl/TXzoBrqEMRXnvgvRyf+3z7G3VZl
+L4Ds5xU85La10rKNA0WAFaSo5OnmX11WV3xcGMWS1V/d0WzhtfgkZJnhSyp/dg4e
+dlTTYvRltDidsn/c1GyCqmMu6/svH3O+ii2nUgrPy2tPFbztydb51y+SpnBWivM5
+1mm0O1z8xgfdVZOsqLfK9TalImwjfBKYqplBdDiQBY+WuYuQi9Zf1m2rxcEkENEo
+UfMR4fJ3dVx1Yw7miEkCAwEAAaMmMCQwEgYDVR0TAQH/BAgwBgEB/wIBATAOBgNV
+HQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQELBQADggIBAB/WwuMd3zgflz6vb63YHilt
+Or6pCc93Ii0e2W7x8FpI7tdhrnKmk+xxtbl6prPm/h1WbMI2XLeagLISKAnZ2GaQ
+i/6JKjxp5WkFCqIZAZ6C/G8lky7adt5CYdzTYaCGTWpFbYT/VaTKBEZa7bPnthqK
+iALT0hUHCJy3XqOvs+7nsi7X0w3KYbcW9Gald/Qo6cBt8NbtPZwSfe6BcesAevty
+EtEv+GBXHchrIiiW/yLKi5LzV3QPPv7e7lb9PQHz0EBErpgM6ato6yd+UuHt5VS2
+plY5UL5FLz2BAGMi68bPr0Jql3DFoTe+VItO63X6p671RhNNt3oCAbPlDi2VTggI
+AgGla7DreRJIc7u/+eHoZJleGCfQBcyyZRCkyk0nCoFkimmooVNB4WnLrkDw0S0E
+Lq6vqAZwYiOiJu0dZzZWinQC5Da/6gKyzHasLj0oO2vdcopHgBLu27iDeHr+7nc/
+i+2ubSsamhG9ZeKW2asSo/FGc4ithr/xzm4cWttkhAtnaLaS/VJJ/cZIAAz4DBXs
+ZLlAYnXVdH3EI4gukByJrzcFYx2k73ztvxWpZiOKUpm3LOrLBscjXP2qTs8jB+Hm
+VAs6wzHxdiZzpDYxmjou9MbVWzX4/2hh5NT7Jaf6FiC289Qg4G75FVB1r8ZyQbtu
+5XQHMgcQjelbCZdPSoV5
+-----END CERTIFICATE-----
+
+--kfLwPNeNl0iExtrhrWkvKMn_EtgybPtZzgzV2o--
+ÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿx$81d70121-64b8-452e-89fa-b17c8b624264¿bidx$74111878-0ae4-4815-84da-f58d53d5e1b9irequestIdx$d540ba75-1d36-40af-9b9d-41cc7bee5635prequestExampleIdx$4eff91d5-f3d7-42a8-8939-0fb688324724hprotocol¿hprotocoldHttpkversionNamec1.1emajoreminorÿkapplicationdHttpgstartAtx2024-07-05T13:57:08.113ZeendAtx2024-07-05T13:57:08.221ZgisErrorôjstatusCodeÈjstatusTextbOKsresponseSizeInBytesdbodyŸ{"path":"/rest/echo","method":"POST","headers":[{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"qq","value":"Q"}],"formData":[],"multiparts":[],"body":null}ÿlerrorMessageögheadersŸ¿efirstlContent-Typefsecondpapplication/jsonÿ¿efirstnContent-Lengthfsecondc276ÿÿrconnectionSecurity¿hsecurityqInsecureEncryptedxclientCertificatePrincipalöxpeerCertificatePrincipal¿iprincipalxRCN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXoissuerPrincipalxWCN=Test Server CA, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XXwsubjectAlternativeNamesŸ¿efirstfsecondi127.0.0.1ÿÿhnotAfterx2034-05-24T04:29:45.000ZinotBeforex2024-05-26T04:29:45.000ZÿÿkrawExchange¿iexchangesŸ¿ginstantx2024-07-05T13:57:08.113ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx1DNS resolution of domain [testserver.net] startedhstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:57:08.129ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx.DNS resolved to [testserver.net/192.168.32.10]hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:57:08.144ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx0Connecting to testserver.net/192.168.32.10:18084hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:57:08.145ZqlastUpdateInstantöidirectionkUnspecifiedfdetailx=Connected to testserver.net/192.168.32.10:18084 with HTTP/1.1hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:57:08.198ZqlastUpdateInstantöidirectionkUnspecifiedfdetailxüEstablished TLS upgrade with protocol 'TLSv1.3', cipher suite 'TLS_AES_128_GCM_SHA256' and application protocol 'http/1.1'.
+
+Client principal = null
+
+Server principal = CN=localhost, OU=CompanySectionName, O=CompanyName, L=CityName, ST=StateName, C=XX
+hstreamIdögpayloadökpayloadSizeöÿ¿ginstantx2024-07-05T13:57:08.205ZqlastUpdateInstantöidirectionhOutgoingfdetailöhstreamIdögpayloadŸPOST /rest/echo?qq=Q HTTP/1.1
+User-Agent: Hello-HTTP/1.5.2
+Host: testserver.net:18084
+Connection: keep-alive
+
+ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:57:08.210ZqlastUpdateInstantöidirectionhIncomingfdetailöhstreamIdögpayloadŸHTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 276
+
+{"path":"/rest/echo","method":"POST","headers":[{"name":"User-Agent","value":"Hello-HTTP/1.5.2"},{"name":"Host","value":"testserver.net:18084"},{"name":"Connection","value":"keep-alive"}],"queryParameters":[{"name":"qq","value":"Q"}],"formData":[],"multiparts":[],"body":null}ÿkpayloadSizeöÿ¿ginstantx2024-07-05T13:57:08.222ZqlastUpdateInstantöidirectionkUnspecifiedfdetailrResponse completedhstreamIdögpayloadökpayloadSizeöÿÿÿppayloadExchangesökrequestData¿fmethoddPOSTcurlx+https://testserver.net:18084/rest/echo?qq=QgheadersŸ¿efirstjUser-AgentfsecondpHello-HTTP/1.5.2ÿ¿efirstdHostfsecondttestserver.net:18084ÿ¿efirstjConnectionfsecondjkeep-aliveÿÿdbodyŸÿhbodySizeöÿmrequestConfig¿oisCookieEnabledômenvironmentIdöÿkcloseReasonöÿÿÿ
