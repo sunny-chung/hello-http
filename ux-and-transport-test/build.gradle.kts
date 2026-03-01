@@ -23,6 +23,7 @@ dependencies {
 
     testImplementation(project(":test-common"))
     testImplementation(rootProject)
+    testImplementation("co.touchlab:kermit:1.0.0")
     testImplementation("io.github.sunny-chung:kdatetime-multiplatform:1.0.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
