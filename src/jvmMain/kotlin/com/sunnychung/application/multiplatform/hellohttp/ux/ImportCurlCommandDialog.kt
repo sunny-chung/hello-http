@@ -14,11 +14,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
+import com.sunnychung.application.multiplatform.hellohttp.model.SyntaxHighlight
+
+private val CURL_IMPORT_PLACEHOLDER = """
+    # Get users
+    curl -X "GET" https://example.com/users
+    
+    # Create user
+    curl \
+      --request "POST" \
+      --url "https://example.com/users" \
+      --header "Content-Type: application/json" \
+      --data '{"name":"Alice"}'
+""".trimIndent()
 
 @Composable
 fun ImportCurlCommandDialog(
@@ -26,12 +36,13 @@ fun ImportCurlCommandDialog(
     onDismiss: () -> Unit,
     onImportCommand: (String) -> Boolean,
 ) {
-    val colors = LocalColor.current
     var command by remember { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
+    var editorKeyVersion by remember { mutableStateOf(0) }
 
     fun dismiss() {
         command = ""
+        // Reset editor cache key so stale text is not reused when reopening the dialog.
+        editorKeyVersion += 1
         onDismiss()
     }
 
@@ -52,32 +63,18 @@ fun ImportCurlCommandDialog(
     ) {
         Column(modifier = Modifier.width(680.dp)) {
             AppText(text = "Import a request from a Linux / macOS curl command")
-            AppTextFieldWithPlaceholder(
-                key = "ImportCurlCommandDialog/Command",
-                value = command,
-                onValueChange = { command = it },
-                placeholder = {
-                    AppText(
-                        text = """
-                            # Get users
-                            curl --request "GET" --url "https://example.com/users"
-                            
-                            # Create user
-                            curl --request "POST" --url "https://example.com/users" --header "Content-Type: application/json" --data '{"name":"Alice"}'
-                        """.trimIndent(),
-                        color = colors.placeholder,
-                    )
-                },
-                singleLine = false,
-                onFinishInit = {
-                    focusRequester.requestFocus()
-                },
+            CodeEditorView(
+                cacheKey = "ImportCurlCommandDialog/Command/$editorKeyVersion",
+                initialText = command,
+                onTextChange = { command = it },
+                syntaxHighlight = SyntaxHighlight.Curl,
+                isAutoFocusOnInit = true,
+                placeholderText = CURL_IMPORT_PLACEHOLDER,
+                testTag = TestTag.ImportCurlCommandDialogCommandTextField.name,
                 modifier = Modifier
                     .padding(top = 8.dp)
                     .fillMaxWidth()
                     .height(220.dp)
-                    .focusRequester(focusRequester)
-                    .testTag(TestTag.ImportCurlCommandDialogCommandTextField.name),
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

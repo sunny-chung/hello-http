@@ -21,7 +21,8 @@ class CurlCommandImporterTest {
     fun parseJsonRequest() {
         val request = importer.parseRequest(
             """
-            time curl \
+            time \
+              curl \
               --verbose \
               --request "POST" \
               --url "https://api.example.com/v1/users" \
@@ -157,6 +158,44 @@ class CurlCommandImporterTest {
     fun rejectNonCurlCommand() {
         assertFailsWith<IllegalArgumentException> {
             importer.parseRequest("echo \"hello\"")
+        }
+    }
+
+    @Test
+    fun rejectCurlWithinUnsupportedCommand() {
+        assertFailsWith<IllegalArgumentException> {
+            importer.parseRequest("abc curl --request GET --url https://example.com/invalid")
+        }
+    }
+
+    @Test
+    fun rejectCurlWithinUnsupportedCommandWithLineContinuation() {
+        assertFailsWith<IllegalArgumentException> {
+            importer.parseRequest(
+                """
+                abc \
+                  curl --request GET --url https://example.com/invalid
+                """.trimIndent()
+            )
+        }
+    }
+
+    @Test
+    fun rejectWhenUnknownCommandExistsBeforeCurlOnPreviousLine() {
+        assertFailsWith<IllegalArgumentException> {
+            importer.parseRequests(
+                """
+                abc
+                curl --request GET --url https://example.com/valid-looking
+                """.trimIndent()
+            )
+        }
+    }
+
+    @Test
+    fun rejectTimeWhenNotFollowedByCurlOrLineEnd() {
+        assertFailsWith<IllegalArgumentException> {
+            importer.parseRequest("time abc")
         }
     }
 

@@ -19,6 +19,11 @@ import java.nio.charset.StandardCharsets
 
 class CurlCommandImporter {
 
+    companion object {
+        private const val COMMAND_BREAK_TOKEN = "\n"
+        private val COMMAND_SEPARATOR_TOKENS = setOf(COMMAND_BREAK_TOKEN, "&&", "||", ";", "|")
+    }
+
     fun parseRequest(command: String): UserRequestTemplate {
         return parseRequests(command).first()
     }
@@ -29,17 +34,52 @@ class CurlCommandImporter {
             throw IllegalArgumentException("The command is empty.")
         }
 
-        val curlTokenIndices = tokens.mapIndexedNotNull { index, token ->
-            if (isCurlToken(token)) index else null
+        val requests = mutableListOf<UserRequestTemplate>()
+        var commandTokens = mutableListOf<String>()
+
+        fun finalizeCommandTokens() {
+            if (commandTokens.isEmpty()) {
+                return
+            }
+            val tokensInOneCommand = commandTokens.toList()
+            commandTokens = mutableListOf()
+
+            if (tokensInOneCommand.first() == "time") {
+                // Allow standalone `time` command segment, e.g. when users type:
+                // time
+                // curl ...
+                if (tokensInOneCommand.size == 1) {
+                    return
+                }
+                if (isCurlToken(tokensInOneCommand[1])) {
+                    requests += parseRequestTokens(tokensInOneCommand.drop(1))
+                    return
+                }
+                throw IllegalArgumentException("`time` must be followed by `curl` here.")
+            }
+
+            if (isCurlToken(tokensInOneCommand.first())) {
+                requests += parseRequestTokens(tokensInOneCommand)
+                return
+            }
+
+            throw IllegalArgumentException("Unsupported command: ${tokensInOneCommand.first()}")
         }
-        if (curlTokenIndices.isEmpty()) {
+
+        tokens.forEach { token ->
+            if (token in COMMAND_SEPARATOR_TOKENS) {
+                finalizeCommandTokens()
+            } else {
+                commandTokens += token
+            }
+        }
+        finalizeCommandTokens()
+
+        if (requests.isEmpty()) {
             throw IllegalArgumentException("The command does not contain curl.")
         }
 
-        return curlTokenIndices.mapIndexed { index, curlTokenIndex ->
-            val nextCurlTokenIndex = curlTokenIndices.getOrNull(index + 1) ?: tokens.size
-            parseRequestTokens(tokens = tokens.subList(curlTokenIndex, nextCurlTokenIndex))
-        }
+        return requests
     }
 
     private fun parseRequestTokens(tokens: List<String>): UserRequestTemplate {
@@ -449,6 +489,16 @@ class CurlCommandImporter {
                     when {
                         c.isWhitespace() -> {
                             flush()
+                            if (c == '\n') {
+                                if (tokens.lastOrNull() != COMMAND_BREAK_TOKEN) {
+                                    tokens += COMMAND_BREAK_TOKEN
+                                }
+                            } else if (c == '\r') {
+                                val hasFollowingNewLine = index + 1 < command.length && command[index + 1] == '\n'
+                                if (!hasFollowingNewLine && tokens.lastOrNull() != COMMAND_BREAK_TOKEN) {
+                                    tokens += COMMAND_BREAK_TOKEN
+                                }
+                            }
                             index += 1
                         }
 

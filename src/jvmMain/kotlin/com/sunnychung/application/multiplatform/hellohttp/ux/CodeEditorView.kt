@@ -75,6 +75,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.compose.rememberLas
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.CollapseIncrementalTransformation
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.CurlSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.EnvironmentVariableIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.FunctionIncrementalTransformation
@@ -134,9 +135,12 @@ fun CodeEditorView(
     syntaxHighlight: SyntaxHighlight,
     isEnableVariables: Boolean = false,
     knownVariables: Map<String, String> = mutableMapOf(),
+    placeholderText: String? = null,
+    placeholder: (@Composable () -> Unit)? = null,
     onPointerEvent: ((event: PointerEvent, charIndex: Int) -> Unit)? = null,
     onMeasured: ((textFieldPositionTop: Float) -> Unit)? = null,
     onTextManipulatorReady: ((BigTextFieldState) -> Unit)? = null,
+    isAutoFocusOnInit: Boolean = false,
     testTag: String? = null,
 ) {
     log.d { "CodeEditorView start. cache key = '$cacheKey'" }
@@ -249,6 +253,7 @@ fun CodeEditorView(
     val scrollState = rememberScrollState()
     val searchBarFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
+    var hasRequestedInitFocus by remember(cacheKey) { mutableStateOf(false) }
 
     var searchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
     var lastSearchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
@@ -405,6 +410,7 @@ fun CodeEditorView(
                 SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightDecorator(themeColours))
 //                SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightSlowDecorator(themeColours))
                 SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
+                SyntaxHighlight.Curl -> listOf(CurlSyntaxHighlightDecorator(themeColours))
             }
         }
     }
@@ -564,168 +570,199 @@ fun CodeEditorView(
                     } ?: "",
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    if (isReadOnly) {
-                        val collapseIncrementalTransformation = remember(bigTextFieldState) {
-                            CollapseIncrementalTransformation(themeColours, collapsedChars.values.toList())
-                        }
-                        var transformedText by remember(bigTextFieldState) { mutableStateOf<BigTextTransformed?>(null) }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (isReadOnly) {
+                            val collapseIncrementalTransformation = remember(bigTextFieldState) {
+                                CollapseIncrementalTransformation(themeColours, collapsedChars.values.toList())
+                            }
+                            var transformedText by remember(bigTextFieldState) { mutableStateOf<BigTextTransformed?>(null) }
 
-                        transformedText?.let { transformedText ->
-                            collapseIncrementalTransformation.update(
-                                collapsedChars.values.toList(),
-                                bigTextFieldState.viewState
+                            transformedText?.let { transformedText ->
+                                collapseIncrementalTransformation.update(
+                                    collapsedChars.values.toList(),
+                                    bigTextFieldState.viewState
+                                )
+                            }
+
+                            BigTextLabel(
+                                text = bigTextValue,
+                                color = textColor,
+                                padding = PaddingValues(4.dp),
+                                inputFilter = inputFilter,
+                                textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
+                                    MultipleIncrementalTransformation(
+                                        listOf(
+                                            collapseIncrementalTransformation,
+                                        ) + variableTransformations
+                                    )
+                                },
+                                textDecorator = //rememberLast(bigTextFieldState, syntaxHighlightDecorators, searchDecorators) {
+                                    MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
+                                //},
+                                ,
+                                fontSize = fonts.codeEditorBodyFontSize,
+                                fontFamily = fonts.monospaceFontFamily,
+                                isSoftWrapEnabled = true,
+                                isSelectable = true,
+                                scrollState = scrollState,
+                                viewState = bigTextFieldState.viewState,
+                                onPointerEvent = { event, charIndex, tag ->
+                                    log.v { "onPointerEventOnAnnotatedTag $tag $event" }
+                                    if (isShowCopyLiteralButton) {
+                                        mouseHoverCharIndex = charIndex
+                                    }
+
+                                    mouseHoverVariable =
+                                        if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
+                                            tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
+                                        } else {
+                                            null
+                                        }
+
+                                    onPointerEvent?.invoke(event, charIndex)
+                                },
+                                onTextLayout = { layoutResult = it },
+                                onTransformInit = { transformedText = it },
+                                contextMenu = AppBigTextFieldContextMenu,
+                                modifier = Modifier.fillMaxSize()
+                                    .focusRequester(textFieldFocusRequester)
+                                    .run {
+                                        if (testTag != null) {
+                                            testTag(testTag)
+                                        } else {
+                                            this
+                                        }
+                                    }
+                            )
+//                    return@Row // compose bug: return here would crash
+                        } else {
+                            LaunchedEffect(bigTextFieldState, onTextChange) { // FIXME the flow is frequently recreated
+                                log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
+                                withContext(Dispatchers.IO) {
+                                    bigTextFieldState.valueChangesFlow
+                                        .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
+                                        .chunkedLatest(200.milliseconds())
+                                        .collect {
+                                            log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
+                                            withContext(NonCancellable) { // continue to complete the current collect block even the flow is cancelled
+                                                onTextChange?.let { onTextChange ->
+                                                    val string = it.bigText.buildCharSequence() as AnnotatedString
+                                                    withContext(Dispatchers.Main) {
+                                                        log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                                        onTextChange(string.text)
+                                                        log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
+                                                    }
+                                                }
+                                                bigTextValueId = it.changeId
+                                                searchTrigger.trySend(Unit)
+
+                                                bigTextFieldState.markConsumed(it.sequence)
+                                            }
+                                        }
+                                }
+                            }
+                            BigTextField(
+                                textFieldState = bigTextFieldState,
+                                inputFilter = inputFilter,
+                                textTransformation = remember(variableTransformations) {
+                                    MultipleIncrementalTransformation(
+                                        variableTransformations
+                                    )
+                                },
+                                textDecorator = //rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex, syntaxHighlightDecorator) {
+                                    MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
+                                //},
+                                ,
+                                color = textColor,
+                                cursorColor = themeColours.cursor,
+                                fontSize = fonts.codeEditorBodyFontSize,
+                                fontFamily = fonts.monospaceFontFamily,
+                                isSoftWrapEnabled = true,
+                                scrollState = scrollState,
+                                onTextLayout = { layoutResult = it },
+                                onFinishInit = {
+                                    if (isAutoFocusOnInit && !isSearchVisible && !hasRequestedInitFocus) {
+                                        textFieldFocusRequester.requestFocus()
+                                        hasRequestedInitFocus = true
+                                    }
+                                },
+                                contextMenu = AppBigTextFieldContextMenu,
+                                keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
+                                    override fun beforeProcessInput(
+                                        it: KeyEvent,
+                                        viewState: BigTextViewState
+                                    ): Boolean {
+                                        return if (it.type == KeyEventType.KeyDown) {
+                                            when (it.key) {
+                                                Key.Enter -> {
+                                                    if (!it.isShiftPressed
+                                                        && !it.isAltPressed
+                                                        && !it.isCtrlPressed
+                                                        && !it.isMetaPressed
+                                                    ) {
+                                                        onPressEnterAddIndent()
+                                                        true
+                                                    } else {
+                                                        false
+                                                    }
+                                                }
+
+                                                Key.Tab -> {
+                                                    onPressTab(it.isShiftPressed)
+                                                    true
+                                                }
+
+                                                else -> false
+                                            }
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                },
+                                onPointerEvent = { event, charIndex, tag ->
+                                    log.v { "onPointerEventOnAnnotatedTag $tag $event" }
+                                    mouseHoverVariable =
+                                        if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
+                                            tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
+                                        } else {
+                                            null
+                                        }
+                                    onPointerEvent?.invoke(event, charIndex)
+                                },
+                                modifier = Modifier.fillMaxSize()
+                                    .focusRequester(textFieldFocusRequester)
+                                    .run {
+                                        if (testTag != null) {
+                                            testTag(testTag)
+                                        } else {
+                                            this
+                                        }
+                                    }
                             )
                         }
-
-                        BigTextLabel(
-                            text = bigTextValue,
-                            color = textColor,
-                            padding = PaddingValues(4.dp),
-                            inputFilter = inputFilter,
-                            textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
-                                MultipleIncrementalTransformation(
-                                    listOf(
-                                        collapseIncrementalTransformation,
-                                    ) + variableTransformations
-                                )
-                            },
-                            textDecorator = //rememberLast(bigTextFieldState, syntaxHighlightDecorators, searchDecorators) {
-                                MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
-                            //},
-                            ,
-                            fontSize = fonts.codeEditorBodyFontSize,
-                            fontFamily = fonts.monospaceFontFamily,
-                            isSoftWrapEnabled = true,
-                            isSelectable = true,
-                            scrollState = scrollState,
-                            viewState = bigTextFieldState.viewState,
-                            onPointerEvent = { event, charIndex, tag ->
-                                log.v { "onPointerEventOnAnnotatedTag $tag $event" }
-                                if (isShowCopyLiteralButton) {
-                                    mouseHoverCharIndex = charIndex
+                        if ((placeholder != null || !placeholderText.isNullOrEmpty()) && bigTextValue.length == 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(
+                                        start = 8.dp,
+                                        top = 6.dp,
+                                        end = 8.dp,
+                                    )
+                            ) {
+                                if (placeholder != null) {
+                                    placeholder()
+                                } else if (!placeholderText.isNullOrEmpty()) {
+                                    // BigText has no native placeholder. Draw an overlay only when the editor is empty.
+                                    AppText(
+                                        text = placeholderText,
+                                        color = themeColours.placeholder,
+                                        fontSize = fonts.codeEditorBodyFontSize,
+                                        fontFamily = fonts.monospaceFontFamily,
+                                    )
                                 }
-
-                                mouseHoverVariable =
-                                    if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
-                                        tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
-                                    } else {
-                                        null
-                                    }
-
-                                onPointerEvent?.invoke(event, charIndex)
-                            },
-                            onTextLayout = { layoutResult = it },
-                            onTransformInit = { transformedText = it },
-                            contextMenu = AppBigTextFieldContextMenu,
-                            modifier = Modifier.fillMaxSize()
-                                .focusRequester(textFieldFocusRequester)
-                                .run {
-                                    if (testTag != null) {
-                                        testTag(testTag)
-                                    } else {
-                                        this
-                                    }
-                                }
-                        )
-//                    return@Row // compose bug: return here would crash
-                    } else {
-                        LaunchedEffect(bigTextFieldState, onTextChange) { // FIXME the flow is frequently recreated
-                            log.i { "CEV recreate change collection flow $bigTextFieldState ${onTextChange.hashCode()}" }
-                            withContext(Dispatchers.IO) {
-                                bigTextFieldState.valueChangesFlow
-                                    .onEach { log.d { "bigTextFieldState change each ${it.changeId}" } }
-                                    .chunkedLatest(200.milliseconds())
-                                    .collect {
-                                        log.d { "bigTextFieldState change collect ${it.changeId} ${it.bigText.length} ${it.bigText.buildString()}" }
-                                        withContext(NonCancellable) { // continue to complete the current collect block even the flow is cancelled
-                                            onTextChange?.let { onTextChange ->
-                                                val string = it.bigText.buildCharSequence() as AnnotatedString
-                                                withContext(Dispatchers.Main) {
-                                                    log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} onTextChange(${string.text.abbr()} | ${string.text.length})" }
-                                                    onTextChange(string.text)
-                                                    log.d { "${bigTextFieldState.text} : ${it.bigText} ${it.changeId} called onTextChange(${string.text.abbr()} | ${string.text.length})" }
-                                                }
-                                            }
-                                            bigTextValueId = it.changeId
-                                            searchTrigger.trySend(Unit)
-
-                                            bigTextFieldState.markConsumed(it.sequence)
-                                        }
-                                    }
                             }
                         }
-                        BigTextField(
-                            textFieldState = bigTextFieldState,
-                            inputFilter = inputFilter,
-                            textTransformation = remember(variableTransformations) {
-                                MultipleIncrementalTransformation(
-                                    variableTransformations
-                                )
-                            },
-                            textDecorator = //rememberLast(bigTextFieldState, themeColours, searchResultRangeTree, searchResultViewIndex, syntaxHighlightDecorator) {
-                                MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
-                            //},
-                            ,
-                            color = textColor,
-                            cursorColor = themeColours.cursor,
-                            fontSize = fonts.codeEditorBodyFontSize,
-                            fontFamily = fonts.monospaceFontFamily,
-                            isSoftWrapEnabled = true,
-                            scrollState = scrollState,
-                            onTextLayout = { layoutResult = it },
-                            contextMenu = AppBigTextFieldContextMenu,
-                            keyboardInputProcessor = object : BigTextKeyboardInputProcessor {
-                                override fun beforeProcessInput(
-                                    it: KeyEvent,
-                                    viewState: BigTextViewState
-                                ): Boolean {
-                                    return if (it.type == KeyEventType.KeyDown) {
-                                        when (it.key) {
-                                            Key.Enter -> {
-                                                if (!it.isShiftPressed
-                                                    && !it.isAltPressed
-                                                    && !it.isCtrlPressed
-                                                    && !it.isMetaPressed
-                                                ) {
-                                                    onPressEnterAddIndent()
-                                                    true
-                                                } else {
-                                                    false
-                                                }
-                                            }
-
-                                            Key.Tab -> {
-                                                onPressTab(it.isShiftPressed)
-                                                true
-                                            }
-
-                                            else -> false
-                                        }
-                                    } else {
-                                        false
-                                    }
-                                }
-                            },
-                            onPointerEvent = { event, charIndex, tag ->
-                                log.v { "onPointerEventOnAnnotatedTag $tag $event" }
-                                mouseHoverVariable =
-                                    if (tag?.startsWith(EnvironmentVariableIncrementalTransformation.TAG_PREFIX) == true) {
-                                        tag.replaceFirst(EnvironmentVariableIncrementalTransformation.TAG_PREFIX, "")
-                                    } else {
-                                        null
-                                    }
-                                onPointerEvent?.invoke(event, charIndex)
-                            },
-                            modifier = Modifier.fillMaxSize()
-                                .focusRequester(textFieldFocusRequester)
-                                .run {
-                                    if (testTag != null) {
-                                        testTag(testTag)
-                                    } else {
-                                        this
-                                    }
-                                }
-                        )
                     }
                 }
             }
