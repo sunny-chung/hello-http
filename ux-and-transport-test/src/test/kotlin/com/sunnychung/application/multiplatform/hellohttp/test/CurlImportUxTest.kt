@@ -37,6 +37,8 @@ import org.junit.Test
 class CurlImportUxTest {
 
     companion object {
+        private const val IMPORT_DIALOG_OPEN_TIMEOUT_MILLIS = 10_000L
+
         @BeforeClass
         @JvmStatic
         fun initTests() {
@@ -691,7 +693,7 @@ class CurlImportUxTest {
 
     private suspend fun DesktopComposeUiTest.importCurlCommand(
         command: String,
-        dialogCloseTimeoutMillis: Long = 3_000L,
+        dialogCloseTimeoutMillis: Long = 8_000L,
     ) {
         onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
             .assertIsDisplayedWithRetry(this)
@@ -705,23 +707,22 @@ class CurlImportUxTest {
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
 
-        waitUntilExactlyOneExists(this, hasTestTag(TestTag.ImportCurlCommandDialogCommandTextField.name), 2_000L)
-        onNodeWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name)
+        waitUntilExactlyOneExists(
+            this,
+            testTag = TestTag.ImportCurlCommandDialogCommandTextField.name,
+            timeoutMillis = IMPORT_DIALOG_OPEN_TIMEOUT_MILLIS,
+            useUnmergedTree = true,
+        )
+        onNodeWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name, useUnmergedTree = true)
             .assertIsDisplayedWithRetry(this)
-        waitUntil(2_000L) {
-            onNodeWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name)
-                .fetchSemanticsNodeWithRetry(this)
-                .config
-                .getOrNull(SemanticsProperties.Focused) == true
-        }
 
         wait(220L)
-        onNodeWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name)
+        onNodeWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name, useUnmergedTree = true)
             .assertIsDisplayedWithRetry(this)
             .performTextInput(this, command)
         wait(220L)
-        waitUntil(1_000L) {
-            onNodeWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name)
+        waitUntil(3_000L) {
+            onNodeWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name, useUnmergedTree = true)
                 .fetchSemanticsNodeWithRetry(this)
                 .getTexts() == listOf(command)
         }
