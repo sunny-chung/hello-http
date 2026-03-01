@@ -92,6 +92,40 @@ class CurlCommandImporterTest {
     }
 
     @Test
+    fun parseGetWithDataUrlEncodedShellExpressionsShouldKeepTextAsIs() {
+        val request = importer.parseRequest(
+            """
+            curl -G "https://example.com/search" \
+              --data-urlencode "template=${'$'}{{foo_bar}}" \
+              --data-urlencode "arith=${'$'}((uuid))"
+            """.trimIndent()
+        )
+
+        val example = request.examples.first()
+        assertEquals(
+            listOf("template" to "${'$'}{{foo_bar}}", "arith" to "${'$'}((uuid))"),
+            example.queryParameters.map { it.key to it.value },
+        )
+    }
+
+    @Test
+    fun parseGetWithDataUrlEncodedShouldDecodeOutsidePlaceholderOnly() {
+        val request = importer.parseRequest(
+            """
+            curl -G "https://example.com/search" \
+              --data-urlencode "mix=hello+world_${'$'}{{foo_bar}}+tail" \
+              --data-urlencode "arith=${'$'}((uuid))+x"
+            """.trimIndent()
+        )
+
+        val example = request.examples.first()
+        assertEquals(
+            listOf("mix" to "hello world_${'$'}{{foo_bar}} tail", "arith" to "${'$'}((uuid)) x"),
+            example.queryParameters.map { it.key to it.value },
+        )
+    }
+
+    @Test
     fun parseQueryParametersFromUrlWithQuestionMark() {
         val request = importer.parseRequest(
             """
@@ -119,6 +153,55 @@ class CurlCommandImporterTest {
         val example = request.examples.first()
         assertEquals(
             listOf("from" to "short", "hello" to "world"),
+            example.queryParameters.map { it.key to it.value },
+        )
+    }
+
+    @Test
+    fun parseQueryParametersWithShellExpressionsShouldKeepTextAsIs() {
+        val request = importer.parseRequest(
+            """
+            curl --request GET --url "https://example.com/path?template=${'$'}{{foo_bar}}&arith=${'$'}((uuid))"
+            """.trimIndent()
+        )
+
+        assertEquals(
+            "https://example.com/path?template=${'$'}{{foo_bar}}&arith=${'$'}((uuid))",
+            request.url,
+        )
+        val example = request.examples.first()
+        assertEquals(
+            listOf("template" to "${'$'}{{foo_bar}}", "arith" to "${'$'}((uuid))"),
+            example.queryParameters.map { it.key to it.value },
+        )
+    }
+
+    @Test
+    fun parseQueryParametersShouldDecodeOutsidePlaceholderOnly() {
+        val request = importer.parseRequest(
+            """
+            curl --request GET --url "https://example.com/path?mix=hello+world_${'$'}{{foo_bar}}+tail&arith=${'$'}((uuid))+x"
+            """.trimIndent()
+        )
+
+        val example = request.examples.first()
+        assertEquals(
+            listOf("mix" to "hello world_${'$'}{{foo_bar}} tail", "arith" to "${'$'}((uuid)) x"),
+            example.queryParameters.map { it.key to it.value },
+        )
+    }
+
+    @Test
+    fun parseQueryParametersWithIncompletePlaceholdersShouldDecodeNormally() {
+        val request = importer.parseRequest(
+            """
+            curl --request GET --url "https://example.com/path?broken1=${'$'}{{a}+tail&broken2=${'$'}(bb)+x"
+            """.trimIndent()
+        )
+
+        val example = request.examples.first()
+        assertEquals(
+            listOf("broken1" to "${'$'}{{a} tail", "broken2" to "${'$'}(bb) x"),
             example.queryParameters.map { it.key to it.value },
         )
     }
@@ -215,6 +298,44 @@ class CurlCommandImporterTest {
         val body = assertIs<FormUrlEncodedBody>(example.body)
         assertEquals(
             listOf("name" to "alice", "age" to "20"),
+            body.value.map { it.key to it.value },
+        )
+    }
+
+    @Test
+    fun parseFormUrlEncodedFromDataUrlencodeShouldDecodeOutsidePlaceholderOnly() {
+        val request = importer.parseRequest(
+            """
+            curl --request POST --url "https://example.com/post" \
+              --data-urlencode "mix=hello+world_${'$'}{{foo_bar}}+tail" \
+              --data-urlencode "arith=${'$'}((uuid))+x"
+            """.trimIndent()
+        )
+
+        val example = request.examples.first()
+        assertEquals(ContentType.FormUrlEncoded, example.contentType)
+        val body = assertIs<FormUrlEncodedBody>(example.body)
+        assertEquals(
+            listOf("mix" to "hello world_${'$'}{{foo_bar}} tail", "arith" to "${'$'}((uuid)) x"),
+            body.value.map { it.key to it.value },
+        )
+    }
+
+    @Test
+    fun parseFormUrlEncodedFromDataUrlencodeWithIncompletePlaceholdersShouldDecodeNormally() {
+        val request = importer.parseRequest(
+            """
+            curl --request POST --url "https://example.com/post" \
+              --data-urlencode "broken1=${'$'}{{a}+tail" \
+              --data-urlencode "broken2=${'$'}(bb)+x"
+            """.trimIndent()
+        )
+
+        val example = request.examples.first()
+        assertEquals(ContentType.FormUrlEncoded, example.contentType)
+        val body = assertIs<FormUrlEncodedBody>(example.body)
+        assertEquals(
+            listOf("broken1" to "${'$'}{{a} tail", "broken2" to "${'$'}(bb) x"),
             body.value.map { it.key to it.value },
         )
     }

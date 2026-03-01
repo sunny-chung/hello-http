@@ -22,6 +22,7 @@ class CurlCommandImporter {
     companion object {
         private const val COMMAND_BREAK_TOKEN = "\n"
         private val COMMAND_SEPARATOR_TOKENS = setOf(COMMAND_BREAK_TOKEN, "&&", "||", ";", "|")
+        private val APP_PLACEHOLDER_REGEX = Regex("""\$\{\{.*?}}|\$\(\(.*?\)\)""")
     }
 
     fun parseRequest(command: String): UserRequestTemplate {
@@ -633,7 +634,33 @@ class CurlCommandImporter {
 
     private fun String.urlDecode(): String {
         return try {
-            URLDecoder.decode(this, StandardCharsets.UTF_8)
+            val output = StringBuilder(length)
+            var currentIndex = 0
+
+            APP_PLACEHOLDER_REGEX.findAll(this).forEach { match ->
+                if (currentIndex < match.range.first) {
+                    output.append(
+                        URLDecoder.decode(
+                            substring(currentIndex, match.range.first),
+                            StandardCharsets.UTF_8,
+                        )
+                    )
+                }
+                // App placeholders `${{...}}` and `$((...))` must be left as-is.
+                output.append(match.value)
+                currentIndex = match.range.last + 1
+            }
+
+            if (currentIndex < length) {
+                output.append(
+                    URLDecoder.decode(
+                        substring(currentIndex),
+                        StandardCharsets.UTF_8,
+                    )
+                )
+            }
+
+            output.toString()
         } catch (_: Exception) {
             this
         }
