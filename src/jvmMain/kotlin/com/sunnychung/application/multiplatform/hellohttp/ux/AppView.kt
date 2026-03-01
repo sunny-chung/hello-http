@@ -60,6 +60,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollec
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.extension.CommandGenerator
+import com.sunnychung.application.multiplatform.hellohttp.importer.CurlCommandImporter
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -517,7 +518,25 @@ fun AppContentView() {
 
                                     selectedRequestId = copiedRequest.id
                                     editRequestNameViewModel.onStartEdit(copiedRequest.id)
-                                }
+                                },
+                                onImportCurlRequest = { command ->
+                                    try {
+                                        val importedRequest = CurlCommandImporter().parseRequest(command)
+                                        requestCollection!!.requests += importedRequest
+                                        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+
+                                        selectedSubproject!!.treeObjects += TreeRequest(id = importedRequest.id)
+                                        projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
+
+                                        selectedRequestId = importedRequest.id
+                                        errorMessageVM.showSuccessMessage("Imported request from cURL command")
+                                        true
+                                    } catch (e: Throwable) {
+                                        log.w(e) { "Cannot import curl command" }
+                                        errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                        false
+                                    }
+                                },
                             )
                         }
                     }

@@ -82,6 +82,7 @@ fun RequestTreeView(
     onDeleteFolder: (TreeFolder) -> Unit,
     onMoveTreeObject: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
     onCopyRequest: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
+    onImportCurlRequest: (String) -> Boolean,
 ) {
     val colors = LocalColor.current
 
@@ -98,6 +99,7 @@ fun RequestTreeView(
 
     var isShowContextMenu by remember { mutableStateOf(false) }
     var contextMenuAtItemId by remember { mutableStateOf<String?>(null) }
+    var isShowImportCurlDialog by remember { mutableStateOf(false) }
 
     val treeObjects = filterTreeObjects(
         rootObjects = selectedSubproject.treeObjects,
@@ -419,6 +421,9 @@ fun RequestTreeView(
             ResourceType.Folder -> {
                 onAddFolder(parentId).id
             }
+            ResourceType.ImportCurlCommand -> {
+                throw UnsupportedOperationException("Use import dialog for cURL command import")
+            }
         }
         editTreeObjectNameViewModel.onStartEdit(itemId)
         coroutineScope.launch {
@@ -451,6 +456,12 @@ fun RequestTreeView(
         }
     }
 
+    ImportCurlCommandDialog(
+        isEnabled = isShowImportCurlDialog,
+        onDismiss = { isShowImportCurlDialog = false },
+        onImportCommand = onImportCurlRequest,
+    )
+
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             AppTextField(
@@ -464,10 +475,22 @@ fun RequestTreeView(
             DropDownView(
                 iconResource = "add.svg",
                 iconSize = 24.dp,
-                items = ResourceType.values().map { DropDownValue(it.name) },
+                items = ResourceType.values().map { DropDownKeyValue(it, it.displayText) },
                 isShowLabel = false,
                 onClickItem = {
-                    createRequestOrFolder(resourceType = ResourceType.valueOf(it.displayText), parentId = null)
+                    when (it.key) {
+                        ResourceType.Request -> {
+                            createRequestOrFolder(resourceType = ResourceType.Request, parentId = null)
+                        }
+
+                        ResourceType.Folder -> {
+                            createRequestOrFolder(resourceType = ResourceType.Folder, parentId = null)
+                        }
+
+                        ResourceType.ImportCurlCommand -> {
+                            isShowImportCurlDialog = true
+                        }
+                    }
                     true
                 },
                 modifier = Modifier.padding(4.dp)
@@ -546,11 +569,22 @@ fun RequestListViewPreview() {
         onDeleteFolder = {},
         onMoveTreeObject = {_, _, _ ->},
         onCopyRequest = {_, _, _ ->},
+        onImportCurlRequest = { false },
     )
 }
 
 data class DropTargetInfo(var bounds: Rect, val direction: MoveDirection, val item: TreeObject?)
 
 private enum class ResourceType {
-    Request, Folder
+    Request,
+    Folder,
+    ImportCurlCommand,
+    ;
+
+    val displayText: String
+        get() = when (this) {
+            Request -> "Request"
+            Folder -> "Folder"
+            ImportCurlCommand -> "Import cURL command (Linux / macOS)"
+        }
 }

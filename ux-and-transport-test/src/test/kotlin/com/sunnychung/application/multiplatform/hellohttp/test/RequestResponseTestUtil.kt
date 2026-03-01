@@ -476,8 +476,11 @@ suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
         waitForIdle()
     }
 
-    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyDown))
-    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyUp))
+    retryForUnresponsiveBuggyComposeTest(maxRetryCount = 6, retryDelayMillis = 220L) {
+        onNodeWithTag(TestTag.DialogCloseButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
 
     waitUntil {
         waitForIdle()
@@ -937,6 +940,242 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
     }
 }
 
+suspend fun DesktopComposeUiTest.assertCurrentRequestEditor(
+    request: UserRequestTemplate,
+    isVerifyCookies: Boolean = true,
+) {
+    assertRequestEditorContent(
+        request = request,
+        isVerifyCookies = isVerifyCookies,
+    )
+}
+
+private suspend fun DesktopComposeUiTest.assertRequestEditorContent(
+    request: UserRequestTemplate,
+    isVerifyCookies: Boolean,
+) {
+    val baseExample = request.examples.first()
+
+    waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestUrlTextField.name), 3.seconds().millis)
+    waitUntil(3.seconds().millis) {
+        onNodeWithTag(TestTag.RequestUrlTextField.name)
+            .fetchSemanticsNodeWithRetry(this)
+            .getTexts() == listOf(request.url)
+    }
+
+    if (request.application == ProtocolApplication.Http) {
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(
+                buildTestTag(
+                    TestTagPart.RequestMethodDropdown,
+                    TestTagPart.DropdownLabel
+                )!!,
+                useUnmergedTree = true,
+            )
+                .fetchSemanticsNodeWithRetry(this)
+                .getTexts() == listOf(request.method)
+        }
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(
+                buildTestTag(
+                    TestTagPart.RequestBodyTypeDropdown,
+                    TestTagPart.DropdownLabel
+                )!!,
+                useUnmergedTree = true,
+            )
+                .fetchSemanticsNodeWithRetry(this)
+                .getTexts() == listOf(baseExample.contentType.displayText)
+        }
+
+        when (baseExample.contentType) {
+            ContentType.Json, ContentType.Raw -> {
+                val expectedBody = (baseExample.body as? StringBody)?.value ?: ""
+                waitUntil(3.seconds().millis) {
+                    onNodeWithTag(TestTag.RequestStringBodyTextField.name)
+                        .fetchSemanticsNodeWithRetry(this)
+                        .getTexts() == listOf(expectedBody)
+                }
+            }
+
+            ContentType.FormUrlEncoded -> {
+                assertKeyValueEditorItems(
+                    keyValues = (baseExample.body as FormUrlEncodedBody).value,
+                    testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm,
+                )
+            }
+
+            ContentType.Multipart -> {
+                assertKeyValueEditorItems(
+                    keyValues = (baseExample.body as MultipartBody).value,
+                    testTagPart = TestTagPart.RequestBodyMultipartForm,
+                )
+            }
+
+            ContentType.BinaryFile -> {
+                val body = baseExample.body as FileBody
+                val expectedFileName = File(body.filePath ?: "").name
+                waitUntil(3.seconds().millis) {
+                    onNodeWithTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!)
+                        .fetchSemanticsNodeWithRetry(this)
+                        .getTexts()
+                        .firstOrNull() == expectedFileName
+                }
+            }
+
+            ContentType.None -> Unit
+            ContentType.Graphql -> Unit
+        }
+    }
+
+    if (baseExample.queryParameters.isNotEmpty()) {
+        clickRequestParameterTab("Query")
+        assertKeyValueEditorItems(
+            keyValues = baseExample.queryParameters,
+            testTagPart = TestTagPart.RequestQueryParameter,
+        )
+    }
+
+    if (baseExample.headers.isNotEmpty()) {
+        clickRequestParameterTab("Header")
+        assertKeyValueEditorItems(
+            keyValues = baseExample.headers,
+            testTagPart = TestTagPart.RequestHeader,
+        )
+    }
+
+    if (isVerifyCookies && baseExample.cookies.isNotEmpty()) {
+        clickRequestParameterTab("Cookie")
+        assertKeyValueEditorItems(
+            keyValues = baseExample.cookies,
+            testTagPart = TestTagPart.Cookie,
+        )
+    }
+}
+
+private fun DesktopComposeUiTest.clickRequestParameterTab(label: String) {
+    val tabTag = TestTag.RequestParameterTypeTab.name
+    waitUntil(3.seconds().millis) {
+        onAllNodesWithTag(tabTag)
+            .fetchSemanticsNodesWithRetry(this)
+            .any { it.getTexts().firstOrNull() == label }
+    }
+    val index = onAllNodesWithTag(tabTag)
+        .fetchSemanticsNodesWithRetry(this)
+        .indexOfFirst { it.getTexts().firstOrNull() == label }
+    check(index >= 0) { "Cannot find request parameter tab '$label'" }
+    onAllNodesWithTag(tabTag)[index]
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+}
+
+suspend fun DesktopComposeUiTest.assertRequestParameterTabContent(
+    tabLabel: String,
+    testTagPart: TestTagPart,
+    expectedKeyValuePairs: List<Pair<String, String>>,
+) {
+    retryForUnresponsiveBuggyComposeTest(maxRetryCount = 4, retryDelayMillis = 220L) {
+        clickRequestParameterTab(tabLabel)
+        expectedKeyValuePairs.forEachIndexed { index, expected ->
+            val keyTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                TestTagPart.Key,
+                index,
+            )!!
+            val valueTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                TestTagPart.Value,
+                index,
+            )!!
+            waitUntilExactlyOneExists(this, hasTestTag(keyTag), 3.seconds().millis)
+            waitUntilExactlyOneExists(this, hasTestTag(valueTag), 3.seconds().millis)
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(keyTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .config
+                    .getOrNull(SemanticsProperties.EditableText)
+                    ?.text == expected.first
+            }
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(valueTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .config
+                    .getOrNull(SemanticsProperties.EditableText)
+                    ?.text == expected.second
+            }
+        }
+
+        // There is always one trailing empty row. Verify the key field is truly empty.
+        val trailingKeyTag = buildTestTag(
+            testTagPart,
+            TestTagPart.Current,
+            TestTagPart.Key,
+            expectedKeyValuePairs.size,
+        )!!
+        waitUntilExactlyOneExists(this, hasTestTag(trailingKeyTag), 3.seconds().millis)
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(trailingKeyTag)
+                .fetchSemanticsNodeWithRetry(this)
+                .config
+                .getOrNull(SemanticsProperties.EditableText)
+                ?.text
+                .orEmpty()
+                .isEmpty()
+        }
+    }
+}
+
+private suspend fun DesktopComposeUiTest.assertKeyValueEditorItems(
+    keyValues: List<UserKeyValuePair>,
+    testTagPart: TestTagPart,
+) {
+    keyValues.forEachIndexed { index, item ->
+        val keyTag = buildTestTag(
+            testTagPart,
+            TestTagPart.Current,
+            TestTagPart.Key,
+            index,
+        )!!
+        waitUntilExactlyOneExists(this, hasTestTag(keyTag), 3.seconds().millis)
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(keyTag)
+                .fetchSemanticsNodeWithRetry(this)
+                .getTexts() == listOf(item.key)
+        }
+
+        if (item.valueType == FieldValueType.String) {
+            val valueTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                TestTagPart.Value,
+                index,
+            )!!
+            waitUntilExactlyOneExists(this, hasTestTag(valueTag), 3.seconds().millis)
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(valueTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .getTexts() == listOf(item.value)
+            }
+        } else {
+            val fileButtonTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                index,
+                TestTagPart.FileButton,
+            )!!
+            val expectedFileName = File(item.value).name
+            waitUntilExactlyOneExists(this, hasTestTag(fileButtonTag), 3.seconds().millis)
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(fileButtonTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .getTexts()
+                    .firstOrNull() == expectedFileName
+            }
+        }
+    }
+}
+
 private suspend fun DesktopComposeUiTest.fillRequestKeyValueEditor(
     keyValues: List<UserKeyValuePair>,
     testTagPart: TestTagPart,
@@ -1299,7 +1538,11 @@ fun DesktopComposeUiTest.getResponseBody(): String? {
     return responseBody
 }
 
-fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(testContent: () -> Unit) {
+suspend fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(
+    maxRetryCount: Int = 20,
+    retryDelayMillis: Long = 120L,
+    testContent: () -> Unit,
+) {
     var retryAttempt = 0
     while (true) { // add this loop because the click is often not performed
         waitForIdle()
@@ -1308,7 +1551,13 @@ fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(testContent: () ->
             testContent()
         } catch (e: ComposeTimeoutException) {
             e.printStackTrace()
-            println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+            println("Retry the buggy Compose Test click until passing. #attempt: ${retryAttempt + 1}")
+            if (++retryAttempt > maxRetryCount) {
+                throw e
+            }
+            if (retryDelayMillis > 0) {
+                wait(retryDelayMillis)
+            }
             continue
         }
         break

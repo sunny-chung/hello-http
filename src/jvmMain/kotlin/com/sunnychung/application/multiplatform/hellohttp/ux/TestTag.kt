@@ -39,6 +39,8 @@ enum class TestTag {
     ResponseBodyEmpty,
     ResponseStreamLog,
     ResponseStreamLogItemTime,
+    ImportCurlCommandDialogCommandTextField,
+    ImportCurlCommandDialogImportButton,
 }
 
 enum class TestTagPart {
