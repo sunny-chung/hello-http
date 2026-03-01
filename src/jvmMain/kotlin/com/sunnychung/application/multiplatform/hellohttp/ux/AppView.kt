@@ -60,6 +60,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollec
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.extension.CommandGenerator
+import com.sunnychung.application.multiplatform.hellohttp.exporter.RequestSelectionExporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.CurlCommandImporter
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
@@ -234,6 +235,7 @@ fun AppContentView() {
 //    }
     val clipboardManager = LocalClipboardManager.current
     val errorMessageVM = AppContext.ErrorMessagePromptViewModel
+    val requestSelectionExporter = remember { RequestSelectionExporter() }
 
     val coroutineScope = rememberCoroutineScope()
     var selectedProject by remember { mutableStateOf<Project?>(null) }
@@ -541,6 +543,36 @@ fun AppContentView() {
                                         log.w(e) { "Cannot import curl command" }
                                         errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
                                         false
+                                    }
+                                },
+                                onExportRequestsToClipboard = { selectedRequests ->
+                                    try {
+                                        val exportedJson = requestSelectionExporter.exportAsJson(selectedRequests)
+                                        clipboardManager.setText(AnnotatedString(exportedJson))
+                                        val message = if (selectedRequests.size == 1) {
+                                            "Exported 1 request to clipboard"
+                                        } else {
+                                            "Exported ${selectedRequests.size} requests to clipboard"
+                                        }
+                                        errorMessageVM.showSuccessMessage(message)
+                                    } catch (e: Throwable) {
+                                        log.w(e) { "Cannot export selected requests to clipboard" }
+                                        errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                    }
+                                },
+                                onExportRequestsToFile = { selectedRequests, file ->
+                                    try {
+                                        val exportedJson = requestSelectionExporter.exportAsJson(selectedRequests)
+                                        file.writeText(exportedJson)
+                                        val message = if (selectedRequests.size == 1) {
+                                            "Exported 1 request to file"
+                                        } else {
+                                            "Exported ${selectedRequests.size} requests to file"
+                                        }
+                                        errorMessageVM.showSuccessMessage(message)
+                                    } catch (e: Throwable) {
+                                        log.w(e) { "Cannot export selected requests to file" }
+                                        errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
                                     }
                                 },
                             )
