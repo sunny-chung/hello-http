@@ -26,6 +26,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.CursorDropdownMenu
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -48,6 +50,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -61,6 +65,8 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
@@ -91,6 +97,7 @@ fun RequestTreeView(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var treeParentBound by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val requestRowBringIntoViewRequesters = remember { mutableStateMapOf<String, BringIntoViewRequester>() }
     val treeObjectBounds = remember { mutableStateMapOf<String, DropTargetInfo>() }
     var draggingOverDropTarget by remember { mutableStateOf<DropTargetInfo?>(null) }
 
@@ -106,6 +113,15 @@ fun RequestTreeView(
         containText = searchText,
         requests = requests
     )
+
+    LaunchedEffect(
+        selectedRequest?.id,
+        requestRowBringIntoViewRequesters[selectedRequest?.id],
+    ) {
+        val selectedRequestId = selectedRequest?.id ?: return@LaunchedEffect
+        val bringIntoViewRequester = requestRowBringIntoViewRequesters[selectedRequestId] ?: return@LaunchedEffect
+        bringIntoViewRequester.bringIntoView()
+    }
 
     log.d { "RequestListView recompose ${treeObjects.size} ${requests.size} isDraggable=$isDraggable" }
 
@@ -216,6 +232,15 @@ fun RequestTreeView(
 
     @Composable
     fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequestTemplate) {
+        val requestBringIntoViewRequester = remember { BringIntoViewRequester() }
+        DisposableEffect(it.id) {
+            requestRowBringIntoViewRequesters[it.id] = requestBringIntoViewRequester
+            onDispose {
+                if (requestRowBringIntoViewRequesters[it.id] === requestBringIntoViewRequester) {
+                    requestRowBringIntoViewRequesters.remove(it.id)
+                }
+            }
+        }
         Draggable(
             isEnableDrag = isDraggable,
             id = it.id,
@@ -224,6 +249,30 @@ fun RequestTreeView(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = modifier
+                    .testTag(
+                        if (selectedRequest?.id == it.id) {
+                            buildTestTag(TestTag.RequestTreeRequestRow.name, it.id, "selected")!!
+                        } else {
+                            buildTestTag(TestTag.RequestTreeRequestRow.name, it.id)!!
+                        }
+                    )
+                    .semantics {
+                        // Compose UI tests occasionally fail to find row text reliably from the same node that is
+                        // later used for interaction (merged/unmerged semantics behavior differs by API).
+                        // Expose row metadata explicitly so tests can query deterministic fields.
+                        requestTreeRowRequestId = it.id
+                        requestTreeRowMethod = it.method
+                        requestTreeRowName = it.name
+                        requestTreeRowUrl = it.url
+                        // Expose explicit semantics click action.
+                        // In tests, pointer-based click can be flaky for scrolled/off-screen rows in non-lazy trees,
+                        // while semantics action is significantly more stable.
+                        onClick(label = "Select request") {
+                            onSelectRequest(it)
+                            true
+                        }
+                    }
+                    .bringIntoViewRequester(requestBringIntoViewRequester)
                     .onPointerEvent(PointerEventType.Press) { _ ->
                         onSelectRequest(it)
                     }
@@ -508,6 +557,7 @@ fun RequestTreeView(
             .verticalScroll(scrollState)
             .onGloballyPositioned { treeParentBound = it }
             .padding(end = 8.dp)
+            .testTag(TestTag.RequestTreeScrollContainer.name)
         ) {
             treeObjects.forEach {
                 TreeObjectView(indentLevel = 0, obj = it)

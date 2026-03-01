@@ -20,17 +20,34 @@ import java.nio.charset.StandardCharsets
 class CurlCommandImporter {
 
     fun parseRequest(command: String): UserRequestTemplate {
+        return parseRequests(command).first()
+    }
+
+    fun parseRequests(command: String): List<UserRequestTemplate> {
         val tokens = tokenizeCommand(command)
         if (tokens.isEmpty()) {
             throw IllegalArgumentException("The command is empty.")
         }
 
-        val curlTokenIndex = tokens.indexOfFirst(::isCurlToken)
-        if (curlTokenIndex < 0) {
+        val curlTokenIndices = tokens.mapIndexedNotNull { index, token ->
+            if (isCurlToken(token)) index else null
+        }
+        if (curlTokenIndices.isEmpty()) {
             throw IllegalArgumentException("The command does not contain curl.")
         }
 
-        val parsed = parseArguments(tokens.drop(curlTokenIndex + 1))
+        return curlTokenIndices.mapIndexed { index, curlTokenIndex ->
+            val nextCurlTokenIndex = curlTokenIndices.getOrNull(index + 1) ?: tokens.size
+            parseRequestTokens(tokens = tokens.subList(curlTokenIndex, nextCurlTokenIndex))
+        }
+    }
+
+    private fun parseRequestTokens(tokens: List<String>): UserRequestTemplate {
+        if (tokens.isEmpty()) {
+            throw IllegalArgumentException("The command is empty.")
+        }
+
+        val parsed = parseArguments(tokens.drop(1))
 
         val url = parsed.url ?: throw IllegalArgumentException("The curl command does not include a URL.")
         val method = parsed.explicitMethod ?: when {
@@ -433,6 +450,12 @@ class CurlCommandImporter {
                         c.isWhitespace() -> {
                             flush()
                             index += 1
+                        }
+
+                        c == '#' && current.isEmpty() -> {
+                            while (index < command.length && command[index] != '\n' && command[index] != '\r') {
+                                index += 1
+                            }
                         }
 
                         c == '\'' -> {

@@ -58,7 +58,13 @@ fun ImportCurlCommandDialog(
                 onValueChange = { command = it },
                 placeholder = {
                     AppText(
-                        text = "curl --request \"GET\" --url \"https://example.com\"",
+                        text = """
+                            # Get users
+                            curl --request "GET" --url "https://example.com/users"
+                            
+                            # Create user
+                            curl --request "POST" --url "https://example.com/users" --header "Content-Type: application/json" --data '{"name":"Alice"}'
+                        """.trimIndent(),
                         color = colors.placeholder,
                     )
                 },

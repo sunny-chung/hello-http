@@ -521,15 +521,21 @@ fun AppContentView() {
                                 },
                                 onImportCurlRequest = { command ->
                                     try {
-                                        val importedRequest = CurlCommandImporter().parseRequest(command)
-                                        requestCollection!!.requests += importedRequest
+                                        val importedRequests = CurlCommandImporter().parseRequests(command)
+                                        importedRequests.forEach { importedRequest ->
+                                            requestCollection!!.requests += importedRequest
+                                            selectedSubproject!!.treeObjects += TreeRequest(id = importedRequest.id)
+                                        }
                                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
-
-                                        selectedSubproject!!.treeObjects += TreeRequest(id = importedRequest.id)
                                         projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 
-                                        selectedRequestId = importedRequest.id
-                                        errorMessageVM.showSuccessMessage("Imported request from cURL command")
+                                        selectedRequestId = importedRequests.first().id
+                                        val message = if (importedRequests.size == 1) {
+                                            "Imported request from cURL command"
+                                        } else {
+                                            "Imported ${importedRequests.size} requests from cURL commands"
+                                        }
+                                        errorMessageVM.showSuccessMessage(message)
                                         true
                                     } catch (e: Throwable) {
                                         log.w(e) { "Cannot import curl command" }

@@ -4,11 +4,15 @@ package com.sunnychung.application.multiplatform.hellohttp.test
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.DesktopComposeUiTest
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasTextExactly
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
@@ -20,6 +24,10 @@ import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import com.sunnychung.application.multiplatform.hellohttp.ux.RequestTreeRowMethodKey
+import com.sunnychung.application.multiplatform.hellohttp.ux.RequestTreeRowNameKey
+import com.sunnychung.application.multiplatform.hellohttp.ux.RequestTreeRowRequestIdKey
+import com.sunnychung.application.multiplatform.hellohttp.ux.RequestTreeRowUrlKey
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTagPart
 import org.junit.BeforeClass
@@ -39,6 +47,12 @@ class CurlImportUxTest {
     @JvmField
     @Rule
     val retryRule = RetryRule()
+
+    private data class ImportedRequestExpectation(
+        val method: String,
+        val pathSegment: String,
+        val request: UserRequestTemplate,
+    )
 
     @Test
     fun createButtonMenuShouldContainCurlImportEntry() = runTest {
@@ -434,6 +448,234 @@ class CurlImportUxTest {
         )
     }
 
+    @Test
+    fun importMultipleCurlCommandsShouldCreateMultipleRequestsAndSelectFirstImportedRequest() = runTest {
+        val runId = (System.nanoTime() % 1000000L).toString()
+        val firstPath = "mf$runId"
+        val secondPath = "ms$runId"
+        val command = """
+            curl --request GET --url 'https://example.com/$firstPath?source=multi'
+            curl --request POST --url 'https://example.com/$secondPath' --header 'Content-Type: application/json' --data '{"name":"second"}'
+        """.trimIndent()
+        val firstExpected = expectedHttpRequest(
+            method = "GET",
+            url = "https://example.com/$firstPath?source=multi",
+            contentType = ContentType.None,
+            body = null,
+            queryParameters = listOf(
+                kvString("source", "multi"),
+            ),
+        )
+        val secondExpected = expectedHttpRequest(
+            method = "POST",
+            url = "https://example.com/$secondPath",
+            contentType = ContentType.Json,
+            body = StringBody("""{"name":"second"}"""),
+            headers = listOf(
+                kvString("Content-Type", "application/json"),
+            ),
+        )
+
+        createProjectIfNeeded()
+        val initialRequestRowCount = getRequestTreeRequestRowCount()
+        importCurlCommand(
+            command = command,
+            dialogCloseTimeoutMillis = 12_000L,
+        )
+        assertRequestTreeRequestRowCount(
+            initialRequestRowCount + 2,
+        )
+        assertImportedRequests(
+            listOf(
+                ImportedRequestExpectation(method = "GET", pathSegment = firstPath, request = firstExpected),
+                ImportedRequestExpectation(method = "POST", pathSegment = secondPath, request = secondExpected),
+            )
+        )
+    }
+
+    @Test
+    fun importMultipleCurlCommandsWithBlankLinesShouldCreateAllRequests() = runTest {
+        val runId = (System.nanoTime() % 1000000L).toString()
+        val firstPath = "mba$runId"
+        val secondPath = "mbb$runId"
+        val thirdPath = "mbc$runId"
+        val command = """
+            time curl --request GET --url 'https://example.com/$firstPath'
+
+            curl --request GET --url 'https://example.com/$secondPath?x=1'
+            curl --request POST --url 'https://example.com/$thirdPath' --data-urlencode 'a=1'
+        """.trimIndent()
+        val firstExpected = expectedHttpRequest(
+            method = "GET",
+            url = "https://example.com/$firstPath",
+            contentType = ContentType.None,
+            body = null,
+        )
+        val secondExpected = expectedHttpRequest(
+            method = "GET",
+            url = "https://example.com/$secondPath?x=1",
+            contentType = ContentType.None,
+            body = null,
+            queryParameters = listOf(
+                kvString("x", "1"),
+            ),
+        )
+        val thirdExpected = expectedHttpRequest(
+            method = "POST",
+            url = "https://example.com/$thirdPath",
+            contentType = ContentType.FormUrlEncoded,
+            body = FormUrlEncodedBody(
+                value = listOf(
+                    kvString("a", "1"),
+                ),
+            ),
+        )
+
+        createProjectIfNeeded()
+        val initialRequestRowCount = getRequestTreeRequestRowCount()
+        importCurlCommand(
+            command = command,
+            dialogCloseTimeoutMillis = 12_000L,
+        )
+        assertRequestTreeRequestRowCount(
+            initialRequestRowCount + 3,
+        )
+        assertImportedRequests(
+            listOf(
+                ImportedRequestExpectation(method = "GET", pathSegment = firstPath, request = firstExpected),
+                ImportedRequestExpectation(method = "GET", pathSegment = secondPath, request = secondExpected),
+                ImportedRequestExpectation(method = "POST", pathSegment = thirdPath, request = thirdExpected),
+            )
+        )
+    }
+
+    @Test
+    fun importMultipleCurlCommandsWithCommentsShouldIgnoreCommentsAndCreateRequests() = runTest {
+        val runId = (System.nanoTime() % 1000000L).toString()
+        val firstPath = "ca$runId"
+        val secondPath = "cb$runId"
+        val command = """
+            # Query with URL parameters
+            curl --request GET --url 'https://example.com/$firstPath?source=comment' # this should be ignored
+
+            # JSON submit
+            curl --request POST --url 'https://example.com/$secondPath' --header 'Content-Type: application/json' --data '{"id":1}' # trailing comment
+        """.trimIndent()
+        val firstExpected = expectedHttpRequest(
+            method = "GET",
+            url = "https://example.com/$firstPath?source=comment",
+            contentType = ContentType.None,
+            body = null,
+            queryParameters = listOf(
+                kvString("source", "comment"),
+            ),
+        )
+        val secondExpected = expectedHttpRequest(
+            method = "POST",
+            url = "https://example.com/$secondPath",
+            contentType = ContentType.Json,
+            body = StringBody("""{"id":1}"""),
+            headers = listOf(
+                kvString("Content-Type", "application/json"),
+            ),
+        )
+
+        createProjectIfNeeded()
+        val initialRequestRowCount = getRequestTreeRequestRowCount()
+        importCurlCommand(
+            command = command,
+            dialogCloseTimeoutMillis = 12_000L,
+        )
+        assertRequestTreeRequestRowCount(
+            initialRequestRowCount + 2,
+        )
+        assertImportedRequests(
+            listOf(
+                ImportedRequestExpectation(method = "GET", pathSegment = firstPath, request = firstExpected),
+                ImportedRequestExpectation(method = "POST", pathSegment = secondPath, request = secondExpected),
+            )
+        )
+    }
+
+    @Test
+    fun importTwentyThenImportThreeShouldScrollToNewlySelectedRequestAndVerifyAllCreatedRequests() = runTest {
+        val runId = (System.nanoTime() % 1000000L).toString()
+        val batch1Paths = (1..20).map { index -> "b1${runId}r${index.toString().padStart(2, '0')}" }
+        val batch2Paths = (1..3).map { index -> "b2${runId}r${index.toString().padStart(2, '0')}" }
+        val batch1Command = batch1Paths.joinToString("\n") { path ->
+            "curl --request GET --url 'https://example.com/$path'"
+        }
+        val batch2Command = batch2Paths.joinToString("\n") { path ->
+            "curl --request GET --url 'https://example.com/$path'"
+        }
+        val batch2FirstExpected = expectedHttpRequest(
+            method = "GET",
+            url = "https://example.com/${batch2Paths.first()}",
+            contentType = ContentType.None,
+            body = null,
+        )
+        val batch1Expectations = batch1Paths.map { path ->
+            ImportedRequestExpectation(
+                method = "GET",
+                pathSegment = path,
+                request = expectedHttpRequest(
+                    method = "GET",
+                    url = "https://example.com/$path",
+                    contentType = ContentType.None,
+                    body = null,
+                ),
+            )
+        }
+        val batch2Expectations = batch2Paths.map { path ->
+            ImportedRequestExpectation(
+                method = "GET",
+                pathSegment = path,
+                request = expectedHttpRequest(
+                    method = "GET",
+                    url = "https://example.com/$path",
+                    contentType = ContentType.None,
+                    body = null,
+                ),
+            )
+        }
+
+        createProjectIfNeeded()
+        val initialRequestRowCount = getRequestTreeRequestRowCount()
+
+        importCurlCommand(
+            command = batch1Command,
+            dialogCloseTimeoutMillis = 16_000L,
+        )
+        assertRequestTreeRequestRowCount(initialRequestRowCount + 20)
+        batch1Expectations.forEach { expected ->
+            assertRequestExistsInTreeByMethodAndPath(
+                method = expected.method,
+                pathSegment = expected.pathSegment,
+            )
+        }
+        assertCurrentRequestEditor(batch1Expectations.first().request)
+
+        // move selection near the top to ensure the second import must auto-scroll to selected request
+        assertCurrentRequestEditor(batch1Expectations.first().request)
+
+        importCurlCommand(
+            command = batch2Command,
+            dialogCloseTimeoutMillis = 16_000L,
+        )
+        assertRequestTreeRequestRowCount(initialRequestRowCount + 23)
+        batch1Expectations.forEach { expected ->
+            assertRequestExistsInTreeByMethodAndPath(
+                method = expected.method,
+                pathSegment = expected.pathSegment,
+            )
+        }
+
+        assertCurrentRequestEditor(batch2FirstExpected)
+        assertRequestVisibleByMethodAndPath(method = "GET", pathSegment = batch2Paths.first())
+
+        assertImportedRequests(batch2Expectations)
+    }
+
     private suspend fun DesktopComposeUiTest.importCurlAndAssert(
         command: String,
         expectedRequest: UserRequestTemplate,
@@ -447,7 +689,10 @@ class CurlImportUxTest {
         afterAssert(this)
     }
 
-    private suspend fun DesktopComposeUiTest.importCurlCommand(command: String) {
+    private suspend fun DesktopComposeUiTest.importCurlCommand(
+        command: String,
+        dialogCloseTimeoutMillis: Long = 3_000L,
+    ) {
         onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
             .assertIsDisplayedWithRetry(this)
             .performClickWithRetry(this)
@@ -486,11 +731,166 @@ class CurlImportUxTest {
                 .assertIsDisplayedWithRetry(this)
                 .performClickWithRetry(this)
 
-            waitUntil(3_000L) {
+            waitUntil(dialogCloseTimeoutMillis) {
                 onAllNodesWithTag(TestTag.ImportCurlCommandDialogCommandTextField.name)
                     .fetchSemanticsNodesWithRetry(this)
                     .isEmpty()
             }
+        }
+    }
+
+    private fun DesktopComposeUiTest.getRequestTreeRequestRowCount(): Int {
+        return onAllNodes(hasRequestTreeRequestRowTag(), useUnmergedTree = true)
+            .fetchSemanticsNodesWithRetry(this)
+            .size
+    }
+
+    private suspend fun DesktopComposeUiTest.assertRequestTreeRequestRowCount(expectedCount: Int) {
+        waitUntil(6_000L) {
+            getRequestTreeRequestRowCount() == expectedCount
+        }
+    }
+
+    private suspend fun DesktopComposeUiTest.assertImportedRequests(
+        expectedRequests: List<ImportedRequestExpectation>,
+    ) {
+        check(expectedRequests.isNotEmpty()) { "expectedRequests should not be empty" }
+        expectedRequests.forEach { expected ->
+            assertRequestExistsInTreeByMethodAndPath(
+                method = expected.method,
+                pathSegment = expected.pathSegment,
+            )
+        }
+
+        assertCurrentRequestEditor(expectedRequests.first().request)
+        assertRequestVisibleByMethodAndPath(
+            method = expectedRequests.first().method,
+            pathSegment = expectedRequests.first().pathSegment,
+        )
+
+        expectedRequests.drop(1).forEach { expected ->
+            selectRequestByMethodAndPath(
+                method = expected.method,
+                pathSegment = expected.pathSegment,
+            )
+            assertCurrentRequestEditor(expected.request)
+            assertRequestVisibleByMethodAndPath(
+                method = expected.method,
+                pathSegment = expected.pathSegment,
+            )
+        }
+    }
+
+    private suspend fun DesktopComposeUiTest.assertRequestVisibleByMethodAndPath(
+        method: String,
+        pathSegment: String,
+    ) {
+        waitUntil(10_000L) {
+            try {
+                val rowTestTag = findRequestRowTestTag(method = method, pathSegment = pathSegment)
+                if (rowTestTag == null) {
+                    return@waitUntil false
+                }
+                onNodeWithTag(rowTestTag, useUnmergedTree = true)
+                    .assertIsDisplayedWithRetry(this)
+                true
+            } catch (_: Throwable) {
+                false
+            }
+        }
+        val rowTestTag = findRequestRowTestTag(method = method, pathSegment = pathSegment)
+        check(rowTestTag != null) {
+            "Cannot find request row for $method $pathSegment. rows=${getRequestRowDebugSummary()}"
+        }
+        onNodeWithTag(rowTestTag, useUnmergedTree = true)
+            .assertIsDisplayedWithRetry(this)
+    }
+
+    private suspend fun DesktopComposeUiTest.assertRequestExistsInTreeByMethodAndPath(
+        method: String,
+        pathSegment: String,
+    ) {
+        try {
+            waitUntil(10_000L) {
+                findRequestRowTestTag(method = method, pathSegment = pathSegment) != null
+            }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError(
+                "Cannot find request row for $method $pathSegment. rows=${getRequestRowDebugSummary()}",
+                e,
+            )
+        }
+    }
+
+    private suspend fun DesktopComposeUiTest.selectRequestByMethodAndPath(
+        method: String,
+        pathSegment: String,
+    ) {
+        waitUntil(10_000L) {
+            findRequestRowTestTag(method = method, pathSegment = pathSegment) != null
+        }
+        val rowTestTag = findRequestRowTestTag(method = method, pathSegment = pathSegment)
+        check(rowTestTag != null) {
+            "Cannot find request row for $method $pathSegment. rows=${getRequestRowDebugSummary()}"
+        }
+        retryForUnresponsiveBuggyComposeTest(maxRetryCount = 6, retryDelayMillis = 220L) {
+            // Use semantics OnClick instead of pointer click.
+            // Pointer click is display-dependent and was flaky for this test path; semantics click targets the node
+            // action directly and is more stable across Compose Desktop test runs.
+            onNodeWithTag(rowTestTag, useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.OnClick)
+        }
+    }
+
+    private fun DesktopComposeUiTest.findRequestRowTestTag(
+        method: String,
+        pathSegment: String,
+    ): String? {
+        // Intentionally locate rows by explicit semantics fields instead of text search.
+        //
+        // Why:
+        // - `onNodeWithText` / `getTexts()` behavior differs between merged and unmerged trees.
+        // - For request-tree rows, the node we interact with can have empty text even when descendants render labels.
+        // - Matching by raw substring also creates false positives (`r1` matches `r10`).
+        //
+        // Using row semantics keys avoids all three issues.
+        val rows = onAllNodes(hasRequestTreeRequestRowTag(), useUnmergedTree = true)
+            .fetchSemanticsNodesWithRetry(this)
+        return rows.firstOrNull { row ->
+            val rowMethod = row.config.getOrNull(RequestTreeRowMethodKey)
+            val rowName = row.config.getOrNull(RequestTreeRowNameKey).orEmpty()
+            val rowUrl = row.config.getOrNull(RequestTreeRowUrlKey).orEmpty()
+            rowMethod == method && (
+                hasPathToken(text = rowUrl, pathSegment = pathSegment) ||
+                hasPathToken(text = rowName, pathSegment = pathSegment)
+            )
+        }?.config?.getOrNull(SemanticsProperties.TestTag)
+    }
+
+    private fun hasPathToken(text: String, pathSegment: String): Boolean {
+        val escapedPathSegment = Regex.escape(pathSegment)
+        return Regex("(^|[^A-Za-z0-9_-])$escapedPathSegment([^A-Za-z0-9_-]|$)").containsMatchIn(text)
+    }
+
+    private fun DesktopComposeUiTest.getRequestRowDebugSummary(): String {
+        val unmerged = onAllNodes(hasRequestTreeRequestRowTag(), useUnmergedTree = true)
+            .fetchSemanticsNodesWithRetry(this)
+            .joinToString(" | ") { row ->
+                val tag = row.config.getOrNull(SemanticsProperties.TestTag).orEmpty()
+                val requestId = row.config.getOrNull(RequestTreeRowRequestIdKey).orEmpty()
+                val method = row.config.getOrNull(RequestTreeRowMethodKey).orEmpty()
+                val name = row.config.getOrNull(RequestTreeRowNameKey).orEmpty()
+                val url = row.config.getOrNull(RequestTreeRowUrlKey).orEmpty()
+                "$tag:id=$requestId,method=$method,name=$name,url=$url"
+            }
+        return "unmerged=[$unmerged]"
+    }
+
+    private fun hasRequestTreeRequestRowTag(): SemanticsMatcher {
+        return SemanticsMatcher("has request tree row tag") { node ->
+            val testTag = node.config.getOrNull(SemanticsProperties.TestTag) ?: return@SemanticsMatcher false
+            val prefix = "${TestTag.RequestTreeRequestRow.name}/"
+            testTag.startsWith(prefix)
         }
     }
 

@@ -83,6 +83,14 @@ import java.awt.Toolkit
 import java.io.File
 import java.net.URL
 
+private const val IS_VERBOSE_UX_TEST_LOG = false
+
+private inline fun uxTestLog(message: () -> String) {
+    if (IS_VERBOSE_UX_TEST_LOG) {
+        println(message())
+    }
+}
+
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
     try {
         executeWithTimeout(120.seconds()) {
@@ -114,7 +122,7 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
                     .printStackTrace()
                 throw e
             } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
-                println("UX test case ends, await all repositories updates")
+                uxTestLog { "UX test case ends, await all repositories updates" }
                 val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
                 runBlocking {
                     if (numActiveCalls > 0) {
@@ -125,13 +133,13 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
                         it.awaitAllUpdates()
                     }
                 }
-                println("All repositories updated.")
+                uxTestLog { "All repositories updated." }
             }
         }
     } finally {
-        println("Cleaning up BigText worker coroutine contexts.")
+        uxTestLog { "Cleaning up BigText worker coroutine contexts." }
         clearAllBigTextWorkerCoroutineContexts()
-        println("Cleaned up. Finish test case.")
+        uxTestLog { "Cleaned up. Finish test case." }
     }
 }
 
@@ -202,7 +210,7 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
                 .isEmpty()
         }
 
-        println("created first project and subproject")
+        uxTestLog { "created first project and subproject" }
 
         // below create multiple environments
 
@@ -263,8 +271,7 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
                             .isNotEmpty()
                     }
                 } catch (e: ComposeTimeoutException) {
-                    e.printStackTrace()
-                    println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+                    uxTestLog { "Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}" }
                     continue
                 }
                 break
@@ -448,7 +455,7 @@ suspend fun DesktopComposeUiTest.selectEnvironment(environment: TestEnvironment)
 
 @OptIn(InternalComposeUiApi::class)
 suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
-    println("enableCookieForCurrentSubproject")
+    uxTestLog { "enableCookieForCurrentSubproject" }
 
     onNodeWithTag(TestTag.EditSubprojectButton.name)
         .assertIsDisplayedWithRetry(this)
@@ -499,7 +506,7 @@ suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
  * @param name A unique name.
  */
 suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
-    println("createEnvironmentInEnvDialog start '$name'")
+    uxTestLog { "createEnvironmentInEnvDialog start '$name'" }
 
     var retryAttempt = 0
     while (true) { // add this loop because the click on EnvironmentDialogCreateButton often is not performed
@@ -513,11 +520,13 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
 
         try {
             waitUntil {
-                println("EnvironmentDialogEnvNameTextField: [${
-                    onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-                        .fetchSemanticsNodesWithRetry(this)
-                        .joinToString { it.config.toString() }
-                }]")
+                uxTestLog {
+                    "EnvironmentDialogEnvNameTextField: [${
+                        onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                            .fetchSemanticsNodesWithRetry(this)
+                            .joinToString { it.config.toString() }
+                    }]"
+                }
 
                 onAllNodes(
                     hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
@@ -528,8 +537,7 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
                     .isNotEmpty()
             }
         } catch (e: ComposeTimeoutException) {
-            e.printStackTrace()
-            println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+            uxTestLog { "Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}" }
             continue
         }
         break
@@ -577,8 +585,12 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
 
     waitForIdle()
 
-    println("createEnvironmentInEnvDialog done '$name'")
-    println("createEnvironmentInEnvDialog '$name' list ${onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).joinToString("|") { it.config.toString() }}")
+    uxTestLog { "createEnvironmentInEnvDialog done '$name'" }
+    uxTestLog {
+        "createEnvironmentInEnvDialog '$name' list ${
+            onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).joinToString("|") { it.config.toString() }
+        }"
+    }
 }
 
 fun DesktopComposeUiTest.selectRequestMethod(itemDisplayText: String) {
@@ -600,12 +612,14 @@ fun DesktopComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText
                 .size == 1
         }
 
-        println("DropdownMenu items: ${
-            onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
-                .fetchSemanticsNodeWithRetry(this)
-                .config
-                .getOrNull(DropDownDisplayTexts)
-        }")
+        uxTestLog {
+            "DropdownMenu items: ${
+                onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .config
+                    .getOrNull(DropDownDisplayTexts)
+            }"
+        }
 
         onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
             .performScrollToNode(hasTestTag(itemTag))
@@ -637,7 +651,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
     if (environment != null) {
         selectEnvironment(environment)
     }
-    println("start run createRequest content ---")
+    uxTestLog { "start run createRequest content ---" }
     val baseExample = request.examples.first()
 
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
@@ -964,25 +978,44 @@ private suspend fun DesktopComposeUiTest.assertRequestEditorContent(
     }
 
     if (request.application == ProtocolApplication.Http) {
+        // RequestEditor keeps the selected parameter tab in mutable UI state.
+        // Across test steps (and even request switches), the active tab can remain "Query"/"Header"/"Cookie".
+        // In that state, `RequestBodyTypeDropdown/*` nodes are legitimately absent, which caused false
+        // timeouts in cURL import UX tests. Always normalize to the Body tab before checking body-related UI.
+        clickRequestParameterTab("Body")
+
+        val methodLabelTag = buildTestTag(
+            TestTagPart.RequestMethodDropdown,
+            TestTagPart.DropdownLabel
+        )!!
+        val bodyTypeLabelTag = buildTestTag(
+            TestTagPart.RequestBodyTypeDropdown,
+            TestTagPart.DropdownLabel
+        )!!
+
+        // Compose Desktop semantics can be transiently absent while request selection is being rebound.
+        // If we call `onNodeWithTag(...).fetchSemanticsNode()` immediately, the assertion can fail fast
+        // before `waitUntil(...)` gets a chance to retry, which then bubbles up to RetryRule and reruns
+        // the whole test case. Waiting for existence first turns this into a deterministic eventual check.
+        waitUntilExactlyOneExists(
+            host = this,
+            testTag = methodLabelTag,
+            timeoutMillis = 3.seconds().millis,
+            useUnmergedTree = true,
+        )
         waitUntil(3.seconds().millis) {
-            onNodeWithTag(
-                buildTestTag(
-                    TestTagPart.RequestMethodDropdown,
-                    TestTagPart.DropdownLabel
-                )!!,
-                useUnmergedTree = true,
-            )
+            onNodeWithTag(methodLabelTag, useUnmergedTree = true)
                 .fetchSemanticsNodeWithRetry(this)
                 .getTexts() == listOf(request.method)
         }
+        waitUntilExactlyOneExists(
+            host = this,
+            testTag = bodyTypeLabelTag,
+            timeoutMillis = 3.seconds().millis,
+            useUnmergedTree = true,
+        )
         waitUntil(3.seconds().millis) {
-            onNodeWithTag(
-                buildTestTag(
-                    TestTagPart.RequestBodyTypeDropdown,
-                    TestTagPart.DropdownLabel
-                )!!,
-                useUnmergedTree = true,
-            )
+            onNodeWithTag(bodyTypeLabelTag, useUnmergedTree = true)
                 .fetchSemanticsNodeWithRetry(this)
                 .getTexts() == listOf(baseExample.contentType.displayText)
         }
@@ -1293,9 +1326,19 @@ suspend fun DesktopComposeUiTest.createAndSendHttpRequest(request: UserRequestTe
     if (isOneOffRequest) {
         val startTime = KInstant.now()
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodesWithRetry(this).isEmpty() }
-        println("Call Duration: ${KInstant.now() - startTime}")
-        println("Response status: ${onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodesWithRetry(this).joinToString("\\\\") { it.getTexts().joinToString("|") }}")
-        println("Response error: ${onAllNodesWithTag(TestTag.ResponseError.name).fetchSemanticsNodesWithRetry(this).joinToString("\\\\") { it.getTexts().joinToString("|") }}")
+        uxTestLog { "Call Duration: ${KInstant.now() - startTime}" }
+        uxTestLog {
+            "Response status: ${
+                onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodesWithRetry(this)
+                    .joinToString("\\\\") { it.getTexts().joinToString("|") }
+            }"
+        }
+        uxTestLog {
+            "Response error: ${
+                onAllNodesWithTag(TestTag.ResponseError.name).fetchSemanticsNodesWithRetry(this)
+                    .joinToString("\\\\") { it.getTexts().joinToString("|") }
+            }"
+        }
     }
 
     if (isExpectResponseBody) {
@@ -1318,7 +1361,7 @@ suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(r
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
         .getTexts()
         .single()
-    println(responseBody)
+    uxTestLog { responseBody }
     val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
     assertEquals(request.method, resp.method)
     assertEquals(URL(request.url).path, resp.path)
@@ -1446,7 +1489,7 @@ suspend fun DesktopComposeUiTest.sendPayload(payload: String, isCreatePayloadExa
             ?.firstOrNull()
             ?: "")
             .also {
-                println("getStreamPayloadLatestTimeString() = $it")
+                uxTestLog { "getStreamPayloadLatestTimeString() = $it" }
             }
     }
 
@@ -1550,8 +1593,7 @@ suspend fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(
         try {
             testContent()
         } catch (e: ComposeTimeoutException) {
-            e.printStackTrace()
-            println("Retry the buggy Compose Test click until passing. #attempt: ${retryAttempt + 1}")
+            uxTestLog { "Retry the buggy Compose Test click until passing. #attempt: ${retryAttempt + 1}" }
             if (++retryAttempt > maxRetryCount) {
                 throw e
             }
@@ -1668,6 +1710,23 @@ fun waitUntilExactlyOneExists(
     host.waitUntil(timeoutMillis) {
         host.runOnUiThread {
             host.onAllNodes(matcher).fetchSemanticsNodes().size == 1
+        }
+    }
+}
+
+fun waitUntilExactlyOneExists(
+    host: ComposeUiTest,
+    testTag: String,
+    timeoutMillis: Long = 1_000L,
+    useUnmergedTree: Boolean = false,
+) {
+    // Keep this overload instead of converting the tag to a matcher because test stability depends on selecting
+    // the correct semantics tree mode. For several Compose Desktop nodes (especially labels inside custom widgets),
+    // tags are only discoverable in unmerged tree while actions are performed on the same unmerged nodes.
+    // Waiting in merged tree first caused false negatives and triggered RetryRule reruns.
+    host.waitUntil(timeoutMillis) {
+        host.runOnUiThread {
+            host.onAllNodesWithTag(testTag, useUnmergedTree = useUnmergedTree).fetchSemanticsNodes().size == 1
         }
     }
 }

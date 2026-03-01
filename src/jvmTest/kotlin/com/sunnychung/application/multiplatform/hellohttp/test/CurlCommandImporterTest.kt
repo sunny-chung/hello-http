@@ -235,4 +235,60 @@ class CurlCommandImporterTest {
         assertEquals("/tmp/short.txt", body.value[1].value)
         assertEquals(FieldValueType.File, body.value[1].valueType)
     }
+
+    @Test
+    fun parseMultipleRequestsSeparatedByNewLine() {
+        val requests = importer.parseRequests(
+            """
+            curl --request GET --url "https://example.com/multi-first?first=yes"
+            curl --request POST --url "https://example.com/multi-second" --header "Content-Type: application/json" --data "{\"name\":\"second\"}"
+            """.trimIndent()
+        )
+
+        assertEquals(2, requests.size)
+        assertEquals("GET", requests[0].method)
+        assertEquals("https://example.com/multi-first?first=yes", requests[0].url)
+        assertEquals(listOf("first" to "yes"), requests[0].examples.first().queryParameters.map { it.key to it.value })
+
+        assertEquals("POST", requests[1].method)
+        assertEquals("https://example.com/multi-second", requests[1].url)
+        assertEquals(ContentType.Json, requests[1].examples.first().contentType)
+        assertEquals("""{"name":"second"}""", assertIs<StringBody>(requests[1].examples.first().body).value)
+    }
+
+    @Test
+    fun parseMultipleRequestsSeparatedByShellOperators() {
+        val requests = importer.parseRequests(
+            """
+            time curl --request GET --url https://example.com/alpha && curl --request GET --url https://example.com/beta?x=1
+            """.trimIndent()
+        )
+
+        assertEquals(2, requests.size)
+        assertEquals("https://example.com/alpha", requests[0].url)
+        assertEquals("https://example.com/beta?x=1", requests[1].url)
+        assertEquals(listOf("x" to "1"), requests[1].examples.first().queryParameters.map { it.key to it.value })
+    }
+
+    @Test
+    fun parseMultipleRequestsWithComments() {
+        val requests = importer.parseRequests(
+            """
+            # First request
+            curl --request GET --url https://example.com/comment-first # load the first endpoint
+            
+            # Second request
+            curl --request POST --url https://example.com/comment-second --data '{"name":"commented"}' # create item
+            """.trimIndent()
+        )
+
+        assertEquals(2, requests.size)
+        assertEquals("GET", requests[0].method)
+        assertEquals("https://example.com/comment-first", requests[0].url)
+
+        assertEquals("POST", requests[1].method)
+        assertEquals("https://example.com/comment-second", requests[1].url)
+        assertEquals(ContentType.Json, requests[1].examples.first().contentType)
+        assertEquals("""{"name":"commented"}""", assertIs<StringBody>(requests[1].examples.first().body).value)
+    }
 }
