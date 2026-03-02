@@ -247,10 +247,13 @@ data class UserRequestTemplate(
     }
 
     fun createScope(exampleId: String, environment: Environment?, resolveVariableMode: ResolveVariableMode = ExpandByEnvironment): Scope {
-        val baseExample = examples.first()
-        val selectedExample = examples.first { it.id == exampleId }
+        val baseExample = examples.firstOrNull() ?: UserRequestExample(
+            id = uuidString(),
+            name = "Base",
+        )
+        val selectedExample = examples.firstOrNull { it.id == exampleId } ?: baseExample
 
-        return Scope(baseExample, selectedExample, VariableResolver(environment, this, exampleId, resolveVariableMode))
+        return Scope(baseExample, selectedExample, VariableResolver(environment, this, selectedExample.id, resolveVariableMode))
     }
 
     fun <R> withScope(exampleId: String, environment: Environment?, resolveVariableMode: ResolveVariableMode = ExpandByEnvironment, action: Scope.() -> R): R {
@@ -307,8 +310,8 @@ data class UserRequestTemplate(
     }
 
     fun getExampleVariablesOnly(exampleId: String): Map<String, String> {
-        val baseExample = examples.first()
-        val selectedExample = examples.first { it.id == exampleId }
+        val baseExample = examples.firstOrNull() ?: return emptyMap()
+        val selectedExample = examples.firstOrNull { it.id == exampleId } ?: baseExample
         return (
                 baseExample.variables
                     .filter { it.isEnabled && it.id !in (selectedExample.overrides?.disabledVariables ?: emptySet()) }

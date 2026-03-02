@@ -17,6 +17,8 @@ enum class TestTag {
     EnvironmentEditorVariableTabContent,
     EnvironmentEditorSslTabContent,
     CreateRequestOrFolderButton,
+    RequestTreeRequestRow,
+    RequestTreeScrollContainer,
     RequestUrlTextField,
     RequestFetchApiSpecButton,
     RequestCancelFetchApiSpecButton,
@@ -39,6 +41,8 @@ enum class TestTag {
     ResponseBodyEmpty,
     ResponseStreamLog,
     ResponseStreamLogItemTime,
+    ImportCurlCommandDialogCommandTextField,
+    ImportCurlCommandDialogImportButton,
 }
 
 enum class TestTagPart {

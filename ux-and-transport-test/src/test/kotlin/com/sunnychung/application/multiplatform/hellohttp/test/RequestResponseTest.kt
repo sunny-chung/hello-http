@@ -6,6 +6,8 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import co.touchlab.kermit.MutableLoggerConfig
+import co.touchlab.kermit.Severity
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -25,6 +27,8 @@ import com.sunnychung.application.multiplatform.hellohttp.network.ReactorNettyHt
 import com.sunnychung.application.multiplatform.hellohttp.test.payload.RequestData
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.TestTag
+import com.sunnychung.lib.multiplatform.bigtext.util.log as bigTextUtilLog
+import com.sunnychung.lib.multiplatform.bigtext.ux.log as bigTextUxLog
 import com.sunnychung.lib.multiplatform.kdatetime.extension.milliseconds
 import com.sunnychung.lib.multiplatform.kdatetime.extension.seconds
 import kotlinx.coroutines.runBlocking
@@ -63,6 +67,10 @@ class RequestResponseTest(testName: String, httpVersion: HttpConfig.HttpProtocol
             AppContext.dataDir = appDir
             AppContext.SingleInstanceProcessService.apply { dataDir = appDir }.enforce()
             loadNativeLibraries()
+            // UX tests do not need BigText internal warn/debug telemetry. Keep failures visible while
+            // suppressing repetitive noise that makes retry diagnostics hard to read.
+            (bigTextUxLog.config as? MutableLoggerConfig)?.minSeverity = Severity.Error
+            (bigTextUtilLog.config as? MutableLoggerConfig)?.minSeverity = Severity.Error
             runBlocking {
                 AppContext.PersistenceManager.initialize()
                 AppContext.ResourceManager.loadAllResources()

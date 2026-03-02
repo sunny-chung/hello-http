@@ -33,6 +33,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyPress
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -83,6 +84,14 @@ import java.awt.Toolkit
 import java.io.File
 import java.net.URL
 
+private const val IS_VERBOSE_UX_TEST_LOG = false
+
+private inline fun uxTestLog(message: () -> String) {
+    if (IS_VERBOSE_UX_TEST_LOG) {
+        println(message())
+    }
+}
+
 fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
     try {
         executeWithTimeout(120.seconds()) {
@@ -114,7 +123,7 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
                     .printStackTrace()
                 throw e
             } finally { // await repositories to finish update operations regardless of success or error, so that it won't pollute the next test case
-                println("UX test case ends, await all repositories updates")
+                uxTestLog { "UX test case ends, await all repositories updates" }
                 val numActiveCalls = AppContext.NetworkClientManager.cancelAllCalls()
                 runBlocking {
                     if (numActiveCalls > 0) {
@@ -125,13 +134,13 @@ fun runTest(testBlock: suspend DesktopComposeUiTest.() -> Unit) {
                         it.awaitAllUpdates()
                     }
                 }
-                println("All repositories updated.")
+                uxTestLog { "All repositories updated." }
             }
         }
     } finally {
-        println("Cleaning up BigText worker coroutine contexts.")
+        uxTestLog { "Cleaning up BigText worker coroutine contexts." }
         clearAllBigTextWorkerCoroutineContexts()
-        println("Cleaned up. Finish test case.")
+        uxTestLog { "Cleaned up. Finish test case." }
     }
 }
 
@@ -202,7 +211,7 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
                 .isEmpty()
         }
 
-        println("created first project and subproject")
+        uxTestLog { "created first project and subproject" }
 
         // below create multiple environments
 
@@ -263,8 +272,7 @@ suspend fun DesktopComposeUiTest.createProjectIfNeeded() {
                             .isNotEmpty()
                     }
                 } catch (e: ComposeTimeoutException) {
-                    e.printStackTrace()
-                    println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+                    uxTestLog { "Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}" }
                     continue
                 }
                 break
@@ -448,7 +456,7 @@ suspend fun DesktopComposeUiTest.selectEnvironment(environment: TestEnvironment)
 
 @OptIn(InternalComposeUiApi::class)
 suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
-    println("enableCookieForCurrentSubproject")
+    uxTestLog { "enableCookieForCurrentSubproject" }
 
     onNodeWithTag(TestTag.EditSubprojectButton.name)
         .assertIsDisplayedWithRetry(this)
@@ -476,8 +484,11 @@ suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
         waitForIdle()
     }
 
-    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyDown))
-    checkbox.performKeyPress(KeyEvent(Key.Escape, KeyEventType.KeyUp))
+    retryForUnresponsiveBuggyComposeTest(maxRetryCount = 6, retryDelayMillis = 220L) {
+        onNodeWithTag(TestTag.DialogCloseButton.name)
+            .assertIsDisplayedWithRetry(this)
+            .performClickWithRetry(this)
+    }
 
     waitUntil {
         waitForIdle()
@@ -496,7 +507,7 @@ suspend fun DesktopComposeUiTest.enableCookieForCurrentSubproject() {
  * @param name A unique name.
  */
 suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
-    println("createEnvironmentInEnvDialog start '$name'")
+    uxTestLog { "createEnvironmentInEnvDialog start '$name'" }
 
     var retryAttempt = 0
     while (true) { // add this loop because the click on EnvironmentDialogCreateButton often is not performed
@@ -510,11 +521,13 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
 
         try {
             waitUntil {
-                println("EnvironmentDialogEnvNameTextField: [${
-                    onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
-                        .fetchSemanticsNodesWithRetry(this)
-                        .joinToString { it.config.toString() }
-                }]")
+                uxTestLog {
+                    "EnvironmentDialogEnvNameTextField: [${
+                        onAllNodesWithTag(TestTag.EnvironmentDialogEnvNameTextField.name)
+                            .fetchSemanticsNodesWithRetry(this)
+                            .joinToString { it.config.toString() }
+                    }]"
+                }
 
                 onAllNodes(
                     hasTestTag(TestTag.EnvironmentDialogEnvNameTextField.name)
@@ -525,8 +538,7 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
                     .isNotEmpty()
             }
         } catch (e: ComposeTimeoutException) {
-            e.printStackTrace()
-            println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+            uxTestLog { "Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}" }
             continue
         }
         break
@@ -574,8 +586,12 @@ suspend fun DesktopComposeUiTest.createEnvironmentInEnvDialog(name: String) {
 
     waitForIdle()
 
-    println("createEnvironmentInEnvDialog done '$name'")
-    println("createEnvironmentInEnvDialog '$name' list ${onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).joinToString("|") { it.config.toString() }}")
+    uxTestLog { "createEnvironmentInEnvDialog done '$name'" }
+    uxTestLog {
+        "createEnvironmentInEnvDialog '$name' list ${
+            onAllNodesWithText(name).fetchSemanticsNodesWithRetry(this).joinToString("|") { it.config.toString() }
+        }"
+    }
 }
 
 fun DesktopComposeUiTest.selectRequestMethod(itemDisplayText: String) {
@@ -597,12 +613,14 @@ fun DesktopComposeUiTest.selectDropdownItem(testTagPart: String, itemDisplayText
                 .size == 1
         }
 
-        println("DropdownMenu items: ${
-            onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
-                .fetchSemanticsNodeWithRetry(this)
-                .config
-                .getOrNull(DropDownDisplayTexts)
-        }")
+        uxTestLog {
+            "DropdownMenu items: ${
+                onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .config
+                    .getOrNull(DropDownDisplayTexts)
+            }"
+        }
 
         onNodeWithTag(buildTestTag(testTagPart, TestTagPart.DropdownMenu)!!)
             .performScrollToNode(hasTestTag(itemTag))
@@ -634,7 +652,7 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
     if (environment != null) {
         selectEnvironment(environment)
     }
-    println("start run createRequest content ---")
+    uxTestLog { "start run createRequest content ---" }
     val baseExample = request.examples.first()
 
     onNodeWithTag(TestTag.CreateRequestOrFolderButton.name)
@@ -868,25 +886,19 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
     }
 
     if (baseExample.queryParameters.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Query")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        clickRequestParameterTab("Query")
 
         fillRequestKeyValueEditor(baseExample.queryParameters, TestTagPart.RequestQueryParameter)
     }
 
     if (baseExample.headers.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        clickRequestParameterTab("Header")
 
         fillRequestKeyValueEditor(baseExample.headers, TestTagPart.RequestHeader)
     }
 
     if (baseExample.preFlight.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Pre Flight")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        clickRequestParameterTab("Pre Flight")
 
         waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
 
@@ -933,6 +945,268 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
                 testTagPart = TestTagPart.PreflightUpdateEnvByGraphqlVariables,
                 parentScrollableNode = onNodeWithTag(TestTag.RequestPreFlightTabContent.name, useUnmergedTree = true),
             )
+        }
+    }
+}
+
+suspend fun DesktopComposeUiTest.assertCurrentRequestEditor(
+    request: UserRequestTemplate,
+    isVerifyCookies: Boolean = true,
+) {
+    assertRequestEditorContent(
+        request = request,
+        isVerifyCookies = isVerifyCookies,
+    )
+}
+
+private suspend fun DesktopComposeUiTest.assertRequestEditorContent(
+    request: UserRequestTemplate,
+    isVerifyCookies: Boolean,
+) {
+    val baseExample = request.examples.first()
+
+    waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestUrlTextField.name), 3.seconds().millis)
+    waitUntil(3.seconds().millis) {
+        onNodeWithTag(TestTag.RequestUrlTextField.name)
+            .fetchSemanticsNodeWithRetry(this)
+            .getTexts() == listOf(request.url)
+    }
+
+    if (request.application == ProtocolApplication.Http) {
+        // RequestEditor keeps the selected parameter tab in mutable UI state.
+        // Across test steps (and even request switches), the active tab can remain "Query"/"Header"/"Cookie".
+        // In that state, `RequestBodyTypeDropdown/*` nodes are legitimately absent, which caused false
+        // timeouts in cURL import UX tests. Always normalize to the Body tab before checking body-related UI.
+        clickRequestParameterTab("Body")
+
+        val methodLabelTag = buildTestTag(
+            TestTagPart.RequestMethodDropdown,
+            TestTagPart.DropdownLabel
+        )!!
+        val bodyTypeLabelTag = buildTestTag(
+            TestTagPart.RequestBodyTypeDropdown,
+            TestTagPart.DropdownLabel
+        )!!
+
+        // Compose Desktop semantics can be transiently absent while request selection is being rebound.
+        // If we call `onNodeWithTag(...).fetchSemanticsNode()` immediately, the assertion can fail fast
+        // before `waitUntil(...)` gets a chance to retry, which then bubbles up to RetryRule and reruns
+        // the whole test case. Waiting for existence first turns this into a deterministic eventual check.
+        waitUntilExactlyOneExists(
+            host = this,
+            testTag = methodLabelTag,
+            timeoutMillis = 3.seconds().millis,
+            useUnmergedTree = true,
+        )
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(methodLabelTag, useUnmergedTree = true)
+                .fetchSemanticsNodeWithRetry(this)
+                .getTexts() == listOf(request.method)
+        }
+        waitUntilExactlyOneExists(
+            host = this,
+            testTag = bodyTypeLabelTag,
+            timeoutMillis = 3.seconds().millis,
+            useUnmergedTree = true,
+        )
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(bodyTypeLabelTag, useUnmergedTree = true)
+                .fetchSemanticsNodeWithRetry(this)
+                .getTexts() == listOf(baseExample.contentType.displayText)
+        }
+
+        when (baseExample.contentType) {
+            ContentType.Json, ContentType.Raw -> {
+                val expectedBody = (baseExample.body as? StringBody)?.value ?: ""
+                waitUntil(3.seconds().millis) {
+                    onNodeWithTag(TestTag.RequestStringBodyTextField.name)
+                        .fetchSemanticsNodeWithRetry(this)
+                        .getTexts() == listOf(expectedBody)
+                }
+            }
+
+            ContentType.FormUrlEncoded -> {
+                assertKeyValueEditorItems(
+                    keyValues = (baseExample.body as FormUrlEncodedBody).value,
+                    testTagPart = TestTagPart.RequestBodyFormUrlEncodedForm,
+                )
+            }
+
+            ContentType.Multipart -> {
+                assertKeyValueEditorItems(
+                    keyValues = (baseExample.body as MultipartBody).value,
+                    testTagPart = TestTagPart.RequestBodyMultipartForm,
+                )
+            }
+
+            ContentType.BinaryFile -> {
+                val body = baseExample.body as FileBody
+                val expectedFileName = File(body.filePath ?: "").name
+                waitUntil(3.seconds().millis) {
+                    onNodeWithTag(buildTestTag(TestTagPart.RequestBodyFileForm, TestTagPart.FileButton)!!)
+                        .fetchSemanticsNodeWithRetry(this)
+                        .getTexts()
+                        .firstOrNull() == expectedFileName
+                }
+            }
+
+            ContentType.None -> Unit
+            ContentType.Graphql -> Unit
+        }
+    }
+
+    if (baseExample.queryParameters.isNotEmpty()) {
+        clickRequestParameterTab("Query")
+        assertKeyValueEditorItems(
+            keyValues = baseExample.queryParameters,
+            testTagPart = TestTagPart.RequestQueryParameter,
+        )
+    }
+
+    if (baseExample.headers.isNotEmpty()) {
+        clickRequestParameterTab("Header")
+        assertKeyValueEditorItems(
+            keyValues = baseExample.headers,
+            testTagPart = TestTagPart.RequestHeader,
+        )
+    }
+
+    if (isVerifyCookies && baseExample.cookies.isNotEmpty()) {
+        clickRequestParameterTab("Cookie")
+        assertKeyValueEditorItems(
+            keyValues = baseExample.cookies,
+            testTagPart = TestTagPart.Cookie,
+        )
+    }
+}
+
+private fun DesktopComposeUiTest.clickRequestParameterTab(label: String) {
+    val tabTag = TestTag.RequestParameterTypeTab.name
+    val containerTag = TestTag.RequestParameterTypeTabContainer.name
+    waitUntil(3.seconds().millis) {
+        onAllNodesWithTag(tabTag)
+            .fetchSemanticsNodesWithRetry(this)
+            .any { it.getTexts().firstOrNull() == label }
+    }
+    val index = onAllNodesWithTag(tabTag)
+        .fetchSemanticsNodesWithRetry(this)
+        .indexOfFirst { it.getTexts().firstOrNull() == label }
+    check(index >= 0) { "Cannot find request parameter tab '$label'" }
+
+    // On Linux CI, tab widths/fonts can make later tabs (for example "Cookie") start off-screen.
+    // Scroll to the target tab index before clicking so the display assertion is stable cross-platform.
+    onNodeWithTag(containerTag, useUnmergedTree = true)
+        .performScrollToIndex(index)
+
+    onAllNodesWithTag(tabTag)[index]
+        .assertIsDisplayedWithRetry(this)
+        .performClickWithRetry(this)
+}
+
+suspend fun DesktopComposeUiTest.assertRequestParameterTabContent(
+    tabLabel: String,
+    testTagPart: TestTagPart,
+    expectedKeyValuePairs: List<Pair<String, String>>,
+) {
+    retryForUnresponsiveBuggyComposeTest(maxRetryCount = 4, retryDelayMillis = 220L) {
+        clickRequestParameterTab(tabLabel)
+        expectedKeyValuePairs.forEachIndexed { index, expected ->
+            val keyTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                TestTagPart.Key,
+                index,
+            )!!
+            val valueTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                TestTagPart.Value,
+                index,
+            )!!
+            waitUntilExactlyOneExists(this, hasTestTag(keyTag), 3.seconds().millis)
+            waitUntilExactlyOneExists(this, hasTestTag(valueTag), 3.seconds().millis)
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(keyTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .config
+                    .getOrNull(SemanticsProperties.EditableText)
+                    ?.text == expected.first
+            }
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(valueTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .config
+                    .getOrNull(SemanticsProperties.EditableText)
+                    ?.text == expected.second
+            }
+        }
+
+        // There is always one trailing empty row. Verify the key field is truly empty.
+        val trailingKeyTag = buildTestTag(
+            testTagPart,
+            TestTagPart.Current,
+            TestTagPart.Key,
+            expectedKeyValuePairs.size,
+        )!!
+        waitUntilExactlyOneExists(this, hasTestTag(trailingKeyTag), 3.seconds().millis)
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(trailingKeyTag)
+                .fetchSemanticsNodeWithRetry(this)
+                .config
+                .getOrNull(SemanticsProperties.EditableText)
+                ?.text
+                .orEmpty()
+                .isEmpty()
+        }
+    }
+}
+
+private suspend fun DesktopComposeUiTest.assertKeyValueEditorItems(
+    keyValues: List<UserKeyValuePair>,
+    testTagPart: TestTagPart,
+) {
+    keyValues.forEachIndexed { index, item ->
+        val keyTag = buildTestTag(
+            testTagPart,
+            TestTagPart.Current,
+            TestTagPart.Key,
+            index,
+        )!!
+        waitUntilExactlyOneExists(this, hasTestTag(keyTag), 3.seconds().millis)
+        waitUntil(3.seconds().millis) {
+            onNodeWithTag(keyTag)
+                .fetchSemanticsNodeWithRetry(this)
+                .getTexts() == listOf(item.key)
+        }
+
+        if (item.valueType == FieldValueType.String) {
+            val valueTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                TestTagPart.Value,
+                index,
+            )!!
+            waitUntilExactlyOneExists(this, hasTestTag(valueTag), 3.seconds().millis)
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(valueTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .getTexts() == listOf(item.value)
+            }
+        } else {
+            val fileButtonTag = buildTestTag(
+                testTagPart,
+                TestTagPart.Current,
+                index,
+                TestTagPart.FileButton,
+            )!!
+            val expectedFileName = File(item.value).name
+            waitUntilExactlyOneExists(this, hasTestTag(fileButtonTag), 3.seconds().millis)
+            waitUntil(3.seconds().millis) {
+                onNodeWithTag(fileButtonTag)
+                    .fetchSemanticsNodeWithRetry(this)
+                    .getTexts()
+                    .firstOrNull() == expectedFileName
+            }
         }
     }
 }
@@ -1054,9 +1328,19 @@ suspend fun DesktopComposeUiTest.createAndSendHttpRequest(request: UserRequestTe
     if (isOneOffRequest) {
         val startTime = KInstant.now()
         waitUntil(maxOf(1L, timeout.millis)) { onAllNodesWithText("Communicating").fetchSemanticsNodesWithRetry(this).isEmpty() }
-        println("Call Duration: ${KInstant.now() - startTime}")
-        println("Response status: ${onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodesWithRetry(this).joinToString("\\\\") { it.getTexts().joinToString("|") }}")
-        println("Response error: ${onAllNodesWithTag(TestTag.ResponseError.name).fetchSemanticsNodesWithRetry(this).joinToString("\\\\") { it.getTexts().joinToString("|") }}")
+        uxTestLog { "Call Duration: ${KInstant.now() - startTime}" }
+        uxTestLog {
+            "Response status: ${
+                onAllNodesWithTag(TestTag.ResponseStatus.name).fetchSemanticsNodesWithRetry(this)
+                    .joinToString("\\\\") { it.getTexts().joinToString("|") }
+            }"
+        }
+        uxTestLog {
+            "Response error: ${
+                onAllNodesWithTag(TestTag.ResponseError.name).fetchSemanticsNodesWithRetry(this)
+                    .joinToString("\\\\") { it.getTexts().joinToString("|") }
+            }"
+        }
     }
 
     if (isExpectResponseBody) {
@@ -1079,7 +1363,7 @@ suspend fun DesktopComposeUiTest.createAndSendRestEchoRequestAndAssertResponse(r
     val responseBody = onNodeWithTag(TestTag.ResponseBody.name).fetchSemanticsNodeWithRetry(this)
         .getTexts()
         .single()
-    println(responseBody)
+    uxTestLog { responseBody }
     val resp = jacksonObjectMapper().readValue(responseBody, RequestData::class.java)
     assertEquals(request.method, resp.method)
     assertEquals(URL(request.url).path, resp.path)
@@ -1207,7 +1491,7 @@ suspend fun DesktopComposeUiTest.sendPayload(payload: String, isCreatePayloadExa
             ?.firstOrNull()
             ?: "")
             .also {
-                println("getStreamPayloadLatestTimeString() = $it")
+                uxTestLog { "getStreamPayloadLatestTimeString() = $it" }
             }
     }
 
@@ -1299,7 +1583,11 @@ fun DesktopComposeUiTest.getResponseBody(): String? {
     return responseBody
 }
 
-fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(testContent: () -> Unit) {
+suspend fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(
+    maxRetryCount: Int = 20,
+    retryDelayMillis: Long = 120L,
+    testContent: () -> Unit,
+) {
     var retryAttempt = 0
     while (true) { // add this loop because the click is often not performed
         waitForIdle()
@@ -1307,8 +1595,13 @@ fun DesktopComposeUiTest.retryForUnresponsiveBuggyComposeTest(testContent: () ->
         try {
             testContent()
         } catch (e: ComposeTimeoutException) {
-            e.printStackTrace()
-            println("Retry the buggy Compose Test click until passing. #attempt: ${++retryAttempt}")
+            uxTestLog { "Retry the buggy Compose Test click until passing. #attempt: ${retryAttempt + 1}" }
+            if (++retryAttempt > maxRetryCount) {
+                throw e
+            }
+            if (retryDelayMillis > 0) {
+                wait(retryDelayMillis)
+            }
             continue
         }
         break
@@ -1419,6 +1712,23 @@ fun waitUntilExactlyOneExists(
     host.waitUntil(timeoutMillis) {
         host.runOnUiThread {
             host.onAllNodes(matcher).fetchSemanticsNodes().size == 1
+        }
+    }
+}
+
+fun waitUntilExactlyOneExists(
+    host: ComposeUiTest,
+    testTag: String,
+    timeoutMillis: Long = 1_000L,
+    useUnmergedTree: Boolean = false,
+) {
+    // Keep this overload instead of converting the tag to a matcher because test stability depends on selecting
+    // the correct semantics tree mode. For several Compose Desktop nodes (especially labels inside custom widgets),
+    // tags are only discoverable in unmerged tree while actions are performed on the same unmerged nodes.
+    // Waiting in merged tree first caused false negatives and triggered RetryRule reruns.
+    host.waitUntil(timeoutMillis) {
+        host.runOnUiThread {
+            host.onAllNodesWithTag(testTag, useUnmergedTree = useUnmergedTree).fetchSemanticsNodes().size == 1
         }
     }
 }

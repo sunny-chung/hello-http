@@ -98,7 +98,7 @@ kotlin {
                 implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
 
                 // text field
-                api("io.github.sunny-chung:bigtext-ui-composable:2.3.0")
+                api("io.github.sunny-chung:bigtext-ui-composable:2.4.0")
 
                 // for proguard to understand the code
 //                implementation("com.github.luben:zstd-jni:1.5.5-11")
