@@ -33,6 +33,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyPress
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -885,25 +886,19 @@ suspend fun DesktopComposeUiTest.createRequest(request: UserRequestTemplate, env
     }
 
     if (baseExample.queryParameters.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Query")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        clickRequestParameterTab("Query")
 
         fillRequestKeyValueEditor(baseExample.queryParameters, TestTagPart.RequestQueryParameter)
     }
 
     if (baseExample.headers.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Header")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        clickRequestParameterTab("Header")
 
         fillRequestKeyValueEditor(baseExample.headers, TestTagPart.RequestHeader)
     }
 
     if (baseExample.preFlight.isNotEmpty()) {
-        onNode(hasTestTag(TestTag.RequestParameterTypeTab.name).and(hasTextExactly("Pre Flight")))
-            .assertIsDisplayedWithRetry(this)
-            .performClickWithRetry(this)
+        clickRequestParameterTab("Pre Flight")
 
         waitUntilExactlyOneExists(this, hasTestTag(TestTag.RequestPreFlightScriptTextField.name))
 
@@ -1087,6 +1082,7 @@ private suspend fun DesktopComposeUiTest.assertRequestEditorContent(
 
 private fun DesktopComposeUiTest.clickRequestParameterTab(label: String) {
     val tabTag = TestTag.RequestParameterTypeTab.name
+    val containerTag = TestTag.RequestParameterTypeTabContainer.name
     waitUntil(3.seconds().millis) {
         onAllNodesWithTag(tabTag)
             .fetchSemanticsNodesWithRetry(this)
@@ -1096,6 +1092,12 @@ private fun DesktopComposeUiTest.clickRequestParameterTab(label: String) {
         .fetchSemanticsNodesWithRetry(this)
         .indexOfFirst { it.getTexts().firstOrNull() == label }
     check(index >= 0) { "Cannot find request parameter tab '$label'" }
+
+    // On Linux CI, tab widths/fonts can make later tabs (for example "Cookie") start off-screen.
+    // Scroll to the target tab index before clicking so the display assertion is stable cross-platform.
+    onNodeWithTag(containerTag, useUnmergedTree = true)
+        .performScrollToIndex(index)
+
     onAllNodesWithTag(tabTag)[index]
         .assertIsDisplayedWithRetry(this)
         .performClickWithRetry(this)
