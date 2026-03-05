@@ -94,6 +94,7 @@ fun RequestTreeView(
     onMoveTreeObject: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
     onCopyRequest: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
     onImportCurlRequest: (String) -> Boolean,
+    onImportJsonRequest: (ImportJsonRequestInput, Boolean) -> ImportJsonRequestResult,
     onExportRequestsToClipboard: (List<UserRequestTemplate>) -> Unit,
     onExportRequestsToFile: (List<UserRequestTemplate>, File) -> Unit,
 ) {
@@ -117,6 +118,7 @@ fun RequestTreeView(
     var contextMenuAtItemId by remember { mutableStateOf<String?>(null) }
     var contextMenuType by remember { mutableStateOf(RequestTreeContextMenuType.None) }
     var isShowImportCurlDialog by remember { mutableStateOf(false) }
+    var isShowImportJsonDialog by remember { mutableStateOf(false) }
     var isShowExportFileDialog by remember { mutableStateOf(false) }
     var requestsToExport by remember { mutableStateOf<List<UserRequestTemplate>>(emptyList()) }
     var exportFilename by remember { mutableStateOf("request.json") }
@@ -635,6 +637,9 @@ fun RequestTreeView(
             ResourceType.ImportCurlCommand -> {
                 throw UnsupportedOperationException("Use import dialog for cURL command import")
             }
+            ResourceType.ImportJson -> {
+                throw UnsupportedOperationException("Use import dialog for JSON import")
+            }
         }
         editTreeObjectNameViewModel.onStartEdit(itemId)
         coroutineScope.launch {
@@ -674,18 +679,18 @@ fun RequestTreeView(
             }
 
             RequestTreeContextMenuType.RequestExport -> {
-                listOf("Export to clipboard", "Export to file").forEach { item ->
+                listOf("Export as JSON to clipboard", "Export as JSON to file").forEach { item ->
                     Column(
                         modifier = Modifier.clickable {
                             val selectedRequests = getSelectedRequestsForExport()
                             when (item) {
-                                "Export to clipboard" -> {
+                                "Export as JSON to clipboard" -> {
                                     if (selectedRequests.isNotEmpty()) {
                                         onExportRequestsToClipboard(selectedRequests)
                                     }
                                 }
 
-                                "Export to file" -> {
+                                "Export as JSON to file" -> {
                                     requestsToExport = selectedRequests
                                     exportFilename = createDefaultExportFilename(selectedRequests)
                                     isShowExportFileDialog = selectedRequests.isNotEmpty()
@@ -727,6 +732,12 @@ fun RequestTreeView(
         onImportCommand = onImportCurlRequest,
     )
 
+    ImportJsonRequestDialog(
+        isEnabled = isShowImportJsonDialog,
+        onDismiss = { isShowImportJsonDialog = false },
+        onImportJson = onImportJsonRequest,
+    )
+
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             AppTextField(
@@ -754,6 +765,10 @@ fun RequestTreeView(
 
                         ResourceType.ImportCurlCommand -> {
                             isShowImportCurlDialog = true
+                        }
+
+                        ResourceType.ImportJson -> {
+                            isShowImportJsonDialog = true
                         }
                     }
                     true
@@ -836,6 +851,7 @@ fun RequestListViewPreview() {
         onMoveTreeObject = {_, _, _ ->},
         onCopyRequest = {_, _, _ ->},
         onImportCurlRequest = { false },
+        onImportJsonRequest = { _, _ -> ImportJsonRequestResult.Error },
         onExportRequestsToClipboard = {},
         onExportRequestsToFile = { _, _ -> },
     )
@@ -853,6 +869,7 @@ private enum class ResourceType {
     Request,
     Folder,
     ImportCurlCommand,
+    ImportJson,
     ;
 
     val displayText: String
@@ -860,5 +877,6 @@ private enum class ResourceType {
             Request -> "Request"
             Folder -> "Folder"
             ImportCurlCommand -> "Import cURL command (Linux / macOS)"
+            ImportJson -> "Import from JSON"
         }
 }

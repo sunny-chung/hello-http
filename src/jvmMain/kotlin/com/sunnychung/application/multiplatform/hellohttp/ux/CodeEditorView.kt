@@ -121,6 +121,7 @@ fun CodeEditorView(
     modifier: Modifier = Modifier,
     cacheKey: String,
     isReadOnly: Boolean = false,
+    isEnabled: Boolean = true,
 
     /**
      * This argument is only used when there is a cache miss using the cache key {@param cacheKey}.
@@ -455,6 +456,7 @@ fun CodeEditorView(
     }
 
     Column(modifier = modifier.onPreviewKeyEvent {
+        if (!isEnabled) return@onPreviewKeyEvent false
         if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         if (it.key == Key.F && (it.isMetaPressed || it.isCtrlPressed)) {
             isSearchVisible = !isSearchVisible
@@ -472,7 +474,7 @@ fun CodeEditorView(
             false
         }
     }) {
-        if (isSearchVisible) {
+        if (isSearchVisible && isEnabled) {
             TextSearchBar(
                 key = cacheKey,
                 text = searchText,
@@ -586,18 +588,28 @@ fun CodeEditorView(
 
                             BigTextLabel(
                                 text = bigTextValue,
-                                color = textColor,
+                                color = if (isEnabled) textColor else LocalColor.current.disabled,
                                 padding = PaddingValues(4.dp),
                                 inputFilter = inputFilter,
-                                textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation) {
+                                textTransformation = rememberLast(bigTextFieldState, collapseIncrementalTransformation, isEnabled) {
                                     MultipleIncrementalTransformation(
-                                        listOf(
-                                            collapseIncrementalTransformation,
-                                        ) + variableTransformations
+                                        if (isEnabled) {
+                                            listOf(
+                                                collapseIncrementalTransformation,
+                                            ) + variableTransformations
+                                        } else {
+                                            emptyList()
+                                        }
                                     )
                                 },
                                 textDecorator = //rememberLast(bigTextFieldState, syntaxHighlightDecorators, searchDecorators) {
-                                    MultipleTextDecorator(syntaxHighlightDecorators + variableDecorators + searchDecorators)
+                                    MultipleTextDecorator(
+                                        if (isEnabled) {
+                                            syntaxHighlightDecorators + variableDecorators + searchDecorators
+                                        } else {
+                                            emptyList()
+                                        }
+                                    )
                                 //},
                                 ,
                                 fontSize = fonts.codeEditorBodyFontSize,

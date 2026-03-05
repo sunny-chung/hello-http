@@ -62,6 +62,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.extension.CommandGenerator
 import com.sunnychung.application.multiplatform.hellohttp.exporter.RequestSelectionExporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.CurlCommandImporter
+import com.sunnychung.application.multiplatform.hellohttp.importer.RequestSelectionImporter
 import com.sunnychung.application.multiplatform.hellohttp.model.ColourTheme
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
@@ -73,6 +74,7 @@ import com.sunnychung.application.multiplatform.hellohttp.model.TreeFolder
 import com.sunnychung.application.multiplatform.hellohttp.model.TreeRequest
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.UserResponse
+import com.sunnychung.application.multiplatform.hellohttp.model.Version
 import com.sunnychung.application.multiplatform.hellohttp.network.ConnectionStatus
 import com.sunnychung.application.multiplatform.hellohttp.platform.LinuxOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.WindowsOS
@@ -236,6 +238,7 @@ fun AppContentView() {
     val clipboardManager = LocalClipboardManager.current
     val errorMessageVM = AppContext.ErrorMessagePromptViewModel
     val requestSelectionExporter = remember { RequestSelectionExporter() }
+    val requestSelectionImporter = remember { RequestSelectionImporter() }
 
     val coroutineScope = rememberCoroutineScope()
     var selectedProject by remember { mutableStateOf<Project?>(null) }
@@ -543,6 +546,46 @@ fun AppContentView() {
                                         log.w(e) { "Cannot import curl command" }
                                         errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
                                         false
+                                    }
+                                },
+                                onImportJsonRequest = { input, isAcceptDataLossRisk ->
+                                    try {
+                                        val metadata = when (input) {
+                                            is ImportJsonRequestInput.RawText -> requestSelectionImporter.readMetadata(input.json)
+                                            is ImportJsonRequestInput.JsonFile -> requestSelectionImporter.readMetadata(input.file)
+                                        }
+                                        val currentAppVersion = Version(AppContext.MetadataManager.version)
+                                        val importedAppVersion = Version(metadata.appVersion)
+                                        if (importedAppVersion > currentAppVersion && !isAcceptDataLossRisk) {
+                                            return@RequestTreeView ImportJsonRequestResult.RequireVersionConfirmation(
+                                                sourceVersion = metadata.appVersion,
+                                                currentVersion = currentAppVersion.versionName,
+                                            )
+                                        }
+                                        val imported = when (input) {
+                                            is ImportJsonRequestInput.RawText -> requestSelectionImporter.importFromJson(input.json)
+                                            is ImportJsonRequestInput.JsonFile -> requestSelectionImporter.importFromJson(input.file)
+                                        }
+
+                                        imported.requests.forEach { importedRequest ->
+                                            requestCollection!!.requests += importedRequest
+                                            selectedSubproject!!.treeObjects += TreeRequest(id = importedRequest.id)
+                                        }
+                                        requestCollectionRepository.notifyUpdated(requestCollection!!.id)
+                                        projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
+
+                                        selectedRequestId = imported.requests.first().id
+                                        val message = if (imported.requests.size == 1) {
+                                            "Imported 1 request from JSON"
+                                        } else {
+                                            "Imported ${imported.requests.size} requests from JSON"
+                                        }
+                                        errorMessageVM.showSuccessMessage(message)
+                                        ImportJsonRequestResult.Success
+                                    } catch (e: Throwable) {
+                                        log.w(e) { "Cannot import requests from JSON" }
+                                        errorMessageVM.showErrorMessage("Cannot import requests from JSON")
+                                        ImportJsonRequestResult.Error
                                     }
                                 },
                                 onExportRequestsToClipboard = { selectedRequests ->

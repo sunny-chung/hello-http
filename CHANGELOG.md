@@ -10,6 +10,7 @@ The current behavior of badge numbers, in the Request Editor, that do not count 
 
 ### Added
 - Importing request(s) from one or multiple `curl` commands
+- Quick requests export & import
 
 ### Changed
 - The badge numbers of Body, Query, Header, Pre Flight, Post Flight tabs in the Request Editor now count inherited entries

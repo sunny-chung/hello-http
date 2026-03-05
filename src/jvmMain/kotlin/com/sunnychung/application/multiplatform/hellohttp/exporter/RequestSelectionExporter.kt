@@ -16,7 +16,10 @@ class RequestSelectionExporter {
                 name = "Hello HTTP",
                 version = AppContext.MetadataManager.version,
             ),
-            requests = requests,
+            requests = requests.map {
+                it.deepCopyWithNewId()
+                    .sanitizeForApplication()
+            },
         )
         return jsonWriter.writeValueAsString(payload)
     }

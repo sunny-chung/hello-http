@@ -17,7 +17,6 @@ import kotlinx.serialization.Serializable
 //import okhttp3.RequestBody
 //import okhttp3.RequestBody.Companion.asRequestBody
 //import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.File
 import java.net.URI
 
 @Persisted
@@ -86,6 +85,26 @@ data class UserRequestTemplate(
         } else {
             copy(application = application, method = method)
         }
+
+    fun sanitizeForApplication(): UserRequestTemplate {
+        return when (application) {
+            ProtocolApplication.Graphql -> copy(
+                payloadExamples = null,
+                grpc = null,
+            )
+            ProtocolApplication.Http -> copy(
+                payloadExamples = null,
+                grpc = null,
+            )
+            ProtocolApplication.WebSocket -> copy(
+                grpc = null,
+            )
+            ProtocolApplication.Grpc -> copy(
+                payloadExamples = payloadExamples ?: listOf(PayloadExample(id = uuidString(), name = "New Payload", body = "")),
+            )
+            else -> this
+        }
+    }
 
     fun deepCopyWithNewId(): UserRequestTemplate {
         val idMapping = mutableMapOf<String, String>()
