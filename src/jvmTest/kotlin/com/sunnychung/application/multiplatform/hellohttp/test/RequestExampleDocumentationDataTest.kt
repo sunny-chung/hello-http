@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
-class DocumentationDataTest {
+class RequestExampleDocumentationDataTest {
 
     @Test
     fun `UserRequestExample deep copy keeps documentation and override flag`() {

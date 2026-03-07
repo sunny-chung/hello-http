@@ -15,7 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class MarkdownSyntaxHighlightDecoratorTest {
+class MarkdownParseAndSyntaxHighlightTest {
 
     @Test
     fun `highlight should support markdown features for documentation editor`() {
