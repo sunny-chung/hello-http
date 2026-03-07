@@ -6,6 +6,9 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
+import androidx.compose.ui.input.pointer.isCtrlPressed as isPointerCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed as isPointerMetaPressed
 import com.sunnychung.application.multiplatform.hellohttp.platform.MacOS
 import com.sunnychung.application.multiplatform.hellohttp.platform.currentOS
 
@@ -14,6 +17,14 @@ fun KeyEvent.isCtrlOrCmdPressed(): Boolean {
         isMetaPressed
     } else {
         isCtrlPressed
+    }
+}
+
+fun PointerKeyboardModifiers.isCtrlOrCmdPressed(): Boolean {
+    return if (currentOS() == MacOS) {
+        isPointerMetaPressed
+    } else {
+        isPointerCtrlPressed
     }
 }
 

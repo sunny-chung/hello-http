@@ -43,6 +43,9 @@ enum class TestTag {
     ResponseStreamLogItemTime,
     ImportCurlCommandDialogCommandTextField,
     ImportCurlCommandDialogImportButton,
+    ImportJsonRequestDialogTextField,
+    ImportJsonRequestDialogBrowseFileButton,
+    ImportJsonRequestDialogImportButton,
 }
 
 enum class TestTagPart {

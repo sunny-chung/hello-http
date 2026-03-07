@@ -40,11 +40,13 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -54,6 +56,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sunnychung.application.multiplatform.hellohttp.extension.isCtrlOrCmdPressed
 import com.sunnychung.application.multiplatform.hellohttp.model.MoveDirection
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
@@ -65,9 +68,11 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.EditNameViewModel
+import com.sunnychung.application.multiplatform.hellohttp.ux.viewmodel.rememberFileDialogState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -89,6 +94,9 @@ fun RequestTreeView(
     onMoveTreeObject: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
     onCopyRequest: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
     onImportCurlRequest: (String) -> Boolean,
+    onImportJsonRequest: (ImportJsonRequestInput, Boolean) -> ImportJsonRequestResult,
+    onExportRequestsToClipboard: (List<UserRequestTemplate>) -> Unit,
+    onExportRequestsToFile: (List<UserRequestTemplate>, File) -> Unit,
 ) {
     val colors = LocalColor.current
 
@@ -104,9 +112,17 @@ fun RequestTreeView(
     var isEditing = editTreeObjectNameViewModel.isEditing.collectAsState().value
     val isDraggable = searchText.isEmpty()
 
+    val selectedRequestIds = remember(selectedSubproject.id) { mutableStateMapOf<String, Unit>() }
+    var selectedRangeAnchorRequestId by remember(selectedSubproject.id) { mutableStateOf<String?>(selectedRequest?.id) }
     var isShowContextMenu by remember { mutableStateOf(false) }
     var contextMenuAtItemId by remember { mutableStateOf<String?>(null) }
+    var contextMenuType by remember { mutableStateOf(RequestTreeContextMenuType.None) }
     var isShowImportCurlDialog by remember { mutableStateOf(false) }
+    var isShowImportJsonDialog by remember { mutableStateOf(false) }
+    var isShowExportFileDialog by remember { mutableStateOf(false) }
+    var requestsToExport by remember { mutableStateOf<List<UserRequestTemplate>>(emptyList()) }
+    var exportFilename by remember { mutableStateOf("request.json") }
+    val exportFileDialogState = rememberFileDialogState()
 
     val treeObjects = filterTreeObjects(
         rootObjects = selectedSubproject.treeObjects,
@@ -121,6 +137,12 @@ fun RequestTreeView(
         val selectedRequestId = selectedRequest?.id ?: return@LaunchedEffect
         val bringIntoViewRequester = requestRowBringIntoViewRequesters[selectedRequestId] ?: return@LaunchedEffect
         bringIntoViewRequester.bringIntoView()
+    }
+
+    LaunchedEffect(requests.keys) {
+        selectedRequestIds.keys.toList()
+            .filterNot { it in requests.keys }
+            .forEach(selectedRequestIds::remove)
     }
 
     log.d { "RequestListView recompose ${treeObjects.size} ${requests.size} isDraggable=$isDraggable" }
@@ -230,6 +252,126 @@ fun RequestTreeView(
         }
     }
 
+    fun collectRequestIdsInTreeOrder(treeObjects: List<TreeObject>): List<String> {
+        val requestIds = mutableListOf<String>()
+        fun traverse(current: TreeObject) {
+            when (current) {
+                is TreeRequest -> requestIds += current.id
+                is TreeFolder -> current.childs.forEach(::traverse)
+            }
+        }
+        treeObjects.forEach(::traverse)
+        return requestIds
+    }
+
+    fun collectVisibleRequestIds(treeObjects: List<TreeObject>): List<String> {
+        val requestIds = mutableListOf<String>()
+        fun traverse(current: TreeObject) {
+            when (current) {
+                is TreeRequest -> requestIds += current.id
+                is TreeFolder -> if (expandedFolderIds.containsKey(current.id)) {
+                    current.childs.forEach(::traverse)
+                }
+            }
+        }
+        treeObjects.forEach(::traverse)
+        return requestIds
+    }
+
+    fun getSelectedRequestsForExport(): List<UserRequestTemplate> {
+        val selectedIds = selectedRequestIds.keys.toSet()
+        if (selectedIds.isEmpty()) {
+            return emptyList()
+        }
+
+        val orderedTreeRequestIds = collectRequestIdsInTreeOrder(selectedSubproject.treeObjects)
+        val requestsInTreeOrder = orderedTreeRequestIds
+            .asSequence()
+            .filter { it in selectedIds }
+            .mapNotNull { requests[it] }
+            .toList()
+
+        val selectedIdsInTreeOrder = requestsInTreeOrder.map { it.id }.toSet()
+        val remainingRequests = selectedIds
+            .asSequence()
+            .filterNot { it in selectedIdsInTreeOrder }
+            .mapNotNull { requests[it] }
+            .toList()
+
+        return requestsInTreeOrder + remainingRequests
+    }
+
+    fun createDefaultExportFilename(selectedRequests: List<UserRequestTemplate>): String {
+        val rawRequestName = selectedRequests.firstOrNull()?.name.orEmpty()
+        val sanitizedName = rawRequestName
+            .replace("[\\\\/:*?\"<>|]".toRegex(), "-")
+            .replace("[\\u0000-\\u001F]".toRegex(), "")
+            .trim()
+            .trim('.')
+            .ifBlank { "request" }
+        return "$sanitizedName.json"
+    }
+
+    fun clearAndSelectRequest(request: UserRequestTemplate) {
+        selectedRequestIds.clear()
+        selectedRequestIds[request.id] = Unit
+        selectedRangeAnchorRequestId = request.id
+    }
+
+    fun selectRequestByMouseClick(
+        request: UserRequestTemplate,
+        isShiftPressed: Boolean,
+        isCtrlOrCmdPressed: Boolean,
+    ) {
+        if (isShiftPressed) {
+            val visibleRequestIds = collectVisibleRequestIds(treeObjects)
+            val anchorRequestId = selectedRangeAnchorRequestId?.takeIf { it in visibleRequestIds }
+                ?: selectedRequest?.id?.takeIf { it in visibleRequestIds }
+                ?: request.id
+            val anchorIndex = visibleRequestIds.indexOf(anchorRequestId)
+            val clickedIndex = visibleRequestIds.indexOf(request.id)
+            if (anchorIndex >= 0 && clickedIndex >= 0) {
+                if (!isCtrlOrCmdPressed) {
+                    selectedRequestIds.clear()
+                }
+                visibleRequestIds.subList(
+                    fromIndex = minOf(anchorIndex, clickedIndex),
+                    toIndex = maxOf(anchorIndex, clickedIndex) + 1,
+                ).forEach {
+                    selectedRequestIds[it] = Unit
+                }
+                selectedRangeAnchorRequestId = anchorRequestId
+            } else {
+                clearAndSelectRequest(request)
+            }
+            onSelectRequest(request)
+            return
+        }
+
+        if (isCtrlOrCmdPressed) {
+            if (selectedRequestIds.containsKey(request.id)) {
+                selectedRequestIds.remove(request.id)
+            } else {
+                selectedRequestIds[request.id] = Unit
+            }
+            selectedRangeAnchorRequestId = request.id
+            onSelectRequest(request)
+            return
+        }
+
+        clearAndSelectRequest(request)
+        onSelectRequest(request)
+    }
+
+    fun handleRequestSecondaryClick(request: UserRequestTemplate) {
+        if (!selectedRequestIds.containsKey(request.id)) {
+            clearAndSelectRequest(request)
+        }
+        onSelectRequest(request)
+        contextMenuType = RequestTreeContextMenuType.RequestExport
+        isShowContextMenu = true
+    }
+
     @Composable
     fun RequestLeafView(modifier: Modifier = Modifier, it: UserRequestTemplate) {
         val requestBringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -249,6 +391,14 @@ fun RequestTreeView(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = modifier
+                    .background(
+                        color = if (selectedRequestIds.containsKey(it.id)) {
+                            colors.backgroundInputFieldHighlight.copy(alpha = 0.6f)
+                        } else {
+                            Color.Transparent
+                        },
+                        shape = RoundedCornerShape(2.dp),
+                    )
                     .testTag(
                         if (selectedRequest?.id == it.id) {
                             buildTestTag(TestTag.RequestTreeRequestRow.name, it.id, "selected")!!
@@ -268,13 +418,26 @@ fun RequestTreeView(
                         // In tests, pointer-based click can be flaky for scrolled/off-screen rows in non-lazy trees,
                         // while semantics action is significantly more stable.
                         onClick(label = "Select request") {
+                            clearAndSelectRequest(it)
                             onSelectRequest(it)
                             true
                         }
                     }
                     .bringIntoViewRequester(requestBringIntoViewRequester)
-                    .onPointerEvent(PointerEventType.Press) { _ ->
-                        onSelectRequest(it)
+                    .onPointerEvent(PointerEventType.Press) { event ->
+                        when (event.button) {
+                            PointerButton.Primary -> {
+                                selectRequestByMouseClick(
+                                    request = it,
+                                    isShiftPressed = event.keyboardModifiers.isShiftPressed,
+                                    isCtrlOrCmdPressed = event.keyboardModifiers.isCtrlOrCmdPressed(),
+                                )
+                            }
+
+                            PointerButton.Secondary -> {
+                                handleRequestSecondaryClick(it)
+                            }
+                        }
                     }
                     .combinedClickable(
                         onClick = {}, // not using this because there will be a significant delay
@@ -363,6 +526,7 @@ fun RequestTreeView(
                         }
                         PointerButton.Secondary -> {
                             contextMenuAtItemId = folder.id
+                            contextMenuType = RequestTreeContextMenuType.Folder
                             isShowContextMenu = true
                         }
                     }
@@ -473,6 +637,9 @@ fun RequestTreeView(
             ResourceType.ImportCurlCommand -> {
                 throw UnsupportedOperationException("Use import dialog for cURL command import")
             }
+            ResourceType.ImportJson -> {
+                throw UnsupportedOperationException("Use import dialog for JSON import")
+            }
         }
         editTreeObjectNameViewModel.onStartEdit(itemId)
         coroutineScope.launch {
@@ -482,25 +649,79 @@ fun RequestTreeView(
 
     CursorDropdownMenu(
         expanded = isShowContextMenu,
-        onDismissRequest = { isShowContextMenu = false },
+        onDismissRequest = {
+            isShowContextMenu = false
+            contextMenuType = RequestTreeContextMenuType.None
+        },
         modifier = Modifier.background(colors.backgroundContextMenu)
     ) {
-        listOf("New Request", "New Folder").forEach { item ->
-            Column(
-                modifier = Modifier.clickable {
-                    expandedFolderIds[contextMenuAtItemId!!] = Unit
-                    createRequestOrFolder(
-                        resourceType = when (item) {
-                            "New Request" -> ResourceType.Request
-                            "New Folder" -> ResourceType.Folder
-                            else -> throw UnsupportedOperationException()
-                        },
-                        parentId = contextMenuAtItemId,
-                    )
-                    isShowContextMenu = false
-                }.padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                AppText(text = item)
+        when (contextMenuType) {
+            RequestTreeContextMenuType.Folder -> {
+                listOf("New Request", "New Folder").forEach { item ->
+                    Column(
+                        modifier = Modifier.clickable {
+                            expandedFolderIds[contextMenuAtItemId!!] = Unit
+                            createRequestOrFolder(
+                                resourceType = when (item) {
+                                    "New Request" -> ResourceType.Request
+                                    "New Folder" -> ResourceType.Folder
+                                    else -> throw UnsupportedOperationException()
+                                },
+                                parentId = contextMenuAtItemId,
+                            )
+                            isShowContextMenu = false
+                            contextMenuType = RequestTreeContextMenuType.None
+                        }.padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        AppText(text = item)
+                    }
+                }
+            }
+
+            RequestTreeContextMenuType.RequestExport -> {
+                listOf("Export as JSON to clipboard", "Export as JSON to file").forEach { item ->
+                    Column(
+                        modifier = Modifier.clickable {
+                            val selectedRequests = getSelectedRequestsForExport()
+                            when (item) {
+                                "Export as JSON to clipboard" -> {
+                                    if (selectedRequests.isNotEmpty()) {
+                                        onExportRequestsToClipboard(selectedRequests)
+                                    }
+                                }
+
+                                "Export as JSON to file" -> {
+                                    requestsToExport = selectedRequests
+                                    exportFilename = createDefaultExportFilename(selectedRequests)
+                                    isShowExportFileDialog = selectedRequests.isNotEmpty()
+                                }
+                            }
+                            isShowContextMenu = false
+                            contextMenuType = RequestTreeContextMenuType.None
+                        }.padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        AppText(text = item)
+                    }
+                }
+            }
+
+            RequestTreeContextMenuType.None -> Unit
+        }
+    }
+
+    if (isShowExportFileDialog) {
+        FileDialog(
+            state = exportFileDialogState,
+            mode = java.awt.FileDialog.SAVE,
+            title = "Export Selected Requests",
+            filename = exportFilename,
+        ) {
+            isShowExportFileDialog = false
+            val file = it?.firstOrNull()
+            val requestsForExport = requestsToExport
+            requestsToExport = emptyList()
+            if (file != null && requestsForExport.isNotEmpty()) {
+                onExportRequestsToFile(requestsForExport, file)
             }
         }
     }
@@ -509,6 +730,12 @@ fun RequestTreeView(
         isEnabled = isShowImportCurlDialog,
         onDismiss = { isShowImportCurlDialog = false },
         onImportCommand = onImportCurlRequest,
+    )
+
+    ImportJsonRequestDialog(
+        isEnabled = isShowImportJsonDialog,
+        onDismiss = { isShowImportJsonDialog = false },
+        onImportJson = onImportJsonRequest,
     )
 
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
@@ -538,6 +765,10 @@ fun RequestTreeView(
 
                         ResourceType.ImportCurlCommand -> {
                             isShowImportCurlDialog = true
+                        }
+
+                        ResourceType.ImportJson -> {
+                            isShowImportJsonDialog = true
                         }
                     }
                     true
@@ -620,15 +851,25 @@ fun RequestListViewPreview() {
         onMoveTreeObject = {_, _, _ ->},
         onCopyRequest = {_, _, _ ->},
         onImportCurlRequest = { false },
+        onImportJsonRequest = { _, _ -> ImportJsonRequestResult.Error },
+        onExportRequestsToClipboard = {},
+        onExportRequestsToFile = { _, _ -> },
     )
 }
 
 data class DropTargetInfo(var bounds: Rect, val direction: MoveDirection, val item: TreeObject?)
 
+private enum class RequestTreeContextMenuType {
+    None,
+    Folder,
+    RequestExport,
+}
+
 private enum class ResourceType {
     Request,
     Folder,
     ImportCurlCommand,
+    ImportJson,
     ;
 
     val displayText: String
@@ -636,5 +877,6 @@ private enum class ResourceType {
             Request -> "Request"
             Folder -> "Folder"
             ImportCurlCommand -> "Import cURL command (Linux / macOS)"
+            ImportJson -> "Import from JSON"
         }
 }
