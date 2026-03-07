@@ -203,15 +203,18 @@ class InsomniaV4Exporter {
 
                             is GraphqlBody -> it.body
                                 .let { body ->
-                                    val jsonMapper = jacksonObjectMapper()
                                     val graphqlRequest = GraphqlRequestBody(
                                         query = (if (it.overrides?.isOverrideBodyContent != false) body else baseExample.body as GraphqlBody).document.resolveVariables(),
-                                        variables = jsonMapper.readTree((if (it.overrides?.isOverrideBodyVariables != false) body else baseExample.body as GraphqlBody).variables.resolveVariables()),
-                                        operationName = body.operationName.emptyToNull()
+                                        variables = parseInsomniaGraphqlVariablesOrFallbackToString(
+                                            rawVariables = (if (it.overrides?.isOverrideBodyVariables != false) body else baseExample.body as GraphqlBody)
+                                                .variables
+                                                .resolveVariables(),
+                                        ),
+                                        operationName = body.operationName.emptyToNull(),
                                     )
                                     InsomniaV4.HttpRequest.Body(
                                         mimeType = "application/graphql",
-                                        text = jsonMapper.writeValueAsString(graphqlRequest),
+                                        text = jsonWriter.writeValueAsString(graphqlRequest),
                                         params = null,
                                     )
                                 }
@@ -281,6 +284,17 @@ class InsomniaV4Exporter {
         return replace("\\\$\\{\\{([^{}]+)\\}\\}".toRegex(), "{{\$1}}")
             .replace("$((uuid))", "{% uuid 'v4' %}")
             .replace("$((now.iso8601))", "{% now 'iso-8601', '' %}")
+    }
+
+    internal fun parseInsomniaGraphqlVariablesOrFallbackToString(rawVariables: String): Any? {
+        if (rawVariables.isBlank()) {
+            return null
+        }
+        return try {
+            jsonWriter.readTree(rawVariables)
+        } catch (_: Throwable) {
+            rawVariables
+        }
     }
 
     fun UserRequestTemplate.getMergedProperty(exampleIndex: Int, getter: (UserRequestExample) -> List<UserKeyValuePair>?): List<UserKeyValuePair> {
