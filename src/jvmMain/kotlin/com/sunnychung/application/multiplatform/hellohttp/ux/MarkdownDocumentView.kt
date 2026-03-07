@@ -165,12 +165,12 @@ private fun MarkdownBlockView(
                 else -> 1
             }.coerceIn(1, 6)
             val headingSize = when (headingLevel) {
-                1 -> 24.sp
-                2 -> 21.sp
-                3 -> 19.sp
-                4 -> 17.sp
-                5 -> 15.sp
-                else -> 14.sp
+                1 -> 29.sp
+                2 -> 25.sp
+                3 -> 22.sp
+                4 -> 20.sp
+                5 -> 18.sp
+                else -> 16.sp
             }
             MarkdownInlineParagraph(
                 nodes = node.children,
@@ -183,6 +183,7 @@ private fun MarkdownBlockView(
                     lineHeight = (headingSize.value + 8f).sp,
                 ),
                 onClickLink = onClickLink,
+                isTrimContent = true,
             )
         }
 
@@ -445,6 +446,7 @@ private fun MarkdownInlineParagraph(
     source: String,
     style: TextStyle,
     onClickLink: (String) -> Unit,
+    isTrimContent: Boolean = false,
     modifier: Modifier = Modifier.fillMaxWidth(),
 ) {
     val colors = LocalColor.current
@@ -459,6 +461,12 @@ private fun MarkdownInlineParagraph(
             codeBackgroundColor = colors.backgroundSemiLight,
             codeFontFamily = fonts.monospaceFontFamily,
         )
+    }.let {
+        if (isTrimContent) {
+            trimInlineRenderResult(it)
+        } else {
+            it
+        }
     }
     Column(modifier = modifier) {
         MarkdownInlineText(
@@ -714,6 +722,22 @@ private fun buildInlineRenderResult(
     nodes.forEach { appendNode(it) }
 
     return InlineRenderResult(text = builder.toAnnotatedString(), inlineImages = inlineImages)
+}
+
+private fun trimInlineRenderResult(renderResult: InlineRenderResult): InlineRenderResult {
+    val text = renderResult.text
+    var start = 0
+    var end = text.length
+    while (start < end && text[start].isWhitespace()) {
+        start++
+    }
+    while (end > start && text[end - 1].isWhitespace()) {
+        end--
+    }
+    if (start == 0 && end == text.length) {
+        return renderResult
+    }
+    return renderResult.copy(text = text.subSequence(start, end))
 }
 
 private fun shouldSkipInlineNode(node: ASTNode): Boolean {
