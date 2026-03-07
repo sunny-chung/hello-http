@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -84,6 +85,7 @@ import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incr
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightLinearDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.JsonSyntaxHighlightSlowDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.KotlinSyntaxHighlightSlowDecorator
+import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MarkdownSyntaxHighlightDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleIncrementalTransformation
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.MultipleTextDecorator
 import com.sunnychung.application.multiplatform.hellohttp.ux.transformation.incremental.SearchHighlightDecorator
@@ -102,6 +104,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
@@ -141,6 +144,8 @@ fun CodeEditorView(
     onPointerEvent: ((event: PointerEvent, charIndex: Int) -> Unit)? = null,
     onMeasured: ((textFieldPositionTop: Float) -> Unit)? = null,
     onTextManipulatorReady: ((BigTextFieldState) -> Unit)? = null,
+    initialVerticalScrollPosition: Int = 0,
+    onVerticalScrollPositionChange: ((Int) -> Unit)? = null,
     isAutoFocusOnInit: Boolean = false,
     testTag: String? = null,
 ) {
@@ -251,10 +256,33 @@ fun CodeEditorView(
     )) }
     var searchPattern by rememberLast(searchText, searchOptions) { mutableStateOf<Regex?>(null) }
     val searchPatternLatest by rememberUpdatedState(searchPattern)
-    val scrollState = rememberScrollState()
+    val sanitizedInitialVerticalScrollPosition = initialVerticalScrollPosition.coerceAtLeast(0)
+    val scrollState = rememberScrollState(initial = sanitizedInitialVerticalScrollPosition)
+    var isVerticalScrollPositionRestored by remember(cacheKey) { mutableStateOf(false) }
     val searchBarFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
     var hasRequestedInitFocus by remember(cacheKey) { mutableStateOf(false) }
+
+    LaunchedEffect(cacheKey, scrollState.maxValue) {
+        if (!isVerticalScrollPositionRestored && scrollState.maxValue > 0) {
+            runCatching {
+                val target = sanitizedInitialVerticalScrollPosition.coerceIn(0, scrollState.maxValue)
+                scrollState.scrollTo(target)
+            }.onFailure {
+                log.w { "Fail to restore CodeEditorView scroll position ($sanitizedInitialVerticalScrollPosition) for $cacheKey: ${it.message}" }
+            }
+            isVerticalScrollPositionRestored = true
+        }
+    }
+
+    LaunchedEffect(scrollState, onVerticalScrollPositionChange) {
+        onVerticalScrollPositionChange?.let { onChange ->
+            snapshotFlow { scrollState.value }
+                .collect {
+                    onChange(it)
+                }
+        }
+    }
 
     var searchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
     var lastSearchResultViewIndex by rememberLast(bigTextValue) { mutableStateOf(0) }
@@ -412,6 +440,7 @@ fun CodeEditorView(
 //                SyntaxHighlight.Graphql -> listOf(GraphqlSyntaxHighlightSlowDecorator(themeColours))
                 SyntaxHighlight.Kotlin -> listOf(KotlinSyntaxHighlightSlowDecorator(themeColours))
                 SyntaxHighlight.Curl -> listOf(CurlSyntaxHighlightDecorator(themeColours))
+                SyntaxHighlight.Markdown -> listOf(MarkdownSyntaxHighlightDecorator(themeColours))
             }
         }
     }

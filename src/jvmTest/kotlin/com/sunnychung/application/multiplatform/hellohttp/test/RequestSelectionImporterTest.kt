@@ -390,6 +390,7 @@ class RequestSelectionImporterTest {
         assertEquals(expected.isOverrideBodyContent, actualNonNull.isOverrideBodyContent)
         assertEquals(expected.isOverrideBodyVariables, actualNonNull.isOverrideBodyVariables)
         assertEquals(expected.isOverridePreFlightScript, actualNonNull.isOverridePreFlightScript)
+        assertEquals(expected.isOverrideDocumentation, actualNonNull.isOverrideDocumentation)
         assertEquals(expected.disabledHeaderIds.size, actualNonNull.disabledHeaderIds.size)
         assertEquals(expected.disabledCookieIds.size, actualNonNull.disabledCookieIds.size)
         assertEquals(expected.disabledQueryParameterIds.size, actualNonNull.disabledQueryParameterIds.size)

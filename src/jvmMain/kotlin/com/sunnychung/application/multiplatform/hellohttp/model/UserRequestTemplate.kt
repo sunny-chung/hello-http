@@ -169,6 +169,7 @@ data class UserRequestTemplate(
                             updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(isSaveIdMapping = index == 0),
                         )
                     },
+                    documentation = it.documentation,
                     overrides = it.overrides?.let { o ->
                         o.copy(
                             disabledHeaderIds = o.disabledHeaderIds.map { idMapping[it]!! }.toSet(),
@@ -370,6 +371,7 @@ data class UserRequestExample(
     val variables: List<UserKeyValuePair> = mutableListOf(),
     val preFlight: PreFlightSpec = PreFlightSpec(),
     val postFlight: PostFlightSpec = PostFlightSpec(),
+    val documentation: String = "",
     val overrides: Overrides? = null, // only the Base example can be null
 ) : Identifiable {
 
@@ -399,6 +401,8 @@ data class UserRequestExample(
         val disabledBodyKeyValueIds: Set<String> = emptySet(),
 
         val isOverridePreFlightScript: Boolean = true,
+
+        val isOverrideDocumentation: Boolean = false,
 
         val disablePreFlightUpdateVarIds: Set<String> = emptySet(),
 
@@ -449,6 +453,7 @@ data class UserRequestExample(
                     updateVariablesFromBody = updateVariablesFromBody.deepCopyWithNewId(),
                 )
             },
+            documentation = documentation,
             overrides = overrides?.let { o ->
                 o.copy(
                     disabledHeaderIds = o.disabledHeaderIds.map { it }.toSet(),

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
@@ -33,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -586,12 +589,32 @@ fun RequestEditorView(
         }
 
         val tabs = when (request.application) {
-            ProtocolApplication.WebSocket -> listOf(RequestTab.Query, RequestTab.Header, RequestTab.Cookie, RequestTab.Variable)
+            ProtocolApplication.WebSocket -> listOf(
+                RequestTab.Query,
+                RequestTab.Header,
+                RequestTab.Cookie,
+                RequestTab.Variable,
+                RequestTab.Documentation,
+            )
             ProtocolApplication.Grpc -> listOfNotNull(
                 if (currentGrpcMethod?.isClientStreaming != true) RequestTab.Body else null,
-                RequestTab.Header, RequestTab.Cookie, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight
+                RequestTab.Header,
+                RequestTab.Cookie,
+                RequestTab.Variable,
+                RequestTab.PreFlight,
+                RequestTab.PostFlight,
+                RequestTab.Documentation,
             )
-            else -> listOf(RequestTab.Body, RequestTab.Query, RequestTab.Header, RequestTab.Cookie, RequestTab.Variable, RequestTab.PreFlight, RequestTab.PostFlight)
+            else -> listOf(
+                RequestTab.Body,
+                RequestTab.Query,
+                RequestTab.Header,
+                RequestTab.Cookie,
+                RequestTab.Variable,
+                RequestTab.PreFlight,
+                RequestTab.PostFlight,
+                RequestTab.Documentation,
+            )
         }
         selectedRequestTabIndex = selectedRequestTabIndex.coerceAtMost(tabs.lastIndex)
 
@@ -650,6 +673,7 @@ fun RequestEditorView(
                     countActive({ it.postFlight.updateVariablesFromBody }, overrides?.disablePostFlightUpdateVarIds)
                 RequestTab.Cookie -> if (subprojectConfig.isCookieEnabled()) applicableCookies.countActive() else 0
                 RequestTab.Variable -> request.getAllVariables(selectedExampleId, environment).count()
+                RequestTab.Documentation -> countNotBlank({ it.documentation }, overrides?.isOverrideDocumentation)
             } }
         }
 
@@ -994,6 +1018,13 @@ fun RequestEditorView(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                     )
                 }
+
+                RequestTab.Documentation -> RequestDocumentationEditorView(
+                    request = request,
+                    selectedExample = selectedExample,
+                    onRequestModified = onRequestModified,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
 
@@ -2040,6 +2071,149 @@ private fun RequestBodyTextEditor(
 }
 
 @Composable
+private fun RequestDocumentationEditorView(
+    request: UserRequestTemplate,
+    selectedExample: UserRequestExample,
+    onRequestModified: (UserRequestTemplate?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalColor.current
+    val baseExample = request.examples.first()
+    val isBaseExample = request.isExampleBase(selectedExample)
+    val isOverrideDocumentation = isBaseExample || selectedExample.overrides?.isOverrideDocumentation != false
+    val displayedExample = if (isOverrideDocumentation) selectedExample else baseExample
+    val cacheExampleId = displayedExample.id
+    val documentationText = displayedExample.documentation
+    val defaultMode = if (documentationText.isBlank()) DocumentationViewMode.Split else DocumentationViewMode.Document
+
+    var selectedMode by rememberLast(request.id, selectedExample.id) { mutableStateOf(defaultMode) }
+    var documentationEditorScrollPosition by rememberLast(request.id, selectedExample.id) { mutableStateOf(0) }
+    var openExternalLink by remember { mutableStateOf<String?>(null) }
+
+    fun onTextChange(newText: String) {
+        onRequestModified(
+            request.copy(
+                examples = request.examples.copyWithChange(
+                    selectedExample.copy(documentation = newText)
+                )
+            )
+        )
+    }
+
+    @Composable
+    fun documentationCodeEditor(modifier: Modifier) {
+        CodeEditorView(
+            modifier = modifier,
+            cacheKey = "Request:${request.id}/Example:${cacheExampleId}/Documentation",
+            isReadOnly = !isOverrideDocumentation,
+            initialText = documentationText,
+            onTextChange = if (isOverrideDocumentation) {
+                { onTextChange(it) }
+            } else {
+                {}
+            },
+            textColor = if (isOverrideDocumentation) colors.text else colors.placeholder,
+            syntaxHighlight = SyntaxHighlight.Markdown,
+            initialVerticalScrollPosition = documentationEditorScrollPosition,
+            onVerticalScrollPositionChange = { documentationEditorScrollPosition = it },
+        )
+    }
+
+    Column(
+        modifier = modifier.padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .height(30.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(width = 1.dp, color = colors.line, shape = RoundedCornerShape(8.dp))
+                    .background(colors.backgroundLight),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DocumentationViewMode.values().forEachIndexed { index, mode ->
+                    if (index > 0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(1.dp)
+                                .background(colors.line)
+                        )
+                    }
+                    val isSelected = selectedMode == mode
+                    val backgroundColor = if (isSelected) colors.backgroundInputField else colors.backgroundLight
+                    AppTooltipArea(tooltipText = mode.displayText) {
+                        Box(
+                            modifier = Modifier
+                                .background(backgroundColor)
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                                .clickable { selectedMode = mode }
+                        ) {
+                            AppImage(
+                                resource = mode.iconResource,
+                                size = 18.dp,
+                                color = if (isSelected) colors.bright else colors.placeholder,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+            if (!isBaseExample) {
+                OverrideCheckboxWithLabel(
+                    selectedExample = selectedExample,
+                    onRequestModified = onRequestModified,
+                    request = request,
+                    translateToValue = { overrides ->
+                        overrides.isOverrideDocumentation
+                    },
+                    translateToNewOverrides = { isChecked, overrides ->
+                        overrides.copy(isOverrideDocumentation = isChecked)
+                    },
+                )
+            }
+        }
+
+        when (selectedMode) {
+            DocumentationViewMode.Markdown -> documentationCodeEditor(Modifier.fillMaxSize())
+            DocumentationViewMode.Document -> MarkdownDocumentView(
+                modifier = Modifier.fillMaxSize(),
+                markdownText = documentationText,
+                onClickLink = { openExternalLink = it },
+            )
+            DocumentationViewMode.Split -> Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                documentationCodeEditor(Modifier.weight(1f).fillMaxHeight())
+                MarkdownDocumentView(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    markdownText = documentationText,
+                    onClickLink = { openExternalLink = it },
+                )
+            }
+        }
+    }
+
+    MainWindowDialog(
+        key = "Request/${request.id}/Example/${selectedExample.id}/Documentation/OpenExternalLink",
+        isEnabled = openExternalLink != null,
+        onDismiss = { openExternalLink = null },
+    ) {
+        OpenExternalLinkDialogView(
+            url = openExternalLink.orEmpty(),
+            onDismiss = { openExternalLink = null },
+        )
+    }
+}
+
+@Composable
 fun InputFormHeader(modifier: Modifier = Modifier, text: String) {
     val colors = LocalColor.current
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
@@ -2246,7 +2420,14 @@ private enum class RequestTab(val displayText: String) {
     Cookie("Cookie"),
     PreFlight("Pre Flight"),
     PostFlight("Post Flight"),
-    Variable("Variable")
+    Variable("Variable"),
+    Documentation("Documentation"),
+}
+
+private enum class DocumentationViewMode(val displayText: String, val iconResource: String) {
+    Markdown("Markdown", "code.svg"),
+    Split("Split", "split-screen.svg"),
+    Document("Document", "document-file.svg"),
 }
 
 private data class ProtocolMethod(val application: ProtocolApplication, val method: String)
