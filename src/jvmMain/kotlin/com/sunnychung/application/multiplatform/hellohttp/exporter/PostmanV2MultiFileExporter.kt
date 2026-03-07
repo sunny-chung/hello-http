@@ -124,6 +124,7 @@ class PostmanV2MultiFileExporter {
             PostmanV2.Item(
                 id = it.id,
                 name = req.name + if (index > 0) " (${it.name})" else "",
+                description = it.documentation.emptyToNull()?.let { jsonWriter.valueToTree(it) },
                 request = PostmanV2.Request(
                     method = req.method.emptyToNull() ?: "POST",
                     url = PostmanV2.Url(
@@ -139,6 +140,7 @@ class PostmanV2MultiFileExporter {
                     header = req.getMergedProperty(index) { it.headers }
                         .map { it.toPostmanKeyValue() },
                     auth = null,
+                    description = it.documentation.emptyToNull()?.let { jsonWriter.valueToTree(it) },
                     body = when (it.body) {
                         is FileBody -> PostmanV2.Body(
                             mode = "file",

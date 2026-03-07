@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.importer
 
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.document.ProjectAndEnvironmentsDI
@@ -174,11 +175,29 @@ class PostmanV2ZipImporter {
         }?.firstOrNull()
     }
 
+    fun JsonNode?.parsePostmanDescription(): String {
+        if (this == null || this.isNull) {
+            return ""
+        }
+        if (this.isTextual) {
+            return this.asText()
+        }
+        if (this.isObject) {
+            val content = this["content"]
+            if (content?.isTextual == true) {
+                return content.asText()
+            }
+        }
+        return this.toString()
+    }
+
     fun PostmanV2.Item.toUserRequest(inheritedAuths: Collection<PostmanV2.Auth>): UserRequestTemplate {
         request!!
         val headers: List<UserKeyValuePair> = request.header.map { it.toUserKeyValuePair() } +
                 inheritedAuths.mapNotNull { it.toUserKeyValuePair() } +
                 listOfNotNull(request.auth?.toUserKeyValuePair())
+        val documentation = description.parsePostmanDescription()
+            .ifBlank { request.description.parsePostmanDescription() }
         return UserRequestTemplate(
             id = uuidString(),
             name = name,
@@ -231,7 +250,8 @@ class PostmanV2ZipImporter {
                         "raw" -> StringBody(raw?.convertVariables() ?: "")
                         else -> StringBody(raw?.convertVariables() ?: "")
                     }
-                }
+                },
+                documentation = documentation,
             ))
         )
     }

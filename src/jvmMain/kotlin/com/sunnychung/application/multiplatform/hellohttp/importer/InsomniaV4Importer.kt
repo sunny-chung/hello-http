@@ -232,6 +232,7 @@ class InsomniaV4Importer {
                         },
                         headers = it.parseHeaders(postFlightBodyVariables),
                         queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                        documentation = it.description,
                     ))
                 )
                 req = req.copy(examples = req.examples.map {
@@ -263,6 +264,7 @@ class InsomniaV4Importer {
                         body = StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: ""),
                         headers = it.parseHeaders(postFlightBodyVariables),
                         queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                        documentation = it.description,
                     )),
                     payloadExamples = listOf(
                         PayloadExample(
@@ -309,6 +311,7 @@ class InsomniaV4Importer {
                         body = null,
                         headers = it.parseHeaders(postFlightBodyVariables),
                         queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                        documentation = it.description,
                     )),
                     payloadExamples = mutableListOf(
                         PayloadExample(

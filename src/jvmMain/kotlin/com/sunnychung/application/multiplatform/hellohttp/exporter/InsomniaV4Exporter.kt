@@ -113,7 +113,7 @@ class InsomniaV4Exporter {
                             parentId = convertedParentId,
                             url = req.url.resolveVariables(),
                             name = req.name,
-                            description = "",
+                            description = req.examples.firstOrNull()?.documentation ?: "",
                             headers = req.getMergedProperty(0) { it.headers }
                                 .map { it.toInsomniaKeyValue() },
                             parameters = req.getMergedProperty(0) { it.queryParameters }
@@ -143,7 +143,7 @@ class InsomniaV4Exporter {
                         } else {
                             ""
                         },
-                        description = "",
+                        description = it.documentation,
                         method = if (req.application == ProtocolApplication.Graphql) "POST" else req.method,
                         headers = req.getMergedProperty(index) { it.headers }
                             .let {
