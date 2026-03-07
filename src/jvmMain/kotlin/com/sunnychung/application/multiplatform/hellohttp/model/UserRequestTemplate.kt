@@ -670,7 +670,7 @@ class MultipartBody(override val value: List<UserKeyValuePair>) : UserRequestBod
 @Persisted
 @Serializable
 @SerialName("FileBody")
-class FileBody(val filePath: String?) : UserRequestBody {
+class FileBody(val filePath: String? = null) : UserRequestBody {
 //    override fun toOkHttpBody(mediaType: MediaType?): RequestBody {
 //        return filePath?.let { File(it).asRequestBody(mediaType) } ?: byteArrayOf().toRequestBody(mediaType)
 //    }
@@ -692,7 +692,11 @@ class FileBody(val filePath: String?) : UserRequestBody {
 @Persisted
 @Serializable
 @SerialName("GraphqlBody")
-data class GraphqlBody(val document: String, val variables: String, val operationName: String?) : UserRequestBody {
+data class GraphqlBody(
+    val document: String,
+    val variables: String,
+    val operationName: String? = null,
+) : UserRequestBody {
 //    override fun toOkHttpBody(mediaType: MediaType?): RequestBody = throw NotImplementedError()
 
     fun getAllOperations(isThrowError: Boolean = false): List<OperationDefinition> {

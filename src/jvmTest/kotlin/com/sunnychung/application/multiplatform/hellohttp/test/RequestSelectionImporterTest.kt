@@ -130,6 +130,55 @@ class RequestSelectionImporterTest {
     }
 
     @Test
+    fun importShouldDefaultMissingDocumentationToEmptyString() {
+        val request = createRequest(application = ProtocolApplication.Http, bodyType = ContentType.Json)
+        val payload = exportPayloadNode(request)
+        val firstRequest = payload
+            .withArray("requests")
+            .first() as ObjectNode
+        val examples = firstRequest.withArray("examples")
+        (examples.get(0) as ObjectNode).remove("documentation")
+        (examples.get(1) as ObjectNode).remove("documentation")
+
+        val imported = RequestSelectionImporter().importFromJson(jsonMapper.writeValueAsString(payload))
+        assertEquals("", imported.requests.first().examples[0].documentation)
+        assertEquals("", imported.requests.first().examples[1].documentation)
+    }
+
+    @Test
+    fun importShouldAllowMissingBinaryFilePathField() {
+        val request = createRequest(application = ProtocolApplication.Http, bodyType = ContentType.BinaryFile)
+        val payload = exportPayloadNode(request)
+        val firstRequest = payload
+            .withArray("requests")
+            .first() as ObjectNode
+        val examples = firstRequest.withArray("examples")
+        (examples.get(0) as ObjectNode).with("body").remove("filePath")
+        (examples.get(1) as ObjectNode).with("body").remove("filePath")
+
+        val imported = RequestSelectionImporter().importFromJson(jsonMapper.writeValueAsString(payload))
+        assertTrue(imported.requests.first().examples.all { (it.body as FileBody).filePath == null })
+    }
+
+    @Test
+    fun importShouldAllowMissingGraphqlOperationNameField() {
+        val request = createRequest(application = ProtocolApplication.Graphql, bodyType = ContentType.Graphql)
+        val payload = exportPayloadNode(request)
+        val firstRequest = payload
+            .withArray("requests")
+            .first() as ObjectNode
+        val examples = firstRequest.withArray("examples")
+        (examples.get(0) as ObjectNode).with("body").remove("operationName")
+        (examples.get(1) as ObjectNode).with("body").remove("operationName")
+
+        val imported = RequestSelectionImporter().importFromJson(jsonMapper.writeValueAsString(payload))
+        imported.requests.first().examples.forEach {
+            assertTrue(it.body is GraphqlBody)
+            assertEquals(null, (it.body as GraphqlBody).operationName)
+        }
+    }
+
+    @Test
     fun readMetadataShouldSucceedBeforeFullImportParsing() {
         val json = """
             {"app":{"name":"Hello HTTP","version":"999.0.0"},"requests":[{"unsupported":"field-shape"}]}
@@ -203,6 +252,11 @@ class RequestSelectionImporterTest {
                 updateVariablesFromHeader = listOf(kv("poh1", "respEtags", "ETag")),
                 updateVariablesFromBody = listOf(kv("pob1", "respId", "$.id")),
             ),
+            documentation = """
+# Base Example
+
+This is the base request documentation.
+""".trimIndent(),
             overrides = null,
         )
 
@@ -227,6 +281,11 @@ class RequestSelectionImporterTest {
                 updateVariablesFromHeader = listOf(kv("poh2", "respEtags2", "ETag")),
                 updateVariablesFromBody = listOf(kv("pob2", "respId2", "$.id")),
             ),
+            documentation = """
+## Secondary Example
+
+This example overrides runtime behavior.
+""".trimIndent(),
             overrides = UserRequestExample.Overrides(
                 disabledHeaderIds = setOf("h1"),
                 disabledCookieIds = setOf("c1"),
@@ -332,6 +391,7 @@ class RequestSelectionImporterTest {
             assertKeyValueListEqual(exp.preFlight.updateVariablesFromGraphqlVariables, act.preFlight.updateVariablesFromGraphqlVariables)
             assertKeyValueListEqual(exp.postFlight.updateVariablesFromHeader, act.postFlight.updateVariablesFromHeader)
             assertKeyValueListEqual(exp.postFlight.updateVariablesFromBody, act.postFlight.updateVariablesFromBody)
+            assertEquals(exp.documentation, act.documentation)
             assertOverridesEquivalent(exp.overrides, act.overrides)
         }
 

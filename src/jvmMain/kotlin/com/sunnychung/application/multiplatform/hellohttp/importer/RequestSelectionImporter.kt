@@ -1,11 +1,8 @@
 package com.sunnychung.application.multiplatform.hellohttp.importer
 
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.exporter.RequestSelectionExport
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
@@ -13,12 +10,9 @@ import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
 import com.sunnychung.application.multiplatform.hellohttp.model.FormUrlEncodedBody
 import com.sunnychung.application.multiplatform.hellohttp.model.GraphqlBody
 import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
-import com.sunnychung.application.multiplatform.hellohttp.model.PostFlightSpec
-import com.sunnychung.application.multiplatform.hellohttp.model.PreFlightSpec
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestBodyWithKeyValuePairs
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
-import com.sunnychung.application.multiplatform.hellohttp.model.UserKeyValuePair
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
@@ -32,12 +26,9 @@ class RequestSelectionImporter {
 
     private val jsonParser = jacksonObjectMapper()
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        .registerModule(
-            SimpleModule().addDeserializer(
-                UserRequestExample::class.java,
-                UserRequestExampleDeserializer(),
-            )
-        )
+        .disable(DeserializationFeature.FAIL_ON_MISSING_EXTERNAL_TYPE_ID_PROPERTY)
+        .disable(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE)
+        .addMixIn(UserRequestExample::class.java, UserRequestExampleBodyMixIn::class.java)
 
     fun readMetadata(json: String): RequestSelectionImportMetadata {
         if (json.isBlank()) {
@@ -333,112 +324,20 @@ data class RequestSelectionImportMetadata(
     val appVersion: String,
 )
 
-private class UserRequestExampleDeserializer : JsonDeserializer<UserRequestExample>() {
-    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): UserRequestExample {
-        val node = p.codec.readTree<JsonNode>(p)
-            ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        if (!node.isObject) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-
-        val contentTypeNode = node["contentType"] ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        val contentType = p.codec.treeToValue(contentTypeNode, ContentType::class.java)
-        val body = parseBody(p, node["body"], contentType)
-
-        return UserRequestExample(
-            id = node.requiredText("id"),
-            name = node.requiredText("name"),
-            contentType = contentType,
-            headers = node.requiredList(p, "headers", UserKeyValuePair::class.java),
-            cookies = node.requiredList(p, "cookies", UserKeyValuePair::class.java),
-            queryParameters = node.requiredList(p, "queryParameters", UserKeyValuePair::class.java),
-            body = body,
-            variables = node.requiredList(p, "variables", UserKeyValuePair::class.java),
-            preFlight = node.requiredObject(p, "preFlight", PreFlightSpec::class.java),
-            postFlight = node.requiredObject(p, "postFlight", PostFlightSpec::class.java),
-            overrides = node["overrides"]?.let {
-                if (it.isNull) {
-                    null
-                } else {
-                    p.codec.treeToValue(it, UserRequestExample.Overrides::class.java)
-                }
-            },
-        )
-    }
-
-    private fun parseBody(p: JsonParser, bodyNode: JsonNode?, contentType: ContentType): UserRequestBody? {
-        return when (contentType) {
-            ContentType.None -> {
-                if (bodyNode != null && !bodyNode.isNull) {
-                    throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-                }
-                null
-            }
-
-            ContentType.Json, ContentType.Raw -> StringBody(bodyNode.requiredText("value"))
-
-            ContentType.FormUrlEncoded -> FormUrlEncodedBody(
-                value = bodyNode.requiredList(p, "value", UserKeyValuePair::class.java),
-            )
-
-            ContentType.Multipart -> MultipartBody(
-                value = bodyNode.requiredList(p, "value", UserKeyValuePair::class.java),
-            )
-
-            ContentType.BinaryFile -> FileBody(
-                filePath = bodyNode.optionalNullableText("filePath"),
-            )
-
-            ContentType.Graphql -> GraphqlBody(
-                document = bodyNode.requiredText("document"),
-                variables = bodyNode.requiredText("variables"),
-                operationName = bodyNode.optionalNullableText("operationName"),
-            )
-        }
-    }
-
-    private fun JsonNode.requiredNode(fieldName: String): JsonNode {
-        return this[fieldName] ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-    }
-
-    private fun JsonNode?.requiredNode(): JsonNode {
-        return this ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-    }
-
-    private fun JsonNode?.requiredText(fieldName: String): String {
-        val fieldNode = this.requiredNode().requiredNode(fieldName)
-        if (!fieldNode.isTextual) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-        return fieldNode.asText()
-    }
-
-    private fun JsonNode?.optionalNullableText(fieldName: String): String? {
-        val fieldNode = this.requiredNode()[fieldName] ?: return null
-        if (fieldNode.isNull) {
-            return null
-        }
-        if (!fieldNode.isTextual) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-        return fieldNode.asText()
-    }
-
-    private fun <T> JsonNode?.requiredList(p: JsonParser, fieldName: String, clazz: Class<T>): List<T> {
-        val fieldNode = this.requiredNode().requiredNode(fieldName)
-        if (!fieldNode.isArray) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-        return fieldNode.map {
-            p.codec.treeToValue(it, clazz)
-        }
-    }
-
-    private fun <T> JsonNode.requiredObject(p: JsonParser, fieldName: String, clazz: Class<T>): T {
-        val fieldNode = requiredNode(fieldName)
-        if (!fieldNode.isObject) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-        return p.codec.treeToValue(fieldNode, clazz)
-    }
+private abstract class UserRequestExampleBodyMixIn {
+    @get:JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
+        property = "contentType",
+        visible = true,
+    )
+    @get:JsonSubTypes(
+        JsonSubTypes.Type(value = StringBody::class, name = "Json"),
+        JsonSubTypes.Type(value = StringBody::class, name = "Raw"),
+        JsonSubTypes.Type(value = FormUrlEncodedBody::class, name = "FormUrlEncoded"),
+        JsonSubTypes.Type(value = MultipartBody::class, name = "Multipart"),
+        JsonSubTypes.Type(value = FileBody::class, name = "BinaryFile"),
+        JsonSubTypes.Type(value = GraphqlBody::class, name = "Graphql"),
+    )
+    abstract val body: UserRequestBody?
 }
