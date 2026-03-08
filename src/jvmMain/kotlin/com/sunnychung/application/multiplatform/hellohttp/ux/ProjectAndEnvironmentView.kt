@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.ux
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.CursorDropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +35,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.sunnychung.application.multiplatform.hellohttp.model.Environment
 import com.sunnychung.application.multiplatform.hellohttp.model.Project
 import com.sunnychung.application.multiplatform.hellohttp.model.Subproject
@@ -40,6 +43,7 @@ import com.sunnychung.application.multiplatform.hellohttp.util.log
 import com.sunnychung.application.multiplatform.hellohttp.util.uuidString
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalColor
 import com.sunnychung.application.multiplatform.hellohttp.ux.local.LocalFont
+import java.io.File
 
 @Composable
 fun ProjectAndEnvironmentViewV2(
@@ -58,10 +62,13 @@ fun ProjectAndEnvironmentViewV2(
     onUpdateSubproject: (Subproject) -> Unit,
     onDeleteProject: (Project) -> Unit,
     onDeleteSubproject: (Subproject) -> Unit,
+    onExportSubprojectApiDoc: (project: Project, subproject: Subproject, parentDirectory: File) -> Unit,
 ) {
     val colors = LocalColor.current
 
     var expandedSection by remember { mutableStateOf(ExpandedSection.Project) }
+    var isShowSubprojectContextMenu by remember { mutableStateOf(false) }
+    var isShowApiDocDirectoryPicker by remember { mutableStateOf(false) }
 
     var showDialogType by remember { mutableStateOf(EditDialogType.None) }
     var dialogTextFieldValue by remember { mutableStateOf("") }
@@ -205,6 +212,35 @@ fun ProjectAndEnvironmentViewV2(
             initialEnvironment = selectedEnvironment,
             modifier = Modifier.padding(12.dp).fillMaxSize(),
         )
+    }
+
+    CursorDropdownMenu(
+        expanded = isShowSubprojectContextMenu,
+        onDismissRequest = { isShowSubprojectContextMenu = false },
+        modifier = Modifier.background(colors.backgroundContextMenu)
+    ) {
+        Column(
+            modifier = Modifier
+                .clickable {
+                    isShowSubprojectContextMenu = false
+                    isShowApiDocDirectoryPicker = true
+                }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .fillMaxWidth()
+        ) {
+            AppText(text = "Export as API Doc in HTML (Experimental)")
+        }
+    }
+
+    DirectoryPicker(isShowApiDocDirectoryPicker) { dir ->
+        isShowApiDocDirectoryPicker = false
+        val project = selectedProject ?: return@DirectoryPicker
+        val subproject = selectedSubproject ?: return@DirectoryPicker
+        val parentDirectory = dir
+            ?.let { File(it) }
+            ?.takeIf { it.isDirectory }
+            ?: return@DirectoryPicker
+        onExportSubprojectApiDoc(project, subproject, parentDirectory)
     }
 
 
@@ -352,6 +388,15 @@ fun ProjectAndEnvironmentViewV2(
                             }
                         )
                         AppImageButton(
+                            resource = "menu.svg",
+                            size = 16.dp,
+                            onClick = {
+                                selectedProject ?: return@AppImageButton
+                                selectedSubproject ?: return@AppImageButton
+                                isShowSubprojectContextMenu = true
+                            }
+                        )
+                        AppImageButton(
                             resource = "edit.svg",
                             size = 16.dp,
                             onClick = {
@@ -433,5 +478,6 @@ fun ProjectAndEnvironmentViewV2Preview() {
         onUpdateProject = {_ ->},
         onDeleteProject = {_ ->},
         onDeleteSubproject = {_ ->},
+        onExportSubprojectApiDoc = { _, _, _ -> },
     )
 }

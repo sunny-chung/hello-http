@@ -13,6 +13,7 @@ The current behavior of badge numbers, in the Request Editor, that do not count 
 - Quick requests export & import
 - Formatted Documentation could be written in Markdown syntax per request example (inheritable)
 - Export project in OpenAPI v3.1 format (Experimental!)
+- Export subproject as a single HTML printer-friendly API documentation (Experimental!)
 
 ### Changed
 - The badge numbers of Body, Query, Header, Pre Flight, Post Flight tabs in the Request Editor now count inherited entries

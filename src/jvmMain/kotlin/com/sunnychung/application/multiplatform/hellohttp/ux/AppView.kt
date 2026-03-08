@@ -60,6 +60,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.RequestCollec
 import com.sunnychung.application.multiplatform.hellohttp.document.RequestsDI
 import com.sunnychung.application.multiplatform.hellohttp.document.ResponsesDI
 import com.sunnychung.application.multiplatform.hellohttp.extension.CommandGenerator
+import com.sunnychung.application.multiplatform.hellohttp.exporter.apidoc.ApiDocHtmlExporter
 import com.sunnychung.application.multiplatform.hellohttp.exporter.RequestSelectionExporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.CurlCommandImporter
 import com.sunnychung.application.multiplatform.hellohttp.importer.RequestSelectionImporter
@@ -94,6 +95,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
@@ -239,6 +241,7 @@ fun AppContentView() {
     val errorMessageVM = AppContext.ErrorMessagePromptViewModel
     val requestSelectionExporter = remember { RequestSelectionExporter() }
     val requestSelectionImporter = remember { RequestSelectionImporter() }
+    val apiDocHtmlExporter = remember { ApiDocHtmlExporter() }
 
     val coroutineScope = rememberCoroutineScope()
     var selectedProject by remember { mutableStateOf<Project?>(null) }
@@ -445,6 +448,25 @@ fun AppContentView() {
                                 val project = projectCollection.projects.first { it.subprojects.any { it.id == subproject.id } }
                                 project.subprojects.removeIf { it.id == subproject.id }
                                 projectCollectionRepository.notifyUpdated(projectCollection.id)
+                            },
+                            onExportSubprojectApiDoc = { project, subproject, parentDirectory ->
+                                coroutineScope.launch {
+                                    try {
+                                        val outputDirectory = withContext(Dispatchers.IO) {
+                                            apiDocHtmlExporter.exportSubprojectToDirectory(
+                                                project = project,
+                                                subproject = subproject,
+                                                parentDirectory = parentDirectory,
+                                            )
+                                        }
+                                        errorMessageVM.showSuccessMessage(
+                                            "Exported API documentation to ${outputDirectory.absolutePath}"
+                                        )
+                                    } catch (e: Throwable) {
+                                        log.w(e) { "Cannot export subproject API documentation" }
+                                        errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
+                                    }
+                                }
                             },
                             modifier = if (selectedSubproject == null) Modifier.fillMaxHeight() else Modifier
                         )

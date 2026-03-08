@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hello HTTP API Documentation</title>
+    <style>
+        :root {
+            --sidebar-width: 330px;
+            --font-normal: "Comme", "SF Pro Text", "Segoe UI", "Helvetica Neue", "Noto Sans", "Liberation Sans", "Arial", sans-serif;
+            --font-mono: "Pitagon Sans Mono", "JetBrains Mono", "Cascadia Code", "SFMono-Regular", "SF Mono", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", "Monaco", monospace;
+            --shadow-elevated: 0 14px 35px rgba(0, 0, 0, 0.25);
+        }
+
+        .api-root[data-theme="dark"] {
+            --color-bg: #1a1a1a;
+            --color-bg-soft: #262626;
+            --color-bg-mild: #303030;
+            --color-panel: #0f0f0f;
+            --color-panel-2: #191919;
+            --color-text: #f2f2ff;
+            --color-text-soft: #9ea0b4;
+            --color-border: #73758c;
+            --color-accent: #f2e680;
+            --color-link: #83d0ff;
+            --color-secondary: #8adfb6;
+            --color-success: #1bbf1b;
+            --color-warning: #ff8f2a;
+            --color-danger: #ff5e5e;
+            --color-method-get: #00cc00;
+            --color-method-post: #4d4dcc;
+            --color-method-put: #ff9900;
+            --color-method-patch: #ed7333;
+            --color-method-delete: #e34d4d;
+            --color-method-other: #8f8f8f;
+            --color-protocol-http: #d8ffd8;
+            --color-protocol-ws: #c7c7ef;
+            --color-protocol-graphql: #cc43a2;
+            --color-protocol-grpc: #f2f2f2;
+        }
+
+        .api-root[data-theme="light"] {
+            --color-bg: #e6e6e6;
+            --color-bg-soft: #d7d7d7;
+            --color-bg-mild: #d0d0d0;
+            --color-panel: #f5f5f5;
+            --color-panel-2: #ececec;
+            --color-text: #333347;
+            --color-text-soft: #666680;
+            --color-border: #666680;
+            --color-accent: #5c5cdf;
+            --color-link: #2952cb;
+            --color-secondary: #1e7f5d;
+            --color-success: #2c9b2c;
+            --color-warning: #cc5c00;
+            --color-danger: #dd3d3d;
+            --color-method-get: #0f9e0f;
+            --color-method-post: #4d4dcc;
+            --color-method-put: #f58a00;
+            --color-method-patch: #3d8036;
+            --color-method-delete: #d04545;
+            --color-method-other: #707070;
+            --color-protocol-http: #1f5226;
+            --color-protocol-ws: #3f4060;
+            --color-protocol-graphql: #cc43a2;
+            --color-protocol-grpc: #555555;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--font-normal);
+            color: var(--color-text);
+            background: radial-gradient(circle at top right, var(--color-bg-soft), var(--color-bg));
+        }
+
+        .api-shell {
+            display: grid;
+            grid-template-columns: minmax(280px, var(--sidebar-width)) minmax(0, 1fr);
+            height: 100vh;
+        }
+
+        .api-sidebar {
+            border-right: 1px solid var(--color-border);
+            background: linear-gradient(170deg, var(--color-bg-soft), var(--color-bg));
+            padding: 16px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow: auto;
+        }
+
+        .api-doc-project {
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.4;
+            color: var(--color-text);
+            font-weight: 650;
+            overflow-wrap: anywhere;
+        }
+
+        .api-doc-title {
+            margin: 4px 0 0;
+            font-size: 42px;
+            line-height: 1.02;
+            font-weight: 760;
+            letter-spacing: -0.03em;
+        }
+
+        .api-doc-subline {
+            margin: 8px 0 0;
+            color: var(--color-text-soft);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .api-sidebar-link {
+            color: var(--color-link);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .api-control-group {
+            margin-bottom: 14px;
+        }
+
+        .api-sidebar-divider {
+            border: 0;
+            border-top: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+            margin: 12px 0 10px;
+        }
+
+        .api-control-group.is-first {
+            margin-top: 16px;
+        }
+
+        .api-control-label {
+            display: block;
+            margin: 0 0 6px;
+            color: var(--color-text-soft);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+        }
+
+        .api-button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .api-toggle-button {
+            border: 1px solid var(--color-border);
+            background: var(--color-panel-2);
+            color: var(--color-text);
+            padding: 7px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.16s ease;
+        }
+
+        .api-toggle-button:hover {
+            border-color: var(--color-accent);
+        }
+
+        .api-toggle-button.is-active {
+            background: color-mix(in oklab, var(--color-accent) 25%, var(--color-panel-2));
+            border-color: var(--color-accent);
+            color: var(--color-text);
+        }
+
+        .api-select,
+        .api-search {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--color-border);
+            background: var(--color-panel);
+            color: var(--color-text);
+            font-size: 13px;
+            padding: 9px 10px;
+            outline: none;
+        }
+
+        .api-select {
+            margin: 10px 0 0;
+        }
+
+        .api-search {
+            margin: 10px 0 14px;
+        }
+
+        .api-select:focus,
+        .api-search:focus {
+            border-color: var(--color-accent);
+        }
+
+        .api-tree {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .api-tree-node {
+            margin: 0;
+            padding: 0;
+        }
+
+        .api-tree-node.is-hidden {
+            display: none;
+        }
+
+        .api-tree-folder-header,
+        .api-tree-item {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: var(--color-text);
+            text-align: left;
+            padding: 7px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1.3;
+        }
+
+        .api-tree-folder-header:hover,
+        .api-tree-item:hover {
+            background: var(--color-panel-2);
+        }
+
+        .api-tree-item.is-active {
+            background: color-mix(in oklab, var(--color-accent) 17%, var(--color-panel-2));
+            color: var(--color-text);
+        }
+
+        .api-tree-folder-caret {
+            width: 14px;
+            color: var(--color-text-soft);
+            flex: 0 0 auto;
+        }
+
+        .api-tree-folder-label {
+            font-weight: 600;
+        }
+
+        .api-tree-children {
+            margin: 0 0 0 14px;
+            padding: 0 0 0 10px;
+            list-style: none;
+            border-left: 1px dashed color-mix(in oklab, var(--color-border) 60%, transparent);
+        }
+
+        .api-tree-node.is-collapsed > .api-tree-children {
+            display: none;
+        }
+
+        .api-tree-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .api-tree-badges {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex: 0 0 auto;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            border: 1px solid currentColor;
+            padding: 1px 6px;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1.3;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge.method-get {
+            color: var(--color-method-get);
+        }
+
+        .badge.method-post {
+            color: var(--color-method-post);
+        }
+
+        .badge.method-put {
+            color: var(--color-method-put);
+        }
+
+        .badge.method-patch {
+            color: var(--color-method-patch);
+        }
+
+        .badge.method-delete {
+            color: var(--color-method-delete);
+        }
+
+        .badge.method-other {
+            color: var(--color-method-other);
+        }
+
+        .badge.protocol-http {
+            color: var(--color-protocol-http);
+        }
+
+        .badge.protocol-websocket {
+            color: var(--color-protocol-ws);
+        }
+
+        .badge.protocol-graphql {
+            color: var(--color-protocol-graphql);
+        }
+
+        .badge.protocol-grpc {
+            color: var(--color-protocol-grpc);
+        }
+
+        .api-main {
+            height: 100vh;
+            overflow: auto;
+            min-width: 0;
+            background: linear-gradient(160deg, color-mix(in oklab, var(--color-bg-soft) 45%, var(--color-bg)) 0%, var(--color-bg) 100%);
+        }
+
+        .api-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            min-height: 100%;
+            align-items: start;
+            transition: grid-template-columns 0.18s ease;
+        }
+
+        .api-layout.with-details {
+            grid-template-columns: minmax(0, 1fr) minmax(280px, 38%);
+        }
+
+        .api-layout.without-details .api-details-col {
+            display: none;
+        }
+
+        .api-details-col.is-hidden {
+            display: none;
+        }
+
+        .api-content-col,
+        .api-details-col {
+            min-width: 0;
+            padding: 18px;
+            overflow: visible;
+            align-self: start;
+        }
+
+        .api-content-col {
+            border-right: 1px solid var(--color-border);
+        }
+
+        .api-content-header {
+            margin-bottom: 16px;
+        }
+
+        .api-content-header-placeholder {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .api-content-title {
+            margin: 0;
+            font-size: 36px;
+            line-height: 1.08;
+            letter-spacing: -0.02em;
+        }
+
+        .api-content-project {
+            margin: 0 0 8px;
+            color: var(--color-text-soft);
+            font-size: 16px;
+            line-height: 1.3;
+            font-weight: 620;
+        }
+
+        .api-content-subtitle {
+            margin: 8px 0 0;
+            color: var(--color-link);
+            font-size: 22px;
+            line-height: 1.12;
+            font-weight: 640;
+        }
+
+        .api-panel {
+            background: linear-gradient(180deg, var(--color-panel), var(--color-panel-2));
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .api-panel.is-hidden {
+            display: none;
+        }
+
+        .api-item-title {
+            margin: 0;
+            font-size: 36px;
+            font-weight: 760;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            overflow-wrap: anywhere;
+        }
+
+        .api-item-subtitle {
+            margin: 8px 0 10px;
+            color: var(--color-accent);
+            font-size: 25px;
+            font-weight: 620;
+            line-height: 1.08;
+            overflow-wrap: anywhere;
+        }
+
+        .api-item-path {
+            margin: 0 0 12px;
+            color: var(--color-text-soft);
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .api-example-picker {
+            margin: 0 0 12px;
+            max-width: 340px;
+        }
+
+        .api-example-picker.is-hidden {
+            display: none;
+        }
+
+        .api-example-picker-label {
+            display: block;
+            margin: 0 0 4px;
+            font-size: 12px;
+            color: var(--color-text-soft);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .api-section-title {
+            margin: 18px 0 8px;
+            font-size: 24px;
+            font-weight: 740;
+            letter-spacing: -0.02em;
+            line-height: 1.16;
+        }
+
+        .api-subsection-title {
+            margin: 14px 0 6px;
+            font-size: 17px;
+            font-weight: 680;
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+        }
+
+        .api-example-title {
+            color: var(--color-secondary);
+        }
+
+        .api-env-title {
+            color: var(--color-link);
+        }
+
+        .api-response-title {
+            color: var(--color-secondary);
+        }
+
+        .api-paragraph {
+            margin: 8px 0;
+            line-height: 1.55;
+            font-size: 14px;
+            color: var(--color-text);
+            overflow-wrap: anywhere;
+        }
+
+        .api-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 12px 0 16px;
+        }
+
+        .api-meta-card {
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            background: color-mix(in oklab, var(--color-panel-2) 92%, var(--color-bg));
+            padding: 8px 10px;
+            min-height: 0;
+        }
+
+        .api-meta-label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--color-text-soft);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .api-meta-value {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .api-table-wrapper {
+            width: 100%;
+            overflow: auto;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            margin: 8px 0 14px;
+        }
+
+        .api-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+
+        .api-table th,
+        .api-table td {
+            border-bottom: 1px solid var(--color-border);
+            padding: 7px 9px;
+            font-size: 13px;
+            line-height: 1.4;
+            text-align: left;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        .api-table th {
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--color-text-soft);
+            background: color-mix(in oklab, var(--color-panel-2) 88%, var(--color-bg-soft));
+        }
+
+        .api-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .api-table tr.api-generated-row td {
+            color: var(--color-link);
+        }
+
+        .api-stream-table .api-col-time {
+            width: 91px;
+            white-space: normal;
+        }
+
+        .api-stream-table {
+            min-width: 560px;
+        }
+
+        .api-stream-table .api-col-type {
+            width: 59px;
+            white-space: normal;
+        }
+
+        .api-stream-table .api-col-data {
+            min-width: 360px;
+            width: auto;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .api-stream-data {
+            display: block;
+            font-family: var(--font-mono);
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            max-height: min(400px, 50vh);
+            overflow: auto;
+        }
+
+        .api-code {
+            margin: 8px 0 14px;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 10px;
+            background: color-mix(in oklab, var(--color-panel) 86%, black);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            overflow-x: auto;
+            max-height: min(400px, 50vh);
+            overflow-y: auto;
+        }
+
+        .api-empty {
+            border: 1px dashed var(--color-border);
+            border-radius: 10px;
+            padding: 9px 10px;
+            color: var(--color-text-soft);
+            font-size: 13px;
+            margin: 6px 0 10px;
+            background: color-mix(in oklab, var(--color-panel-2) 90%, transparent);
+        }
+
+        .api-item-details-inline {
+            margin-top: 14px;
+            border-top: 1px dashed var(--color-border);
+            padding-top: 14px;
+        }
+
+        .api-layout.with-details .api-item-details-inline {
+            display: none;
+        }
+
+        .api-layout.with-details .api-content-col article[data-panel-type="environment"] .api-variable-section {
+            display: none;
+        }
+
+        .api-panel-body section[data-env-id],
+        .api-item-details-inline section[data-env-id] {
+            display: flow-root;
+        }
+
+        .api-panel-body section[data-env-id] > .api-env-title,
+        .api-item-details-inline section[data-env-id] > .api-env-title {
+            margin-top: 0;
+        }
+
+        .api-panel-spacer {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            padding: 0;
+            margin-bottom: 16px;
+        }
+
+        .api-details-title {
+            margin: 0 0 10px;
+            font-size: 28px;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        .md-paragraph {
+            margin: 9px 0;
+            line-height: 1.58;
+            font-size: 14px;
+            overflow-wrap: anywhere;
+        }
+
+        .md-heading {
+            margin: 14px 0 8px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+
+        .md-h1 {
+            font-size: 29px;
+        }
+
+        .md-h2 {
+            font-size: 25px;
+        }
+
+        .md-h3 {
+            font-size: 22px;
+        }
+
+        .md-h4 {
+            font-size: 20px;
+        }
+
+        .md-h5 {
+            font-size: 18px;
+        }
+
+        .md-h6 {
+            font-size: 16px;
+        }
+
+        .md-hr {
+            border: 0;
+            border-top: 2px solid var(--color-border);
+            margin: 14px 0;
+        }
+
+        .md-blockquote {
+            margin: 10px 0;
+            padding-left: 12px;
+            border-left: 3px solid var(--color-text-soft);
+        }
+
+        .md-list {
+            margin: 9px 0;
+            padding-left: 23px;
+        }
+
+        .md-list-item {
+            margin: 4px 0;
+            line-height: 1.55;
+            overflow-wrap: anywhere;
+        }
+
+        .md-table-wrapper {
+            width: 100%;
+            overflow: auto;
+            margin: 9px 0 14px;
+        }
+
+        .md-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 400px;
+            border: 1px solid var(--color-border);
+        }
+
+        .md-table-head,
+        .md-table-cell {
+            border: 1px solid var(--color-border);
+            padding: 7px;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+        }
+
+        .md-table-head {
+            background: color-mix(in oklab, var(--color-panel-2) 85%, var(--color-bg-soft));
+            color: var(--color-text-soft);
+            font-size: 12px;
+        }
+
+        .md-code-block,
+        .md-code-fallback {
+            margin: 10px 0 14px;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            background: color-mix(in oklab, var(--color-panel) 90%, black);
+            overflow: auto;
+        }
+
+        .md-code-language {
+            padding: 6px 10px 4px;
+            color: var(--color-text-soft);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .md-code-pre,
+        .md-code-fallback {
+            margin: 0;
+            padding: 10px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .md-inline-code {
+            font-family: var(--font-mono);
+            font-size: 0.95em;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 1px 5px;
+            background: color-mix(in oklab, var(--color-panel-2) 85%, transparent);
+        }
+
+        .md-link {
+            color: var(--color-link);
+            text-decoration: underline;
+            cursor: pointer;
+            overflow-wrap: anywhere;
+        }
+
+        .md-inline-image {
+            max-width: min(100%, 800px);
+            max-height: 360px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            vertical-align: middle;
+        }
+
+        .md-underline {
+            text-decoration: underline;
+        }
+
+        .md-strike {
+            text-decoration: line-through;
+        }
+
+        @media (max-width: 1200px) {
+            .api-shell {
+                grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .api-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .api-sidebar {
+                position: static;
+                height: auto;
+                border-right: 0;
+                border-bottom: 1px solid var(--color-border);
+            }
+
+            .api-layout,
+            .api-layout.with-details {
+                grid-template-columns: 1fr;
+            }
+
+            .api-content-col {
+                border-right: 0;
+            }
+
+            .api-details-col {
+                display: none;
+            }
+
+            .api-item-details-inline {
+                display: block;
+            }
+
+            .api-doc-title {
+                font-size: 36px;
+            }
+
+            .api-item-title {
+                font-size: 31px;
+            }
+
+            .api-item-subtitle {
+                font-size: 23px;
+            }
+        }
+
+        @media print {
+            html,
+            body {
+                background: white;
+                height: auto;
+                min-height: 0;
+                overflow: visible;
+            }
+
+            .api-shell {
+                display: block;
+                height: auto;
+            }
+
+            .api-sidebar {
+                display: none;
+            }
+
+            .api-main {
+                height: auto;
+                overflow: visible;
+            }
+
+            .api-layout,
+            .api-layout.with-details {
+                display: block;
+                min-height: 0;
+            }
+
+            .api-content-col,
+            .api-details-col {
+                overflow: visible;
+                padding: 0;
+                border: 0;
+            }
+
+            .api-details-col {
+                display: none;
+            }
+
+            .api-panel {
+                box-shadow: none;
+                break-inside: auto;
+                page-break-inside: auto;
+                border-color: #888;
+                margin: 0 0 14px;
+            }
+
+            .api-content-header {
+                margin-bottom: 8px;
+            }
+
+            .api-code,
+            .api-stream-data,
+            .api-table-wrapper,
+            .md-table-wrapper,
+            .md-code-block,
+            .md-code-fallback {
+                max-height: none !important;
+                overflow: visible !important;
+            }
+
+            .api-item-details-inline {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body class="api-root" data-theme="dark">
+<div class="api-shell">
+    <aside class="api-sidebar">
+        <p id="docProjectLine" class="api-doc-project"></p>
+        <h1 class="api-doc-title">API Documentation</h1>
+        <p id="docExportLine" class="api-doc-subline"></p>
+        <p id="docVersionLine" class="api-doc-subline"></p>
+
+        <div class="api-control-group is-first">
+            <span class="api-control-label">Content Mode</span>
+            <div class="api-button-row">
+                <button id="modeSingle" class="api-toggle-button" type="button">Single</button>
+                <button id="modeContinuous" class="api-toggle-button" type="button">Continuous</button>
+            </div>
+        </div>
+
+        <div class="api-control-group">
+            <span class="api-control-label">Example Display</span>
+            <div class="api-button-row">
+                <button id="exampleCompact" class="api-toggle-button" type="button">Compact</button>
+                <button id="exampleExpanded" class="api-toggle-button" type="button">Expanded</button>
+            </div>
+        </div>
+
+        <div class="api-control-group">
+            <span class="api-control-label">Columns</span>
+            <div class="api-button-row">
+                <button id="columnsTwo" class="api-toggle-button" type="button">2 Columns</button>
+                <button id="columnsThree" class="api-toggle-button" type="button">3 Columns</button>
+            </div>
+        </div>
+
+        <div class="api-control-group">
+            <span class="api-control-label">Theme</span>
+            <div class="api-button-row">
+                <button id="themeDark" class="api-toggle-button" type="button">Dark</button>
+                <button id="themeLight" class="api-toggle-button" type="button">Light</button>
+            </div>
+        </div>
+
+        <div class="api-control-group">
+            <span class="api-control-label">Environment</span>
+            <select id="environmentSelect" class="api-select"></select>
+        </div>
+
+        <hr class="api-sidebar-divider" />
+
+        <input id="navSearch" class="api-search" type="search" placeholder="Search request tree" />
+
+        <nav>
+            <ul id="navTreeRoot" class="api-tree"></ul>
+        </nav>
+    </aside>
+
+    <main id="apiMain" class="api-main">
+        <div id="apiLayout" class="api-layout with-details">
+            <section id="contentColumn" class="api-content-col">
+                <header class="api-content-header">
+                    <p id="contentProjectLine" class="api-content-project"></p>
+                    <h1 id="contentTitle" class="api-content-title"></h1>
+                    <p id="contentSubtitle" class="api-content-subtitle">API Documentation</p>
+                </header>
+                <div id="bodyPanels"></div>
+            </section>
+            <section id="detailsColumn" class="api-details-col">
+                <header class="api-content-header api-content-header-placeholder" aria-hidden="true">
+                    <p class="api-content-project">project</p>
+                    <h1 class="api-content-title">subproject</h1>
+                    <p class="api-content-subtitle">API Documentation</p>
+                </header>
+                <div id="detailPanels"></div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script id="hello-http-api-doc-data" type="application/json">__HELLO_HTTP_API_DOC_DATA_JSON__</script>
+<script>
+(() => {
+    const dataElement = document.getElementById("hello-http-api-doc-data");
+    const data = JSON.parse(dataElement.textContent || "{}");
+
+    const panels = data.panels || [];
+    const environments = data.environments || [];
+
+    const state = {
+        mode: "continuous",
+        showDetails: false,
+        selectedItemId: panels.length > 0 ? panels[0].id : null,
+        searchText: "",
+        theme: (data.meta && data.meta.defaultTheme ? data.meta.defaultTheme : "dark").toLowerCase() === "light" ? "light" : "dark",
+        exampleMode: "compact",
+        selectedEnvironmentId: "-",
+    };
+
+    const root = document.body;
+    const navTreeRoot = document.getElementById("navTreeRoot");
+    const bodyPanels = document.getElementById("bodyPanels");
+    const detailPanels = document.getElementById("detailPanels");
+    const apiLayout = document.getElementById("apiLayout");
+    const detailsColumn = document.getElementById("detailsColumn");
+    const apiMain = document.getElementById("apiMain");
+
+    const modeSingleButton = document.getElementById("modeSingle");
+    const modeContinuousButton = document.getElementById("modeContinuous");
+    const exampleCompactButton = document.getElementById("exampleCompact");
+    const exampleExpandedButton = document.getElementById("exampleExpanded");
+    const columnsTwoButton = document.getElementById("columnsTwo");
+    const columnsThreeButton = document.getElementById("columnsThree");
+    const themeDarkButton = document.getElementById("themeDark");
+    const themeLightButton = document.getElementById("themeLight");
+    const environmentSelect = document.getElementById("environmentSelect");
+    const navSearchInput = document.getElementById("navSearch");
+    const docVersionLine = document.getElementById("docVersionLine");
+
+    const panelById = new Map();
+    const detailById = new Map();
+    const navItemById = new Map();
+    const panelStateById = new Map();
+    const environmentById = new Map();
+
+    document.title = [
+        data.meta && data.meta.projectName ? data.meta.projectName : "Project",
+        data.meta && data.meta.subprojectName ? data.meta.subprojectName : "Subproject",
+        "API Documentation",
+    ].join(" / ");
+
+    document.getElementById("docProjectLine").textContent = [
+        data.meta && data.meta.projectName ? data.meta.projectName : "Project",
+        data.meta && data.meta.subprojectName ? data.meta.subprojectName : "Subproject",
+    ].join(" / ");
+
+    document.getElementById("contentProjectLine").textContent = data.meta && data.meta.projectName ? data.meta.projectName : "Project";
+    document.getElementById("contentTitle").textContent = data.meta && data.meta.subprojectName ? data.meta.subprojectName : "Subproject";
+
+    document.getElementById("docExportLine").textContent = data.meta && data.meta.exportedAtText
+        ? "Exported at " + data.meta.exportedAtText
+        : "";
+
+    docVersionLine.textContent = "";
+    if (data.meta && data.meta.appVersion) {
+        docVersionLine.append("by ");
+        const appLink = document.createElement("a");
+        appLink.className = "api-sidebar-link";
+        appLink.href = "https://github.com/sunny-chung/hello-http";
+        appLink.dataset.externalLink = "true";
+        appLink.textContent = "Hello HTTP";
+        docVersionLine.appendChild(appLink);
+        docVersionLine.append(" v" + data.meta.appVersion);
+        if (data.meta.gitCommitHash) {
+            docVersionLine.append(" (" + data.meta.gitCommitHash + ")");
+        }
+    }
+
+    function methodClass(method) {
+        const value = (method || "").trim().toLowerCase();
+        if (value === "get") return "method-get";
+        if (value === "post") return "method-post";
+        if (value === "put") return "method-put";
+        if (value === "patch") return "method-patch";
+        if (value === "delete") return "method-delete";
+        return "method-other";
+    }
+
+    function protocolClass(application) {
+        const value = (application || "").trim().toLowerCase();
+        if (value === "http") return "protocol-http";
+        if (value === "websocket") return "protocol-websocket";
+        if (value === "graphql") return "protocol-graphql";
+        if (value === "grpc") return "protocol-grpc";
+        return "protocol-http";
+    }
+
+    function createRequestBadge(method, application) {
+        const badges = document.createElement("span");
+        badges.className = "api-tree-badges";
+
+        if (method) {
+            const methodBadge = document.createElement("span");
+            methodBadge.className = "badge " + methodClass(method);
+            methodBadge.textContent = method;
+            badges.appendChild(methodBadge);
+        }
+
+        if (application) {
+            const protocolBadge = document.createElement("span");
+            protocolBadge.className = "badge " + protocolClass(application);
+            protocolBadge.textContent = application;
+            badges.appendChild(protocolBadge);
+        }
+
+        return badges;
+    }
+
+    function createNavNode(node, container) {
+        const item = document.createElement("li");
+        item.className = "api-tree-node";
+        item.dataset.nodeType = node.type || "request";
+
+        if (node.type === "folder") {
+            item.classList.add("api-tree-folder");
+
+            const headerButton = document.createElement("button");
+            headerButton.type = "button";
+            headerButton.className = "api-tree-folder-header";
+
+            const caret = document.createElement("span");
+            caret.className = "api-tree-folder-caret";
+            caret.textContent = "▾";
+            headerButton.appendChild(caret);
+
+            const text = document.createElement("span");
+            text.className = "api-tree-folder-label";
+            text.textContent = node.label || "Folder";
+            headerButton.appendChild(text);
+
+            headerButton.addEventListener("click", () => {
+                const collapsed = item.classList.toggle("is-collapsed");
+                caret.textContent = collapsed ? "▸" : "▾";
+            });
+
+            const children = document.createElement("ul");
+            children.className = "api-tree-children";
+            (node.children || []).forEach(child => createNavNode(child, children));
+
+            item.appendChild(headerButton);
+            item.appendChild(children);
+            item.dataset.searchText = (node.searchText || node.label || "").toLowerCase();
+        } else {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "api-tree-item";
+            button.dataset.itemId = node.itemId;
+
+            const text = document.createElement("span");
+            text.className = "api-tree-text";
+            text.textContent = node.label || "Item";
+            button.appendChild(text);
+
+            if (node.type === "request") {
+                button.appendChild(createRequestBadge(node.method, node.application));
+            }
+
+            button.addEventListener("click", () => {
+                state.selectedItemId = node.itemId;
+                if (state.mode === "continuous") {
+                    scrollToPanel(node.itemId);
+                    applySelectionStylesOnly();
+                    return;
+                }
+                state.mode = "single";
+                applyState();
+            });
+
+            item.dataset.searchText = (node.searchText || node.label || "").toLowerCase();
+            item.appendChild(button);
+            navItemById.set(node.itemId, button);
+        }
+
+        container.appendChild(item);
+    }
+
+    function createPanelElements(panel) {
+        const hasDetailsContent = (panel.detailsHtml || "").trim().length > 0;
+        const article = document.createElement("article");
+        article.className = "api-panel";
+        article.dataset.itemId = panel.id;
+        article.dataset.panelType = panel.panelType || "request";
+
+        const titleElement = document.createElement("h2");
+        titleElement.className = "api-item-title";
+        titleElement.textContent = panel.title || "";
+        article.appendChild(titleElement);
+
+        const subtitleElement = document.createElement("p");
+        subtitleElement.className = "api-item-subtitle";
+        subtitleElement.textContent = panel.subtitle || "";
+        if (panel.subtitle) {
+            article.appendChild(subtitleElement);
+        }
+
+        const pathElement = document.createElement("p");
+        pathElement.className = "api-item-path";
+        pathElement.textContent = panel.pathText || "";
+        if (panel.pathText) {
+            article.appendChild(pathElement);
+        }
+
+        const pickerContainer = document.createElement("div");
+        pickerContainer.className = "api-example-picker is-hidden";
+        const pickerLabel = document.createElement("label");
+        pickerLabel.className = "api-example-picker-label";
+        pickerLabel.textContent = "Example";
+        const pickerSelect = document.createElement("select");
+        pickerSelect.className = "api-select";
+        pickerContainer.appendChild(pickerLabel);
+        pickerContainer.appendChild(pickerSelect);
+
+        const body = document.createElement("div");
+        body.className = "api-panel-body";
+        article.appendChild(body);
+
+        const inlineDetails = document.createElement("section");
+        inlineDetails.className = "api-item-details-inline";
+        article.appendChild(inlineDetails);
+
+        bodyPanels.appendChild(article);
+        panelById.set(panel.id, article);
+
+        const detailArticle = document.createElement("article");
+        detailArticle.className = hasDetailsContent ? "api-panel" : "api-panel api-panel-spacer";
+        detailArticle.dataset.itemId = panel.id;
+        detailArticle.dataset.panelType = panel.panelType || "request";
+
+        const detailTitle = document.createElement("h2");
+        detailTitle.className = "api-item-title";
+        detailTitle.textContent = panel.title || "";
+        if (hasDetailsContent) {
+            detailArticle.appendChild(detailTitle);
+        }
+
+        const detailSubtitleElement = document.createElement("p");
+        detailSubtitleElement.className = "api-item-subtitle";
+        detailSubtitleElement.textContent = panel.subtitle || "";
+        if (hasDetailsContent && panel.subtitle) {
+            detailArticle.appendChild(detailSubtitleElement);
+        }
+
+        const detailPathElement = document.createElement("p");
+        detailPathElement.className = "api-item-path";
+        detailPathElement.textContent = panel.pathText || "";
+        if (hasDetailsContent && panel.pathText) {
+            detailArticle.appendChild(detailPathElement);
+        }
+
+        const detailPickerContainer = document.createElement("div");
+        detailPickerContainer.className = "api-example-picker is-hidden";
+        const detailPickerLabel = document.createElement("label");
+        detailPickerLabel.className = "api-example-picker-label";
+        detailPickerLabel.textContent = "Example";
+        const detailPickerSelect = document.createElement("select");
+        detailPickerSelect.className = "api-select";
+        detailPickerContainer.appendChild(detailPickerLabel);
+        detailPickerContainer.appendChild(detailPickerSelect);
+        detailArticle.appendChild(detailPickerContainer);
+
+        const detailBody = document.createElement("div");
+        detailBody.className = "api-panel-body";
+        detailArticle.appendChild(detailBody);
+
+        detailPanels.appendChild(detailArticle);
+        detailById.set(panel.id, detailArticle);
+
+        const panelState = {
+            id: panel.id,
+            panelType: panel.panelType || "request",
+            hasDetailsContent,
+            article,
+            detailArticle,
+            subtitleElement,
+            detailSubtitleElement,
+            pathElement,
+            detailPathElement,
+            pickerContainer,
+            pickerSelect,
+            detailPickerContainer,
+            detailPickerSelect,
+            body,
+            inlineDetails,
+            detailBody,
+            rawSubtitle: panel.subtitle || "",
+            rawPathText: panel.pathText || "",
+            rawBodyHtml: panel.bodyHtml || "",
+            rawDetailsHtml: panel.detailsHtml || "",
+            selectedExampleId: null,
+            exampleNameById: new Map(),
+        };
+
+        pickerSelect.addEventListener("change", event => {
+            panelState.selectedExampleId = event.target.value || null;
+            panelState.detailPickerSelect.value = panelState.selectedExampleId || "";
+            applyExampleModeToPanel(panelState);
+            alignExamplesForVisiblePanels();
+        });
+
+        detailPickerSelect.addEventListener("change", event => {
+            panelState.selectedExampleId = event.target.value || null;
+            panelState.pickerSelect.value = panelState.selectedExampleId || "";
+            applyExampleModeToPanel(panelState);
+            alignExamplesForVisiblePanels();
+        });
+
+        panelStateById.set(panel.id, panelState);
+        renderPanelContent(panelState);
+    }
+
+    function createPanels() {
+        panels.forEach(panel => createPanelElements(panel));
+    }
+
+    function resolvePlaceholderText(text, variables) {
+        if (!text || !variables) {
+            return text;
+        }
+        return text.replace(/\$\{\{([^{}]+)}}/g, (match, key) => {
+            if (Object.prototype.hasOwnProperty.call(variables, key)) {
+                return String(variables[key]);
+            }
+            return match;
+        });
+    }
+
+    function applyEnvironmentOnTextNodes(container, variables) {
+        if (!container || !variables) {
+            return;
+        }
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+        const nodes = [];
+        let currentNode = walker.nextNode();
+        while (currentNode) {
+            nodes.push(currentNode);
+            currentNode = walker.nextNode();
+        }
+        nodes.forEach(textNode => {
+            if (!textNode.nodeValue || textNode.nodeValue.indexOf("${{") < 0) {
+                return;
+            }
+            const parent = textNode.parentElement;
+            if (parent && parent.closest(".api-no-env-resolve")) {
+                return;
+            }
+            textNode.nodeValue = resolvePlaceholderText(textNode.nodeValue, variables);
+        });
+    }
+
+    function getSelectedEnvironmentVariables() {
+        const env = environmentById.get(state.selectedEnvironmentId);
+        return env && env.variables ? env.variables : null;
+    }
+
+    function alignVisiblePanels() {
+        alignExamplesForVisiblePanels();
+        alignEnvironmentSectionsForVisiblePanels();
+        alignPanelHeightsForVisiblePanels();
+        scheduleSelectionUpdate();
+    }
+
+    function mountBodyPicker(panelState) {
+        const pickerContainer = panelState.pickerContainer;
+        if (pickerContainer.parentNode !== null) {
+            pickerContainer.parentNode.removeChild(pickerContainer);
+        }
+        const protocolGrid = panelState.body.querySelector(".api-meta-grid");
+        if (protocolGrid && protocolGrid.parentNode === panelState.body) {
+            protocolGrid.insertAdjacentElement("afterend", pickerContainer);
+            return;
+        }
+        panelState.body.prepend(pickerContainer);
+    }
+
+    function mountDetailPicker(panelState) {
+        const detailPickerContainer = panelState.detailPickerContainer;
+        if (detailPickerContainer.parentNode !== null) {
+            detailPickerContainer.parentNode.removeChild(detailPickerContainer);
+        }
+        const firstExample = panelState.detailBody.querySelector(".api-example-block");
+        if (firstExample && firstExample.parentNode === panelState.detailBody) {
+            firstExample.insertAdjacentElement("beforebegin", detailPickerContainer);
+            return;
+        }
+        panelState.detailBody.prepend(detailPickerContainer);
+    }
+
+    function updateExamplePickerOptions(panelState) {
+        const ids = Array.from(panelState.exampleNameById.keys());
+        const pickerSelect = panelState.pickerSelect;
+        const detailPickerSelect = panelState.detailPickerSelect;
+        const existingValue = panelState.selectedExampleId;
+
+        pickerSelect.innerHTML = "";
+        detailPickerSelect.innerHTML = "";
+        ids.forEach(id => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = panelState.exampleNameById.get(id) || id;
+            pickerSelect.appendChild(option);
+            detailPickerSelect.appendChild(option.cloneNode(true));
+        });
+
+        if (!panelState.selectedExampleId || !panelState.exampleNameById.has(panelState.selectedExampleId)) {
+            panelState.selectedExampleId = ids.length > 0 ? ids[0] : null;
+        }
+        if (panelState.selectedExampleId) {
+            pickerSelect.value = panelState.selectedExampleId;
+            detailPickerSelect.value = panelState.selectedExampleId;
+        } else if (existingValue && ids.length > 0) {
+            panelState.selectedExampleId = ids[0];
+            pickerSelect.value = ids[0];
+            detailPickerSelect.value = ids[0];
+        }
+    }
+
+    function collectExampleBlocks(panelState) {
+        const selectors = [
+            panelState.body,
+            panelState.inlineDetails,
+            panelState.detailBody,
+        ];
+
+        const blockMap = new Map();
+        panelState.exampleNameById.clear();
+
+        selectors.forEach(container => {
+            Array.from(container.querySelectorAll(".api-example-block")).forEach(block => {
+                const exampleId = block.getAttribute("data-example-id") || "";
+                if (!exampleId) {
+                    return;
+                }
+                if (!blockMap.has(exampleId)) {
+                    blockMap.set(exampleId, []);
+                }
+                blockMap.get(exampleId).push(block);
+                const name = block.getAttribute("data-example-name") || exampleId;
+                if (!panelState.exampleNameById.has(exampleId)) {
+                    panelState.exampleNameById.set(exampleId, name);
+                }
+            });
+        });
+
+        updateExamplePickerOptions(panelState);
+        return blockMap;
+    }
+
+    function applyExampleModeToPanel(panelState) {
+        if (panelState.panelType !== "request") {
+            panelState.pickerContainer.classList.add("is-hidden");
+            panelState.detailPickerContainer.classList.add("is-hidden");
+            return;
+        }
+
+        const blockMap = collectExampleBlocks(panelState);
+        const ids = Array.from(blockMap.keys());
+        const isCompact = state.exampleMode === "compact";
+        const hasMultipleExamples = ids.length > 1;
+
+        const hasBodyExamples = !!panelState.body.querySelector(".api-example-block") ||
+            (!state.showDetails && !!panelState.inlineDetails.querySelector(".api-example-block"));
+        const hasDetailExamples = !!panelState.detailBody.querySelector(".api-example-block");
+
+        panelState.pickerContainer.classList.toggle("is-hidden", !(isCompact && hasMultipleExamples && hasBodyExamples));
+        panelState.detailPickerContainer.classList.toggle("is-hidden", !(isCompact && hasMultipleExamples && hasDetailExamples));
+
+        if (!panelState.selectedExampleId || !blockMap.has(panelState.selectedExampleId)) {
+            panelState.selectedExampleId = ids.length > 0 ? ids[0] : null;
+            if (panelState.selectedExampleId) {
+                panelState.pickerSelect.value = panelState.selectedExampleId;
+                panelState.detailPickerSelect.value = panelState.selectedExampleId;
+            }
+        }
+
+        ids.forEach(exampleId => {
+            const isVisible = !isCompact || exampleId === panelState.selectedExampleId;
+            blockMap.get(exampleId).forEach(block => {
+                block.style.display = isVisible ? "" : "none";
+            });
+        });
+    }
+
+    function renderPanelContent(panelState) {
+        const envVariables = getSelectedEnvironmentVariables();
+        const isRequestPanel = panelState.panelType === "request";
+
+        panelState.subtitleElement.textContent = isRequestPanel && envVariables
+            ? resolvePlaceholderText(panelState.rawSubtitle, envVariables)
+            : panelState.rawSubtitle;
+        panelState.detailSubtitleElement.textContent = panelState.subtitleElement.textContent;
+
+        if (panelState.rawPathText) {
+            panelState.pathElement.textContent = panelState.rawPathText;
+            panelState.detailPathElement.textContent = panelState.rawPathText;
+        }
+
+        panelState.body.innerHTML = panelState.rawBodyHtml;
+        panelState.inlineDetails.innerHTML = panelState.rawDetailsHtml;
+        panelState.detailBody.innerHTML = panelState.rawDetailsHtml;
+        panelState.inlineDetails.style.display = panelState.rawDetailsHtml.trim().length > 0 ? "" : "none";
+        panelState.detailBody.style.display = panelState.rawDetailsHtml.trim().length > 0 ? "" : "none";
+
+        if (panelState.panelType === "environment" && !state.showDetails) {
+            panelState.inlineDetails.style.display = "none";
+        }
+
+        mountBodyPicker(panelState);
+        mountDetailPicker(panelState);
+
+        if (isRequestPanel && envVariables) {
+            applyEnvironmentOnTextNodes(panelState.body, envVariables);
+            applyEnvironmentOnTextNodes(panelState.inlineDetails, envVariables);
+            applyEnvironmentOnTextNodes(panelState.detailBody, envVariables);
+        }
+
+        applyExampleModeToPanel(panelState);
+    }
+
+    function renderAllPanelsContent() {
+        panelStateById.forEach(panelState => renderPanelContent(panelState));
+        alignVisiblePanels();
+    }
+
+    function resetAlignedExampleHeights() {
+        panelStateById.forEach(panelState => {
+            panelState.body.querySelectorAll(".api-example-block").forEach(block => {
+                block.style.minHeight = "";
+            });
+            panelState.detailBody.querySelectorAll(".api-example-block").forEach(block => {
+                block.style.minHeight = "";
+            });
+        });
+    }
+
+    function alignExamplesForVisiblePanels() {
+        resetAlignedExampleHeights();
+        if (!state.showDetails) {
+            return;
+        }
+
+        panelStateById.forEach(panelState => {
+            if (panelState.panelType !== "request") {
+                return;
+            }
+            if (panelState.article.classList.contains("is-hidden") || panelState.detailArticle.classList.contains("is-hidden")) {
+                return;
+            }
+
+            const bodyBlocks = new Map();
+            panelState.body.querySelectorAll(".api-example-block").forEach(block => {
+                if (block.style.display === "none") {
+                    return;
+                }
+                const id = block.getAttribute("data-example-id") || "";
+                if (id) {
+                    bodyBlocks.set(id, block);
+                }
+            });
+
+            panelState.detailBody.querySelectorAll(".api-example-block").forEach(detailBlock => {
+                if (detailBlock.style.display === "none") {
+                    return;
+                }
+                const id = detailBlock.getAttribute("data-example-id") || "";
+                if (!id || !bodyBlocks.has(id)) {
+                    return;
+                }
+                const bodyBlock = bodyBlocks.get(id);
+                const height = Math.max(bodyBlock.offsetHeight, detailBlock.offsetHeight);
+                bodyBlock.style.minHeight = height + "px";
+                detailBlock.style.minHeight = height + "px";
+            });
+        });
+    }
+
+    function resetAlignedPanelHeights() {
+        panelStateById.forEach(panelState => {
+            panelState.article.style.minHeight = "";
+            panelState.detailArticle.style.minHeight = "";
+        });
+    }
+
+    function alignPanelHeightsForVisiblePanels() {
+        resetAlignedPanelHeights();
+        if (!state.showDetails) {
+            return;
+        }
+
+        panelStateById.forEach(panelState => {
+            if (panelState.article.classList.contains("is-hidden") || panelState.detailArticle.classList.contains("is-hidden")) {
+                return;
+            }
+            const height = Math.max(panelState.article.offsetHeight, panelState.detailArticle.offsetHeight);
+            panelState.article.style.minHeight = height + "px";
+            panelState.detailArticle.style.minHeight = height + "px";
+        });
+    }
+
+    function resetAlignedEnvironmentSections() {
+        panelStateById.forEach(panelState => {
+            panelState.detailBody.style.marginTop = "";
+            panelState.detailBody.style.paddingTop = "";
+            panelState.body.querySelectorAll("[data-env-id]").forEach(section => {
+                section.style.minHeight = "";
+            });
+            panelState.detailBody.querySelectorAll("[data-env-id]").forEach(section => {
+                section.style.minHeight = "";
+            });
+        });
+    }
+
+    function alignEnvironmentSectionsForVisiblePanels() {
+        resetAlignedEnvironmentSections();
+        if (!state.showDetails) {
+            return;
+        }
+
+        panelStateById.forEach(panelState => {
+            if (panelState.panelType !== "environment") {
+                return;
+            }
+            if (panelState.article.classList.contains("is-hidden") || panelState.detailArticle.classList.contains("is-hidden")) {
+                return;
+            }
+
+            const bodySectionByEnvId = new Map();
+            const orderedBodySections = Array.from(panelState.body.querySelectorAll("[data-env-id]"));
+            orderedBodySections.forEach(section => {
+                const envId = section.getAttribute("data-env-id") || "";
+                if (envId) {
+                    bodySectionByEnvId.set(envId, section);
+                }
+            });
+
+            const orderedDetailSections = Array.from(panelState.detailBody.querySelectorAll("[data-env-id]"));
+
+            const firstMatchedPair = orderedBodySections.map(bodySection => {
+                const envId = bodySection.getAttribute("data-env-id") || "";
+                if (!envId) {
+                    return null;
+                }
+                const detailSection = orderedDetailSections.find(section => (section.getAttribute("data-env-id") || "") === envId);
+                if (!detailSection) {
+                    return null;
+                }
+                return { bodySection, detailSection };
+            }).find(pair => pair !== null);
+
+            if (firstMatchedPair) {
+                const bodyAnchor = firstMatchedPair.bodySection.querySelector(".api-env-title") || firstMatchedPair.bodySection;
+                const detailAnchor = firstMatchedPair.detailSection.querySelector(".api-env-title") || firstMatchedPair.detailSection;
+                const offset = bodyAnchor.getBoundingClientRect().top - detailAnchor.getBoundingClientRect().top;
+                if (Math.abs(offset) > 1) {
+                    panelState.detailBody.style.marginTop = offset + "px";
+                }
+            }
+
+            orderedDetailSections.forEach(detailSection => {
+                const envId = detailSection.getAttribute("data-env-id") || "";
+                if (!envId || !bodySectionByEnvId.has(envId)) {
+                    return;
+                }
+                const bodySection = bodySectionByEnvId.get(envId);
+                const height = Math.max(bodySection.offsetHeight, detailSection.offsetHeight);
+                bodySection.style.minHeight = height + "px";
+                detailSection.style.minHeight = height + "px";
+            });
+        });
+    }
+
+    function scrollToPanel(itemId) {
+        const panelState = panelStateById.get(itemId);
+        if (!panelState) {
+            return;
+        }
+        panelState.article.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function getVisiblePanelStates() {
+        return Array.from(panelStateById.values()).filter(panelState => !panelState.article.classList.contains("is-hidden"));
+    }
+
+    let selectionUpdateRequestId = null;
+    function scheduleSelectionUpdate() {
+        if (state.mode !== "continuous") {
+            return;
+        }
+        if (selectionUpdateRequestId !== null) {
+            return;
+        }
+        selectionUpdateRequestId = window.requestAnimationFrame(() => {
+            selectionUpdateRequestId = null;
+            updateSelectedFromScroll();
+        });
+    }
+
+    function updateSelectedFromScroll() {
+        if (state.mode !== "continuous") {
+            return;
+        }
+        const visiblePanels = getVisiblePanelStates();
+        if (visiblePanels.length === 0) {
+            return;
+        }
+
+        const apiMainRect = apiMain.getBoundingClientRect();
+        const anchor = apiMain.scrollTop + 24;
+        let selected = visiblePanels[0];
+        let lastBeforeAnchor = visiblePanels[0];
+
+        visiblePanels.forEach(panelState => {
+            const rect = panelState.article.getBoundingClientRect();
+            const top = rect.top - apiMainRect.top + apiMain.scrollTop;
+            const bottom = top + panelState.article.offsetHeight;
+            if (top <= anchor) {
+                lastBeforeAnchor = panelState;
+            }
+            if (top <= anchor && bottom > anchor) {
+                selected = panelState;
+            }
+        });
+        if (!selected || selected === visiblePanels[0] && lastBeforeAnchor !== visiblePanels[0]) {
+            selected = lastBeforeAnchor;
+        }
+
+        if (selected && selected.id !== state.selectedItemId) {
+            state.selectedItemId = selected.id;
+            applySelectionStylesOnly();
+        }
+    }
+
+    function applySelectionStylesOnly() {
+        navItemById.forEach((button, id) => {
+            button.classList.toggle("is-active", id === state.selectedItemId);
+        });
+    }
+
+    function applyFilterNode(element, query) {
+        const type = element.dataset.nodeType;
+        if (type === "folder") {
+            const ownText = element.dataset.searchText || "";
+            let childVisible = false;
+            const childList = element.querySelector(":scope > ul");
+            if (childList) {
+                Array.from(childList.children).forEach(child => {
+                    if (applyFilterNode(child, query)) {
+                        childVisible = true;
+                    }
+                });
+            }
+            const ownMatch = query.length === 0 || ownText.includes(query);
+            const visible = ownMatch || childVisible;
+            element.classList.toggle("is-hidden", !visible);
+            return visible;
+        }
+
+        const searchText = element.dataset.searchText || "";
+        const visible = query.length === 0 || searchText.includes(query);
+        element.classList.toggle("is-hidden", !visible);
+        return visible;
+    }
+
+    function applyFilter() {
+        const query = (state.searchText || "").trim().toLowerCase();
+        Array.from(navTreeRoot.children).forEach(child => applyFilterNode(child, query));
+    }
+
+    function applyVisibility() {
+        const isContinuous = state.mode === "continuous";
+        panelStateById.forEach((panelState, id) => {
+            const isVisible = isContinuous || id === state.selectedItemId;
+            panelState.article.classList.toggle("is-hidden", !isVisible);
+            panelState.detailArticle.classList.toggle("is-hidden", !isVisible);
+        });
+    }
+
+    function applyState() {
+        root.dataset.theme = state.theme;
+
+        apiLayout.classList.toggle("with-details", state.showDetails);
+        apiLayout.classList.toggle("without-details", !state.showDetails);
+        detailsColumn.classList.toggle("is-hidden", !state.showDetails);
+
+        applyVisibility();
+        applySelectionStylesOnly();
+
+        modeSingleButton.classList.toggle("is-active", state.mode === "single");
+        modeContinuousButton.classList.toggle("is-active", state.mode === "continuous");
+
+        exampleCompactButton.classList.toggle("is-active", state.exampleMode === "compact");
+        exampleExpandedButton.classList.toggle("is-active", state.exampleMode === "expanded");
+
+        themeDarkButton.classList.toggle("is-active", state.theme === "dark");
+        themeLightButton.classList.toggle("is-active", state.theme === "light");
+
+        columnsTwoButton.classList.toggle("is-active", !state.showDetails);
+        columnsThreeButton.classList.toggle("is-active", state.showDetails);
+
+        applyFilter();
+        alignVisiblePanels();
+        window.requestAnimationFrame(() => {
+            alignVisiblePanels();
+        });
+    }
+
+    modeSingleButton.addEventListener("click", () => {
+        state.mode = "single";
+        applyState();
+    });
+
+    modeContinuousButton.addEventListener("click", () => {
+        state.mode = "continuous";
+        applyState();
+        scheduleSelectionUpdate();
+    });
+
+    exampleCompactButton.addEventListener("click", () => {
+        state.exampleMode = "compact";
+        renderAllPanelsContent();
+        applyState();
+    });
+
+    exampleExpandedButton.addEventListener("click", () => {
+        state.exampleMode = "expanded";
+        renderAllPanelsContent();
+        applyState();
+    });
+
+    columnsTwoButton.addEventListener("click", () => {
+        state.showDetails = false;
+        renderAllPanelsContent();
+        applyState();
+    });
+
+    columnsThreeButton.addEventListener("click", () => {
+        state.showDetails = true;
+        renderAllPanelsContent();
+        applyState();
+    });
+
+    themeDarkButton.addEventListener("click", () => {
+        state.theme = "dark";
+        applyState();
+    });
+
+    themeLightButton.addEventListener("click", () => {
+        state.theme = "light";
+        applyState();
+    });
+
+    environmentSelect.addEventListener("change", event => {
+        state.selectedEnvironmentId = event.target.value || "-";
+        renderAllPanelsContent();
+        applyState();
+    });
+
+    navSearchInput.addEventListener("input", event => {
+        state.searchText = event.target.value || "";
+        applyFilter();
+    });
+
+    apiMain.addEventListener("scroll", scheduleSelectionUpdate, { passive: true });
+    window.addEventListener("scroll", scheduleSelectionUpdate, { passive: true });
+
+    window.addEventListener("resize", () => {
+        alignVisiblePanels();
+    });
+
+    document.addEventListener("click", event => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+            return;
+        }
+        const link = target.closest("a[data-external-link='true']");
+        if (!(link instanceof HTMLAnchorElement)) {
+            return;
+        }
+
+        event.preventDefault();
+        const url = link.getAttribute("href") || "";
+        if (!url) {
+            return;
+        }
+        const shouldOpen = window.confirm("Open external URL?\n" + url);
+        if (shouldOpen) {
+            window.open(url, "_blank", "noopener,noreferrer");
+        }
+    });
+
+    let previousModeForPrint = null;
+    let previousDetailsForPrint = null;
+    let previousExampleModeForPrint = null;
+    window.addEventListener("beforeprint", () => {
+        previousModeForPrint = state.mode;
+        previousDetailsForPrint = state.showDetails;
+        previousExampleModeForPrint = state.exampleMode;
+        state.mode = "continuous";
+        state.showDetails = false;
+        state.exampleMode = "expanded";
+        renderAllPanelsContent();
+        applyState();
+    });
+
+    window.addEventListener("afterprint", () => {
+        state.mode = previousModeForPrint || "single";
+        state.showDetails = previousDetailsForPrint !== null ? previousDetailsForPrint : true;
+        state.exampleMode = previousExampleModeForPrint || "expanded";
+        previousModeForPrint = null;
+        previousDetailsForPrint = null;
+        previousExampleModeForPrint = null;
+        renderAllPanelsContent();
+        applyState();
+    });
+
+    function initEnvironmentSelector() {
+        const noneOption = document.createElement("option");
+        noneOption.value = "-";
+        noneOption.textContent = "-";
+        environmentSelect.appendChild(noneOption);
+
+        environments.forEach(environment => {
+            if (!environment || !environment.id) {
+                return;
+            }
+            environmentById.set(environment.id, environment);
+            const option = document.createElement("option");
+            option.value = environment.id;
+            option.textContent = environment.name || environment.id;
+            environmentSelect.appendChild(option);
+        });
+
+        environmentSelect.value = "-";
+    }
+
+    (data.navNodes || []).forEach(node => createNavNode(node, navTreeRoot));
+    initEnvironmentSelector();
+    createPanels();
+    renderAllPanelsContent();
+    applyState();
+})();
+</script>
+</body>
+</html>
