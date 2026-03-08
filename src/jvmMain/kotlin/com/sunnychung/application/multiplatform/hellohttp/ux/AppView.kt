@@ -556,18 +556,19 @@ fun AppContentView() {
                                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
                                         projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 
-                                        selectedRequestId = importedRequests.first().id
+                                        val firstImportedRequestId = importedRequests.first().id
+                                        selectedRequestId = firstImportedRequestId
                                         val message = if (importedRequests.size == 1) {
                                             "Imported request from cURL command"
                                         } else {
                                             "Imported ${importedRequests.size} requests from cURL commands"
                                         }
                                         errorMessageVM.showSuccessMessage(message)
-                                        true
+                                        firstImportedRequestId
                                     } catch (e: Throwable) {
                                         log.w(e) { "Cannot import curl command" }
                                         errorMessageVM.showErrorMessage(e.message ?: e.javaClass.name)
-                                        false
+                                        null
                                     }
                                 },
                                 onImportJsonRequest = { input, isAcceptDataLossRisk ->

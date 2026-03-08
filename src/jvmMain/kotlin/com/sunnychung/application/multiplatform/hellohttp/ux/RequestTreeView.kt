@@ -93,7 +93,7 @@ fun RequestTreeView(
     onDeleteFolder: (TreeFolder) -> Unit,
     onMoveTreeObject: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
     onCopyRequest: (treeObjectId: String, direction: MoveDirection, destination: TreeObject?) -> Unit,
-    onImportCurlRequest: (String) -> Boolean,
+    onImportCurlRequest: (String) -> String?,
     onImportJsonRequest: (ImportJsonRequestInput, Boolean) -> ImportJsonRequestResult,
     onExportRequestsToClipboard: (List<UserRequestTemplate>) -> Unit,
     onExportRequestsToFile: (List<UserRequestTemplate>, File) -> Unit,
@@ -729,7 +729,17 @@ fun RequestTreeView(
     ImportCurlCommandDialog(
         isEnabled = isShowImportCurlDialog,
         onDismiss = { isShowImportCurlDialog = false },
-        onImportCommand = onImportCurlRequest,
+        onImportCommand = { command ->
+            val importedRequestId = onImportCurlRequest(command)
+            if (importedRequestId == null) {
+                false
+            } else {
+                selectedRequestIds.clear()
+                selectedRequestIds[importedRequestId] = Unit
+                selectedRangeAnchorRequestId = importedRequestId
+                true
+            }
+        },
     )
 
     ImportJsonRequestDialog(
@@ -850,7 +860,7 @@ fun RequestListViewPreview() {
         onDeleteFolder = {},
         onMoveTreeObject = {_, _, _ ->},
         onCopyRequest = {_, _, _ ->},
-        onImportCurlRequest = { false },
+        onImportCurlRequest = { null },
         onImportJsonRequest = { _, _ -> ImportJsonRequestResult.Error },
         onExportRequestsToClipboard = {},
         onExportRequestsToFile = { _, _ -> },
