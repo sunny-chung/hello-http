@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -118,7 +117,7 @@ enum class ExportFormat {
     `Hello HTTP Data Dump`,
     `Insomnia v4 JSON (One File per Project)`,
     `Postman v2 Data Dump (One File per Project or Env)`,
-    `OpenAPI v3 JSON (One File per Project)`,
+    `OpenAPI v3 JSON (One File per Project) (Experimental)`,
 }
 
 @Composable
@@ -247,7 +246,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                         color = colors.highlight
                     )
                 }
-                if (exportFileFormat == ExportFormat.`OpenAPI v3 JSON (One File per Project)`) {
+                if (exportFileFormat == ExportFormat.`OpenAPI v3 JSON (One File per Project) (Experimental)`) {
                     AppText(
                         text = "WARNING: OpenAPI path export supports HTTP and GraphQL query/mutation only. WebSocket, gRPC, and GraphQL subscription are skipped and recorded in x-hello-http.skippedRequests.",
                         color = colors.highlight
@@ -260,7 +259,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                             ExportFormat.`Hello HTTP Data Dump` -> isShowFileDialog = true
                             ExportFormat.`Insomnia v4 JSON (One File per Project)` -> isShowDirectoryPicker = true
                             ExportFormat.`Postman v2 Data Dump (One File per Project or Env)` -> isShowDirectoryPicker = true
-                            ExportFormat.`OpenAPI v3 JSON (One File per Project)` -> isShowDirectoryPicker = true
+                            ExportFormat.`OpenAPI v3 JSON (One File per Project) (Experimental)` -> isShowDirectoryPicker = true
                         }
                     }
                 )
@@ -301,7 +300,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                                 true
                             }
 
-                            ExportFormat.`OpenAPI v3 JSON (One File per Project)` -> runBlocking {
+                            ExportFormat.`OpenAPI v3 JSON (One File per Project) (Experimental)` -> runBlocking {
                                 val exporter = OpenApiV32Exporter()
                                 val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
                                 AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
