@@ -37,6 +37,7 @@ import com.sunnychung.application.multiplatform.hellohttp.document.UserPreferenc
 import com.sunnychung.application.multiplatform.hellohttp.error.ApplicationException
 import com.sunnychung.application.multiplatform.hellohttp.exporter.DataDumpExporter
 import com.sunnychung.application.multiplatform.hellohttp.exporter.InsomniaV4Exporter
+import com.sunnychung.application.multiplatform.hellohttp.exporter.OpenApiV32Exporter
 import com.sunnychung.application.multiplatform.hellohttp.exporter.PostmanV2MultiFileExporter
 import com.sunnychung.application.multiplatform.hellohttp.extension.`if`
 import com.sunnychung.application.multiplatform.hellohttp.importer.DataDumpImporter
@@ -114,7 +115,10 @@ enum class ImportFormat {
 }
 
 enum class ExportFormat {
-    `Hello HTTP Data Dump`, `Insomnia v4 JSON (One File per Project)`, `Postman v2 Data Dump (One File per Project or Env)`
+    `Hello HTTP Data Dump`,
+    `Insomnia v4 JSON (One File per Project)`,
+    `Postman v2 Data Dump (One File per Project or Env)`,
+    `OpenAPI v3 JSON (One File per Project)`,
 }
 
 @Composable
@@ -243,6 +247,12 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                         color = colors.highlight
                     )
                 }
+                if (exportFileFormat == ExportFormat.`OpenAPI v3 JSON (One File per Project)`) {
+                    AppText(
+                        text = "WARNING: OpenAPI path export supports HTTP and GraphQL query/mutation only. WebSocket, gRPC, and GraphQL subscription are skipped and recorded in x-hello-http.skippedRequests.",
+                        color = colors.highlight
+                    )
+                }
                 AppTextButton(
                     text = "Export",
                     onClick = {
@@ -250,6 +260,7 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
                             ExportFormat.`Hello HTTP Data Dump` -> isShowFileDialog = true
                             ExportFormat.`Insomnia v4 JSON (One File per Project)` -> isShowDirectoryPicker = true
                             ExportFormat.`Postman v2 Data Dump (One File per Project or Env)` -> isShowDirectoryPicker = true
+                            ExportFormat.`OpenAPI v3 JSON (One File per Project)` -> isShowDirectoryPicker = true
                         }
                     }
                 )
@@ -287,6 +298,22 @@ private fun DataTab(modifier: Modifier = Modifier, closeDialog: () -> Unit) {
 
                                 exporter.exportToFile(projects, dirFile)
 
+                                true
+                            }
+
+                            ExportFormat.`OpenAPI v3 JSON (One File per Project)` -> runBlocking {
+                                val exporter = OpenApiV32Exporter()
+                                val dateTimeString = KZonedInstant.nowAtLocalZoneOffset().format("yyyy-MM-dd--HH-mm-ss")
+                                AppContext.ProjectCollectionRepository.read(ProjectAndEnvironmentsDI())!!
+                                    .projects
+                                    .filter { it.id in selectedProjectIds }
+                                    .forEach {
+                                        val exportFile = File(
+                                            dirFile,
+                                            "${it.name.replace("[\\s\\p{Punct}]".toRegex(), "-")}_$dateTimeString.openapi.json"
+                                        )
+                                        exporter.exportToFile(it, exportFile)
+                                    }
                                 true
                             }
 
