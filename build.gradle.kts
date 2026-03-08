@@ -196,9 +196,12 @@ compose.resources {
 compose.desktop {
     application {
         val distributionVersion = "^(\\d+\\.\\d+\\.\\d+).*".toRegex().matchEntire(project.version.toString())!!.groupValues[1]
+        val isJdwpEnabled = project.findProperty("enableJdwp")?.toString()?.toBoolean() == true
 
         mainClass = "com.sunnychung.application.multiplatform.hellohttp.MainKt"
-//        jvmArgs += "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5015" // to enable debugger for debug use only
+        if (isJdwpEnabled) {
+            jvmArgs += "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5015" // opt-in for local debugging only
+        }
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Hello HTTP"
