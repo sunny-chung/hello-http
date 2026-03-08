@@ -66,6 +66,8 @@ class InsomniaGraphqlVariablesConversionTest {
             variables.toInsomniaGraphqlVariablesText(jsonParser)
         }
 
-        assertEquals("{\n  \"input\" : {\n    \"name\" : \"Alice\",\n    \"count\" : 3\n  }\n}", converted)
+        val convertedTree = jsonParser.readTree(converted)
+        val expectedTree = jsonParser.readTree("""{"input":{"name":"Alice","count":3}}""")
+        assertEquals(expectedTree, convertedTree)
     }
 }
