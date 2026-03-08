@@ -11,10 +11,14 @@ The current behavior of badge numbers, in the Request Editor, that do not count 
 ### Added
 - Importing request(s) from one or multiple `curl` commands
 - Quick requests export & import
+- Formatted Documentation could be written in Markdown syntax per request example (inheritable)
 
 ### Changed
 - The badge numbers of Body, Query, Header, Pre Flight, Post Flight tabs in the Request Editor now count inherited entries
 - The badge number of the Variable tab in the Request Editor now counts inherited and environment variables
+
+### Fixed
+- Crash while exporting a project in the Insomnia v4 format when a GraphQL request contains an unquoted placeholder in the Variables JSON (e.g. `{ "a": ${{var1}} }`)
 
 
 ## [1.8.0] -- 2025-06-16

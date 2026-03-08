@@ -2,6 +2,7 @@ package com.sunnychung.application.multiplatform.hellohttp.importer
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
@@ -216,9 +217,8 @@ class InsomniaV4Importer {
                                         .let {
                                             GraphqlBody(
                                                 document = it.query.convertVariables(postFlightBodyVariables),
-                                                variables = jsonParser.writerWithDefaultPrettyPrinter()
-                                                    .writeValueAsString(it.variables)
-                                                    .let { if (it == "null") "" else it }
+                                                variables = it.variables
+                                                    .toInsomniaGraphqlVariablesText(jsonParser)
                                                     .convertVariables(postFlightBodyVariables),
                                                 operationName = it.operationName,
                                             )
@@ -232,6 +232,7 @@ class InsomniaV4Importer {
                         },
                         headers = it.parseHeaders(postFlightBodyVariables),
                         queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                        documentation = it.description,
                     ))
                 )
                 req = req.copy(examples = req.examples.map {
@@ -263,6 +264,7 @@ class InsomniaV4Importer {
                         body = StringBody(it.body.text?.convertVariables(postFlightBodyVariables) ?: ""),
                         headers = it.parseHeaders(postFlightBodyVariables),
                         queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                        documentation = it.description,
                     )),
                     payloadExamples = listOf(
                         PayloadExample(
@@ -309,6 +311,7 @@ class InsomniaV4Importer {
                         body = null,
                         headers = it.parseHeaders(postFlightBodyVariables),
                         queryParameters = it.parseQueryParameters(postFlightBodyVariables),
+                        documentation = it.description,
                     )),
                     payloadExamples = mutableListOf(
                         PayloadExample(
@@ -418,6 +421,16 @@ class InsomniaV4Importer {
             asText() ?: toString()
         } else {
             toString()
+        }
+    }
+
+    internal fun Any?.toInsomniaGraphqlVariablesText(jsonParser: ObjectMapper): String {
+        return when (this) {
+            null -> ""
+            is String -> this
+            else -> jsonParser.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(this)
+                .let { if (it == "null") "" else it }
         }
     }
 

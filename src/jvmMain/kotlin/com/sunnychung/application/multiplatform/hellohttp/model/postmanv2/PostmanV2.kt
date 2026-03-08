@@ -1,6 +1,7 @@
 package com.sunnychung.application.multiplatform.hellohttp.model.postmanv2
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.JsonNode
 
 object PostmanV2 {
     sealed interface File
@@ -36,6 +37,7 @@ object PostmanV2 {
     data class Item(
         val id: String?, // id is not exported from Postman
         val name: String,
+        val description: JsonNode? = null,
         val item: List<Item>? = null,
         val request: Request? = null,
         val auth: Auth? = null,
@@ -47,6 +49,7 @@ object PostmanV2 {
         val auth: Auth?,
         val body: Body?,
         val url: Url?,
+        val description: JsonNode? = null,
     )
 
     data class KeyValue(

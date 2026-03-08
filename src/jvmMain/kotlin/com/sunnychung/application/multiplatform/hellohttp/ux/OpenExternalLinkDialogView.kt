@@ -45,7 +45,7 @@ fun OpenExternalLinkDialogView(url: String, onDismiss: () -> Unit) {
                 onDismiss()
             }
             Spacer(Modifier.height(4.dp)) // 8 dp + 4 dp + 8 dp
-            AppTextButton(text = "Close", backgroundColor = colour.backgroundStopButton) {
+            AppTextButton(text = "Cancel", backgroundColor = colour.backgroundStopButton) {
                 onDismiss()
             }
         }
