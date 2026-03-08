@@ -146,6 +146,24 @@ class RequestSelectionImporterTest {
     }
 
     @Test
+    fun importShouldAllowLegacyBodyEncodingWithoutBodyTypeDiscriminator() {
+        val request = createRequest(application = ProtocolApplication.Http, bodyType = ContentType.FormUrlEncoded)
+        val payload = exportPayloadNode(request)
+        val firstRequest = payload
+            .withArray("requests")
+            .first() as ObjectNode
+        val examples = firstRequest.withArray("examples")
+        examples.forEach { example ->
+            val bodyNode = (example as? ObjectNode)?.get("body") as? ObjectNode
+            bodyNode?.remove("type")
+        }
+
+        val imported = RequestSelectionImporter().importFromJson(jsonMapper.writeValueAsString(payload))
+        assertEquals(1, imported.requests.size)
+        assertRequestSemanticsEqual(expected = request, actual = imported.requests.first())
+    }
+
+    @Test
     fun importShouldAllowMissingBinaryFilePathField() {
         val request = createRequest(application = ProtocolApplication.Http, bodyType = ContentType.BinaryFile)
         val payload = exportPayloadNode(request)

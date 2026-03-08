@@ -1,9 +1,5 @@
 package com.sunnychung.application.multiplatform.hellohttp.importer
 
-import com.fasterxml.jackson.annotation.JsonSubTypes
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.exporter.RequestSelectionExport
 import com.sunnychung.application.multiplatform.hellohttp.model.ContentType
 import com.sunnychung.application.multiplatform.hellohttp.model.FileBody
@@ -13,46 +9,33 @@ import com.sunnychung.application.multiplatform.hellohttp.model.MultipartBody
 import com.sunnychung.application.multiplatform.hellohttp.model.ProtocolApplication
 import com.sunnychung.application.multiplatform.hellohttp.model.RequestBodyWithKeyValuePairs
 import com.sunnychung.application.multiplatform.hellohttp.model.StringBody
-import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestBody
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestExample
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
 import com.sunnychung.application.multiplatform.hellohttp.model.isValidHttpMethod
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 
 private const val INVALID_REQUEST_EXPORT_JSON = "Invalid request export JSON"
 private const val EXPECTED_EXPORT_APP_NAME = "Hello HTTP"
+private const val BODY_TYPE_DISCRIMINATOR = "type"
 
 class RequestSelectionImporter {
 
-    private val jsonParser = jacksonObjectMapper()
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        .disable(DeserializationFeature.FAIL_ON_MISSING_EXTERNAL_TYPE_ID_PROPERTY)
-        .disable(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE)
-        .addMixIn(UserRequestExample::class.java, UserRequestExampleBodyMixIn::class.java)
+    private val jsonParser = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
 
     fun readMetadata(json: String): RequestSelectionImportMetadata {
-        if (json.isBlank()) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-
-        val root = try {
-            jsonParser.readTree(json)
-        } catch (_: Throwable) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        } ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-
-        if (!root.isObject) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-
-        val appNode = root["app"] ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        if (!appNode.isObject) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-        val appName = appNode["name"]?.takeIf { it.isTextual }?.asText()
-            ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        val appVersion = appNode["version"]?.takeIf { it.isTextual }?.asText()
-            ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
+        val root = parseRootJsonObject(json)
+        val appNode = root["app"] as? JsonObject ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
+        val appName = appNode.getRequiredString("name")
+        val appVersion = appNode.getRequiredString("version")
         if (appName != EXPECTED_EXPORT_APP_NAME || appVersion.isBlank()) {
             throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
         }
@@ -64,39 +47,21 @@ class RequestSelectionImporter {
     }
 
     fun readMetadata(file: File): RequestSelectionImportMetadata {
-        val root = try {
-            jsonParser.readTree(file)
+        val text = try {
+            file.readText()
         } catch (_: Throwable) {
             throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        } ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-
-        if (!root.isObject) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
         }
-
-        val appNode = root["app"] ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        if (!appNode.isObject) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-        val appName = appNode["name"]?.takeIf { it.isTextual }?.asText()
-            ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        val appVersion = appNode["version"]?.takeIf { it.isTextual }?.asText()
-            ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        if (appName != EXPECTED_EXPORT_APP_NAME || appVersion.isBlank()) {
-            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-        }
-
-        return RequestSelectionImportMetadata(
-            appName = appName,
-            appVersion = appVersion,
-        )
+        return readMetadata(text)
     }
 
     fun importFromJson(json: String): RequestSelectionImport {
+        val root = parseRootJsonObject(json)
         val metadata = readMetadata(json)
+        val normalizedRoot = normalizeLegacyBodyEncoding(root)
 
         val payload = try {
-            jsonParser.readValue(json, RequestSelectionExport::class.java)
+            jsonParser.decodeFromJsonElement(RequestSelectionExport.serializer(), normalizedRoot)
         } catch (_: Throwable) {
             throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
         }
@@ -116,26 +81,12 @@ class RequestSelectionImporter {
     }
 
     fun importFromJson(file: File): RequestSelectionImport {
-        val metadata = readMetadata(file)
-
-        val payload = try {
-            jsonParser.readValue(file, RequestSelectionExport::class.java)
+        val text = try {
+            file.readText()
         } catch (_: Throwable) {
             throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
         }
-
-        validatePayload(payload)
-        return RequestSelectionImport(
-            appVersion = metadata.appVersion,
-            requests = payload.requests.map {
-                validateRequest(it)
-                try {
-                    it.deepCopyWithNewId()
-                } catch (_: Throwable) {
-                    throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
-                }
-            }
-        )
+        return importFromJson(text)
     }
 
     private fun validatePayload(payload: RequestSelectionExport) {
@@ -312,6 +263,82 @@ class RequestSelectionImporter {
             throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
         }
     }
+
+    private fun parseRootJsonObject(json: String): JsonObject {
+        if (json.isBlank()) {
+            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
+        }
+        val root = try {
+            jsonParser.parseToJsonElement(json)
+        } catch (_: Throwable) {
+            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
+        }
+        return root as? JsonObject ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
+    }
+
+    /**
+     * Backward compatibility for JSON exported by Jackson that encodes body shape by `contentType`
+     * and does not include polymorphic type discriminator in `body`.
+     */
+    private fun normalizeLegacyBodyEncoding(root: JsonObject): JsonObject {
+        val requests = root["requests"] as? JsonArray ?: return root
+        val normalizedRequests = requests.map { requestElement ->
+            val requestObject = requestElement as? JsonObject ?: return@map requestElement
+            val examples = requestObject["examples"] as? JsonArray ?: return@map requestElement
+            val normalizedExamples = examples.map(::normalizeExampleBodyEncoding)
+            JsonObject(
+                requestObject.toMutableMap().apply {
+                    put("examples", JsonArray(normalizedExamples))
+                }
+            )
+        }
+
+        return JsonObject(
+            root.toMutableMap().apply {
+                put("requests", JsonArray(normalizedRequests))
+            }
+        )
+    }
+
+    private fun normalizeExampleBodyEncoding(exampleElement: JsonElement): JsonElement {
+        val example = exampleElement as? JsonObject ?: return exampleElement
+        val body = example["body"] as? JsonObject ?: return exampleElement
+        if (BODY_TYPE_DISCRIMINATOR in body) {
+            return exampleElement
+        }
+
+        val contentType = (example["contentType"] as? JsonPrimitive)
+            ?.takeIf { it.isString }
+            ?.content
+            ?: return exampleElement
+        val serialName = when (contentType) {
+            ContentType.Json.name, ContentType.Raw.name -> "StringBody"
+            ContentType.FormUrlEncoded.name -> "FormUrlEncodedBody"
+            ContentType.Multipart.name -> "MultipartBody"
+            ContentType.BinaryFile.name -> "FileBody"
+            ContentType.Graphql.name -> "GraphqlBody"
+            else -> null
+        } ?: return exampleElement
+
+        val normalizedBody = JsonObject(
+            body.toMutableMap().apply {
+                put(BODY_TYPE_DISCRIMINATOR, JsonPrimitive(serialName))
+            }
+        )
+        return JsonObject(
+            example.toMutableMap().apply {
+                put("body", normalizedBody)
+            }
+        )
+    }
+
+    private fun JsonObject.getRequiredString(key: String): String {
+        val primitive = this[key] as? JsonPrimitive ?: throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
+        if (!primitive.isString) {
+            throw IllegalArgumentException(INVALID_REQUEST_EXPORT_JSON)
+        }
+        return primitive.content
+    }
 }
 
 data class RequestSelectionImport(
@@ -323,21 +350,3 @@ data class RequestSelectionImportMetadata(
     val appName: String,
     val appVersion: String,
 )
-
-private abstract class UserRequestExampleBodyMixIn {
-    @get:JsonTypeInfo(
-        use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
-        property = "contentType",
-        visible = true,
-    )
-    @get:JsonSubTypes(
-        JsonSubTypes.Type(value = StringBody::class, name = "Json"),
-        JsonSubTypes.Type(value = StringBody::class, name = "Raw"),
-        JsonSubTypes.Type(value = FormUrlEncodedBody::class, name = "FormUrlEncoded"),
-        JsonSubTypes.Type(value = MultipartBody::class, name = "Multipart"),
-        JsonSubTypes.Type(value = FileBody::class, name = "BinaryFile"),
-        JsonSubTypes.Type(value = GraphqlBody::class, name = "Graphql"),
-    )
-    abstract val body: UserRequestBody?
-}

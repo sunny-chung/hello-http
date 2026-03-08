@@ -745,7 +745,18 @@ fun RequestTreeView(
     ImportJsonRequestDialog(
         isEnabled = isShowImportJsonDialog,
         onDismiss = { isShowImportJsonDialog = false },
-        onImportJson = onImportJsonRequest,
+        onImportJson = { input, isAcceptDataLossRisk ->
+            when (val result = onImportJsonRequest(input, isAcceptDataLossRisk)) {
+                is ImportJsonRequestResult.Success -> {
+                    selectedRequestIds.clear()
+                    selectedRequestIds[result.selectedRequestId] = Unit
+                    selectedRangeAnchorRequestId = result.selectedRequestId
+                    result
+                }
+
+                else -> result
+            }
+        },
     )
 
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {

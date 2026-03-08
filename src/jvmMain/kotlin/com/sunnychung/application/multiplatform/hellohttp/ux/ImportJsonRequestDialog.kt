@@ -27,7 +27,9 @@ private val JSON_IMPORT_PLACEHOLDER = """
 """.trimIndent()
 
 sealed interface ImportJsonRequestResult {
-    data object Success : ImportJsonRequestResult
+    data class Success(
+        val selectedRequestId: String,
+    ) : ImportJsonRequestResult
     data object Error : ImportJsonRequestResult
     data class RequireVersionConfirmation(
         val sourceVersion: String,

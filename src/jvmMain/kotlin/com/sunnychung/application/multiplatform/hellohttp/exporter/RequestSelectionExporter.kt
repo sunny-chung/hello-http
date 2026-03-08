@@ -1,14 +1,17 @@
 package com.sunnychung.application.multiplatform.hellohttp.exporter
 
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.sunnychung.application.multiplatform.hellohttp.AppContext
 import com.sunnychung.application.multiplatform.hellohttp.model.UserRequestTemplate
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class RequestSelectionExporter {
 
-    private val jsonWriter = jacksonObjectMapper()
-        .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+    private val jsonWriter = Json {
+        explicitNulls = false
+        encodeDefaults = true
+    }
 
     fun exportAsJson(requests: List<UserRequestTemplate>): String {
         val payload = RequestSelectionExport(
@@ -21,14 +24,16 @@ class RequestSelectionExporter {
                     .sanitizeForApplication()
             },
         )
-        return jsonWriter.writeValueAsString(payload)
+        return jsonWriter.encodeToString(RequestSelectionExport.serializer(), payload)
     }
 }
 
+@Serializable
 data class RequestSelectionExport(
     val app: AppMetadata,
     val requests: List<UserRequestTemplate>,
 ) {
+    @Serializable
     data class AppMetadata(
         val name: String,
         val version: String,

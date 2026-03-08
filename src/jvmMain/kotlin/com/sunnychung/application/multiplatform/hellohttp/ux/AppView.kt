@@ -597,14 +597,17 @@ fun AppContentView() {
                                         requestCollectionRepository.notifyUpdated(requestCollection!!.id)
                                         projectCollectionRepository.updateSubproject(projectCollection.id, selectedSubproject!!)
 
-                                        selectedRequestId = imported.requests.first().id
+                                        val firstImportedRequestId = imported.requests.first().id
+                                        selectedRequestId = firstImportedRequestId
                                         val message = if (imported.requests.size == 1) {
                                             "Imported 1 request from JSON"
                                         } else {
                                             "Imported ${imported.requests.size} requests from JSON"
                                         }
                                         errorMessageVM.showSuccessMessage(message)
-                                        ImportJsonRequestResult.Success
+                                        ImportJsonRequestResult.Success(
+                                            selectedRequestId = firstImportedRequestId,
+                                        )
                                     } catch (e: Throwable) {
                                         log.w(e) { "Cannot import requests from JSON" }
                                         errorMessageVM.showErrorMessage("Cannot import requests from JSON")
