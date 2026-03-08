@@ -474,11 +474,13 @@ class CurlCommandImporter {
         val tokens = mutableListOf<String>()
         val current = StringBuilder()
         var quoteMode = QuoteMode.None
+        var isCurrentTokenStarted = false
 
         fun flush() {
-            if (current.isNotEmpty()) {
+            if (isCurrentTokenStarted) {
                 tokens += current.toString()
                 current.clear()
+                isCurrentTokenStarted = false
             }
         }
 
@@ -503,7 +505,7 @@ class CurlCommandImporter {
                             index += 1
                         }
 
-                        c == '#' && current.isEmpty() -> {
+                        c == '#' && !isCurrentTokenStarted -> {
                             while (index < command.length && command[index] != '\n' && command[index] != '\r') {
                                 index += 1
                             }
@@ -511,20 +513,26 @@ class CurlCommandImporter {
 
                         c == '\'' -> {
                             quoteMode = QuoteMode.Single
+                            isCurrentTokenStarted = true
                             index += 1
                         }
 
                         c == '"' -> {
                             quoteMode = QuoteMode.Double
+                            isCurrentTokenStarted = true
                             index += 1
                         }
 
                         c == '\\' -> {
+                            if (index + 1 < command.length && command[index + 1] != '\n' && command[index + 1] != '\r') {
+                                isCurrentTokenStarted = true
+                            }
                             index += appendEscapedCharacter(command, index, current)
                         }
 
                         else -> {
                             current.append(c)
+                            isCurrentTokenStarted = true
                             index += 1
                         }
                     }

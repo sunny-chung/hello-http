@@ -46,6 +46,30 @@ class CurlCommandImporterTest {
     }
 
     @Test
+    fun parseJsonRequestWithEmptyDataArgument() {
+        val request = importer.parseRequest(
+            """
+            curl \
+              --request "POST" \
+              --url "https://$%7B%7Bprefix%7D%7D/bbc/$%7B%7Bdef%7D%7D/g/$%7B%7Bh%7D%7D/i/$%7B%7Bjj%7D%7D/k" \
+              --header "User-Agent: Hello-HTTP/1.9.0-SNAPSHOT" \
+              --header "Content-Type: application/json" \
+              --data ""
+            """.trimIndent()
+        )
+
+        assertEquals("POST", request.method)
+        assertEquals(
+            "https://$%7B%7Bprefix%7D%7D/bbc/$%7B%7Bdef%7D%7D/g/$%7B%7Bh%7D%7D/i/$%7B%7Bjj%7D%7D/k",
+            request.url,
+        )
+        val example = request.examples.first()
+        assertEquals(ContentType.Json, example.contentType)
+        val body = assertIs<StringBody>(example.body)
+        assertEquals("", body.value)
+    }
+
+    @Test
     fun parseMultipartRequestWithFile() {
         val request = importer.parseRequest(
             """
