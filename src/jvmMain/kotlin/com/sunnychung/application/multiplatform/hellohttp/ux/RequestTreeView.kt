@@ -45,6 +45,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerButton
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
@@ -152,24 +153,42 @@ fun RequestTreeView(
         var myBound by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
         var draggedPoint by remember { mutableStateOf<Offset?>(null) }
         var dragIsActive by remember { mutableStateOf(false) }
+        // Workaround Compose Desktop selection crash observed when dragging from Markdown text
+        // selection into Request Tree rows. The failure is:
+        // `IllegalStateException: unexpectedly miss-crossed selection`
+        // from `MultiSelectionLayout.createSubSelections(...)`.
+        // Keep tree row dragging active only when the press started inside the row.
+        // https://issuetracker.google.com/issues/439758956
+        var hasPressStartedInside by remember { mutableStateOf(false) }
         Box(
             modifier = modifier
                 .onGloballyPositioned { treeParentBound?.let { p -> myBound = p.localBoundingBoxOf(it); /*log.d { "req rect $myBound" }*/ } }
+                .onPointerEvent(PointerEventType.Press, pass = PointerEventPass.Initial) {
+                    hasPressStartedInside = true
+                }
+                .onPointerEvent(PointerEventType.Release, pass = PointerEventPass.Initial) {
+                    hasPressStartedInside = false
+                }
                 .pointerInput(isEnableDrag, id) { // https://stackoverflow.com/questions/72299963/value-of-mutablestate-inside-modifier-pointerinput-doesnt-change-after-remember
                     detectDragGestures(
                         onDragStart = {
-                            draggedPoint = Offset(myBound.left, myBound.top) + it
-                            log.d { "drag start $isEnableDrag" }
-                            dragIsActive = isEnableDrag
+                            dragIsActive = isEnableDrag && hasPressStartedInside
+                            draggedPoint = if (dragIsActive) {
+                                Offset(myBound.left, myBound.top) + it
+                            } else {
+                                null
+                            }
+                            log.d { "drag start $isEnableDrag hasPressStartedInside=$hasPressStartedInside" }
                         },
                         onDrag = { offset ->
                             if (dragIsActive) {
-                                draggedPoint = draggedPoint!! + offset
+                                val nextDraggedPoint = (draggedPoint ?: Offset(myBound.left, myBound.top)) + offset
+                                draggedPoint = nextDraggedPoint
                                 var intersect: DropTargetInfo? = null
-                                for ((key, value) in treeObjectBounds) {
+                                for ((_, value) in treeObjectBounds) {
 //                                    log.v { "onDrag e $value" }
                                     // when there are overlapping regions, "Before" and "After" bars have higher priority than "Inside" folders
-                                    if (draggedPoint!! in value.bounds && (intersect == null || value.direction != MoveDirection.Inside)) {
+                                    if (nextDraggedPoint in value.bounds && (intersect == null || value.direction != MoveDirection.Inside)) {
                                         intersect = value
 //                                        log.d { "onDrag replace ${intersect?.direction} ${intersect?.item}"}
                                     }
@@ -183,6 +202,7 @@ fun RequestTreeView(
                         },
                         onDragCancel = {
                             dragIsActive = false
+                            hasPressStartedInside = false
                             draggingOverDropTarget = null
                             draggedPoint = null
                         },
@@ -194,6 +214,7 @@ fun RequestTreeView(
                             }
 
                             dragIsActive = false
+                            hasPressStartedInside = false
                             draggingOverDropTarget = null
                             draggedPoint = null
                         },
@@ -203,6 +224,7 @@ fun RequestTreeView(
                     if (it.key == Key.Escape) {
                         log.d { "Detected ESC to cancel drag" }
                         dragIsActive = false
+                        hasPressStartedInside = false
                         draggingOverDropTarget = null
                         true
                     } else {

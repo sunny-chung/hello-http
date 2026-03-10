@@ -104,7 +104,8 @@ fun MarkdownDocumentView(
             typeName != "EOL" && typeName != "WHITE_SPACE"
         }
 
-        SelectionContainer {
+        @Composable
+        fun MarkdownScrollableContent() {
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
                     modifier = Modifier
@@ -131,6 +132,10 @@ fun MarkdownDocumentView(
                     adapter = rememberScrollbarAdapter(scrollState),
                 )
             }
+        }
+
+        SelectionContainer {
+            MarkdownScrollableContent()
         }
     }
 }
@@ -280,7 +285,17 @@ private fun MarkdownListBlock(
                 } else {
                     "◦"
                 }
-                AppText(text = bullet, modifier = Modifier.padding(top = 1.dp))
+                val markerTopPadding = if (isOrdered) 0.dp else 1.dp
+                AppText(
+                    text = bullet,
+                    fontSize = LocalFont.current.bodyFontSize,
+                    fontFamily = LocalFont.current.normalFontFamily,
+                    lineHeight = 22.sp,
+                    // Keep list marker aligned to the first text line. Ordered marker/text baseline
+                    // mismatch can perturb selection traversal order and contribute to crossed-handle
+                    // selection inconsistencies (`unexpectedly miss-crossed selection`).
+                    modifier = Modifier.padding(top = markerTopPadding),
+                )
                 Spacer(Modifier.width(6.dp))
 
                 val childBlocks = item.children.filter {
