@@ -917,8 +917,8 @@ private enum class ResourceType {
 
     val displayText: String
         get() = when (this) {
-            Request -> "Request"
-            Folder -> "Folder"
+            Request -> "Create Request"
+            Folder -> "Create Folder"
             ImportCurlCommand -> "Import cURL command (Linux / macOS)"
             ImportJson -> "Import from JSON"
         }
