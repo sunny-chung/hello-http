@@ -6,14 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-The current behavior of badge numbers, in the Request Editor, that do not count inherited properties does not bring convenience in practical. This behavior is changed starting from this version.
-
 ### Added
 - Importing request(s) from one or multiple `curl` commands
-- Quick requests export & import
+- [Quick requests export & import](https://sunny-chung.github.io/hello-http/features/quick-export-and-import)
 - Formatted Documentation could be written in Markdown syntax per request example (inheritable)
 - Export project in OpenAPI v3.1 format (Experimental!)
-- Export subproject as a single HTML printer-friendly API documentation (Experimental!)
+- [Export subproject as a single HTML printer-friendly API documentation](https://sunny-chung.github.io/hello-http/features/apidoc-generation) (Experimental!)
 
 ### Changed
 - The badge numbers of Body, Query, Header, Pre Flight, Post Flight tabs in the Request Editor now count inherited entries

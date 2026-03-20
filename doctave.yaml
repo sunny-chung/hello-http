@@ -22,7 +22,9 @@ navigation:
       - path: doc/features/transport-timeline.md
       - path: doc/features/delete-protection.md
       - path: doc/features/automatic-backup.md
+      - path: doc/features/quick-export-and-import.md
       - path: doc/features/data-import-export.md
+      - path: doc/features/apidoc-generation.md
   - path: doc/transports
     children: "*"
 
