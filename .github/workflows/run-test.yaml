@@ -16,12 +16,14 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
       - run: |
+          OPTS=""
           # start a virtual X server for Linux
           if [ "$RUNNER_OS" == "Linux" ]; then
             export DISPLAY=:99
             sudo Xvfb -ac :99 -screen 0 1280x800x24 > /dev/null 2>&1 &
+            OPTS="--no-hardware"
           fi
-          ./run-ci-test.sh
+          ./run-ci-test.sh $OPTS
         shell: bash # let Windows use bash
       - uses: actions/upload-artifact@v4
         with:
