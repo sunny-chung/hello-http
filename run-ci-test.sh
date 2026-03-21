@@ -5,6 +5,7 @@ set -e
 OPTS=""
 if [ "$1" == "--no-hardware" ]; then
   OPTS="$OPTS -Dskiko.renderApi=SOFTWARE_COMPAT -Dskiko.vsync.enabled=false"
+  export MESA_EXTENSION_OVERRIDE="-GL_ARB_invalidate_subdata"
 fi
 
 ./gradlew :test-server:bootJar
