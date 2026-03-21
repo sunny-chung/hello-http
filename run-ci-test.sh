@@ -4,7 +4,7 @@ set -e
 
 OPTS=""
 if [ "$1" == "--no-hardware" ]; then
-  OPTS="$OPTS -Dskiko.renderApi=SOFTWARE_COMPAT"
+  OPTS="$OPTS -Dskiko.renderApi=SOFTWARE_COMPAT -Dskiko.vsync.enabled=false"
 fi
 
 ./gradlew :test-server:bootJar
@@ -72,6 +72,6 @@ echo "Test Server (SSL) is UP"
 #echo "Test Server (mTLS) is UP"
 sleep 10
 
-export GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3072m -XX:+HeapDumpOnOutOfMemoryError"'"$OPTS"
+export GRADLE_OPTS='-Xmx64m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3072m -XX:+HeapDumpOnOutOfMemoryError'"$OPTS"'"'
 echo $GRADLE_OPTS
 ./gradlew check -PisCI=true
