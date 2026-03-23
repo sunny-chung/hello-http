@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+
+## [1.9.0] -- 2026-03-23
+
+_Changes since 1.8.0_
+
 ### Added
 - Importing request(s) from one or multiple `curl` commands
 - [Quick requests export & import](https://sunny-chung.github.io/hello-http/features/quick-export-and-import)
